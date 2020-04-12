@@ -1,0 +1,10 @@
+#!/bin/bash
+
+function f() {
+    NAME=$1
+
+    cargo run --bin jl_tests "tests/$NAME/$NAME.jacco"
+}
+
+f empty
+f exit_with_42
