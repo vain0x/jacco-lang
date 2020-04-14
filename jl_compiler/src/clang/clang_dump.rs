@@ -58,6 +58,13 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, "!")?;
             write_expr(arg, indent, out)
         }
+        CExpr::Add(left, right) => {
+            write!(out, "(")?;
+            write_expr(left, indent, out)?;
+            write!(out, " + ")?;
+            write_expr(right, indent, out)?;
+            write!(out, ")")
+        }
     }
 }
 
@@ -79,6 +86,18 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_expr(cond, indent, out)?;
             write!(out, ") ")?;
             write_stmt(body, indent, out)
+        }
+        CStmt::VarDecl { name, ty, init_opt } => {
+            write_ty(ty, indent, out)?;
+
+            match init_opt {
+                Some(init) => {
+                    write!(out, " {} = ", name)?;
+                    write_expr(init, indent, out)?;
+                    write!(out, ";")
+                }
+                None => write!(out, " {};", name),
+            }
         }
         CStmt::FnDecl {
             ident,

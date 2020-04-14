@@ -1,6 +1,7 @@
 use super::*;
 use crate::cps::*;
 use crate::token::TokenData;
+use std::mem;
 
 #[derive(Default)]
 struct Cx {
@@ -8,20 +9,46 @@ struct Cx {
 }
 
 fn take_term(slot: &mut KTerm) -> KTerm {
-    std::mem::replace(slot, KTerm::Int(TokenData::new_dummy()))
+    mem::replace(slot, KTerm::Int(TokenData::new_dummy()))
 }
 
-fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
+fn take_node(slot: &mut KNode) -> KNode {
+    mem::replace(slot, KNode::Abort)
+}
+
+fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
-        KTerm::Name(token) => CExpr::Name(token.into_text()),
+        KTerm::Name { text, .. } => CExpr::Name(text),
     }
 }
 
-fn gen_node_as_block(mut node: KNode, cx: &mut Cx) -> CBlock {
-    let mut stmts = vec![];
-
+fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
     match node {
+        KNode::Prim {
+            prim,
+            ref mut args,
+            ref mut results,
+            ref mut conts,
+        } => match prim {
+            KPrim::Add => match (
+                args.as_mut_slice(),
+                results.as_mut_slice(),
+                conts.as_mut_slice(),
+            ) {
+                ([left, right], [result], [cont]) => {
+                    let left = gen_term(take_term(left), cx);
+                    let right = gen_term(take_term(right), cx);
+                    stmts.push(CStmt::VarDecl {
+                        name: mem::take(result),
+                        ty: CTy::Int,
+                        init_opt: Some(CExpr::Add(Box::new(left), Box::new(right))),
+                    });
+                    gen_node(take_node(cont), stmts, cx);
+                }
+                _ => unimplemented!(),
+            },
+        },
         KNode::Jump { ref mut args, .. } => match args.as_mut_slice() {
             [arg] => {
                 let arg = gen_term(take_term(arg), cx);
@@ -31,12 +58,18 @@ fn gen_node_as_block(mut node: KNode, cx: &mut Cx) -> CBlock {
         },
         _ => unimplemented!(),
     }
+}
+
+fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
+    let mut stmts = vec![];
+
+    gen_node(node, &mut stmts, cx);
 
     CBlock { body: stmts }
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
-    for KFn { name, params, body } in root.fns {
+    for KFn { name, body, .. } in root.fns {
         let body = gen_node_as_block(body, cx);
 
         cx.decls.push(CStmt::FnDecl {

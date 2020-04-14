@@ -8,3 +8,4 @@ function f() {
 
 f empty
 f exit_with_42
+f add

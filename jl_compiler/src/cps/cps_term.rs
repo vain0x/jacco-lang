@@ -1,7 +1,7 @@
-use crate::token::TokenData;
+use crate::token::{Location, TokenData};
 
 #[derive(Clone, Debug)]
 pub(crate) enum KTerm {
     Int(TokenData),
-    Name(TokenData),
+    Name { text: String, location: Location },
 }

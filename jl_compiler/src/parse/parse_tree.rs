@@ -5,6 +5,12 @@ pub(crate) enum PTerm {
     Int(TokenData),
     Str(TokenData),
     Name(TokenData),
+    BinaryOp {
+        op: BinaryOp,
+        left: Box<PTerm>,
+        right: Box<PTerm>,
+        location: Location,
+    },
 }
 
 #[derive(Clone, Debug)]

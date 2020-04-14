@@ -14,6 +14,7 @@ pub(crate) enum CExpr {
     Name(String),
     Call { cal: Box<CExpr>, args: Vec<CExpr> },
     Neg(Box<CExpr>),
+    Add(Box<CExpr>, Box<CExpr>),
 }
 
 pub(crate) struct CBlock {
@@ -27,6 +28,11 @@ pub(crate) enum CStmt {
     If {
         cond: CExpr,
         body: Box<CStmt>,
+    },
+    VarDecl {
+        name: String,
+        ty: CTy,
+        init_opt: Option<CExpr>,
     },
     FnDecl {
         ident: String,
