@@ -53,6 +53,22 @@ impl Xx {
     }
 }
 
+fn extend_binary_op(
+    prim: KPrim,
+    mut left: PTerm,
+    mut right: PTerm,
+    location: Location,
+    xx: &mut Xx,
+) {
+    extend_expr(left, xx);
+    extend_expr(right, xx);
+    xx.push(XCommand::Prim {
+        prim,
+        arg_count: 2,
+        location,
+    });
+}
+
 fn extend_expr(term: PTerm, xx: &mut Xx) {
     match term {
         PTerm::Int(token) => xx.push_term(KTerm::Int(token)),
@@ -66,15 +82,11 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             right,
             location,
         } => match op {
-            BinaryOp::Add => {
-                extend_expr(*left, xx);
-                extend_expr(*right, xx);
-                xx.push(XCommand::Prim {
-                    prim: KPrim::Add,
-                    arg_count: 2,
-                    location,
-                });
-            }
+            BinaryOp::Add => extend_binary_op(KPrim::Add, *left, *right, location, xx),
+            BinaryOp::Sub => extend_binary_op(KPrim::Sub, *left, *right, location, xx),
+            BinaryOp::Mul => extend_binary_op(KPrim::Mul, *left, *right, location, xx),
+            BinaryOp::Div => extend_binary_op(KPrim::Div, *left, *right, location, xx),
+            BinaryOp::Mod => extend_binary_op(KPrim::Mod, *left, *right, location, xx),
             _ => unimplemented!(),
         },
         _ => unimplemented!(),

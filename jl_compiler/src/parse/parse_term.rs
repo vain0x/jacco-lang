@@ -33,22 +33,48 @@ pub(crate) fn parse_atom(px: &mut Px) -> PTerm {
     }
 }
 
-pub(crate) fn parse_add(px: &mut Px) -> PTerm {
+pub(crate) fn parse_mul(px: &mut Px) -> PTerm {
+    let parse_right = |op, left, px: &mut Px| {
+        let op_token = px.bump();
+        let right = parse_atom(px);
+        PTerm::BinaryOp {
+            op,
+            left: Box::new(left),
+            right: Box::new(right),
+            location: op_token.into_location(),
+        }
+    };
+
     let mut left = parse_atom(px);
 
     loop {
         match px.next() {
-            TokenKind::Plus => {
-                let op = px.bump();
+            TokenKind::Star => left = parse_right(BinaryOp::Mul, left, px),
+            TokenKind::Slash => left = parse_right(BinaryOp::Div, left, px),
+            TokenKind::Percent => left = parse_right(BinaryOp::Mod, left, px),
+            _ => return left,
+        }
+    }
+}
 
-                let right = parse_atom(px);
-                left = PTerm::BinaryOp {
-                    op: BinaryOp::Add,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                    location: op.into_location(),
-                };
-            }
+pub(crate) fn parse_add(px: &mut Px) -> PTerm {
+    let parse_right = |op, left, px: &mut Px| {
+        let op_token = px.bump();
+        let right = parse_mul(px);
+        PTerm::BinaryOp {
+            op,
+            left: Box::new(left),
+            right: Box::new(right),
+            location: op_token.into_location(),
+        }
+    };
+
+    let mut left = parse_mul(px);
+
+    loop {
+        match px.next() {
+            TokenKind::Plus => left = parse_right(BinaryOp::Add, left, px),
+            TokenKind::Minus => left = parse_right(BinaryOp::Sub, left, px),
             _ => return left,
         }
     }

@@ -1,5 +1,9 @@
 pub(crate) enum CBinaryOp {
     Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
 }
 
 pub(crate) enum CTy {

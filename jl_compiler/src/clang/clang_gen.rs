@@ -23,6 +23,37 @@ fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     }
 }
 
+fn gen_binary_op(
+    op: CBinaryOp,
+    args: &mut Vec<KTerm>,
+    results: &mut Vec<String>,
+    conts: &mut Vec<KNode>,
+    stmts: &mut Vec<CStmt>,
+    cx: &mut Cx,
+) {
+    match (
+        args.as_mut_slice(),
+        results.as_mut_slice(),
+        conts.as_mut_slice(),
+    ) {
+        ([left, right], [result], [cont]) => {
+            let left = gen_term(take_term(left), cx);
+            let right = gen_term(take_term(right), cx);
+            stmts.push(CStmt::VarDecl {
+                name: mem::take(result),
+                ty: CTy::Int,
+                init_opt: Some(CExpr::BinaryOp {
+                    op,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }),
+            });
+            gen_node(take_node(cont), stmts, cx);
+        }
+        _ => unimplemented!(),
+    }
+}
+
 fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
     match node {
         KNode::Prim {
@@ -31,27 +62,11 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ref mut results,
             ref mut conts,
         } => match prim {
-            KPrim::Add => match (
-                args.as_mut_slice(),
-                results.as_mut_slice(),
-                conts.as_mut_slice(),
-            ) {
-                ([left, right], [result], [cont]) => {
-                    let left = gen_term(take_term(left), cx);
-                    let right = gen_term(take_term(right), cx);
-                    stmts.push(CStmt::VarDecl {
-                        name: mem::take(result),
-                        ty: CTy::Int,
-                        init_opt: Some(CExpr::BinaryOp {
-                            op: CBinaryOp::Add,
-                            left: Box::new(left),
-                            right: Box::new(right),
-                        }),
-                    });
-                    gen_node(take_node(cont), stmts, cx);
-                }
-                _ => unimplemented!(),
-            },
+            KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, stmts, cx),
+            KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, stmts, cx),
+            KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),
+            KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, stmts, cx),
+            KPrim::Mod => gen_binary_op(CBinaryOp::Mod, args, results, conts, stmts, cx),
         },
         KNode::Jump { ref mut args, .. } => match args.as_mut_slice() {
             [arg] => {
