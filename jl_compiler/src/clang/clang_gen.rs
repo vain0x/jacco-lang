@@ -42,7 +42,11 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     stmts.push(CStmt::VarDecl {
                         name: mem::take(result),
                         ty: CTy::Int,
-                        init_opt: Some(CExpr::Add(Box::new(left), Box::new(right))),
+                        init_opt: Some(CExpr::BinaryOp {
+                            op: CBinaryOp::Add,
+                            left: Box::new(left),
+                            right: Box::new(right),
+                        }),
                     });
                     gen_node(take_node(cont), stmts, cx);
                 }

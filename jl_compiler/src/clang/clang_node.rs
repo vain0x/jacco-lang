@@ -1,3 +1,7 @@
+pub(crate) enum CBinaryOp {
+    Add,
+}
+
 pub(crate) enum CTy {
     Void,
     Bool,
@@ -12,9 +16,16 @@ pub(crate) enum CExpr {
     BoolLit(bool),
     IntLit(String),
     Name(String),
-    Call { cal: Box<CExpr>, args: Vec<CExpr> },
+    Call {
+        cal: Box<CExpr>,
+        args: Vec<CExpr>,
+    },
     Neg(Box<CExpr>),
-    Add(Box<CExpr>, Box<CExpr>),
+    BinaryOp {
+        op: CBinaryOp,
+        left: Box<CExpr>,
+        right: Box<CExpr>,
+    },
 }
 
 pub(crate) struct CBlock {

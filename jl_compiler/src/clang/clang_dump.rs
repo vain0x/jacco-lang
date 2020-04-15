@@ -2,6 +2,12 @@ use super::*;
 use crate::cps::KRoot;
 use std::io::{self, Write};
 
+fn binary_op_to_str(op: &CBinaryOp) -> &str {
+    match op {
+        CBinaryOp::Add => "+",
+    }
+}
+
 fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     for _ in 0..indent * 4 {
         write!(out, " ")?;
@@ -58,10 +64,10 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, "!")?;
             write_expr(arg, indent, out)
         }
-        CExpr::Add(left, right) => {
+        CExpr::BinaryOp { op, left, right } => {
             write!(out, "(")?;
             write_expr(left, indent, out)?;
-            write!(out, " + ")?;
+            write!(out, " {} ", binary_op_to_str(op))?;
             write_expr(right, indent, out)?;
             write!(out, ")")
         }
