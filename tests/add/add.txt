@@ -1,5 +1,5 @@
 
 int main() {
-    int result = (40 + 2);
+    int result = 40 + 2;
     return result;
 }

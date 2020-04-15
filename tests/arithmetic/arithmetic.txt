@@ -1,9 +1,9 @@
 
 int main() {
-    int result = (3 * 4);
-    int result = (result / 1);
-    int result = (2 + result);
-    int result = (9 % 100000007);
-    int result = (result - result);
+    int result = 3 * 4;
+    int result = result / 1;
+    int result = 2 + result;
+    int result = 9 % 100000007;
+    int result = result - result;
     return result;
 }

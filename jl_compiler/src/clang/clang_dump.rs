@@ -69,11 +69,9 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_expr(arg, indent, out)
         }
         CExpr::BinaryOp { op, left, right } => {
-            write!(out, "(")?;
             write_expr(left, indent, out)?;
             write!(out, " {} ", binary_op_to_str(op))?;
-            write_expr(right, indent, out)?;
-            write!(out, ")")
+            write_expr(right, indent, out)
         }
     }
 }
