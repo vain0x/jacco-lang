@@ -53,13 +53,7 @@ impl Xx {
     }
 }
 
-fn extend_binary_op(
-    prim: KPrim,
-    mut left: PTerm,
-    mut right: PTerm,
-    location: Location,
-    xx: &mut Xx,
-) {
+fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
     extend_expr(left, xx);
     extend_expr(right, xx);
     xx.push(XCommand::Prim {
