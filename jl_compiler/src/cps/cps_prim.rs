@@ -6,3 +6,9 @@ pub(crate) enum KPrim {
     Div,
     Mod,
 }
+
+impl KPrim {
+    pub(crate) fn hint_str(self) -> String {
+        format!("{:?}", self).to_lowercase()
+    }
+}

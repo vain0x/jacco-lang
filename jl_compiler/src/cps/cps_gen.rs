@@ -125,11 +125,18 @@ fn extend_root(root: PRoot, xx: &mut Xx) {
 
 #[derive(Default)]
 struct Gx {
+    last_id: usize,
     stack: Vec<KElement>,
     fns: Vec<KFn>,
 }
 
 impl Gx {
+    fn fresh_name(&mut self, hint: &str) -> String {
+        self.last_id += 1;
+        let id = self.last_id;
+        format!("{}_{}", hint, id)
+    }
+
     fn push_term(&mut self, term: KTerm) {
         self.stack.push(KElement::Term(term));
     }
@@ -180,7 +187,7 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 }
                 args.reverse();
 
-                let result = "result".to_string();
+                let result = gx.fresh_name(&prim.hint_str());
                 gx.push_term(KTerm::Name {
                     text: result.to_string(),
                     location,
