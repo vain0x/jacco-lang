@@ -1,5 +1,6 @@
 pub fn main() -> i32 {
     1;
     2;
-    0
+    let a = 0;
+    a
 }

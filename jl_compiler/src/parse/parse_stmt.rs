@@ -9,6 +9,38 @@ impl TokenKind {
     }
 }
 
+fn parse_let_stmt(px: &mut Px) -> PStmt {
+    let keyword = px.expect(TokenKind::Let);
+
+    let name_opt = px.eat(TokenKind::Ident);
+
+    let name = match name_opt {
+        Some(name) => name.into_text(),
+        None => "".to_string(),
+    };
+
+    let init_opt = if px.next() == TokenKind::Equal {
+        px.bump();
+
+        if px.next().is_term_first() {
+            Some(parse_term(px))
+        } else {
+            // error
+            None
+        }
+    } else {
+        None
+    };
+
+    px.eat(TokenKind::Semi);
+
+    PStmt::Let {
+        keyword,
+        name,
+        init_opt,
+    }
+}
+
 fn parse_fn_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Fn);
 
@@ -43,6 +75,9 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Opti
             TokenKind::Semi => {
                 // Empty statement.
                 px.bump();
+            }
+            TokenKind::Let => {
+                stmts.push(parse_let_stmt(px));
             }
             TokenKind::Fn => {
                 stmts.push(parse_fn_stmt(px));

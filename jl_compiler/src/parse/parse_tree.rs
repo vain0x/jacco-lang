@@ -27,6 +27,11 @@ pub(crate) enum PStmt {
         term: PTerm,
         semi_opt: Option<TokenData>,
     },
+    Let {
+        keyword: TokenData,
+        name: String,
+        init_opt: Option<PTerm>,
+    },
     Fn {
         keyword: Location,
         block_opt: Option<PBlock>,

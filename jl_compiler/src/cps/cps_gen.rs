@@ -8,6 +8,7 @@ enum XCommand {
     Prim {
         prim: KPrim,
         arg_count: usize,
+        result: String,
         location: Location,
     },
     Jump {
@@ -30,11 +31,18 @@ struct XRoot {
 
 #[derive(Default)]
 struct Xx {
+    last_id: usize,
     current: Vec<XCommand>,
     fns: Vec<XFn>,
 }
 
 impl Xx {
+    fn fresh_name(&mut self, hint: &str) -> String {
+        self.last_id += 1;
+        let id = self.last_id;
+        format!("{}_{}", hint, id)
+    }
+
     fn push(&mut self, command: XCommand) {
         self.current.push(command);
     }
@@ -54,11 +62,14 @@ impl Xx {
 }
 
 fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
+    let result = xx.fresh_name(&prim.hint_str());
+
     extend_expr(left, xx);
     extend_expr(right, xx);
     xx.push(XCommand::Prim {
         prim,
         arg_count: 2,
+        result,
         location,
     });
 }
@@ -87,56 +98,79 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
     }
 }
 
+fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
+    let ret = "ret".to_string();
+
+    let commands = xx.enter_block(|xx| {
+        let block = block_opt.unwrap();
+
+        for stmt in block.body {
+            extend_stmt(stmt, xx);
+        }
+
+        let last = block.last_opt.unwrap();
+
+        extend_expr(last, xx);
+        xx.push(XCommand::Jump {
+            label: ret.to_string(),
+            arg_count: 1,
+        });
+    });
+
+    let x_fn = XFn {
+        name: "main".to_string(),
+        params: vec![ret],
+        body: XBlock(commands),
+    };
+
+    xx.fns.push(x_fn);
+}
+
 fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
     match stmt {
         PStmt::Expr { .. } => {
             //
         }
-        PStmt::Fn { block_opt, .. } => {
-            let ret = "ret".to_string();
+        PStmt::Let {
+            keyword,
+            name,
+            init_opt,
+        } => {
+            let location = keyword.into_location();
 
-            let commands = xx.enter_block(|xx| {
-                let block = block_opt.unwrap();
-                let last = block.last_opt.unwrap();
+            extend_expr(init_opt.unwrap(), xx);
 
-                extend_expr(last, xx);
-                xx.push(XCommand::Jump {
-                    label: ret.to_string(),
-                    arg_count: 1,
-                });
+            xx.push(XCommand::Prim {
+                prim: KPrim::Let,
+                arg_count: 1,
+                result: name,
+                location,
             });
-
-            let x_fn = XFn {
-                name: "main".to_string(),
-                params: vec![ret],
-                body: XBlock(commands),
-            };
-
-            xx.fns.push(x_fn);
         }
+        PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
+    }
+}
+
+fn extend_decl(stmt: PStmt, xx: &mut Xx) {
+    match stmt {
+        PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
+        _ => unimplemented!(),
     }
 }
 
 fn extend_root(root: PRoot, xx: &mut Xx) {
     for body in root.body {
-        extend_stmt(body, xx);
+        extend_decl(body, xx);
     }
 }
 
 #[derive(Default)]
 struct Gx {
-    last_id: usize,
     stack: Vec<KElement>,
     fns: Vec<KFn>,
 }
 
 impl Gx {
-    fn fresh_name(&mut self, hint: &str) -> String {
-        self.last_id += 1;
-        let id = self.last_id;
-        format!("{}_{}", hint, id)
-    }
-
     fn push_term(&mut self, term: KTerm) {
         self.stack.push(KElement::Term(term));
     }
@@ -179,6 +213,7 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
             XCommand::Prim {
                 prim,
                 arg_count,
+                result,
                 location,
             } => {
                 let mut args = vec![];
@@ -187,10 +222,9 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 }
                 args.reverse();
 
-                let result = gx.fresh_name(&prim.hint_str());
                 gx.push_term(KTerm::Name {
-                    text: result.to_string(),
-                    location,
+                    text: result.clone(),
+                    location: location.clone(),
                 });
 
                 do_fold(commands, gx);

@@ -62,6 +62,22 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ref mut results,
             ref mut conts,
         } => match prim {
+            KPrim::Let => match (
+                args.as_mut_slice(),
+                results.as_mut_slice(),
+                conts.as_mut_slice(),
+            ) {
+                ([init], [result], [cont]) => {
+                    let init = gen_term(take_term(init), cx);
+                    stmts.push(CStmt::VarDecl {
+                        name: mem::take(result),
+                        ty: CTy::Int,
+                        init_opt: Some(init),
+                    });
+                    gen_node(take_node(cont), stmts, cx);
+                }
+                _ => unimplemented!(),
+            },
             KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, stmts, cx),
             KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, stmts, cx),
             KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),
