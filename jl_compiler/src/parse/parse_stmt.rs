@@ -1,5 +1,14 @@
 use super::*;
 
+impl TokenKind {
+    fn is_block_terminator(self) -> bool {
+        match self {
+            TokenKind::Eof | TokenKind::RightBrace => true,
+            _ => false,
+        }
+    }
+}
+
 fn parse_fn_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Fn);
 
@@ -23,31 +32,48 @@ fn parse_fn_stmt(px: &mut Px) -> PStmt {
     }
 }
 
-pub(crate) fn parse_semi(px: &mut Px) -> (Vec<PStmt>, Option<PTerm>) {
+pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Option<PTerm>) {
+    let mut stmts = vec![];
     let mut last_opt = None;
 
-    if px.next() != TokenKind::RightBrace {
-        last_opt = Some(parse_term(px));
+    while !px.next().is_block_terminator() {
+        px.eat(TokenKind::Pub);
+
+        match px.next() {
+            TokenKind::Semi => {
+                // Empty statement.
+                px.bump();
+            }
+            TokenKind::Fn => {
+                stmts.push(parse_fn_stmt(px));
+            }
+            kind if kind.is_term_first() && placement == Placement::Local => {
+                let term = parse_term(px);
+
+                if px.next().is_block_terminator() {
+                    last_opt = Some(term);
+                    break;
+                }
+
+                let semi_opt = px.eat(TokenKind::Semi);
+                stmts.push(PStmt::Expr { term, semi_opt });
+            }
+            kind if kind.is_block_terminator() => {
+                break;
+            }
+            _ => {
+                // error
+                px.bump();
+            }
+        }
     }
 
-    while !px.at_eof() && px.next() != TokenKind::RightBrace {
-        px.bump();
-    }
-
-    (vec![], last_opt)
+    (stmts, last_opt)
 }
 
-fn parse_stmt(px: &mut Px) -> Option<PStmt> {
-    px.eat(TokenKind::Pub);
-
-    match px.next() {
-        TokenKind::Fn => Some(parse_fn_stmt(px)),
-        _ => None,
-    }
-}
-
-fn parse_root(px: &mut Px) -> Option<PStmt> {
-    parse_stmt(px)
+fn parse_root(px: &mut Px) -> Vec<PStmt> {
+    let (stmts, _) = parse_semi(Placement::Global, px);
+    stmts
 }
 
 pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>) -> PRoot {

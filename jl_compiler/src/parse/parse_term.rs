@@ -1,7 +1,7 @@
 use super::*;
 
 impl TokenKind {
-    fn is_term_first(self) -> bool {
+    pub(crate) fn is_term_first(self) -> bool {
         match self {
             TokenKind::Int | TokenKind::Float | TokenKind::Str | TokenKind::Ident => true,
             _ => false,
@@ -12,7 +12,7 @@ impl TokenKind {
 pub(crate) fn parse_block(px: &mut Px) -> PBlock {
     let left = px.expect(TokenKind::LeftBrace);
 
-    let (body, last_opt) = parse_semi(px);
+    let (body, last_opt) = parse_semi(Placement::Local, px);
 
     let right_opt = px.eat(TokenKind::RightBrace);
 

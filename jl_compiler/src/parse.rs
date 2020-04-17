@@ -12,3 +12,14 @@ use parse_stmt::parse_semi;
 use parse_term::{parse_block, parse_term};
 
 type Px = parse_context::ParseContext;
+
+/// 関数の中か外か。
+/// QUESTION: より適切な名前？
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Placement {
+    /// 関数の内
+    Local,
+
+    /// 関数の外
+    Global,
+}

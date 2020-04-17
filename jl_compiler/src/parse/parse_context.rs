@@ -65,7 +65,7 @@ impl ParseContext {
         }
     }
 
-    pub(crate) fn finish(mut self, body: Option<PStmt>) -> PRoot {
+    pub(crate) fn finish(mut self, body: Vec<PStmt>) -> PRoot {
         assert_eq!(self.tokens.len(), 1);
         assert_eq!(self.next(), TokenKind::Eof);
 
