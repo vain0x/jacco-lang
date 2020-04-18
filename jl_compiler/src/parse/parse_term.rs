@@ -24,7 +24,7 @@ pub(crate) fn parse_block(px: &mut Px) -> PBlock {
     }
 }
 
-pub(crate) fn parse_atom(px: &mut Px) -> PTerm {
+fn parse_atom(px: &mut Px) -> PTerm {
     match px.next() {
         TokenKind::Int => PTerm::Int(px.bump()),
         TokenKind::Str => PTerm::Str(px.bump()),
@@ -33,7 +33,7 @@ pub(crate) fn parse_atom(px: &mut Px) -> PTerm {
     }
 }
 
-pub(crate) fn parse_mul(px: &mut Px) -> PTerm {
+fn parse_mul(px: &mut Px) -> PTerm {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right = parse_atom(px);
@@ -57,7 +57,7 @@ pub(crate) fn parse_mul(px: &mut Px) -> PTerm {
     }
 }
 
-pub(crate) fn parse_add(px: &mut Px) -> PTerm {
+fn parse_add(px: &mut Px) -> PTerm {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right = parse_mul(px);
@@ -80,8 +80,29 @@ pub(crate) fn parse_add(px: &mut Px) -> PTerm {
     }
 }
 
+fn parse_assign(px: &mut Px) -> PTerm {
+    let parse_right = |op, left, px: &mut Px| {
+        let op_token = px.bump();
+        let right = parse_add(px);
+        PTerm::BinaryOp {
+            op,
+            left: Box::new(left),
+            right: Box::new(right),
+            location: op_token.into_location(),
+        }
+    };
+
+    let left = parse_add(px);
+
+    match px.next() {
+        TokenKind::Equal => parse_right(BinaryOp::Assign, left, px),
+        TokenKind::PlusEqual => parse_right(BinaryOp::AddAssign, left, px),
+        _ => left,
+    }
+}
+
 pub(crate) fn parse_term(px: &mut Px) -> PTerm {
     assert!(px.next().is_term_first());
 
-    parse_add(px)
+    parse_assign(px)
 }
