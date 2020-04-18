@@ -165,10 +165,17 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         '}' => Some((TokenKind::RightBrace, 1)),
         '<' => match tx.nth(1) {
             '-' => Some((TokenKind::LeftSlimArrow, 2)),
-            '=' => Some((TokenKind::LeftFatArrow, 2)),
+            '=' => Some((TokenKind::LeftAngleEqual, 2)),
             _ => Some((TokenKind::LeftAngle, 1)),
         },
-        '>' => Some((TokenKind::RightAngle, 1)),
+        '>' => match tx.nth(1) {
+            '=' => Some((TokenKind::RightAngleEqual, 2)),
+            _ => Some((TokenKind::RightAngle, 1)),
+        },
+        '!' => match tx.nth(1) {
+            '=' => Some((TokenKind::BangEqual, 2)),
+            _ => Some((TokenKind::Bang, 1)),
+        },
         '=' => match tx.nth(1) {
             '>' => Some((TokenKind::RightFatArrow, 2)),
             '=' => Some((TokenKind::EqualEqual, 2)),

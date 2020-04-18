@@ -83,6 +83,12 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),
             KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, stmts, cx),
             KPrim::Mod => gen_binary_op(CBinaryOp::Mod, args, results, conts, stmts, cx),
+            KPrim::Eq => gen_binary_op(CBinaryOp::Eq, args, results, conts, stmts, cx),
+            KPrim::Ne => gen_binary_op(CBinaryOp::Ne, args, results, conts, stmts, cx),
+            KPrim::Lt => gen_binary_op(CBinaryOp::Lt, args, results, conts, stmts, cx),
+            KPrim::Le => gen_binary_op(CBinaryOp::Le, args, results, conts, stmts, cx),
+            KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, stmts, cx),
+            KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, stmts, cx),
         },
         KNode::Jump { ref mut args, .. } => match args.as_mut_slice() {
             [arg] => {

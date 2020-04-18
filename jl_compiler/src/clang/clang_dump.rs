@@ -9,6 +9,12 @@ fn binary_op_to_str(op: &CBinaryOp) -> &str {
         CBinaryOp::Mul => "*",
         CBinaryOp::Div => "/",
         CBinaryOp::Mod => "%",
+        CBinaryOp::Eq => "==",
+        CBinaryOp::Ne => "!=",
+        CBinaryOp::Lt => "<",
+        CBinaryOp::Le => "<=",
+        CBinaryOp::Gt => ">",
+        CBinaryOp::Ge => ">=",
     }
 }
 

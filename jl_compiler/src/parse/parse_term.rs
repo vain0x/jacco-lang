@@ -80,7 +80,7 @@ fn parse_add(px: &mut Px) -> PTerm {
     }
 }
 
-fn parse_assign(px: &mut Px) -> PTerm {
+fn parse_cmp(px: &mut Px) -> PTerm {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right = parse_add(px);
@@ -92,11 +92,38 @@ fn parse_assign(px: &mut Px) -> PTerm {
         }
     };
 
-    let left = parse_add(px);
+    let mut left = parse_add(px);
+
+    loop {
+        match px.next() {
+            TokenKind::Plus => left = parse_right(BinaryOp::Add, left, px),
+            TokenKind::Minus => left = parse_right(BinaryOp::Sub, left, px),
+            _ => return left,
+        }
+    }
+}
+
+fn parse_assign(px: &mut Px) -> PTerm {
+    let parse_right = |op, left, px: &mut Px| {
+        let op_token = px.bump();
+        let right = parse_cmp(px);
+        PTerm::BinaryOp {
+            op,
+            left: Box::new(left),
+            right: Box::new(right),
+            location: op_token.into_location(),
+        }
+    };
+
+    let left = parse_cmp(px);
 
     match px.next() {
-        TokenKind::Equal => parse_right(BinaryOp::Assign, left, px),
-        TokenKind::PlusEqual => parse_right(BinaryOp::AddAssign, left, px),
+        TokenKind::EqualEqual => parse_right(BinaryOp::Eq, left, px),
+        TokenKind::BangEqual => parse_right(BinaryOp::Ne, left, px),
+        TokenKind::LeftAngle => parse_right(BinaryOp::Lt, left, px),
+        TokenKind::LeftAngleEqual => parse_right(BinaryOp::Le, left, px),
+        TokenKind::RightAngle => parse_right(BinaryOp::Gt, left, px),
+        TokenKind::RightAngleEqual => parse_right(BinaryOp::Ge, left, px),
         _ => left,
     }
 }

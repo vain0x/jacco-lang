@@ -6,6 +6,12 @@ pub(crate) enum KPrim {
     Mul,
     Div,
     Mod,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 impl KPrim {

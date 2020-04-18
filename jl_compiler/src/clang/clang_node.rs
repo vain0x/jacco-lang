@@ -4,6 +4,12 @@ pub(crate) enum CBinaryOp {
     Mul,
     Div,
     Mod,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 pub(crate) enum CTy {

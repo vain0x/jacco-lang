@@ -1,0 +1,26 @@
+
+int main() {
+    int add_1 = 1 + 2;
+    int add = add_1;
+    int sub_2 = 1 - 2;
+    int sub = sub_2;
+    int mul_3 = 1 * 2;
+    int mul = mul_3;
+    int div_4 = 1 / 2;
+    int div = div_4;
+    int mod_5 = 1 % 2;
+    int modulo = mod_5;
+    int eq_6 = 1 == 2;
+    int eq = eq_6;
+    int ne_7 = 1 != 2;
+    int ne = ne_7;
+    int lt_8 = 1 < 2;
+    int lt = lt_8;
+    int le_9 = 1 <= 2;
+    int le = le_9;
+    int gt_10 = 1 > 2;
+    int gt = gt_10;
+    int ge_11 = 1 >= 2;
+    int ge = ge_11;
+    return 0;
+}

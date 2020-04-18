@@ -1,0 +1,14 @@
+pub fn main() -> i32 {
+    let add = 1 + 2;
+    let sub = 1 - 2;
+    let mul = 1 * 2;
+    let div = 1 / 2;
+    let modulo = 1 % 2;
+    let eq = 1 == 2;
+    let ne = 1 != 2;
+    let lt = 1 < 2;
+    let le = 1 <= 2;
+    let gt = 1 > 2;
+    let ge = 1 >= 2;
+    0
+}
