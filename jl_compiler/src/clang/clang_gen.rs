@@ -1,6 +1,4 @@
 use super::*;
-use crate::cps::*;
-use crate::token::TokenData;
 use std::mem;
 
 #[derive(Default)]

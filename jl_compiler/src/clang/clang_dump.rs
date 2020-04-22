@@ -1,5 +1,4 @@
 use super::*;
-use crate::cps::KRoot;
 use std::io::{self, Write};
 
 fn binary_op_to_str(op: &CBinaryOp) -> &str {
