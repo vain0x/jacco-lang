@@ -97,13 +97,13 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             }
         }
         CStmt::FnDecl {
-            ident,
+            name,
             params,
             result_ty,
             body,
         } => {
             write_ty(result_ty, indent, out)?;
-            write!(out, " {}(", ident)?;
+            write!(out, " {}(", name)?;
 
             let mut first = true;
             for (param, ty) in params {

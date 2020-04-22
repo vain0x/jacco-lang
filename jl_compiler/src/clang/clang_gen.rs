@@ -112,7 +112,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         let body = gen_node_as_block(body, cx);
 
         cx.decls.push(CStmt::FnDecl {
-            ident: name.text,
+            name: name.text,
             params: vec![],
             result_ty: CTy::Int,
             body,

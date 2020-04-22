@@ -60,7 +60,7 @@ pub(crate) enum CStmt {
         init_opt: Option<CExpr>,
     },
     FnDecl {
-        ident: String,
+        name: String,
         params: Vec<(String, CTy)>,
         result_ty: CTy,
         body: CBlock,
