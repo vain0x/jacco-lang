@@ -30,11 +30,11 @@ impl Default for KSymbol {
 
 impl fmt::Debug for KSymbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}_{}", self.text, self.id)
+        write!(f, "{}_{}", self.text, self.id)
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum KNode {
     Abort,
     Prim {
@@ -49,10 +49,88 @@ pub(crate) enum KNode {
     },
 }
 
-#[derive(Clone, Debug)]
+impl fmt::Debug for KNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KNode::Abort => write!(f, "(abort)"),
+            KNode::Prim {
+                prim,
+                args,
+                results,
+                conts,
+            } => {
+                write!(f, "({:?} ", prim)?;
+
+                {
+                    let mut list = f.debug_list();
+                    for arg in args {
+                        list.entry(arg);
+                    }
+                    list.finish()?;
+                }
+
+                write!(f, " ")?;
+
+                {
+                    let mut list = f.debug_list();
+                    for result in results {
+                        list.entry(result);
+                    }
+                    list.finish()?;
+                }
+
+                if conts.len() == 1 {
+                    write!(f, ") => ")?;
+
+                    for cont in conts {
+                        fmt::Debug::fmt(cont, f)?;
+                    }
+
+                    Ok(())
+                } else {
+                    write!(f, " ")?;
+
+                    let mut list = f.debug_list();
+                    for cont in conts {
+                        list.entry(cont);
+                    }
+                    list.finish()?;
+
+                    write!(f, ")")
+                }
+            }
+            KNode::Jump { label, args } => {
+                write!(f, "(jump ")?;
+                fmt::Debug::fmt(label, f)?;
+                write!(f, " ")?;
+
+                {
+                    let mut list = f.debug_list();
+                    for arg in args {
+                        list.entry(arg);
+                    }
+                    list.finish()?;
+                }
+
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub(crate) enum KElement {
     Term(KTerm),
     Node(KNode),
+}
+
+impl fmt::Debug for KElement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KElement::Term(term) => fmt::Debug::fmt(term, f),
+            KElement::Node(node) => fmt::Debug::fmt(node, f),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
