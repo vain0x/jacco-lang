@@ -33,7 +33,7 @@ pub(crate) enum PStmt {
         init_opt: Option<PTerm>,
     },
     Fn {
-        keyword: Location,
+        keyword: TokenData,
         block_opt: Option<PBlock>,
     },
 }

@@ -58,10 +58,7 @@ fn parse_fn_stmt(px: &mut Px) -> PStmt {
         None
     };
 
-    PStmt::Fn {
-        keyword: keyword.into_location(),
-        block_opt,
-    }
+    PStmt::Fn { keyword, block_opt }
 }
 
 pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Option<PTerm>) {
