@@ -141,7 +141,7 @@ fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<(
 }
 
 fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
-    let mut first = false;
+    let mut first = true;
     for decl in &root.body {
         if !first {
             write!(out, "\n")?;

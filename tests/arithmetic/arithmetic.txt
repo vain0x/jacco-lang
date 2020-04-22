@@ -1,4 +1,3 @@
-
 int main() {
     int mul_6 = 3 * 4;
     int div_5 = mul_6 / 1;
