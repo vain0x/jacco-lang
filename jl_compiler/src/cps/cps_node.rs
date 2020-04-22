@@ -141,6 +141,12 @@ pub(crate) struct KFn {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct KExternFn {
+    pub(crate) name: KSymbol,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct KRoot {
+    pub(crate) extern_fns: Vec<KExternFn>,
     pub(crate) fns: Vec<KFn>,
 }

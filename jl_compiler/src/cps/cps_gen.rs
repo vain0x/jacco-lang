@@ -24,7 +24,12 @@ struct XFn {
     body: XBlock,
 }
 
+struct XExternFn {
+    name: KSymbol,
+}
+
 struct XRoot {
+    extern_fns: Vec<XExternFn>,
     fns: Vec<XFn>,
 }
 
@@ -32,6 +37,7 @@ struct XRoot {
 struct Xx {
     last_id: usize,
     current: Vec<XCommand>,
+    extern_fns: Vec<XExternFn>,
     fns: Vec<XFn>,
 }
 
@@ -147,6 +153,16 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     xx.fns.push(x_fn);
 }
 
+fn extend_extern_fn_stmt(name_opt: Option<TokenData>, xx: &mut Xx) {
+    let fn_name = match name_opt {
+        Some(token) => xx.token_to_symbol(token),
+        None => return,
+    };
+
+    let extern_fn = XExternFn { name: fn_name };
+    xx.extern_fns.push(extern_fn);
+}
+
 fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
     match stmt {
         PStmt::Expr { .. } => {
@@ -170,12 +186,14 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             });
         }
         PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
+        PStmt::ExternFn { name_opt, .. } => extend_extern_fn_stmt(name_opt, xx),
     }
 }
 
 fn extend_decl(stmt: PStmt, xx: &mut Xx) {
     match stmt {
         PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
+        PStmt::ExternFn { name_opt, .. } => extend_extern_fn_stmt(name_opt, xx),
         _ => unimplemented!(),
     }
 }
@@ -189,6 +207,7 @@ fn extend_root(root: PRoot, xx: &mut Xx) {
 #[derive(Default)]
 struct Gx {
     stack: Vec<KElement>,
+    extern_fns: Vec<KExternFn>,
     fns: Vec<KFn>,
 }
 
@@ -270,6 +289,10 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
 }
 
 fn fold_root(root: XRoot, gx: &mut Gx) {
+    for XExternFn { name } in root.extern_fns {
+        gx.extern_fns.push(KExternFn { name });
+    }
+
     for XFn { name, params, body } in root.fns {
         eprintln!("{:?} -> {:#?}", name, body.0);
 
@@ -282,13 +305,19 @@ pub(crate) fn cps_conversion(p_root: PRoot) -> KRoot {
     let x_root = {
         let mut xx = Xx::default();
         extend_root(p_root, &mut xx);
-        XRoot { fns: xx.fns }
+        XRoot {
+            extern_fns: xx.extern_fns,
+            fns: xx.fns,
+        }
     };
 
     let k_root = {
         let mut gx = Gx::default();
         fold_root(x_root, &mut gx);
-        KRoot { fns: gx.fns }
+        KRoot {
+            extern_fns: gx.extern_fns,
+            fns: gx.fns,
+        }
     };
 
     k_root

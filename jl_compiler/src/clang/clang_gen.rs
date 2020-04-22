@@ -108,6 +108,14 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
+    for KExternFn { name } in root.extern_fns {
+        cx.decls.push(CStmt::ExternFnDecl {
+            name: name.text,
+            params: vec![],
+            result_ty: CTy::Void,
+        });
+    }
+
     for KFn { name, body, .. } in root.fns {
         let body = gen_node_as_block(body, cx);
 

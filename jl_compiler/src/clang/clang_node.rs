@@ -65,6 +65,11 @@ pub(crate) enum CStmt {
         result_ty: CTy,
         body: CBlock,
     },
+    ExternFnDecl {
+        name: String,
+        params: Vec<(String, CTy)>,
+        result_ty: CTy,
+    },
 }
 
 pub(crate) struct CRoot {

@@ -56,6 +56,25 @@ fn parse_fn_stmt(px: &mut Px) -> PStmt {
     PStmt::Fn { keyword, block_opt }
 }
 
+fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
+    let extern_keyword = px.expect(TokenKind::Extern);
+
+    let fn_keyword = px.expect(TokenKind::Fn);
+
+    let name_opt = px.eat(TokenKind::Ident);
+    px.eat(TokenKind::LeftParen);
+    px.eat(TokenKind::RightParen);
+
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PStmt::ExternFn {
+        extern_keyword,
+        fn_keyword,
+        name_opt,
+        semi_opt,
+    }
+}
+
 pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Option<PTerm>) {
     let mut stmts = vec![];
     let mut last_opt = None;
@@ -73,6 +92,9 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Opti
             }
             TokenKind::Fn => {
                 stmts.push(parse_fn_stmt(px));
+            }
+            TokenKind::Extern => {
+                stmts.push(parse_extern_fn_stmt(px));
             }
             kind if kind.is_term_first() && placement == Placement::Local => {
                 let term = parse_term(px);

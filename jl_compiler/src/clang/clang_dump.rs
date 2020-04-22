@@ -119,6 +119,29 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, ") ")?;
             write_block(body, indent, out)
         }
+        CStmt::ExternFnDecl {
+            name,
+            params,
+            result_ty,
+        } => {
+            // FIXME: FnDecl と重複してしまっている。
+
+            write_ty(result_ty, indent, out)?;
+            write!(out, " {}(", name)?;
+
+            let mut first = true;
+            for (param, ty) in params {
+                if !first {
+                    write!(out, ", ")?;
+                }
+                first = false;
+
+                write_ty(ty, indent, out)?;
+                write!(out, " {}", param)?;
+            }
+
+            write!(out, ");")
+        }
     }
 }
 

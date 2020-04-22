@@ -36,6 +36,12 @@ pub(crate) enum PStmt {
         keyword: TokenData,
         block_opt: Option<PBlock>,
     },
+    ExternFn {
+        extern_keyword: TokenData,
+        fn_keyword: TokenData,
+        name_opt: Option<TokenData>,
+        semi_opt: Option<TokenData>,
+    },
 }
 
 #[derive(Clone, Debug)]
