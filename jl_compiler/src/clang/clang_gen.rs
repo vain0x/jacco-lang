@@ -19,14 +19,14 @@ fn take_node(slot: &mut KNode) -> KNode {
 fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
-        KTerm::Name { text, .. } => CExpr::Name(text),
+        KTerm::Name(symbol) => CExpr::Name(symbol.unique_name()),
     }
 }
 
 fn gen_binary_op(
     op: CBinaryOp,
     args: &mut Vec<KTerm>,
-    results: &mut Vec<String>,
+    results: &mut Vec<KSymbol>,
     conts: &mut Vec<KNode>,
     stmts: &mut Vec<CStmt>,
     cx: &mut Cx,
@@ -40,7 +40,7 @@ fn gen_binary_op(
             let left = gen_term(take_term(left), cx);
             let right = gen_term(take_term(right), cx);
             stmts.push(CStmt::VarDecl {
-                name: mem::take(result),
+                name: mem::take(result).unique_name(),
                 ty: CTy::Int,
                 init_opt: Some(CExpr::BinaryOp {
                     op,
@@ -70,7 +70,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 ([init], [result], [cont]) => {
                     let init = gen_term(take_term(init), cx);
                     stmts.push(CStmt::VarDecl {
-                        name: mem::take(result),
+                        name: mem::take(result).unique_name(),
                         ty: CTy::Int,
                         init_opt: Some(init),
                     });
@@ -114,7 +114,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         let body = gen_node_as_block(body, cx);
 
         cx.decls.push(CStmt::FnDecl {
-            ident: name,
+            ident: name.text,
             params: vec![],
             result_ty: CTy::Int,
             body,

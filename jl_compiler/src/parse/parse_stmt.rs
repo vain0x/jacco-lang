@@ -14,11 +14,6 @@ fn parse_let_stmt(px: &mut Px) -> PStmt {
 
     let name_opt = px.eat(TokenKind::Ident);
 
-    let name = match name_opt {
-        Some(name) => name.into_text(),
-        None => "".to_string(),
-    };
-
     let init_opt = if px.next() == TokenKind::Equal {
         px.bump();
 
@@ -36,7 +31,7 @@ fn parse_let_stmt(px: &mut Px) -> PStmt {
 
     PStmt::Let {
         keyword,
-        name,
+        name_opt,
         init_opt,
     }
 }

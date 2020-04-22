@@ -7,3 +7,5 @@ pub(crate) use cps_gen::cps_conversion;
 pub(crate) use cps_node::*;
 pub(crate) use cps_prim::KPrim;
 pub(crate) use cps_term::KTerm;
+
+use crate::token::{Location, TokenData};

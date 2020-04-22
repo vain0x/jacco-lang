@@ -1,6 +1,5 @@
 use super::*;
 use crate::parse::*;
-use crate::token::Location;
 
 #[derive(Debug)]
 enum XCommand {
@@ -8,11 +7,11 @@ enum XCommand {
     Prim {
         prim: KPrim,
         arg_count: usize,
-        result: String,
+        result: KSymbol,
         location: Location,
     },
     Jump {
-        label: String,
+        label: KSymbol,
         arg_count: usize,
     },
 }
@@ -20,8 +19,8 @@ enum XCommand {
 struct XBlock(Vec<XCommand>);
 
 struct XFn {
-    name: String,
-    params: Vec<String>,
+    name: KSymbol,
+    params: Vec<KSymbol>,
     body: XBlock,
 }
 
@@ -37,10 +36,24 @@ struct Xx {
 }
 
 impl Xx {
-    fn fresh_name(&mut self, hint: &str) -> String {
+    fn token_to_symbol(&mut self, token: TokenData) -> KSymbol {
         self.last_id += 1;
         let id = self.last_id;
-        format!("{}_{}", hint, id)
+
+        let (_, text, location) = token.decompose();
+        KSymbol { id, text, location }
+    }
+
+    fn fresh_symbol(&mut self, hint: &str) -> KSymbol {
+        self.last_id += 1;
+        let id = self.last_id;
+
+        let text = hint.to_string();
+
+        // FIXME: ヒントを与える。
+        let location = Location::new_dummy();
+
+        KSymbol { id, text, location }
     }
 
     fn push(&mut self, command: XCommand) {
@@ -62,7 +75,7 @@ impl Xx {
 }
 
 fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
-    let result = xx.fresh_name(&prim.hint_str());
+    let result = xx.fresh_symbol(&prim.hint_str());
 
     extend_expr(left, xx);
     extend_expr(right, xx);
@@ -76,10 +89,12 @@ fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, 
 
 fn extend_expr(term: PTerm, xx: &mut Xx) {
     match term {
-        PTerm::Int(token) => xx.push_term(KTerm::Int(token)),
+        PTerm::Int(token) => {
+            xx.push_term(KTerm::Int(token));
+        }
         PTerm::Name(token) => {
-            let (_, text, location) = token.decompose();
-            xx.push_term(KTerm::Name { text, location });
+            let symbol = xx.token_to_symbol(token);
+            xx.push_term(KTerm::Name(symbol));
         }
         PTerm::BinaryOp {
             op,
@@ -105,7 +120,8 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
 }
 
 fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
-    let ret = "ret".to_string();
+    let fn_name = xx.fresh_symbol("main");
+    let return_label = xx.fresh_symbol("return");
 
     let commands = xx.enter_block(|xx| {
         let block = block_opt.unwrap();
@@ -118,14 +134,14 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
 
         extend_expr(last, xx);
         xx.push(XCommand::Jump {
-            label: ret.to_string(),
+            label: return_label.clone(),
             arg_count: 1,
         });
     });
 
     let x_fn = XFn {
-        name: "main".to_string(),
-        params: vec![ret],
+        name: fn_name,
+        params: vec![return_label],
         body: XBlock(commands),
     };
 
@@ -139,9 +155,10 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
         }
         PStmt::Let {
             keyword,
-            name,
+            name_opt,
             init_opt,
         } => {
+            let result = xx.token_to_symbol(name_opt.expect("missing name"));
             let location = keyword.into_location();
 
             extend_expr(init_opt.unwrap(), xx);
@@ -149,7 +166,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             xx.push(XCommand::Prim {
                 prim: KPrim::Let,
                 arg_count: 1,
-                result: name,
+                result,
                 location,
             });
         }
@@ -228,10 +245,8 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 }
                 args.reverse();
 
-                gx.push_term(KTerm::Name {
-                    text: result.clone(),
-                    location: location.clone(),
-                });
+                let result = result.with_location(location);
+                gx.push_term(KTerm::Name(result.clone()));
 
                 do_fold(commands, gx);
                 let cont = gx.pop_node();
@@ -257,7 +272,7 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
 
 fn fold_root(root: XRoot, gx: &mut Gx) {
     for XFn { name, params, body } in root.fns {
-        eprintln!("{} -> {:#?}", name, body.0);
+        eprintln!("{:?} -> {:#?}", name, body.0);
 
         let body = fold_block(body.0, gx);
         gx.fns.push(KFn { name, params, body });

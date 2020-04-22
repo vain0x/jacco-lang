@@ -29,7 +29,7 @@ pub(crate) enum PStmt {
     },
     Let {
         keyword: TokenData,
-        name: String,
+        name_opt: Option<TokenData>,
         init_opt: Option<PTerm>,
     },
     Fn {

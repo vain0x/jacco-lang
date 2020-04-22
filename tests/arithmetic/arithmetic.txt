@@ -1,9 +1,9 @@
 
 int main() {
-    int mul_4 = 3 * 4;
-    int div_3 = mul_4 / 1;
-    int add_2 = 2 + div_3;
-    int mod_5 = 9 % 100000007;
-    int sub_1 = add_2 - mod_5;
-    return sub_1;
+    int mul_6 = 3 * 4;
+    int div_5 = mul_6 / 1;
+    int add_4 = 2 + div_5;
+    int mod_7 = 9 % 100000007;
+    int sub_3 = add_4 - mod_7;
+    return sub_3;
 }

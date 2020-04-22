@@ -1,7 +1,7 @@
-use crate::token::{Location, TokenData};
+use super::*;
 
 #[derive(Clone, Debug)]
 pub(crate) enum KTerm {
     Int(TokenData),
-    Name { text: String, location: Location },
+    Name(KSymbol),
 }
