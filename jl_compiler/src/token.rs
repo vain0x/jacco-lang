@@ -1,6 +1,5 @@
 mod keyword;
 mod location;
-mod operator;
 mod punctuation;
 mod token_data;
 mod token_kind;
@@ -10,7 +9,6 @@ mod tokenize_rules;
 
 pub(crate) use keyword::Keyword;
 pub(crate) use location::Location;
-pub(crate) use operator::BinaryOp;
 pub(crate) use punctuation::Punctuation;
 pub(crate) use token_data::TokenData;
 pub(crate) use token_kind::TokenKind;

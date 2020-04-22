@@ -1,6 +1,6 @@
 use super::*;
 use crate::parse::*;
-use crate::token::{BinaryOp, Location};
+use crate::token::Location;
 
 #[derive(Debug)]
 enum XCommand {
