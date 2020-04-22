@@ -12,14 +12,17 @@ impl Range {
         Range { start, end }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn start(&self) -> Position {
         self.start
     }
 
+    #[allow(dead_code)]
     pub(crate) fn end(&self) -> Position {
         self.end
     }
 
+    #[allow(dead_code)]
     pub(crate) fn contains_loosely(self, position: Position) -> bool {
         self.start <= position && position <= self.end
     }

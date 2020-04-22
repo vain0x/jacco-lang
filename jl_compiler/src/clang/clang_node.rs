@@ -13,23 +13,24 @@ pub(crate) enum CBinaryOp {
 }
 
 pub(crate) enum CTy {
+    #[allow(dead_code)]
     Void,
+    #[allow(dead_code)]
     Bool,
     Int,
-    Enum {
-        ident: String,
-        variants: Option<Vec<(String, CTy)>>,
-    },
 }
 
 pub(crate) enum CExpr {
+    #[allow(dead_code)]
     BoolLit(bool),
     IntLit(String),
     Name(String),
+    #[allow(dead_code)]
     Call {
         cal: Box<CExpr>,
         args: Vec<CExpr>,
     },
+    #[allow(dead_code)]
     Neg(Box<CExpr>),
     BinaryOp {
         op: CBinaryOp,
@@ -43,9 +44,12 @@ pub(crate) struct CBlock {
 }
 
 pub(crate) enum CStmt {
+    #[allow(dead_code)]
     Expr(CExpr),
+    #[allow(dead_code)]
     Block(CBlock),
     Return(Option<CExpr>),
+    #[allow(dead_code)]
     If {
         cond: CExpr,
         body: Box<CStmt>,

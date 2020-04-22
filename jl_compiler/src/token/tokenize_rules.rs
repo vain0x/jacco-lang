@@ -12,10 +12,6 @@ fn char_is_space(c: char) -> bool {
     c.is_whitespace()
 }
 
-fn char_is_comment_first(c: char) -> bool {
-    c == '/'
-}
-
 fn char_is_ident(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
@@ -27,15 +23,6 @@ fn char_is_ident_first(c: char) -> bool {
 fn char_is_punctuation_first(c: char) -> bool {
     "!\"#$%&'()-=^~@`\\|{}+*:,.<>/".contains(c)
 }
-
-// fn char_is_other_first(c: char) -> bool {
-//     !char_is_eol(c)
-//         && !char_is_space(c)
-//         && !char_is_comment_first(c)
-//         && !c.is_ascii_digit()
-//         && !char_is_ident_first(c)
-//         && !char_is_punctuation_first(c)
-// }
 
 fn tokenize_space(tx: &mut Tx) {
     assert!(char_is_space(tx.next()));

@@ -37,6 +37,7 @@ impl TokenData {
         self.text
     }
 
+    #[allow(dead_code)]
     pub(crate) fn location(&self) -> &Location {
         &self.location
     }

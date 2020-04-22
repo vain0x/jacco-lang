@@ -8,8 +8,7 @@ pub(crate) use binary_op::BinaryOp;
 pub(crate) use parse_stmt::parse_tokens;
 pub(crate) use parse_tree::*;
 
-use crate::source::SourceFile;
-use crate::token::{Location, TokenData, TokenKind, TokenSource};
+use crate::token::{Location, TokenData, TokenKind};
 use parse_stmt::parse_semi;
 use parse_term::{parse_block, parse_term};
 

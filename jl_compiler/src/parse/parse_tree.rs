@@ -38,11 +38,6 @@ pub(crate) enum PStmt {
     },
 }
 
-pub(crate) enum PStmtOrTerm {
-    Term(PTerm),
-    Stmt(PStmt),
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PRoot {
     pub(crate) body: Vec<PStmt>,

@@ -113,7 +113,6 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             BinaryOp::Le => extend_binary_op(KPrim::Le, *left, *right, location, xx),
             BinaryOp::Gt => extend_binary_op(KPrim::Gt, *left, *right, location, xx),
             BinaryOp::Ge => extend_binary_op(KPrim::Ge, *left, *right, location, xx),
-            _ => unimplemented!(),
         },
         _ => unimplemented!(),
     }

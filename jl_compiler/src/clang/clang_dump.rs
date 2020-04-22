@@ -24,27 +24,11 @@ fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     Ok(())
 }
 
-fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+fn write_ty(ty: &CTy, _indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match ty {
         CTy::Void => write!(out, "void"),
         CTy::Bool => write!(out, "bool"),
         CTy::Int => write!(out, "int"),
-        CTy::Enum { ident, variants } => {
-            write!(out, "enum {}", ident)?;
-            if let Some(variants) = variants {
-                write!(out, " {{\n")?;
-                for (ident, ty) in variants {
-                    let indent = indent + 1;
-                    write_indent(indent, out)?;
-                    write!(out, "{} ", ident)?;
-                    write_ty(ty, indent, out)?;
-                    write!(out, ",\n")?;
-                }
-                write_indent(indent, out)?;
-                write!(out, "}}")?;
-            }
-            Ok(())
-        }
     }
 }
 

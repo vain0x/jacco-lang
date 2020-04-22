@@ -19,14 +19,17 @@ impl Location {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn range(&self) -> Range {
         self.range
     }
 
+    #[allow(dead_code)]
     pub(crate) fn start(&self) -> Position {
         self.range.start
     }
 
+    #[allow(dead_code)]
     pub(crate) fn unite(self, other: &Location) -> Location {
         Location {
             range: self.range.unite(other.range),

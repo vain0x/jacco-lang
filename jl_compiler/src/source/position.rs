@@ -13,6 +13,7 @@ impl Position {
         character: 0,
     };
 
+    #[allow(dead_code)]
     pub(crate) fn new(line: usize, character: usize) -> Position {
         Position { line, character }
     }

@@ -28,10 +28,6 @@ impl TokenizeContext {
         assert!(self.current_index <= self.source_code.len());
     }
 
-    pub(crate) fn current_index(&self) -> usize {
-        self.current_index
-    }
-
     pub(crate) fn at_eof(&self) -> bool {
         self.current_index >= self.source_code.len()
     }
