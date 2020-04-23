@@ -43,12 +43,12 @@ struct Xx {
 }
 
 impl Xx {
-    fn token_to_symbol(&mut self, token: TokenData) -> KSymbol {
-        self.last_id += 1;
-        let id = self.last_id;
-
-        let (_, text, location) = token.decompose();
-        KSymbol { id, text, location }
+    fn name_to_symbol(&mut self, name: PName) -> KSymbol {
+        KSymbol {
+            id: name.name_id,
+            text: name.text,
+            location: name.location,
+        }
     }
 
     fn fresh_symbol(&mut self, hint: &str) -> KSymbol {
@@ -99,8 +99,8 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
         PTerm::Int(token) => {
             xx.push_term(KTerm::Int(token));
         }
-        PTerm::Name(token) => {
-            let symbol = xx.token_to_symbol(token);
+        PTerm::Name(name) => {
+            let symbol = xx.name_to_symbol(name);
             xx.push_term(KTerm::Name(symbol));
         }
         PTerm::BinaryOp {
@@ -154,9 +154,9 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     xx.fns.push(x_fn);
 }
 
-fn extend_extern_fn_stmt(name_opt: Option<TokenData>, param_list: PParamList, xx: &mut Xx) {
+fn extend_extern_fn_stmt(name_opt: Option<PName>, param_list: PParamList, xx: &mut Xx) {
     let fn_name = match name_opt {
-        Some(token) => xx.token_to_symbol(token),
+        Some(name) => xx.name_to_symbol(name),
         None => return,
     };
 
@@ -165,7 +165,7 @@ fn extend_extern_fn_stmt(name_opt: Option<TokenData>, param_list: PParamList, xx
         params: param_list
             .params
             .into_iter()
-            .map(|param| (xx.token_to_symbol(param.name), KTy::I32))
+            .map(|param| (xx.name_to_symbol(param.name), KTy::I32))
             .collect(),
     };
 
@@ -182,7 +182,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             name_opt,
             init_opt,
         } => {
-            let result = xx.token_to_symbol(name_opt.expect("missing name"));
+            let result = xx.name_to_symbol(name_opt.expect("missing name"));
             let location = keyword.into_location();
 
             extend_expr(init_opt.unwrap(), xx);

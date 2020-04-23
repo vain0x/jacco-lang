@@ -12,7 +12,7 @@ impl TokenKind {
 fn parse_let_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Let);
 
-    let name_opt = px.eat(TokenKind::Ident);
+    let name_opt = eat_name(px);
 
     let init_opt = if px.next() == TokenKind::Equal {
         px.bump();
@@ -61,7 +61,7 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
 
     let fn_keyword = px.expect(TokenKind::Fn);
 
-    let name_opt = px.eat(TokenKind::Ident);
+    let name_opt = eat_name(px);
 
     let param_list_opt = if let Some(left) = px.eat(TokenKind::LeftParen) {
         let mut params = vec![];
@@ -70,12 +70,12 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
             match px.next() {
                 TokenKind::Eof | TokenKind::RightParen => break,
                 TokenKind::Ident => {
-                    let name = px.bump();
+                    let name = parse_name(px);
 
                     let colon_opt = px.eat(TokenKind::Colon);
 
                     let ty_opt = if colon_opt.is_some() {
-                        px.eat(TokenKind::Ident)
+                        eat_name(px)
                     } else {
                         None
                     };

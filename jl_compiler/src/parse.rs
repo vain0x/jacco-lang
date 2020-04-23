@@ -10,7 +10,7 @@ pub(crate) use parse_tree::*;
 
 use crate::token::{Location, TokenData, TokenKind};
 use parse_stmt::parse_semi;
-use parse_term::{parse_block, parse_term};
+use parse_term::{eat_name, parse_block, parse_name, parse_term};
 
 type Px = parse_context::ParseContext;
 

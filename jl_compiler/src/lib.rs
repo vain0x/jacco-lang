@@ -1,5 +1,6 @@
 mod clang;
 mod cps;
+mod front;
 mod parse;
 mod source;
 mod token;
@@ -12,9 +13,10 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let token_source = token::TokenSource::File(source_file);
     let source_code = std::rc::Rc::new(source_code.to_string());
     let tokens = token::tokenize(token_source, source_code);
-    eprintln!("tokens = {:#?}", tokens);
+    eprintln!("tokens = {:#?}\n", tokens);
 
-    let p_root = parse::parse_tokens(tokens);
+    let mut p_root = parse::parse_tokens(tokens);
+    front::resolve_name(&mut p_root);
     eprintln!("p_root = {:#?}\n", p_root);
 
     let k_root = cps::cps_conversion(p_root);

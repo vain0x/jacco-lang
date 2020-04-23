@@ -9,6 +9,24 @@ impl TokenKind {
     }
 }
 
+pub(crate) fn parse_name(px: &mut Px) -> PName {
+    let (_, text, location) = px.expect(TokenKind::Ident).decompose();
+
+    PName {
+        name_id: px.fresh_id(),
+        text,
+        location,
+    }
+}
+
+pub(crate) fn eat_name(px: &mut Px) -> Option<PName> {
+    if px.next() == TokenKind::Ident {
+        Some(parse_name(px))
+    } else {
+        None
+    }
+}
+
 pub(crate) fn parse_block(px: &mut Px) -> PBlock {
     let left = px.expect(TokenKind::LeftBrace);
 
@@ -28,7 +46,7 @@ fn parse_atom(px: &mut Px) -> PTerm {
     match px.next() {
         TokenKind::Int => PTerm::Int(px.bump()),
         TokenKind::Str => PTerm::Str(px.bump()),
-        TokenKind::Ident => PTerm::Name(px.bump()),
+        TokenKind::Ident => PTerm::Name(parse_name(px)),
         _ => unimplemented!(),
     }
 }

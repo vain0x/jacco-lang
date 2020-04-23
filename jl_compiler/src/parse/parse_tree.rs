@@ -1,10 +1,19 @@
 use super::*;
 
+pub(crate) type PNameId = usize;
+
+#[derive(Clone, Debug)]
+pub(crate) struct PName {
+    pub(crate) name_id: PNameId,
+    pub(crate) text: String,
+    pub(crate) location: Location,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum PTerm {
     Int(TokenData),
     Str(TokenData),
-    Name(TokenData),
+    Name(PName),
     BinaryOp {
         op: BinaryOp,
         left: Box<PTerm>,
@@ -15,9 +24,9 @@ pub(crate) enum PTerm {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PParam {
-    pub(crate) name: TokenData,
+    pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
-    pub(crate) ty_opt: Option<TokenData>,
+    pub(crate) ty_opt: Option<PName>,
     pub(crate) comma_opt: Option<TokenData>,
 }
 
@@ -44,7 +53,7 @@ pub(crate) enum PStmt {
     },
     Let {
         keyword: TokenData,
-        name_opt: Option<TokenData>,
+        name_opt: Option<PName>,
         init_opt: Option<PTerm>,
     },
     Fn {
@@ -54,7 +63,7 @@ pub(crate) enum PStmt {
     ExternFn {
         extern_keyword: TokenData,
         fn_keyword: TokenData,
-        name_opt: Option<TokenData>,
+        name_opt: Option<PName>,
         param_list_opt: Option<PParamList>,
         semi_opt: Option<TokenData>,
     },

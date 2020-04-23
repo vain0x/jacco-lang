@@ -2,4 +2,4 @@ void gets();
 
 void puts();
 
-void i32_add(int left_4, int right_5);
+void i32_add(int left_4, int right_6);

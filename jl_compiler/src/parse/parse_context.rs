@@ -1,6 +1,7 @@
 use super::*;
 
 pub(crate) struct ParseContext {
+    last_id: usize,
     tokens: Vec<TokenData>,
 }
 
@@ -8,7 +9,12 @@ impl ParseContext {
     pub(crate) fn new(mut tokens: Vec<TokenData>) -> Self {
         tokens.reverse();
 
-        ParseContext { tokens }
+        ParseContext { last_id: 0, tokens }
+    }
+
+    pub(crate) fn fresh_id(&mut self) -> usize {
+        self.last_id += 1;
+        self.last_id
     }
 
     fn nth_data(&self, offset: usize) -> Option<&TokenData> {

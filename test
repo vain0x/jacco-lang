@@ -5,8 +5,16 @@ set -eux
 function f() {
     NAME=$1
 
+    if [[ ! -z $ONLY && $ONLY != $NAME ]]
+    then
+        return
+    fi
+
     cargo run --bin jl_tests "tests/$NAME/$NAME.jacco"
 }
+
+# ONLY='empty' のように名前を書くと1つだけ実行される。
+ONLY=''
 
 f empty
 f exit_with_42
@@ -15,3 +23,5 @@ f add
 f arithmetic
 f let
 f operators
+
+echo 'Done.'
