@@ -52,6 +52,8 @@ pub(crate) enum TokenKind {
     RightFatArrow,
     Bang,
     BangEqual,
+    Colon,
+    Comma,
     Equal,
     EqualEqual,
     Minus,

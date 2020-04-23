@@ -14,6 +14,12 @@ fn take_node(slot: &mut KNode) -> KNode {
     mem::replace(slot, KNode::Abort)
 }
 
+fn gen_ty(ty: KTy) -> CTy {
+    match ty {
+        KTy::I32 => CTy::Int,
+    }
+}
+
 fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
@@ -108,10 +114,13 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
-    for KExternFn { name } in root.extern_fns {
+    for KExternFn { name, params } in root.extern_fns {
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.text,
-            params: vec![],
+            params: params
+                .into_iter()
+                .map(|(name, ty)| (name.unique_name(), gen_ty(ty)))
+                .collect(),
             result_ty: CTy::Void,
         });
     }

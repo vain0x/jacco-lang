@@ -26,6 +26,7 @@ struct XFn {
 
 struct XExternFn {
     name: KSymbol,
+    params: Vec<(KSymbol, KTy)>,
 }
 
 struct XRoot {
@@ -153,13 +154,21 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     xx.fns.push(x_fn);
 }
 
-fn extend_extern_fn_stmt(name_opt: Option<TokenData>, xx: &mut Xx) {
+fn extend_extern_fn_stmt(name_opt: Option<TokenData>, param_list: PParamList, xx: &mut Xx) {
     let fn_name = match name_opt {
         Some(token) => xx.token_to_symbol(token),
         None => return,
     };
 
-    let extern_fn = XExternFn { name: fn_name };
+    let extern_fn = XExternFn {
+        name: fn_name,
+        params: param_list
+            .params
+            .into_iter()
+            .map(|param| (xx.token_to_symbol(param.name), KTy::I32))
+            .collect(),
+    };
+
     xx.extern_fns.push(extern_fn);
 }
 
@@ -186,14 +195,22 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             });
         }
         PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
-        PStmt::ExternFn { name_opt, .. } => extend_extern_fn_stmt(name_opt, xx),
+        PStmt::ExternFn {
+            name_opt,
+            param_list_opt,
+            ..
+        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), xx),
     }
 }
 
 fn extend_decl(stmt: PStmt, xx: &mut Xx) {
     match stmt {
         PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
-        PStmt::ExternFn { name_opt, .. } => extend_extern_fn_stmt(name_opt, xx),
+        PStmt::ExternFn {
+            name_opt,
+            param_list_opt,
+            ..
+        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), xx),
         _ => unimplemented!(),
     }
 }
@@ -289,8 +306,8 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
 }
 
 fn fold_root(root: XRoot, gx: &mut Gx) {
-    for XExternFn { name } in root.extern_fns {
-        gx.extern_fns.push(KExternFn { name });
+    for XExternFn { name, params } in root.extern_fns {
+        gx.extern_fns.push(KExternFn { name, params });
     }
 
     for XFn { name, params, body } in root.fns {

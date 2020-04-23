@@ -1,6 +1,11 @@
 use super::*;
 use std::fmt;
 
+#[derive(Clone, Debug)]
+pub(crate) enum KTy {
+    I32,
+}
+
 #[derive(Clone)]
 pub(crate) struct KSymbol {
     pub(crate) id: usize,
@@ -143,6 +148,7 @@ pub(crate) struct KFn {
 #[derive(Clone, Debug)]
 pub(crate) struct KExternFn {
     pub(crate) name: KSymbol,
+    pub(crate) params: Vec<(KSymbol, KTy)>,
 }
 
 #[derive(Clone, Debug)]

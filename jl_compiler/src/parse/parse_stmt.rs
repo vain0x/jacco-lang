@@ -62,8 +62,47 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
     let fn_keyword = px.expect(TokenKind::Fn);
 
     let name_opt = px.eat(TokenKind::Ident);
-    px.eat(TokenKind::LeftParen);
-    px.eat(TokenKind::RightParen);
+
+    let param_list_opt = if let Some(left) = px.eat(TokenKind::LeftParen) {
+        let mut params = vec![];
+
+        loop {
+            match px.next() {
+                TokenKind::Eof | TokenKind::RightParen => break,
+                TokenKind::Ident => {
+                    let name = px.bump();
+
+                    let colon_opt = px.eat(TokenKind::Colon);
+
+                    let ty_opt = if colon_opt.is_some() {
+                        px.eat(TokenKind::Ident)
+                    } else {
+                        None
+                    };
+
+                    let comma_opt = px.eat(TokenKind::Comma);
+
+                    params.push(PParam {
+                        name,
+                        colon_opt,
+                        ty_opt,
+                        comma_opt,
+                    })
+                }
+                _ => unimplemented!(),
+            }
+        }
+
+        let right_opt = px.eat(TokenKind::RightParen);
+
+        Some(PParamList {
+            left,
+            right_opt,
+            params,
+        })
+    } else {
+        None
+    };
 
     let semi_opt = px.eat(TokenKind::Semi);
 
@@ -71,6 +110,7 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
         extern_keyword,
         fn_keyword,
         name_opt,
+        param_list_opt,
         semi_opt,
     }
 }
