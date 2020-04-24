@@ -1,6 +1,7 @@
 mod clang;
 mod cps;
 mod front;
+mod logs;
 mod parse;
 mod source;
 mod token;
