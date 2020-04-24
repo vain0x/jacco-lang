@@ -104,6 +104,14 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
         None
     };
 
+    let result_opt = match px.eat(TokenKind::RightSlimArrow) {
+        None => None,
+        Some(arrow) => {
+            let ty_opt = eat_name(px);
+            Some(PResult { arrow, ty_opt })
+        }
+    };
+
     let semi_opt = px.eat(TokenKind::Semi);
 
     PStmt::ExternFn {
@@ -111,6 +119,7 @@ fn parse_extern_fn_stmt(px: &mut Px) -> PStmt {
         fn_keyword,
         name_opt,
         param_list_opt,
+        result_opt,
         semi_opt,
     }
 }

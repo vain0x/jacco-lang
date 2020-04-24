@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub(crate) enum KTy {
+    Unit,
     I32,
 }
 
@@ -149,6 +150,7 @@ pub(crate) struct KFn {
 pub(crate) struct KExternFn {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<(KSymbol, KTy)>,
+    pub(crate) result: KTy,
 }
 
 #[derive(Clone, Debug)]

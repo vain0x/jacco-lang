@@ -27,6 +27,7 @@ struct XFn {
 struct XExternFn {
     name: KSymbol,
     params: Vec<(KSymbol, KTy)>,
+    result: KTy,
 }
 
 struct XRoot {
@@ -154,10 +155,23 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     xx.fns.push(x_fn);
 }
 
-fn extend_extern_fn_stmt(name_opt: Option<PName>, param_list: PParamList, xx: &mut Xx) {
+fn extend_extern_fn_stmt(
+    name_opt: Option<PName>,
+    param_list: PParamList,
+    result_opt: Option<PResult>,
+    xx: &mut Xx,
+) {
     let fn_name = match name_opt {
         Some(name) => xx.name_to_symbol(name),
         None => return,
+    };
+
+    let result = match result_opt {
+        Some(result) => match result.ty_opt.unwrap().text.as_str() {
+            "i32" => KTy::I32,
+            _ => unimplemented!(),
+        },
+        None => KTy::Unit,
     };
 
     let extern_fn = XExternFn {
@@ -167,6 +181,7 @@ fn extend_extern_fn_stmt(name_opt: Option<PName>, param_list: PParamList, xx: &m
             .into_iter()
             .map(|param| (xx.name_to_symbol(param.name), KTy::I32))
             .collect(),
+        result,
     };
 
     xx.extern_fns.push(extern_fn);
@@ -198,8 +213,9 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
         PStmt::ExternFn {
             name_opt,
             param_list_opt,
+            result_opt,
             ..
-        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), xx),
+        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx),
     }
 }
 
@@ -209,8 +225,9 @@ fn extend_decl(stmt: PStmt, xx: &mut Xx) {
         PStmt::ExternFn {
             name_opt,
             param_list_opt,
+            result_opt,
             ..
-        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), xx),
+        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx),
         _ => unimplemented!(),
     }
 }
@@ -306,8 +323,17 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
 }
 
 fn fold_root(root: XRoot, gx: &mut Gx) {
-    for XExternFn { name, params } in root.extern_fns {
-        gx.extern_fns.push(KExternFn { name, params });
+    for XExternFn {
+        name,
+        params,
+        result,
+    } in root.extern_fns
+    {
+        gx.extern_fns.push(KExternFn {
+            name,
+            params,
+            result,
+        });
     }
 
     for XFn { name, params, body } in root.fns {

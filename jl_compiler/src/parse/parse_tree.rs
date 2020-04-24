@@ -38,6 +38,12 @@ pub(crate) struct PParamList {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PResult {
+    pub(crate) arrow: TokenData,
+    pub(crate) ty_opt: Option<PName>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PBlock {
     pub(crate) left: TokenData,
     pub(crate) right_opt: Option<TokenData>,
@@ -65,6 +71,7 @@ pub(crate) enum PStmt {
         fn_keyword: TokenData,
         name_opt: Option<PName>,
         param_list_opt: Option<PParamList>,
+        result_opt: Option<PResult>,
         semi_opt: Option<TokenData>,
     },
 }
