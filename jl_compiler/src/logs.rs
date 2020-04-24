@@ -20,18 +20,27 @@ impl Logs {
         Logs::default()
     }
 
-    pub(crate) fn share(&self) -> Self {
-        self.clone()
-    }
-
-    pub(crate) fn push_error(&self, location: Location, message: impl Into<String>) {
-        let message = message.into();
-        let mut inner = self.inner.borrow_mut();
-        inner.push(LogItem { message, location });
+    pub(crate) fn logger(&self) -> Logger {
+        Logger {
+            parent: self.clone(),
+        }
     }
 
     pub(crate) fn finish(self) -> Vec<LogItem> {
         let mut inner = self.inner.try_borrow_mut().expect("can't share logs");
         std::mem::take(&mut inner)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Logger {
+    parent: Logs,
+}
+
+impl Logger {
+    pub(crate) fn error(&self, location: Location, message: impl Into<String>) {
+        let message = message.into();
+        let mut inner = self.parent.inner.borrow_mut();
+        inner.push(LogItem { message, location });
     }
 }
