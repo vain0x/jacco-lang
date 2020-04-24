@@ -165,11 +165,17 @@ fn parse_root(px: &mut Px) -> Vec<PStmt> {
     stmts
 }
 
-pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>) -> PRoot {
-    tokens.retain(|token| {
-        token.kind() != TokenKind::Space
-            && token.kind() != TokenKind::Comment
-            && token.kind() != TokenKind::Other
+pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot {
+    tokens.retain(|token| match token.kind() {
+        TokenKind::Other => {
+            logger.error(
+                token.location().clone(),
+                format!("invalid token {:?}", token.text()),
+            );
+            false
+        }
+        TokenKind::Space | TokenKind::Comment => false,
+        _ => true,
     });
 
     let mut px = Px::new(tokens);

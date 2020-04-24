@@ -191,7 +191,6 @@ fn tokenize_punctuation(tx: &mut Tx) {
 
     let (kind, len) = match do_tokenize_punctuation(tx) {
         None => {
-            eprintln!("'{:?}' is unimplemented in tokenization", tx.next());
             tx.bump();
             tx.commit(TokenKind::Other);
             return;
