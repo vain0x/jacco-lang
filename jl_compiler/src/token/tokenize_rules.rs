@@ -21,7 +21,7 @@ fn char_is_ident_first(c: char) -> bool {
 }
 
 fn char_is_punctuation_first(c: char) -> bool {
-    "!\"#$%&'()-=^~@`\\|{}+*:,.<>/".contains(c)
+    "!\"#$%&'()-=^~@`\\|{}+*;:,.<>/".contains(c)
 }
 
 fn tokenize_space(tx: &mut Tx) {
