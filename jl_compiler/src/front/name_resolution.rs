@@ -40,6 +40,21 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
         PStmt::Expr { term, .. } => {
             resolve_expr(term, nx);
         }
+        PStmt::If {
+            cond_opt, body_opt, ..
+        } => {
+            if let Some(cond) = cond_opt {
+                resolve_expr(cond, nx);
+            }
+
+            nx.enter_scope(|nx| {
+                if let Some(block) = body_opt {
+                    for stmt in &mut block.body {
+                        resolve_stmt(stmt, nx);
+                    }
+                }
+            });
+        }
         PStmt::Let {
             name_opt, init_opt, ..
         } => {

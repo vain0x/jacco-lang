@@ -9,6 +9,28 @@ impl TokenKind {
     }
 }
 
+fn parse_if_stmt(px: &mut Px) -> PStmt {
+    let keyword = px.expect(TokenKind::If);
+
+    let cond_opt = if px.next().is_term_first() {
+        Some(parse_term(px))
+    } else {
+        None
+    };
+
+    let body_opt = if px.next() == TokenKind::LeftBrace {
+        Some(parse_block(px))
+    } else {
+        None
+    };
+
+    PStmt::If {
+        keyword,
+        cond_opt,
+        body_opt,
+    }
+}
+
 fn parse_let_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Let);
 
@@ -135,6 +157,9 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Opti
             TokenKind::Semi => {
                 // Empty statement.
                 px.bump();
+            }
+            TokenKind::If => {
+                stmts.push(parse_if_stmt(px));
             }
             TokenKind::Let => {
                 stmts.push(parse_let_stmt(px));

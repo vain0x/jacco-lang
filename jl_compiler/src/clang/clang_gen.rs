@@ -83,6 +83,21 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 }
                 _ => unimplemented!(),
             },
+            KPrim::If => match (
+                args.as_mut_slice(),
+                results.as_mut_slice(),
+                conts.as_mut_slice(),
+            ) {
+                ([cond], [_result], [cont]) => {
+                    let cond = gen_term(take_term(cond), cx);
+
+                    let body = Box::new(CStmt::Block(CBlock { body: vec![] }));
+                    stmts.push(CStmt::If { cond, body });
+
+                    gen_node(take_node(cont), stmts, cx);
+                }
+                _ => unimplemented!(),
+            },
             KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, stmts, cx),
             KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, stmts, cx),
             KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),

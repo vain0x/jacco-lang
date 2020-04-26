@@ -57,6 +57,11 @@ pub(crate) enum PStmt {
         term: PTerm,
         semi_opt: Option<TokenData>,
     },
+    If {
+        keyword: TokenData,
+        cond_opt: Option<PTerm>,
+        body_opt: Option<PBlock>,
+    },
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,

@@ -21,6 +21,7 @@ f exit_with_42
 f extern_fn
 f add
 f arithmetic
+f if
 f let
 f operators
 

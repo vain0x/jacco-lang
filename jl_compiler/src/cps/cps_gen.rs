@@ -179,6 +179,23 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
         PStmt::Expr { .. } => {
             //
         }
+        PStmt::If {
+            keyword, cond_opt, ..
+        } => {
+            let result = xx.fresh_symbol("cond");
+
+            extend_expr(cond_opt.unwrap(), xx);
+
+            xx.push(XCommand::Prim {
+                prim: KPrim::If,
+                arg_count: 1,
+                result,
+                location: keyword.into_location(),
+            });
+
+            // FIXME: generate body
+            // let body = body_opt.unwrap();
+        }
         PStmt::Let {
             keyword,
             name_opt,
