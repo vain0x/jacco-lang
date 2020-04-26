@@ -16,31 +16,12 @@ enum XCommand {
     },
 }
 
-struct XBlock(Vec<XCommand>);
-
-struct XFn {
-    name: KSymbol,
-    params: Vec<KSymbol>,
-    body: XBlock,
-}
-
-struct XExternFn {
-    name: KSymbol,
-    params: Vec<(KSymbol, KTy)>,
-    result: KTy,
-}
-
-struct XRoot {
-    extern_fns: Vec<XExternFn>,
-    fns: Vec<XFn>,
-}
-
 #[derive(Default)]
 struct Xx {
     last_id: usize,
     current: Vec<XCommand>,
-    extern_fns: Vec<XExternFn>,
-    fns: Vec<XFn>,
+    extern_fns: Vec<KExternFn>,
+    fns: Vec<KFn>,
 }
 
 impl Xx {
@@ -72,13 +53,19 @@ impl Xx {
         self.push(XCommand::Term(term));
     }
 
-    fn enter_block(&mut self, extend: impl FnOnce(&mut Xx)) -> Vec<XCommand> {
-        let mut other = std::mem::replace(&mut self.current, vec![]);
+    fn enter_block(&mut self, extend: impl FnOnce(&mut Xx)) -> KNode {
+        let commands = {
+            let previous = std::mem::take(&mut self.current);
+            extend(self);
+            std::mem::replace(&mut self.current, previous)
+        };
 
-        extend(self);
+        let node = {
+            let mut gx = Gx::default();
+            fold_block(commands, &mut gx)
+        };
 
-        std::mem::swap(&mut self.current, &mut other);
-        other
+        node
     }
 }
 
@@ -130,7 +117,7 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     let fn_name = xx.fresh_symbol("main");
     let return_label = xx.fresh_symbol("return");
 
-    let commands = xx.enter_block(|xx| {
+    let body = xx.enter_block(|xx| {
         let block = block_opt.unwrap();
 
         for stmt in block.body {
@@ -146,13 +133,13 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
         });
     });
 
-    let x_fn = XFn {
+    let k_fn = KFn {
         name: fn_name,
         params: vec![return_label],
-        body: XBlock(commands),
+        body,
     };
 
-    xx.fns.push(x_fn);
+    xx.fns.push(k_fn);
 }
 
 fn extend_extern_fn_stmt(
@@ -174,7 +161,7 @@ fn extend_extern_fn_stmt(
         None => KTy::Unit,
     };
 
-    let extern_fn = XExternFn {
+    let extern_fn = KExternFn {
         name: fn_name,
         params: param_list
             .params
@@ -241,8 +228,6 @@ fn extend_root(root: PRoot, xx: &mut Xx) {
 #[derive(Default)]
 struct Gx {
     stack: Vec<KElement>,
-    extern_fns: Vec<KExternFn>,
-    fns: Vec<KFn>,
 }
 
 impl Gx {
@@ -322,46 +307,12 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
     gx.pop_node()
 }
 
-fn fold_root(root: XRoot, gx: &mut Gx) {
-    for XExternFn {
-        name,
-        params,
-        result,
-    } in root.extern_fns
-    {
-        gx.extern_fns.push(KExternFn {
-            name,
-            params,
-            result,
-        });
-    }
-
-    for XFn { name, params, body } in root.fns {
-        eprintln!("{:?} -> {:#?}", name, body.0);
-
-        let body = fold_block(body.0, gx);
-        gx.fns.push(KFn { name, params, body });
-    }
-}
-
 pub(crate) fn cps_conversion(p_root: PRoot) -> KRoot {
-    let x_root = {
-        let mut xx = Xx::default();
-        extend_root(p_root, &mut xx);
-        XRoot {
-            extern_fns: xx.extern_fns,
-            fns: xx.fns,
-        }
-    };
+    let mut xx = Xx::default();
+    extend_root(p_root, &mut xx);
 
-    let k_root = {
-        let mut gx = Gx::default();
-        fold_root(x_root, &mut gx);
-        KRoot {
-            extern_fns: gx.extern_fns,
-            fns: gx.fns,
-        }
-    };
-
-    k_root
+    KRoot {
+        extern_fns: xx.extern_fns,
+        fns: xx.fns,
+    }
 }
