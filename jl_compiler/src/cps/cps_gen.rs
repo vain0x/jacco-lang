@@ -120,9 +120,7 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
     let body = xx.enter_block(|xx| {
         let block = block_opt.unwrap();
 
-        for stmt in block.body {
-            extend_stmt(stmt, xx);
-        }
+        extend_stmts(block.body, xx);
 
         let last = block.last_opt.unwrap();
 
@@ -220,6 +218,12 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             result_opt,
             ..
         } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx),
+    }
+}
+
+fn extend_stmts(stmts: Vec<PStmt>, xx: &mut Xx) {
+    for stmt in stmts {
+        extend_stmt(stmt, xx);
     }
 }
 
