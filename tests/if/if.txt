@@ -1,8 +1,12 @@
-int endif() {
+int then() {
+    next_5();
+}
+
+int next() {
     return 0;
 }
 
 int main() {
     if (1) {}
-    endif_4();
+    next_5();
 }

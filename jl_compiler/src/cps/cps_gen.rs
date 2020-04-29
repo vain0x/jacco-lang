@@ -178,10 +178,14 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             //
         }
         PStmt::If {
-            keyword, cond_opt, ..
+            keyword,
+            cond_opt,
+            body_opt,
         } => {
             let location = keyword.into_location();
             let result = xx.fresh_symbol("cond", location.clone());
+            let then_label = xx.fresh_symbol("then", location.clone());
+            let next_label = xx.fresh_symbol("next", location.clone());
 
             extend_expr(cond_opt.unwrap(), xx);
 
@@ -189,20 +193,29 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 prim: KPrim::If,
                 arg_count: 1,
                 result,
-                location: location.clone(),
+                location,
             });
 
-            // FIXME: generate body
-            // let body = body_opt.unwrap();
-
-            let endif = xx.fresh_symbol("endif", location);
             xx.push(XCommand::Jump {
-                label: endif.clone(),
+                label: next_label.clone(),
                 arg_count: 0,
             });
 
             xx.push(XCommand::Label {
-                label: endif,
+                label: then_label,
+                arg_count: 0,
+            });
+
+            let body = body_opt.unwrap();
+            extend_stmts(body.body, xx);
+
+            xx.push(XCommand::Jump {
+                label: next_label.clone(),
+                arg_count: 0,
+            });
+
+            xx.push(XCommand::Label {
+                label: next_label,
                 arg_count: 0,
             });
         }

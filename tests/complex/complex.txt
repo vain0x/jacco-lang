@@ -1,13 +1,21 @@
-int endif() {
-    if (2) {}
-    endif_6();
+int then() {
+    next_5();
 }
 
-int endif() {
+int next() {
+    if (2) {}
+    next_8();
+}
+
+int then() {
+    next_8();
+}
+
+int next() {
     return 0;
 }
 
 int main() {
     if (1) {}
-    endif_4();
+    next_5();
 }
