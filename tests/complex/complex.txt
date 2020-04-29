@@ -12,6 +12,35 @@ int then() {
 }
 
 int next() {
+    if (3) {}
+    next_11();
+}
+
+int then() {
+    int body3_1 = 30;
+    next_11();
+}
+
+int else_clause() {
+    if (4) {}
+    next_15();
+}
+
+int then() {
+    int alt31_2 = 31;
+    next_15();
+}
+
+int else_clause() {
+    int alt32_3 = 32;
+    next_15();
+}
+
+int next() {
+    next_11();
+}
+
+int next() {
     return 0;
 }
 

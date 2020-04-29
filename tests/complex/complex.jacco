@@ -1,5 +1,14 @@
 pub fn main() -> i32 {
     if 1 {}
     if 2 {}
+
+    if 3 {
+        let body3 = 30;
+    } else if 4 {
+        let alt31 = 31;
+    } else {
+        let alt32 = 32;
+    }
+
     0
 }

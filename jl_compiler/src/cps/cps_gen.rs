@@ -118,13 +118,9 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
     let return_label = xx.fresh_symbol("return", location.clone());
 
     let body = xx.enter_block(|xx| {
-        let block = block_opt.unwrap();
+        debug_assert!(block_opt.as_ref().unwrap().last_opt.is_some());
+        extend_block(block_opt.unwrap(), xx);
 
-        extend_stmts(block.body, xx);
-
-        let last = block.last_opt.unwrap();
-
-        extend_expr(last, xx);
         xx.push(XCommand::Jump {
             label: return_label.clone(),
             arg_count: 1,
@@ -172,15 +168,28 @@ fn extend_extern_fn_stmt(
     xx.extern_fns.push(extern_fn);
 }
 
+fn extend_block(block: PBlock, xx: &mut Xx) {
+    extend_stmts(block.body, xx);
+
+    if let Some(last) = block.last_opt {
+        extend_expr(last, xx);
+    }
+}
+
 fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
     match stmt {
         PStmt::Expr { .. } => {
             //
         }
+        PStmt::Block(block) => {
+            extend_block(block, xx);
+        }
         PStmt::If {
             keyword,
             cond_opt,
             body_opt,
+            else_opt,
+            alt_opt,
         } => {
             let location = keyword.into_location();
             let result = xx.fresh_symbol("cond", location.clone());
@@ -213,6 +222,23 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 label: next_label.clone(),
                 arg_count: 0,
             });
+
+            if let Some(alt) = alt_opt {
+                let location = else_opt.unwrap().into_location();
+                let else_label = xx.fresh_symbol("else_clause", location.clone());
+
+                xx.push(XCommand::Label {
+                    label: else_label,
+                    arg_count: 0,
+                });
+
+                extend_stmt(*alt, xx);
+
+                xx.push(XCommand::Jump {
+                    label: next_label.clone(),
+                    arg_count: 0,
+                });
+            }
 
             xx.push(XCommand::Label {
                 label: next_label,

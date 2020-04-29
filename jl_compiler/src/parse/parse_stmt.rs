@@ -24,10 +24,27 @@ fn parse_if_stmt(px: &mut Px) -> PStmt {
         None
     };
 
+    let else_opt = px.eat(TokenKind::Else);
+
+    let alt_opt = if else_opt.is_some() {
+        match px.next() {
+            TokenKind::LeftBrace => Some(Box::new(PStmt::Block(parse_block(px)))),
+            TokenKind::If => Some(Box::new(parse_if_stmt(px))),
+            _ => {
+                // error
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     PStmt::If {
         keyword,
         cond_opt,
         body_opt,
+        else_opt,
+        alt_opt,
     }
 }
 

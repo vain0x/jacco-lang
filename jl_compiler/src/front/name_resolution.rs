@@ -35,25 +35,45 @@ fn resolve_expr(expr: &mut PTerm, nx: &mut Nx) {
     }
 }
 
+fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
+    for stmt in &mut block.body {
+        resolve_stmt(stmt, nx);
+    }
+
+    if let Some(last) = &mut block.last_opt {
+        resolve_expr(last, nx);
+    }
+}
+
 fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
     match stmt {
         PStmt::Expr { term, .. } => {
             resolve_expr(term, nx);
         }
+        PStmt::Block(block) => {
+            resolve_block(block, nx);
+        }
         PStmt::If {
-            cond_opt, body_opt, ..
+            cond_opt,
+            body_opt,
+            alt_opt,
+            ..
         } => {
             if let Some(cond) = cond_opt {
                 resolve_expr(cond, nx);
             }
 
-            nx.enter_scope(|nx| {
-                if let Some(block) = body_opt {
-                    for stmt in &mut block.body {
-                        resolve_stmt(stmt, nx);
-                    }
-                }
-            });
+            if let Some(block) = body_opt {
+                nx.enter_scope(|nx| {
+                    resolve_block(block, nx);
+                });
+            }
+
+            if let Some(alt) = alt_opt {
+                nx.enter_scope(|nx| {
+                    resolve_stmt(alt, nx);
+                });
+            }
         }
         PStmt::Let {
             name_opt, init_opt, ..
