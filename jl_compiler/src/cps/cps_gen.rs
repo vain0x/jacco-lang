@@ -14,6 +14,10 @@ enum XCommand {
         label: KSymbol,
         arg_count: usize,
     },
+    Label {
+        label: KSymbol,
+        arg_count: usize,
+    },
 }
 
 #[derive(Default)]
@@ -60,10 +64,9 @@ impl Xx {
             std::mem::replace(&mut self.current, previous)
         };
 
-        let node = {
-            let mut gx = Gx::default();
-            fold_block(commands, &mut gx)
-        };
+        let mut gx = Gx::default();
+        let node = fold_block(commands, &mut gx);
+        self.fns.extend(gx.labels.drain(..));
 
         node
     }
@@ -193,6 +196,17 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
 
             // FIXME: generate body
             // let body = body_opt.unwrap();
+
+            let endif = xx.fresh_symbol("endif");
+            xx.push(XCommand::Jump {
+                label: endif.clone(),
+                arg_count: 0,
+            });
+
+            xx.push(XCommand::Label {
+                label: endif,
+                arg_count: 0,
+            });
         }
         PStmt::Let {
             keyword,
@@ -234,6 +248,7 @@ fn extend_root(root: PRoot, xx: &mut Xx) {
 #[derive(Default)]
 struct Gx {
     stack: Vec<KElement>,
+    labels: Vec<KFn>,
 }
 
 impl Gx {
@@ -302,15 +317,33 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 });
                 return;
             }
+            XCommand::Label { label, .. } => {
+                do_fold(commands, gx);
+                let body = gx.pop_node();
+
+                gx.labels.push(KFn {
+                    name: label,
+                    params: vec![],
+                    body,
+                });
+                return;
+            }
         }
     }
 }
 
 fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
+    eprintln!("block: {:#?}", commands);
     commands.reverse();
 
     do_fold(&mut commands, gx);
-    gx.pop_node()
+    let node = gx.pop_node();
+
+    while let Some(XCommand::Label { .. }) = commands.last() {
+        do_fold(&mut commands, gx);
+    }
+
+    node
 }
 
 pub(crate) fn cps_conversion(p_root: PRoot) -> KRoot {

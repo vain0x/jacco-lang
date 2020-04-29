@@ -1,4 +1,9 @@
 int endif() {
+    if (2) {}
+    endif_6();
+}
+
+int endif() {
     return 0;
 }
 

@@ -110,7 +110,16 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, stmts, cx),
             KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, stmts, cx),
         },
-        KNode::Jump { ref mut args, .. } => match args.as_mut_slice() {
+        KNode::Jump {
+            ref mut label,
+            ref mut args,
+        } => match args.as_mut_slice() {
+            [] => {
+                stmts.push(CStmt::Expr(CExpr::Call {
+                    cal: Box::new(CExpr::Name(mem::take(label).unique_name())),
+                    args: vec![],
+                }));
+            }
             [arg] => {
                 let arg = gen_term(take_term(arg), cx);
                 stmts.push(CStmt::Return(Some(arg)));

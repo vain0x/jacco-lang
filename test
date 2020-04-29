@@ -24,6 +24,7 @@ f arithmetic
 f if
 f let
 f operators
+f complex
 
 # 差分の量を表示する。
 git diff --stat -- 'tests/*/*.txt'
