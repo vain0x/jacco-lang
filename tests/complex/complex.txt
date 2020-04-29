@@ -3,8 +3,11 @@ int then() {
 }
 
 int next() {
-    if (2) {}
-    next_8();
+    if (2) {
+        then_7();
+    } else {
+        next_8();
+    }
 }
 
 int then() {
@@ -12,8 +15,11 @@ int then() {
 }
 
 int next() {
-    if (3) {}
-    next_11();
+    if (3) {
+        then_10();
+    } else {
+        else_clause_12();
+    }
 }
 
 int then() {
@@ -22,8 +28,11 @@ int then() {
 }
 
 int else_clause() {
-    if (4) {}
-    next_15();
+    if (4) {
+        then_14();
+    } else {
+        else_clause_16();
+    }
 }
 
 int then() {
@@ -45,6 +54,9 @@ int next() {
 }
 
 int main() {
-    if (1) {}
-    next_5();
+    if (1) {
+        then_4();
+    } else {
+        next_5();
+    }
 }

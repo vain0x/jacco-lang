@@ -7,6 +7,7 @@ enum XCommand {
     Prim {
         prim: KPrim,
         arg_count: usize,
+        cont_count: usize,
         result: KSymbol,
         location: Location,
     },
@@ -77,6 +78,7 @@ fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, 
     xx.push(XCommand::Prim {
         prim,
         arg_count: 2,
+        cont_count: 1,
         result,
         location,
     });
@@ -196,20 +198,41 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             let then_label = xx.fresh_symbol("then", location.clone());
             let next_label = xx.fresh_symbol("next", location.clone());
 
+            let else_clause = match (else_opt, alt_opt) {
+                (Some(keyword), Some(alt)) => {
+                    let location = keyword.into_location();
+                    let else_label = xx.fresh_symbol("else_clause", location);
+                    Some((else_label, alt))
+                }
+                _ => None,
+            };
+
             extend_expr(cond_opt.unwrap(), xx);
 
             xx.push(XCommand::Prim {
                 prim: KPrim::If,
                 arg_count: 1,
+                cont_count: 2,
                 result,
                 location,
             });
 
+            // body:
             xx.push(XCommand::Jump {
-                label: next_label.clone(),
+                label: then_label.clone(),
                 arg_count: 0,
             });
 
+            // alt:
+            xx.push(XCommand::Jump {
+                label: match &else_clause {
+                    Some((else_label, _)) => else_label.clone(),
+                    None => next_label.clone(),
+                },
+                arg_count: 0,
+            });
+
+            // then:
             xx.push(XCommand::Label {
                 label: then_label,
                 arg_count: 0,
@@ -223,10 +246,8 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 0,
             });
 
-            if let Some(alt) = alt_opt {
-                let location = else_opt.unwrap().into_location();
-                let else_label = xx.fresh_symbol("else_clause", location.clone());
-
+            // else:
+            if let Some((else_label, alt)) = else_clause {
                 xx.push(XCommand::Label {
                     label: else_label,
                     arg_count: 0,
@@ -240,6 +261,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 });
             }
 
+            // next:
             xx.push(XCommand::Label {
                 label: next_label,
                 arg_count: 0,
@@ -258,6 +280,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             xx.push(XCommand::Prim {
                 prim: KPrim::Let,
                 arg_count: 1,
+                cont_count: 1,
                 result,
                 location,
             });
@@ -333,6 +356,7 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
             XCommand::Prim {
                 prim,
                 arg_count,
+                cont_count,
                 result,
                 location,
             } => {
@@ -345,14 +369,17 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 let result = result.with_location(location);
                 gx.push_term(KTerm::Name(result.clone()));
 
-                do_fold(commands, gx);
-                let cont = gx.pop_node();
+                let mut conts = vec![];
+                for _ in 0..cont_count {
+                    do_fold(commands, gx);
+                    conts.push(gx.pop_node());
+                }
 
                 gx.push_node(KNode::Prim {
                     prim,
                     args,
                     results: vec![result],
-                    conts: vec![cont],
+                    conts,
                 });
                 return;
             }

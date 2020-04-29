@@ -7,6 +7,9 @@ int next() {
 }
 
 int main() {
-    if (1) {}
-    next_5();
+    if (1) {
+        then_4();
+    } else {
+        next_5();
+    }
 }

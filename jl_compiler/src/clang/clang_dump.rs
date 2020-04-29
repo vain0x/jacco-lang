@@ -78,11 +78,13 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_expr(arg, indent, out)?;
             write!(out, ";")
         }
-        CStmt::If { cond, body } => {
+        CStmt::If { cond, body, alt } => {
             write!(out, "if (")?;
             write_expr(cond, indent, out)?;
             write!(out, ") ")?;
-            write_stmt(body, indent, out)
+            write_stmt(body, indent, out)?;
+            write!(out, " else ")?;
+            write_stmt(alt, indent, out)
         }
         CStmt::VarDecl { name, ty, init_opt } => {
             write_ty(ty, indent, out)?;

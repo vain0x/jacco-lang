@@ -53,6 +53,7 @@ pub(crate) enum CStmt {
     If {
         cond: CExpr,
         body: Box<CStmt>,
+        alt: Box<CStmt>,
     },
     VarDecl {
         name: String,

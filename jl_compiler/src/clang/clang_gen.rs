@@ -88,13 +88,14 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 results.as_mut_slice(),
                 conts.as_mut_slice(),
             ) {
-                ([cond], [_result], [cont]) => {
+                ([cond], [_result], [then_cont, else_cont]) => {
                     let cond = gen_term(take_term(cond), cx);
+                    let then_cont = gen_node_as_block(take_node(then_cont), cx);
+                    let else_cont = gen_node_as_block(take_node(else_cont), cx);
 
-                    let body = Box::new(CStmt::Block(CBlock { body: vec![] }));
-                    stmts.push(CStmt::If { cond, body });
-
-                    gen_node(take_node(cont), stmts, cx);
+                    let body = Box::new(CStmt::Block(then_cont));
+                    let alt = Box::new(CStmt::Block(else_cont));
+                    stmts.push(CStmt::If { cond, body, alt });
                 }
                 _ => unimplemented!(),
             },
