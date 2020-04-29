@@ -37,14 +37,11 @@ impl Xx {
         }
     }
 
-    fn fresh_symbol(&mut self, hint: &str) -> KSymbol {
+    fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
         self.last_id += 1;
         let id = self.last_id;
 
         let text = hint.to_string();
-
-        // FIXME: ヒントを与える。
-        let location = Location::new_dummy();
 
         KSymbol { id, text, location }
     }
@@ -73,7 +70,7 @@ impl Xx {
 }
 
 fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
-    let result = xx.fresh_symbol(&prim.hint_str());
+    let result = xx.fresh_symbol(&prim.hint_str(), location.clone());
 
     extend_expr(left, xx);
     extend_expr(right, xx);
@@ -116,9 +113,9 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
     }
 }
 
-fn extend_fn_stmt(block_opt: Option<PBlock>, xx: &mut Xx) {
-    let fn_name = xx.fresh_symbol("main");
-    let return_label = xx.fresh_symbol("return");
+fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
+    let fn_name = xx.fresh_symbol("main", location.clone());
+    let return_label = xx.fresh_symbol("return", location.clone());
 
     let body = xx.enter_block(|xx| {
         let block = block_opt.unwrap();
@@ -183,7 +180,8 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
         PStmt::If {
             keyword, cond_opt, ..
         } => {
-            let result = xx.fresh_symbol("cond");
+            let location = keyword.into_location();
+            let result = xx.fresh_symbol("cond", location.clone());
 
             extend_expr(cond_opt.unwrap(), xx);
 
@@ -191,13 +189,13 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 prim: KPrim::If,
                 arg_count: 1,
                 result,
-                location: keyword.into_location(),
+                location: location.clone(),
             });
 
             // FIXME: generate body
             // let body = body_opt.unwrap();
 
-            let endif = xx.fresh_symbol("endif");
+            let endif = xx.fresh_symbol("endif", location);
             xx.push(XCommand::Jump {
                 label: endif.clone(),
                 arg_count: 0,
@@ -225,7 +223,9 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 location,
             });
         }
-        PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
+        PStmt::Fn { keyword, block_opt } => {
+            extend_fn_stmt(block_opt, keyword.into_location(), xx);
+        }
         PStmt::ExternFn {
             name_opt,
             param_list_opt,
