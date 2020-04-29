@@ -227,23 +227,8 @@ fn extend_stmts(stmts: Vec<PStmt>, xx: &mut Xx) {
     }
 }
 
-fn extend_decl(stmt: PStmt, xx: &mut Xx) {
-    match stmt {
-        PStmt::Fn { block_opt, .. } => extend_fn_stmt(block_opt, xx),
-        PStmt::ExternFn {
-            name_opt,
-            param_list_opt,
-            result_opt,
-            ..
-        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx),
-        _ => unimplemented!(),
-    }
-}
-
 fn extend_root(root: PRoot, xx: &mut Xx) {
-    for body in root.body {
-        extend_decl(body, xx);
-    }
+    extend_stmts(root.body, xx);
 }
 
 #[derive(Default)]
