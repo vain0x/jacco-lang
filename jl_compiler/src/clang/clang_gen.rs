@@ -116,10 +116,9 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ref mut args,
         } => match args.as_mut_slice() {
             [] => {
-                stmts.push(CStmt::Expr(CExpr::Call {
-                    cal: Box::new(CExpr::Name(mem::take(label).unique_name())),
-                    args: vec![],
-                }));
+                stmts.push(CStmt::Goto {
+                    label: mem::take(label).unique_name(),
+                });
             }
             [arg] => {
                 let arg = gen_term(take_term(arg), cx);
@@ -156,8 +155,24 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for KFn { name, body, .. } in root.fns {
-        let body = gen_node_as_block(body, cx);
+    for KFn {
+        name, body, labels, ..
+    } in root.fns
+    {
+        let body = {
+            let mut stmts = vec![];
+
+            gen_node(body, &mut stmts, cx);
+
+            for KFn { name, body, .. } in labels {
+                stmts.push(CStmt::Label {
+                    label: name.unique_name(),
+                });
+                gen_node(body, &mut stmts, cx);
+            }
+
+            CBlock { body: stmts }
+        };
 
         cx.decls.push(CStmt::FnDecl {
             name: name.text,

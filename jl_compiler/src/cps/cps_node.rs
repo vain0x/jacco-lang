@@ -144,6 +144,7 @@ pub(crate) struct KFn {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
+    pub(crate) labels: Vec<KFn>,
 }
 
 #[derive(Clone, Debug)]

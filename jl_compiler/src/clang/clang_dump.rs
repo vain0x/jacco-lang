@@ -72,6 +72,12 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, ";")
         }
         CStmt::Block(body) => write_block(body, indent, out),
+        CStmt::Label { label } => {
+            write!(out, "//\n")?;
+            write_indent(indent.saturating_sub(1), out)?;
+            write!(out, "{}:;", label)
+        }
+        CStmt::Goto { label } => write!(out, "goto {};", label),
         CStmt::Return(None) => write!(out, "return;"),
         CStmt::Return(Some(arg)) => {
             write!(out, "return ")?;

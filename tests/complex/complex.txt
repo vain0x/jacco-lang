@@ -1,38 +1,34 @@
-int next() {
-    if (2) {
-        next_6();
+int main() {
+    if (1) {
+        goto next_4;
     } else {
-        next_6();
+        goto next_4;
     }
-}
-
-int next() {
+    //
+next_4:;
+    if (2) {
+        goto next_6;
+    } else {
+        goto next_6;
+    }
+    //
+next_6:;
     if (3) {
         int body3_1 = 30;
-        next_8();
+        goto next_8;
     } else {
         if (4) {
             int alt31_2 = 31;
-            next_10();
+            goto next_10;
         } else {
             int alt32_3 = 32;
-            next_10();
+            goto next_10;
         }
     }
-}
-
-int next() {
-    next_8();
-}
-
-int next() {
+    //
+next_10:;
+    goto next_8;
+    //
+next_8:;
     return 0;
-}
-
-int main() {
-    if (1) {
-        next_4();
-    } else {
-        next_4();
-    }
 }

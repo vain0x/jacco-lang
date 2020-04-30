@@ -48,6 +48,12 @@ pub(crate) enum CStmt {
     Expr(CExpr),
     #[allow(dead_code)]
     Block(CBlock),
+    Label {
+        label: String,
+    },
+    Goto {
+        label: String,
+    },
     Return(Option<CExpr>),
     #[allow(dead_code)]
     If {

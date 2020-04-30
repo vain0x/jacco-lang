@@ -1,11 +1,10 @@
-int next() {
-    return 0;
-}
-
 int main() {
     if (1) {
-        next_4();
+        goto next_4;
     } else {
-        next_4();
+        goto next_4;
     }
+    //
+next_4:;
+    return 0;
 }

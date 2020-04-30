@@ -54,20 +54,6 @@ impl Xx {
     fn push_term(&mut self, term: KTerm) {
         self.push(XCommand::Term(term));
     }
-
-    fn enter_block(&mut self, extend: impl FnOnce(&mut Xx)) -> KNode {
-        let commands = {
-            let previous = std::mem::take(&mut self.current);
-            extend(self);
-            std::mem::replace(&mut self.current, previous)
-        };
-
-        let mut gx = Gx::default();
-        let node = fold_block(commands, &mut gx);
-        self.fns.extend(gx.labels.drain(..));
-
-        node
-    }
 }
 
 fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
@@ -119,19 +105,30 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
     let fn_name = xx.fresh_symbol("main", location.clone());
     let return_label = xx.fresh_symbol("return", location.clone());
 
-    let body = xx.enter_block(|xx| {
+    let commands = {
+        let previous = std::mem::take(&mut xx.current);
+
         extend_block(block_opt.unwrap(), xx);
 
         xx.push(XCommand::Jump {
             label: return_label.clone(),
             arg_count: 1,
         });
-    });
+
+        std::mem::replace(&mut xx.current, previous)
+    };
+
+    let (node, labels) = {
+        let mut gx = Gx::default();
+        let node = fold_block(commands, &mut gx);
+        (node, gx.labels)
+    };
 
     let k_fn = KFn {
         name: fn_name,
         params: vec![return_label],
-        body,
+        body: node,
+        labels,
     };
 
     xx.fns.push(k_fn);
@@ -434,6 +431,7 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                     name: label,
                     params: vec![],
                     body,
+                    labels: vec![],
                 });
                 return;
             }
