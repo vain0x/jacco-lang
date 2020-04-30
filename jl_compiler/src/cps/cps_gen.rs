@@ -232,6 +232,58 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 0,
             });
         }
+        PStmt::While {
+            keyword,
+            cond_opt,
+            body_opt,
+        } => {
+            let location = keyword.into_location();
+            let result = xx.fresh_symbol("cond", location.clone());
+            let continue_label = xx.fresh_symbol("continue_", location.clone());
+            let next_label = xx.fresh_symbol("next", location.clone());
+
+            xx.push(XCommand::Jump {
+                label: continue_label.clone(),
+                arg_count: 0,
+            });
+
+            xx.push(XCommand::Label {
+                label: continue_label.clone(),
+                arg_count: 0,
+            });
+
+            extend_expr(cond_opt.unwrap(), xx);
+
+            xx.push(XCommand::Prim {
+                prim: KPrim::If,
+                arg_count: 1,
+                cont_count: 2,
+                result,
+                location,
+            });
+
+            // FIXME: in body, break/continue jump to next_label/continue_label
+            // body:
+            let body = body_opt.unwrap();
+            extend_stmts(body.body, xx);
+
+            xx.push(XCommand::Jump {
+                label: continue_label,
+                arg_count: 0,
+            });
+
+            // alt:
+            xx.push(XCommand::Jump {
+                label: next_label.clone(),
+                arg_count: 0,
+            });
+
+            // next:
+            xx.push(XCommand::Label {
+                label: next_label,
+                arg_count: 0,
+            });
+        }
         PStmt::Let {
             keyword,
             name_opt,

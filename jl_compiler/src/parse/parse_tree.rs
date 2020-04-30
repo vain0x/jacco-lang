@@ -65,6 +65,11 @@ pub(crate) enum PStmt {
         else_opt: Option<TokenData>,
         alt_opt: Option<Box<PStmt>>,
     },
+    While {
+        keyword: TokenData,
+        cond_opt: Option<PTerm>,
+        body_opt: Option<PBlock>,
+    },
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,

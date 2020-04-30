@@ -75,6 +75,19 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
+        PStmt::While {
+            cond_opt, body_opt, ..
+        } => {
+            if let Some(cond) = cond_opt {
+                resolve_expr(cond, nx);
+            }
+
+            if let Some(block) = body_opt {
+                nx.enter_scope(|nx| {
+                    resolve_block(block, nx);
+                });
+            }
+        }
         PStmt::Let {
             name_opt, init_opt, ..
         } => {
