@@ -1,52 +1,28 @@
-int then() {
-    next_5();
-}
-
 int next() {
     if (2) {
-        then_7();
+        next_6();
     } else {
-        next_8();
+        next_6();
     }
-}
-
-int then() {
-    next_8();
 }
 
 int next() {
     if (3) {
-        then_10();
+        int body3_1 = 30;
+        next_8();
     } else {
-        else_clause_12();
+        if (4) {
+            int alt31_2 = 31;
+            next_10();
+        } else {
+            int alt32_3 = 32;
+            next_10();
+        }
     }
-}
-
-int then() {
-    int body3_1 = 30;
-    next_11();
-}
-
-int else_clause() {
-    if (4) {
-        then_14();
-    } else {
-        else_clause_16();
-    }
-}
-
-int then() {
-    int alt31_2 = 31;
-    next_15();
-}
-
-int else_clause() {
-    int alt32_3 = 32;
-    next_15();
 }
 
 int next() {
-    next_11();
+    next_8();
 }
 
 int next() {
@@ -55,8 +31,8 @@ int next() {
 
 int main() {
     if (1) {
-        then_4();
+        next_4();
     } else {
-        next_5();
+        next_4();
     }
 }

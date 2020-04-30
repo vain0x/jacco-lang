@@ -190,22 +190,12 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             keyword,
             cond_opt,
             body_opt,
-            else_opt,
             alt_opt,
+            ..
         } => {
             let location = keyword.into_location();
             let result = xx.fresh_symbol("cond", location.clone());
-            let then_label = xx.fresh_symbol("then", location.clone());
             let next_label = xx.fresh_symbol("next", location.clone());
-
-            let else_clause = match (else_opt, alt_opt) {
-                (Some(keyword), Some(alt)) => {
-                    let location = keyword.into_location();
-                    let else_label = xx.fresh_symbol("else_clause", location);
-                    Some((else_label, alt))
-                }
-                _ => None,
-            };
 
             extend_expr(cond_opt.unwrap(), xx);
 
@@ -218,26 +208,6 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
             });
 
             // body:
-            xx.push(XCommand::Jump {
-                label: then_label.clone(),
-                arg_count: 0,
-            });
-
-            // alt:
-            xx.push(XCommand::Jump {
-                label: match &else_clause {
-                    Some((else_label, _)) => else_label.clone(),
-                    None => next_label.clone(),
-                },
-                arg_count: 0,
-            });
-
-            // then:
-            xx.push(XCommand::Label {
-                label: then_label,
-                arg_count: 0,
-            });
-
             let body = body_opt.unwrap();
             extend_stmts(body.body, xx);
 
@@ -246,20 +216,15 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 0,
             });
 
-            // else:
-            if let Some((else_label, alt)) = else_clause {
-                xx.push(XCommand::Label {
-                    label: else_label,
-                    arg_count: 0,
-                });
-
+            // alt:
+            if let Some(alt) = alt_opt {
                 extend_stmt(*alt, xx);
-
-                xx.push(XCommand::Jump {
-                    label: next_label.clone(),
-                    arg_count: 0,
-                });
             }
+
+            xx.push(XCommand::Jump {
+                label: next_label.clone(),
+                arg_count: 0,
+            });
 
             // next:
             xx.push(XCommand::Label {

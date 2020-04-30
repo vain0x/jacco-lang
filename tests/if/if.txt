@@ -1,15 +1,11 @@
-int then() {
-    next_5();
-}
-
 int next() {
     return 0;
 }
 
 int main() {
     if (1) {
-        then_4();
+        next_4();
     } else {
-        next_5();
+        next_4();
     }
 }
