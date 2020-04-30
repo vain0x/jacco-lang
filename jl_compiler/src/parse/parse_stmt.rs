@@ -70,6 +70,18 @@ fn parse_while_stmt(px: &mut Px) -> PStmt {
     }
 }
 
+fn parse_loop_stmt(px: &mut Px) -> PStmt {
+    let keyword = px.expect(TokenKind::Loop);
+
+    let body_opt = if px.next() == TokenKind::LeftBrace {
+        Some(parse_block(px))
+    } else {
+        None
+    };
+
+    PStmt::Loop { keyword, body_opt }
+}
+
 fn parse_let_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Let);
 
@@ -202,6 +214,9 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Opti
             }
             TokenKind::While => {
                 stmts.push(parse_while_stmt(px));
+            }
+            TokenKind::Loop => {
+                stmts.push(parse_loop_stmt(px));
             }
             TokenKind::Let => {
                 stmts.push(parse_let_stmt(px));

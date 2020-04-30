@@ -26,6 +26,7 @@ f let
 f operators
 f complex
 f while
+f loop
 
 # 差分の量を表示する。
 git diff --stat -- 'tests/*/*.txt'

@@ -70,6 +70,10 @@ pub(crate) enum PStmt {
         cond_opt: Option<PTerm>,
         body_opt: Option<PBlock>,
     },
+    Loop {
+        keyword: TokenData,
+        body_opt: Option<PBlock>,
+    },
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,

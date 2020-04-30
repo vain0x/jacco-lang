@@ -1,0 +1,5 @@
+pub fn main() -> i32 {
+    loop {
+        let a = 1;
+    }
+}

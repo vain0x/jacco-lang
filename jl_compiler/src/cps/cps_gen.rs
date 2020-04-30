@@ -120,7 +120,6 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
     let return_label = xx.fresh_symbol("return", location.clone());
 
     let body = xx.enter_block(|xx| {
-        debug_assert!(block_opt.as_ref().unwrap().last_opt.is_some());
         extend_block(block_opt.unwrap(), xx);
 
         xx.push(XCommand::Jump {
@@ -283,6 +282,33 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 label: next_label,
                 arg_count: 0,
             });
+        }
+        PStmt::Loop { keyword, body_opt } => {
+            let location = keyword.into_location();
+            let continue_label = xx.fresh_symbol("continue_", location.clone());
+
+            xx.push(XCommand::Jump {
+                label: continue_label.clone(),
+                arg_count: 0,
+            });
+
+            xx.push(XCommand::Label {
+                label: continue_label.clone(),
+                arg_count: 0,
+            });
+
+            // FIXME: in body, break/continue jump to next_label/continue_label
+            // body:
+            let body = body_opt.unwrap();
+            extend_stmts(body.body, xx);
+
+            xx.push(XCommand::Jump {
+                label: continue_label,
+                arg_count: 0,
+            });
+
+            // break がないので、残りの文には到達しない。
+            return;
         }
         PStmt::Let {
             keyword,

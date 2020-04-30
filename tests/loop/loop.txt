@@ -1,0 +1,8 @@
+int continue_() {
+    int a_1 = 1;
+    continue__3();
+}
+
+int main() {
+    continue__3();
+}

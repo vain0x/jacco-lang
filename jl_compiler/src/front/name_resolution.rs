@@ -88,6 +88,13 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
+        PStmt::Loop { body_opt, .. } => {
+            if let Some(block) = body_opt {
+                nx.enter_scope(|nx| {
+                    resolve_block(block, nx);
+                });
+            }
+        }
         PStmt::Let {
             name_opt, init_opt, ..
         } => {
