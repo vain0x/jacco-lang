@@ -110,6 +110,15 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             KPrim::Le => gen_binary_op(CBinaryOp::Le, args, results, conts, stmts, cx),
             KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, stmts, cx),
             KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, stmts, cx),
+            KPrim::BitAnd => gen_binary_op(CBinaryOp::BitAnd, args, results, conts, stmts, cx),
+            KPrim::BitOr => gen_binary_op(CBinaryOp::BitOr, args, results, conts, stmts, cx),
+            KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, stmts, cx),
+            KPrim::LeftShift => {
+                gen_binary_op(CBinaryOp::LeftShift, args, results, conts, stmts, cx)
+            }
+            KPrim::RightShift => {
+                gen_binary_op(CBinaryOp::RightShift, args, results, conts, stmts, cx)
+            }
         },
         KNode::Jump {
             ref mut label,

@@ -131,6 +131,13 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             BinaryOp::Mul => extend_binary_op(KPrim::Mul, *left, *right, location, xx),
             BinaryOp::Div => extend_binary_op(KPrim::Div, *left, *right, location, xx),
             BinaryOp::Mod => extend_binary_op(KPrim::Mod, *left, *right, location, xx),
+            BinaryOp::BitAnd => extend_binary_op(KPrim::BitAnd, *left, *right, location, xx),
+            BinaryOp::BitOr => extend_binary_op(KPrim::BitOr, *left, *right, location, xx),
+            BinaryOp::BitXor => extend_binary_op(KPrim::BitXor, *left, *right, location, xx),
+            BinaryOp::LeftShift => extend_binary_op(KPrim::LeftShift, *left, *right, location, xx),
+            BinaryOp::RightShift => {
+                extend_binary_op(KPrim::RightShift, *left, *right, location, xx)
+            }
             BinaryOp::Eq => extend_binary_op(KPrim::Eq, *left, *right, location, xx),
             BinaryOp::Ne => extend_binary_op(KPrim::Ne, *left, *right, location, xx),
             BinaryOp::Lt => extend_binary_op(KPrim::Lt, *left, *right, location, xx),

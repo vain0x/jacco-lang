@@ -21,5 +21,15 @@ int main() {
     int gt_10 = gt_12;
     int ge_13 = 1 >= 2;
     int ge_11 = ge_13;
+    int bitand_14 = 1 & 2;
+    int bit_and_12 = bitand_14;
+    int bitor_15 = 1 | 2;
+    int bit_or_13 = bitor_15;
+    int bitxor_16 = 1 ^ 2;
+    int bit_xor_14 = bitxor_16;
+    int leftshift_17 = 1 << 2;
+    int left_shift_15 = leftshift_17;
+    int rightshift_18 = 1 >> 2;
+    int right_shift_16 = rightshift_18;
     return 0;
 }

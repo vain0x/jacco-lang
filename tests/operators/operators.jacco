@@ -10,5 +10,10 @@ pub fn main() -> i32 {
     let le = 1 <= 2;
     let gt = 1 > 2;
     let ge = 1 >= 2;
+    let bit_and = 1 & 2;
+    let bit_or = 1 | 2;
+    let bit_xor = 1 ^ 2;
+    let left_shift = 1 << 2;
+    let right_shift = 1 >> 2;
     0
 }
