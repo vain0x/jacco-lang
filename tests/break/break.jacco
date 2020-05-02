@@ -1,0 +1,15 @@
+fn break_from_while() {
+    while 1 {
+        break;
+    }
+}
+
+fn break_from_loop() {
+    loop {
+        break;
+    }
+}
+
+pub fn main() -> i32 {
+    0
+}

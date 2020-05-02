@@ -119,7 +119,7 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
-        PStmt::ExternFn { .. } => {}
+        PStmt::Break { .. } | PStmt::Continue { .. } | PStmt::ExternFn { .. } => {}
     }
 }
 

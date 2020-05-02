@@ -9,6 +9,20 @@ impl TokenKind {
     }
 }
 
+fn parse_break_stmt(px: &mut Px) -> PStmt {
+    let keyword = px.expect(TokenKind::Break);
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PStmt::Break { keyword, semi_opt }
+}
+
+fn parse_continue_stmt(px: &mut Px) -> PStmt {
+    let keyword = px.expect(TokenKind::Continue);
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PStmt::Continue { keyword, semi_opt }
+}
+
 fn parse_if_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::If);
 
@@ -208,6 +222,12 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PStmt>, Opti
             TokenKind::Semi => {
                 // Empty statement.
                 px.bump();
+            }
+            TokenKind::Break => {
+                stmts.push(parse_break_stmt(px));
+            }
+            TokenKind::Continue => {
+                stmts.push(parse_continue_stmt(px));
             }
             TokenKind::If => {
                 stmts.push(parse_if_stmt(px));

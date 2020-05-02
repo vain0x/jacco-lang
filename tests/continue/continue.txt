@@ -1,0 +1,51 @@
+int main() {
+    goto continue__4;
+    //
+continue__4:;
+    if (0) {
+        goto continue__4;
+    } else {
+        goto next_5;
+    }
+    //
+next_5:;
+    goto return_2;
+}
+
+int main() {
+    goto continue__8;
+    //
+continue__8:;
+    goto continue__8;
+    //
+next_9:;
+    goto return_7;
+}
+
+int main() {
+    goto continue__13;
+    //
+continue__16:;
+    if (0) {
+        goto continue__16;
+    } else {
+        goto next_17;
+    }
+    //
+next_17:;
+    goto continue__13;
+    //
+continue__13:;
+    if (0) {
+        goto continue__16;
+    } else {
+        goto next_14;
+    }
+    //
+next_14:;
+    goto return_11;
+}
+
+int main() {
+    return 0;
+}

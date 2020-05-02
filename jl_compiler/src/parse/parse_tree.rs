@@ -58,6 +58,14 @@ pub(crate) enum PStmt {
         semi_opt: Option<TokenData>,
     },
     Block(PBlock),
+    Break {
+        keyword: TokenData,
+        semi_opt: Option<TokenData>,
+    },
+    Continue {
+        keyword: TokenData,
+        semi_opt: Option<TokenData>,
+    },
     If {
         keyword: TokenData,
         cond_opt: Option<PTerm>,

@@ -1,5 +1,38 @@
+use self::flow::Flow;
 use super::*;
 use crate::parse::*;
+
+mod flow {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(crate) enum JumpTarget {
+        /// break or continue
+        Loop,
+        /// return
+        Fn,
+    }
+
+    pub(crate) type Flow = Result<(), JumpTarget>;
+
+    pub(crate) const SEQUENTIAL: Flow = Ok(());
+
+    pub(crate) const LOOP: Flow = Err(JumpTarget::Loop);
+
+    pub(crate) const FN: Flow = Err(JumpTarget::Fn);
+
+    pub(crate) fn end_loop(flow: &mut Flow) {
+        if *flow == LOOP {
+            *flow = SEQUENTIAL;
+        }
+    }
+
+    pub(crate) fn join(first: Flow, second: Flow) -> Flow {
+        match (first, second) {
+            (SEQUENTIAL, _) | (_, SEQUENTIAL) => SEQUENTIAL,
+            (LOOP, _) | (_, LOOP) => LOOP,
+            (FN, FN) => FN,
+        }
+    }
+}
 
 #[derive(Debug)]
 enum XCommand {
@@ -9,6 +42,7 @@ enum XCommand {
         arg_count: usize,
         cont_count: usize,
         result: KSymbol,
+        use_result: bool,
         location: Location,
     },
     Jump {
@@ -21,10 +55,16 @@ enum XCommand {
     },
 }
 
+struct LoopConstruction {
+    break_label: KSymbol,
+    continue_label: KSymbol,
+}
+
 #[derive(Default)]
 struct Xx {
     last_id: usize,
     current: Vec<XCommand>,
+    parent_loop: Option<LoopConstruction>,
     extern_fns: Vec<KExternFn>,
     fns: Vec<KFn>,
 }
@@ -66,6 +106,7 @@ fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, 
         arg_count: 2,
         cont_count: 1,
         result,
+        use_result: true,
         location,
     });
 }
@@ -107,14 +148,23 @@ fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
 
     let commands = {
         let previous = std::mem::take(&mut xx.current);
+        let parent_loop = std::mem::take(&mut xx.parent_loop);
 
-        extend_block(block_opt.unwrap(), xx);
+        let arg_count = if block_opt.as_ref().unwrap().last_opt.is_some() {
+            1
+        } else {
+            0
+        };
 
-        xx.push(XCommand::Jump {
-            label: return_label.clone(),
-            arg_count: 1,
-        });
+        let flow = extend_block(block_opt.unwrap(), xx);
+        if flow != flow::FN {
+            xx.push(XCommand::Jump {
+                label: return_label.clone(),
+                arg_count,
+            });
+        }
 
+        xx.parent_loop = parent_loop;
         std::mem::replace(&mut xx.current, previous)
     };
 
@@ -166,21 +216,46 @@ fn extend_extern_fn_stmt(
     xx.extern_fns.push(extern_fn);
 }
 
-fn extend_block(block: PBlock, xx: &mut Xx) {
-    extend_stmts(block.body, xx);
+fn extend_block(block: PBlock, xx: &mut Xx) -> Flow {
+    for stmt in block.body {
+        extend_stmt(stmt, xx)?;
+    }
 
     if let Some(last) = block.last_opt {
         extend_expr(last, xx);
     }
+    flow::SEQUENTIAL
 }
 
-fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
+fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
     match stmt {
-        PStmt::Expr { .. } => {
-            //
+        PStmt::Expr { .. } => flow::SEQUENTIAL,
+        PStmt::Block(block) => extend_block(block, xx),
+        PStmt::Break { .. } => {
+            let dest = xx
+                .parent_loop
+                .as_ref()
+                .expect("out of loop")
+                .break_label
+                .clone();
+            xx.push(XCommand::Jump {
+                label: dest,
+                arg_count: 0,
+            });
+            flow::LOOP
         }
-        PStmt::Block(block) => {
-            extend_block(block, xx);
+        PStmt::Continue { .. } => {
+            let dest = xx
+                .parent_loop
+                .as_ref()
+                .expect("out of loop")
+                .continue_label
+                .clone();
+            xx.push(XCommand::Jump {
+                label: dest,
+                arg_count: 0,
+            });
+            flow::LOOP
         }
         PStmt::If {
             keyword,
@@ -200,33 +275,39 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 1,
                 cont_count: 2,
                 result,
+                use_result: true,
                 location,
             });
 
             // body:
-            let body = body_opt.unwrap();
-            extend_stmts(body.body, xx);
-
-            xx.push(XCommand::Jump {
-                label: next_label.clone(),
-                arg_count: 0,
-            });
-
-            // alt:
-            if let Some(alt) = alt_opt {
-                extend_stmt(*alt, xx);
+            let body_flow = extend_block(body_opt.unwrap(), xx);
+            if body_flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Jump {
+                    label: next_label.clone(),
+                    arg_count: 0,
+                });
             }
 
-            xx.push(XCommand::Jump {
-                label: next_label.clone(),
-                arg_count: 0,
-            });
+            // alt:
+            let mut alt_flow = flow::SEQUENTIAL;
+            if let Some(alt) = alt_opt {
+                alt_flow = extend_stmt(*alt, xx);
+            }
+
+            if alt_flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Jump {
+                    label: next_label.clone(),
+                    arg_count: 0,
+                });
+            }
 
             // next:
             xx.push(XCommand::Label {
                 label: next_label,
                 arg_count: 0,
             });
+
+            flow::join(body_flow, alt_flow)
         }
         PStmt::While {
             keyword,
@@ -255,18 +336,26 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 1,
                 cont_count: 2,
                 result,
+                use_result: false,
                 location,
             });
 
-            // FIXME: in body, break/continue jump to next_label/continue_label
-            // body:
-            let body = body_opt.unwrap();
-            extend_stmts(body.body, xx);
+            let parent_loop = std::mem::replace(
+                &mut xx.parent_loop,
+                Some(LoopConstruction {
+                    break_label: next_label.clone(),
+                    continue_label: continue_label.clone(),
+                }),
+            );
 
-            xx.push(XCommand::Jump {
-                label: continue_label,
-                arg_count: 0,
-            });
+            // body:
+            let mut flow = extend_block(body_opt.unwrap(), xx);
+            if flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Jump {
+                    label: continue_label.clone(),
+                    arg_count: 0,
+                });
+            }
 
             // alt:
             xx.push(XCommand::Jump {
@@ -274,15 +363,21 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 0,
             });
 
+            xx.parent_loop = parent_loop;
+
             // next:
             xx.push(XCommand::Label {
                 label: next_label,
                 arg_count: 0,
             });
+
+            flow::end_loop(&mut flow);
+            flow
         }
         PStmt::Loop { keyword, body_opt } => {
             let location = keyword.into_location();
             let continue_label = xx.fresh_symbol("continue_", location.clone());
+            let next_label = xx.fresh_symbol("next", location.clone());
 
             xx.push(XCommand::Jump {
                 label: continue_label.clone(),
@@ -294,18 +389,33 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 0,
             });
 
-            // FIXME: in body, break/continue jump to next_label/continue_label
-            // body:
-            let body = body_opt.unwrap();
-            extend_stmts(body.body, xx);
+            let parent_loop = std::mem::replace(
+                &mut xx.parent_loop,
+                Some(LoopConstruction {
+                    break_label: next_label.clone(),
+                    continue_label: continue_label.clone(),
+                }),
+            );
 
-            xx.push(XCommand::Jump {
-                label: continue_label,
+            // body:
+            let mut flow = extend_block(body_opt.unwrap(), xx);
+            if flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Jump {
+                    label: continue_label.clone(),
+                    arg_count: 0,
+                });
+            }
+
+            xx.parent_loop = parent_loop;
+
+            // next:
+            xx.push(XCommand::Label {
+                label: next_label,
                 arg_count: 0,
             });
 
-            // break がないので、残りの文には到達しない。
-            return;
+            flow::end_loop(&mut flow);
+            flow
         }
         PStmt::Let {
             keyword,
@@ -322,29 +432,33 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) {
                 arg_count: 1,
                 cont_count: 1,
                 result,
+                use_result: false,
                 location,
             });
+
+            flow::SEQUENTIAL
         }
         PStmt::Fn { keyword, block_opt } => {
             extend_fn_stmt(block_opt, keyword.into_location(), xx);
+            flow::SEQUENTIAL
         }
         PStmt::ExternFn {
             name_opt,
             param_list_opt,
             result_opt,
             ..
-        } => extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx),
-    }
-}
-
-fn extend_stmts(stmts: Vec<PStmt>, xx: &mut Xx) {
-    for stmt in stmts {
-        extend_stmt(stmt, xx);
+        } => {
+            extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx);
+            flow::SEQUENTIAL
+        }
     }
 }
 
 fn extend_root(root: PRoot, xx: &mut Xx) {
-    extend_stmts(root.body, xx);
+    for stmt in root.body {
+        let flow = extend_stmt(stmt, xx);
+        debug_assert_eq!(flow, flow::SEQUENTIAL);
+    }
 }
 
 #[derive(Default)]
@@ -365,14 +479,14 @@ impl Gx {
     fn pop_term(&mut self) -> KTerm {
         match self.stack.pop() {
             Some(KElement::Term(term)) => term,
-            _ => unreachable!(),
+            top => unreachable!("{:?}", top),
         }
     }
 
     fn pop_node(&mut self) -> KNode {
         match self.stack.pop() {
             Some(KElement::Node(node)) => node,
-            _ => unreachable!(),
+            top => unreachable!("{:?}", top),
         }
     }
 }
@@ -398,6 +512,7 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 arg_count,
                 cont_count,
                 result,
+                use_result,
                 location,
             } => {
                 let mut args = vec![];
@@ -407,7 +522,9 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 args.reverse();
 
                 let result = result.with_location(location);
-                gx.push_term(KTerm::Name(result.clone()));
+                if use_result {
+                    gx.push_term(KTerm::Name(result.clone()));
+                }
 
                 let mut conts = vec![];
                 for _ in 0..cont_count {
@@ -433,7 +550,6 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                     body,
                     labels: vec![],
                 });
-                return;
             }
         }
     }
