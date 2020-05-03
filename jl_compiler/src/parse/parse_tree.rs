@@ -14,6 +14,10 @@ pub(crate) enum PTerm {
     Int(TokenData),
     Str(TokenData),
     Name(PName),
+    Call {
+        callee: Box<PTerm>,
+        arg_list: PArgList,
+    },
     BinaryOp {
         op: BinaryOp,
         left: Box<PTerm>,
@@ -41,6 +45,19 @@ pub(crate) struct PParamList {
 pub(crate) struct PResult {
     pub(crate) arrow: TokenData,
     pub(crate) ty_opt: Option<PName>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PArg {
+    pub(crate) term: PTerm,
+    pub(crate) comma_opt: Option<TokenData>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PArgList {
+    pub(crate) left: TokenData,
+    pub(crate) right_opt: Option<TokenData>,
+    pub(crate) args: Vec<PArg>,
 }
 
 #[derive(Clone, Debug)]

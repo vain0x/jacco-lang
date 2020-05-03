@@ -67,6 +67,26 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ref mut results,
             ref mut conts,
         } => match prim {
+            KPrim::CallDirect => match (results.as_mut_slice(), conts.as_mut_slice()) {
+                ([result], [cont]) => {
+                    let call_expr = {
+                        let cal = Box::new(gen_term(args.remove(0), cx));
+                        let args = args.drain(..).map(|arg| gen_term(arg, cx)).collect();
+                        CExpr::Call { cal, args }
+                    };
+
+                    let let_stmt = CStmt::VarDecl {
+                        name: mem::take(result).unique_name(),
+                        ty: CTy::Int,
+                        init_opt: Some(call_expr),
+                    };
+
+                    stmts.push(let_stmt);
+
+                    gen_node(take_node(cont), stmts, cx);
+                }
+                _ => unimplemented!(),
+            },
             KPrim::Let => match (
                 args.as_mut_slice(),
                 results.as_mut_slice(),

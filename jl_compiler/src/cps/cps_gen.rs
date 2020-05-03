@@ -116,9 +116,30 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
         PTerm::Int(token) => {
             xx.push_term(KTerm::Int(token));
         }
+        PTerm::Str(..) => unimplemented!(),
         PTerm::Name(name) => {
             let symbol = xx.name_to_symbol(name);
             xx.push_term(KTerm::Name(symbol));
+        }
+        PTerm::Call { callee, arg_list } => {
+            let location = arg_list.left.into_location();
+            let arg_count = arg_list.args.len() + 1;
+            let result = xx.fresh_symbol("result", location.clone());
+
+            extend_expr(*callee, xx);
+
+            for arg in arg_list.args {
+                extend_expr(arg.term, xx);
+            }
+
+            xx.push(XCommand::Prim {
+                prim: KPrim::CallDirect,
+                arg_count,
+                cont_count: 1,
+                result: result.clone(),
+                use_result: true,
+                location,
+            });
         }
         PTerm::BinaryOp {
             op,
@@ -145,7 +166,6 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             BinaryOp::Gt => extend_binary_op(KPrim::Gt, *left, *right, location, xx),
             BinaryOp::Ge => extend_binary_op(KPrim::Ge, *left, *right, location, xx),
         },
-        _ => unimplemented!(),
     }
 }
 

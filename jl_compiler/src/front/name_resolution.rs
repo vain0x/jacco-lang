@@ -28,6 +28,12 @@ fn resolve_expr(expr: &mut PTerm, nx: &mut Nx) {
                 eprintln!("undefined {:?}", name);
             }
         },
+        PTerm::Call { callee, arg_list } => {
+            resolve_expr(callee, nx);
+            for arg in &mut arg_list.args {
+                resolve_expr(&mut arg.term, nx);
+            }
+        }
         PTerm::BinaryOp { left, right, .. } => {
             resolve_expr(left, nx);
             resolve_expr(right, nx);

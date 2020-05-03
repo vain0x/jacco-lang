@@ -29,6 +29,7 @@ f while
 f loop
 f break
 f continue
+f call_direct
 
 # 差分の量を表示する。
 git diff --stat -- 'tests/*/*.txt'

@@ -51,10 +51,63 @@ fn parse_atom(px: &mut Px) -> PTerm {
     }
 }
 
+fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
+    loop {
+        match px.next() {
+            TokenKind::Eof
+            | TokenKind::RightParen
+            | TokenKind::RightBracket
+            | TokenKind::RightBrace => break,
+            token if token.is_term_first() => {
+                let term = parse_term(px);
+                let comma_opt = px.eat(TokenKind::Comma);
+                let can_continue = comma_opt.is_some();
+
+                args.push(PArg { term, comma_opt });
+
+                if !can_continue {
+                    break;
+                }
+            }
+            _ => {
+                // error
+                px.bump();
+            }
+        }
+    }
+}
+
+fn parse_suffix(px: &mut Px) -> PTerm {
+    let mut left = parse_atom(px);
+
+    loop {
+        match px.next() {
+            TokenKind::LeftParen => {
+                let left_paren = px.bump();
+
+                let mut args = vec![];
+                parse_args(&mut args, px);
+
+                let right_opt = px.eat(TokenKind::RightParen);
+                let arg_list = PArgList {
+                    left: left_paren,
+                    args,
+                    right_opt,
+                };
+                left = PTerm::Call {
+                    callee: Box::new(left),
+                    arg_list,
+                };
+            }
+            _ => return left,
+        }
+    }
+}
+
 fn parse_mul(px: &mut Px) -> PTerm {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_atom(px);
+        let right = parse_suffix(px);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
@@ -63,7 +116,7 @@ fn parse_mul(px: &mut Px) -> PTerm {
         }
     };
 
-    let mut left = parse_atom(px);
+    let mut left = parse_suffix(px);
 
     loop {
         match px.next() {
