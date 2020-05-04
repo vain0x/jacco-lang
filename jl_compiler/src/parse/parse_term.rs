@@ -42,6 +42,14 @@ pub(crate) fn parse_block(px: &mut Px) -> PBlock {
     }
 }
 
+pub(crate) fn eat_block(px: &mut Px) -> Option<PBlock> {
+    if px.next() == TokenKind::LeftBrace {
+        Some(parse_block(px))
+    } else {
+        None
+    }
+}
+
 fn parse_atom(px: &mut Px) -> PTerm {
     match px.next() {
         TokenKind::Int => PTerm::Int(px.bump()),
@@ -235,4 +243,12 @@ pub(crate) fn parse_term(px: &mut Px) -> PTerm {
     assert!(px.next().is_term_first());
 
     parse_assign(px)
+}
+
+pub(crate) fn eat_term(px: &mut Px) -> Option<PTerm> {
+    if px.next().is_term_first() {
+        Some(parse_term(px))
+    } else {
+        None
+    }
 }

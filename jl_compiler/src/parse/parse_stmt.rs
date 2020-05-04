@@ -26,17 +26,9 @@ fn parse_continue_stmt(px: &mut Px) -> PStmt {
 fn parse_if_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::If);
 
-    let cond_opt = if px.next().is_term_first() {
-        Some(parse_term(px))
-    } else {
-        None
-    };
+    let cond_opt = eat_term(px);
 
-    let body_opt = if px.next() == TokenKind::LeftBrace {
-        Some(parse_block(px))
-    } else {
-        None
-    };
+    let body_opt = eat_block(px);
 
     let else_opt = px.eat(TokenKind::Else);
 
@@ -65,17 +57,9 @@ fn parse_if_stmt(px: &mut Px) -> PStmt {
 fn parse_while_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::While);
 
-    let cond_opt = if px.next().is_term_first() {
-        Some(parse_term(px))
-    } else {
-        None
-    };
+    let cond_opt = eat_term(px);
 
-    let body_opt = if px.next() == TokenKind::LeftBrace {
-        Some(parse_block(px))
-    } else {
-        None
-    };
+    let body_opt = eat_block(px);
 
     PStmt::While {
         keyword,
@@ -87,11 +71,7 @@ fn parse_while_stmt(px: &mut Px) -> PStmt {
 fn parse_loop_stmt(px: &mut Px) -> PStmt {
     let keyword = px.expect(TokenKind::Loop);
 
-    let body_opt = if px.next() == TokenKind::LeftBrace {
-        Some(parse_block(px))
-    } else {
-        None
-    };
+    let body_opt = eat_block(px);
 
     PStmt::Loop { keyword, body_opt }
 }
@@ -104,12 +84,7 @@ fn parse_let_stmt(px: &mut Px) -> PStmt {
     let init_opt = if px.next() == TokenKind::Equal {
         px.bump();
 
-        if px.next().is_term_first() {
-            Some(parse_term(px))
-        } else {
-            // error
-            None
-        }
+        eat_term(px)
     } else {
         None
     };
@@ -134,11 +109,7 @@ fn parse_fn_stmt(px: &mut Px) -> PStmt {
         px.eat(TokenKind::Ident);
     }
 
-    let block_opt = if px.next() == TokenKind::LeftBrace {
-        Some(parse_block(px))
-    } else {
-        None
-    };
+    let block_opt = eat_block(px);
 
     PStmt::Fn { keyword, block_opt }
 }
