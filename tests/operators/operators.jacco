@@ -15,5 +15,7 @@ pub fn main() -> i32 {
     let bit_xor = 1 ^ 2;
     let left_shift = 1 << 2;
     let right_shift = 1 >> 2;
+    let log_and = 2 && 3;
+    let log_or = 2 || 3;
     0
 }

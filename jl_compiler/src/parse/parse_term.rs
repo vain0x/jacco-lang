@@ -200,7 +200,7 @@ fn parse_cmp(px: &mut Px) -> PTerm {
     }
 }
 
-fn parse_assign(px: &mut Px) -> PTerm {
+fn parse_log(px: &mut Px) -> PTerm {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right = parse_cmp(px);
@@ -212,7 +212,30 @@ fn parse_assign(px: &mut Px) -> PTerm {
         }
     };
 
-    let left = parse_cmp(px);
+    let mut left = parse_cmp(px);
+
+    loop {
+        match px.next() {
+            TokenKind::AndAnd => left = parse_right(BinaryOp::LogAnd, left, px),
+            TokenKind::PipePipe => left = parse_right(BinaryOp::LogOr, left, px),
+            _ => return left,
+        }
+    }
+}
+
+fn parse_assign(px: &mut Px) -> PTerm {
+    let parse_right = |op, left, px: &mut Px| {
+        let op_token = px.bump();
+        let right = parse_log(px);
+        PTerm::BinaryOp {
+            op,
+            left: Box::new(left),
+            right: Box::new(right),
+            location: op_token.into_location(),
+        }
+    };
+
+    let left = parse_log(px);
 
     match px.next() {
         TokenKind::EqualEqual => parse_right(BinaryOp::Eq, left, px),

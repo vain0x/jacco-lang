@@ -16,4 +16,6 @@ pub(crate) enum BinaryOp {
     Le,
     Gt,
     Ge,
+    LogAnd,
+    LogOr,
 }

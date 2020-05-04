@@ -1,6 +1,7 @@
 use self::flow::Flow;
 use super::*;
 use crate::parse::*;
+use crate::token::TokenKind;
 
 mod flow {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -111,6 +112,54 @@ fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, 
     });
 }
 
+fn extend_if(
+    cond: PTerm,
+    gen_body: impl FnOnce(&mut Xx) -> Flow,
+    gen_alt: impl FnOnce(&mut Xx) -> Flow,
+    location: Location,
+    xx: &mut Xx,
+) -> Flow {
+    let result = xx.fresh_symbol("cond", location.clone());
+    let next_label = xx.fresh_symbol("next", location.clone());
+
+    extend_expr(cond, xx);
+
+    xx.push(XCommand::Prim {
+        prim: KPrim::If,
+        arg_count: 1,
+        cont_count: 2,
+        result,
+        use_result: true,
+        location,
+    });
+
+    // body:
+    let body_flow = gen_body(xx);
+    if body_flow == flow::SEQUENTIAL {
+        xx.push(XCommand::Jump {
+            label: next_label.clone(),
+            arg_count: 0,
+        });
+    }
+
+    // alt:
+    let alt_flow = gen_alt(xx);
+    if alt_flow == flow::SEQUENTIAL {
+        xx.push(XCommand::Jump {
+            label: next_label.clone(),
+            arg_count: 0,
+        });
+    }
+
+    // next:
+    xx.push(XCommand::Label {
+        label: next_label,
+        arg_count: 0,
+    });
+
+    flow::join(body_flow, alt_flow)
+}
+
 fn extend_expr(term: PTerm, xx: &mut Xx) {
     match term {
         PTerm::Int(token) => {
@@ -165,6 +214,52 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             BinaryOp::Le => extend_binary_op(KPrim::Le, *left, *right, location, xx),
             BinaryOp::Gt => extend_binary_op(KPrim::Gt, *left, *right, location, xx),
             BinaryOp::Ge => extend_binary_op(KPrim::Ge, *left, *right, location, xx),
+            BinaryOp::LogAnd => {
+                extend_if(
+                    *left,
+                    |xx| {
+                        extend_expr(*right, xx);
+                        flow::SEQUENTIAL
+                    },
+                    {
+                        let location = location.clone();
+                        move |xx| {
+                            xx.push_term(KTerm::Int(TokenData::new(
+                                TokenKind::Int,
+                                "0".to_string(),
+                                location,
+                            )));
+                            flow::SEQUENTIAL
+                        }
+                    },
+                    location,
+                    xx,
+                )
+                .ok();
+            }
+            BinaryOp::LogOr => {
+                extend_if(
+                    *left,
+                    {
+                        let location = location.clone();
+                        move |xx| {
+                            xx.push_term(KTerm::Int(TokenData::new(
+                                TokenKind::Int,
+                                "1".to_string(),
+                                location,
+                            )));
+                            flow::SEQUENTIAL
+                        }
+                    },
+                    |xx| {
+                        extend_expr(*right, xx);
+                        flow::SEQUENTIAL
+                    },
+                    location,
+                    xx,
+                )
+                .ok();
+            }
         },
     }
 }
@@ -292,49 +387,19 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             ..
         } => {
             let location = keyword.into_location();
-            let result = xx.fresh_symbol("cond", location.clone());
-            let next_label = xx.fresh_symbol("next", location.clone());
-
-            extend_expr(cond_opt.unwrap(), xx);
-
-            xx.push(XCommand::Prim {
-                prim: KPrim::If,
-                arg_count: 1,
-                cont_count: 2,
-                result,
-                use_result: true,
+            extend_if(
+                cond_opt.unwrap(),
+                |xx| extend_block(body_opt.unwrap(), xx),
+                |xx| {
+                    let mut alt_flow = flow::SEQUENTIAL;
+                    if let Some(alt) = alt_opt {
+                        alt_flow = extend_stmt(*alt, xx);
+                    }
+                    alt_flow
+                },
                 location,
-            });
-
-            // body:
-            let body_flow = extend_block(body_opt.unwrap(), xx);
-            if body_flow == flow::SEQUENTIAL {
-                xx.push(XCommand::Jump {
-                    label: next_label.clone(),
-                    arg_count: 0,
-                });
-            }
-
-            // alt:
-            let mut alt_flow = flow::SEQUENTIAL;
-            if let Some(alt) = alt_opt {
-                alt_flow = extend_stmt(*alt, xx);
-            }
-
-            if alt_flow == flow::SEQUENTIAL {
-                xx.push(XCommand::Jump {
-                    label: next_label.clone(),
-                    arg_count: 0,
-                });
-            }
-
-            // next:
-            xx.push(XCommand::Label {
-                label: next_label,
-                arg_count: 0,
-            });
-
-            flow::join(body_flow, alt_flow)
+                xx,
+            )
         }
         PStmt::While {
             keyword,

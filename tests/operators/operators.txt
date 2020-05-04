@@ -31,5 +31,21 @@ int main() {
     int left_shift_15 = leftshift_17;
     int rightshift_18 = 1 >> 2;
     int right_shift_16 = rightshift_18;
+    if (2) {
+        goto next_20;
+    } else {
+        goto next_20;
+    }
+    //
+next_20:;
+    int log_and_17 = 0;
+    if (2) {
+        goto next_22;
+    } else {
+        goto next_22;
+    }
+    //
+next_22:;
+    int log_or_18 = 3;
     return 0;
 }
