@@ -20,14 +20,10 @@ pub(crate) enum CBinaryOp {
 pub(crate) enum CTy {
     #[allow(dead_code)]
     Void,
-    #[allow(dead_code)]
-    Bool,
     Int,
 }
 
 pub(crate) enum CExpr {
-    #[allow(dead_code)]
-    BoolLit(bool),
     IntLit(String),
     Name(String),
     #[allow(dead_code)]

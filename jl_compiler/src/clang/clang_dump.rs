@@ -32,15 +32,12 @@ fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
 fn write_ty(ty: &CTy, _indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match ty {
         CTy::Void => write!(out, "void"),
-        CTy::Bool => write!(out, "bool"),
         CTy::Int => write!(out, "int"),
     }
 }
 
 fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match expr {
-        CExpr::BoolLit(false) => write!(out, "false"),
-        CExpr::BoolLit(true) => write!(out, "true"),
         CExpr::IntLit(value) => write!(out, "{}", value),
         CExpr::Name(name) => write!(out, "{}", name),
         CExpr::Call { cal, args } => {
