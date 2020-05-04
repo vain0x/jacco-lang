@@ -6,6 +6,8 @@ mod parse;
 mod source;
 mod token;
 
+const NO_ID: usize = 0;
+
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     eprintln!("{:?}", source_path);
 

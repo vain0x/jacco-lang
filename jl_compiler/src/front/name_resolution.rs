@@ -4,10 +4,16 @@ use std::collections::HashMap;
 /// Naming context.
 #[derive(Default)]
 struct Nx {
+    last_id: PNameId,
     env: HashMap<String, PNameId>,
 }
 
 impl Nx {
+    fn fresh_id(&mut self) -> PNameId {
+        self.last_id += 1;
+        self.last_id
+    }
+
     fn enter_scope(&mut self, mut do_resolve: impl FnMut(&mut Nx)) {
         let outer_env = self.env.clone();
 
@@ -15,6 +21,11 @@ impl Nx {
 
         self.env = outer_env;
     }
+}
+
+fn resolve_pat(name: &mut PName, nx: &mut Nx) {
+    name.name_id = nx.fresh_id();
+    nx.env.insert(name.text.clone(), name.name_id);
 }
 
 fn resolve_expr(expr: &mut PTerm, nx: &mut Nx) {
@@ -109,7 +120,7 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
             }
 
             if let Some(name) = name_opt {
-                nx.env.insert(name.text.clone(), name.name_id);
+                resolve_pat(name, nx);
             }
         }
         PStmt::Fn { block_opt, .. } => {
@@ -125,7 +136,17 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
-        PStmt::Break { .. } | PStmt::Continue { .. } | PStmt::ExternFn { .. } => {}
+        PStmt::ExternFn { param_list_opt, .. } => {
+            if let Some(params) = param_list_opt
+                .as_mut()
+                .map(|param_list| &mut param_list.params)
+            {
+                for param in params {
+                    resolve_pat(&mut param.name, nx);
+                }
+            }
+        }
+        PStmt::Break { .. } | PStmt::Continue { .. } => {}
     }
 }
 

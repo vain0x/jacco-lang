@@ -1,7 +1,7 @@
 int main() {
     int mul_4 = 1 * 2;
     int add_5 = 3 + 4;
-    int result_6 = g_2();
-    int result_3 = f_1(mul_4, add_5, result_6);
+    int result_6 = g_0();
+    int result_3 = f_0(mul_4, add_5, result_6);
     return result_3;
 }

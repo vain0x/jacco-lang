@@ -1,4 +1,5 @@
 use super::*;
+use crate::NO_ID;
 
 impl TokenKind {
     pub(crate) fn is_term_first(self) -> bool {
@@ -13,7 +14,7 @@ pub(crate) fn parse_name(px: &mut Px) -> PName {
     let (_, text, location) = px.expect(TokenKind::Ident).decompose();
 
     PName {
-        name_id: px.fresh_id(),
+        name_id: NO_ID,
         text,
         location,
     }
