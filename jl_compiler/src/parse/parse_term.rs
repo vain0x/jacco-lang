@@ -193,8 +193,12 @@ fn parse_cmp(px: &mut Px) -> PTerm {
 
     loop {
         match px.next() {
-            TokenKind::Plus => left = parse_right(BinaryOp::Add, left, px),
-            TokenKind::Minus => left = parse_right(BinaryOp::Sub, left, px),
+            TokenKind::EqualEqual => left = parse_right(BinaryOp::Eq, left, px),
+            TokenKind::BangEqual => left = parse_right(BinaryOp::Ne, left, px),
+            TokenKind::LeftAngle => left = parse_right(BinaryOp::Lt, left, px),
+            TokenKind::LeftAngleEqual => left = parse_right(BinaryOp::Le, left, px),
+            TokenKind::RightAngle => left = parse_right(BinaryOp::Gt, left, px),
+            TokenKind::RightAngleEqual => left = parse_right(BinaryOp::Ge, left, px),
             _ => return left,
         }
     }
@@ -224,28 +228,7 @@ fn parse_log(px: &mut Px) -> PTerm {
 }
 
 fn parse_assign(px: &mut Px) -> PTerm {
-    let parse_right = |op, left, px: &mut Px| {
-        let op_token = px.bump();
-        let right = parse_log(px);
-        PTerm::BinaryOp {
-            op,
-            left: Box::new(left),
-            right: Box::new(right),
-            location: op_token.into_location(),
-        }
-    };
-
-    let left = parse_log(px);
-
-    match px.next() {
-        TokenKind::EqualEqual => parse_right(BinaryOp::Eq, left, px),
-        TokenKind::BangEqual => parse_right(BinaryOp::Ne, left, px),
-        TokenKind::LeftAngle => parse_right(BinaryOp::Lt, left, px),
-        TokenKind::LeftAngleEqual => parse_right(BinaryOp::Le, left, px),
-        TokenKind::RightAngle => parse_right(BinaryOp::Gt, left, px),
-        TokenKind::RightAngleEqual => parse_right(BinaryOp::Ge, left, px),
-        _ => left,
-    }
+    parse_log(px)
 }
 
 pub(crate) fn parse_term(px: &mut Px) -> PTerm {
