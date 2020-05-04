@@ -28,8 +28,8 @@ fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     nx.env.insert(name.text.clone(), name.name_id);
 }
 
-fn resolve_expr(expr: &mut PTerm, nx: &mut Nx) {
-    match expr {
+fn resolve_term_expr(term: &mut PTerm, nx: &mut Nx) {
+    match term {
         PTerm::Int(_) | PTerm::Str(_) => {}
         PTerm::Name(name) => match nx.env.get(&name.text) {
             Some(name_id) => {
@@ -40,44 +40,39 @@ fn resolve_expr(expr: &mut PTerm, nx: &mut Nx) {
             }
         },
         PTerm::Call { callee, arg_list } => {
-            resolve_expr(callee, nx);
+            resolve_term_expr(callee, nx);
             for arg in &mut arg_list.args {
-                resolve_expr(&mut arg.term, nx);
+                resolve_expr(&mut arg.expr, nx);
             }
         }
-        PTerm::BinaryOp { left, right, .. } => {
-            resolve_expr(left, nx);
-            resolve_expr(right, nx);
+        PTerm::BinaryOp {
+            left, right_opt, ..
+        } => {
+            resolve_term_expr(left, nx);
+
+            if let Some(right) = right_opt {
+                resolve_term_expr(right, nx);
+            }
         }
     }
 }
 
-fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
-    for stmt in &mut block.body {
-        resolve_stmt(stmt, nx);
-    }
-
-    if let Some(last) = &mut block.last_opt {
-        resolve_expr(last, nx);
-    }
-}
-
-fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
-    match stmt {
-        PStmt::Expr { term, .. } => {
-            resolve_expr(term, nx);
+fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
+    match expr {
+        PExpr::Term { term, .. } => {
+            resolve_term_expr(term, nx);
         }
-        PStmt::Block(block) => {
+        PExpr::Block(block) => {
             resolve_block(block, nx);
         }
-        PStmt::If {
+        PExpr::If {
             cond_opt,
             body_opt,
             alt_opt,
             ..
         } => {
             if let Some(cond) = cond_opt {
-                resolve_expr(cond, nx);
+                resolve_term_expr(cond, nx);
             }
 
             if let Some(block) = body_opt {
@@ -88,15 +83,15 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
 
             if let Some(alt) = alt_opt {
                 nx.enter_scope(|nx| {
-                    resolve_stmt(alt, nx);
+                    resolve_expr(alt, nx);
                 });
             }
         }
-        PStmt::While {
+        PExpr::While {
             cond_opt, body_opt, ..
         } => {
             if let Some(cond) = cond_opt {
-                resolve_expr(cond, nx);
+                resolve_term_expr(cond, nx);
             }
 
             if let Some(block) = body_opt {
@@ -105,14 +100,23 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
-        PStmt::Loop { body_opt, .. } => {
+        PExpr::Loop { body_opt, .. } => {
             if let Some(block) = body_opt {
                 nx.enter_scope(|nx| {
                     resolve_block(block, nx);
                 });
             }
         }
-        PStmt::Let {
+        PExpr::Break { .. } | PExpr::Continue { .. } => {}
+    }
+}
+
+fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
+    match decl {
+        PDecl::Expr(expr) => {
+            resolve_expr(expr, nx);
+        }
+        PDecl::Let {
             name_opt, init_opt, ..
         } => {
             if let Some(init) = init_opt {
@@ -123,11 +127,11 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 resolve_pat(name, nx);
             }
         }
-        PStmt::Fn { block_opt, .. } => {
+        PDecl::Fn { block_opt, .. } => {
             if let Some(block) = block_opt {
                 nx.enter_scope(|nx| {
-                    for stmt in &mut block.body {
-                        resolve_stmt(stmt, nx);
+                    for decl in &mut block.decls {
+                        resolve_decl(decl, nx);
                     }
 
                     if let Some(last) = &mut block.last_opt {
@@ -136,7 +140,7 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 });
             }
         }
-        PStmt::ExternFn { param_list_opt, .. } => {
+        PDecl::ExternFn { param_list_opt, .. } => {
             if let Some(params) = param_list_opt
                 .as_mut()
                 .map(|param_list| &mut param_list.params)
@@ -146,14 +150,23 @@ fn resolve_stmt(stmt: &mut PStmt, nx: &mut Nx) {
                 }
             }
         }
-        PStmt::Break { .. } | PStmt::Continue { .. } => {}
+    }
+}
+
+fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
+    for decl in &mut block.decls {
+        resolve_decl(decl, nx);
+    }
+
+    if let Some(last) = &mut block.last_opt {
+        resolve_expr(last, nx);
     }
 }
 
 pub(crate) fn resolve_name(p_root: &mut PRoot) {
     let mut nx = Nx::default();
 
-    for stmt in &mut p_root.body {
-        resolve_stmt(stmt, &mut nx);
+    for decl in &mut p_root.decls {
+        resolve_decl(decl, &mut nx);
     }
 }

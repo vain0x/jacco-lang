@@ -9,7 +9,7 @@ continue__4:;
     }
     //
 next_5:;
-    goto return_2;
+    return 0;
 }
 
 int main() {
@@ -19,7 +19,7 @@ continue__8:;
     goto continue__8;
     //
 next_9:;
-    goto return_7;
+    return 0;
 }
 
 int main() {
@@ -43,7 +43,7 @@ continue__13:;
     }
     //
 next_14:;
-    goto return_11;
+    return 0;
 }
 
 int main() {

@@ -21,7 +21,7 @@ pub(crate) enum PTerm {
     BinaryOp {
         op: BinaryOp,
         left: Box<PTerm>,
-        right: Box<PTerm>,
+        right_opt: Option<Box<PTerm>>,
         location: Location,
     },
 }
@@ -49,7 +49,7 @@ pub(crate) struct PResult {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PArg {
-    pub(crate) term: PTerm,
+    pub(crate) expr: PExpr,
     pub(crate) comma_opt: Option<TokenData>,
 }
 
@@ -64,13 +64,13 @@ pub(crate) struct PArgList {
 pub(crate) struct PBlock {
     pub(crate) left: TokenData,
     pub(crate) right_opt: Option<TokenData>,
-    pub(crate) body: Vec<PStmt>,
-    pub(crate) last_opt: Option<PTerm>,
+    pub(crate) decls: Vec<PDecl>,
+    pub(crate) last_opt: Option<Box<PExpr>>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum PStmt {
-    Expr {
+pub(crate) enum PExpr {
+    Term {
         term: PTerm,
         semi_opt: Option<TokenData>,
     },
@@ -88,7 +88,7 @@ pub(crate) enum PStmt {
         cond_opt: Option<PTerm>,
         body_opt: Option<PBlock>,
         else_opt: Option<TokenData>,
-        alt_opt: Option<Box<PStmt>>,
+        alt_opt: Option<Box<PExpr>>,
     },
     While {
         keyword: TokenData,
@@ -99,10 +99,15 @@ pub(crate) enum PStmt {
         keyword: TokenData,
         body_opt: Option<PBlock>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum PDecl {
+    Expr(PExpr),
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,
-        init_opt: Option<PTerm>,
+        init_opt: Option<PExpr>,
     },
     Fn {
         keyword: TokenData,
@@ -120,6 +125,6 @@ pub(crate) enum PStmt {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PRoot {
-    pub(crate) body: Vec<PStmt>,
+    pub(crate) decls: Vec<PDecl>,
     pub(crate) eof: TokenData,
 }

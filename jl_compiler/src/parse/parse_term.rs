@@ -1,93 +1,28 @@
 use super::*;
 use crate::NO_ID;
 
-impl TokenKind {
-    pub(crate) fn is_term_first(self) -> bool {
-        match self {
-            TokenKind::Int | TokenKind::Float | TokenKind::Str | TokenKind::Ident => true,
-            _ => false,
-        }
-    }
-}
+pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
+    let (_, text, location) = px.eat(TokenKind::Ident)?.decompose();
 
-pub(crate) fn parse_name(px: &mut Px) -> PName {
-    let (_, text, location) = px.expect(TokenKind::Ident).decompose();
-
-    PName {
+    Some(PName {
         name_id: NO_ID,
         text,
         location,
-    }
+    })
 }
 
-pub(crate) fn eat_name(px: &mut Px) -> Option<PName> {
-    if px.next() == TokenKind::Ident {
-        Some(parse_name(px))
-    } else {
-        None
-    }
-}
-
-pub(crate) fn parse_block(px: &mut Px) -> PBlock {
-    let left = px.expect(TokenKind::LeftBrace);
-
-    let (body, last_opt) = parse_semi(Placement::Local, px);
-
-    let right_opt = px.eat(TokenKind::RightBrace);
-
-    PBlock {
-        left,
-        right_opt,
-        body,
-        last_opt,
-    }
-}
-
-pub(crate) fn eat_block(px: &mut Px) -> Option<PBlock> {
-    if px.next() == TokenKind::LeftBrace {
-        Some(parse_block(px))
-    } else {
-        None
-    }
-}
-
-fn parse_atom(px: &mut Px) -> PTerm {
-    match px.next() {
+fn parse_atom(px: &mut Px) -> Option<PTerm> {
+    let term = match px.next() {
         TokenKind::Int => PTerm::Int(px.bump()),
         TokenKind::Str => PTerm::Str(px.bump()),
-        TokenKind::Ident => PTerm::Name(parse_name(px)),
-        _ => unimplemented!(),
-    }
+        TokenKind::Ident => PTerm::Name(parse_name(px).unwrap()),
+        _ => return None,
+    };
+    Some(term)
 }
 
-fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
-    loop {
-        match px.next() {
-            TokenKind::Eof
-            | TokenKind::RightParen
-            | TokenKind::RightBracket
-            | TokenKind::RightBrace => break,
-            token if token.is_term_first() => {
-                let term = parse_term(px);
-                let comma_opt = px.eat(TokenKind::Comma);
-                let can_continue = comma_opt.is_some();
-
-                args.push(PArg { term, comma_opt });
-
-                if !can_continue {
-                    break;
-                }
-            }
-            _ => {
-                // error
-                px.bump();
-            }
-        }
-    }
-}
-
-fn parse_suffix(px: &mut Px) -> PTerm {
-    let mut left = parse_atom(px);
+fn parse_suffix(px: &mut Px) -> Option<PTerm> {
+    let mut left = parse_atom(px)?;
 
     loop {
         match px.next() {
@@ -98,81 +33,83 @@ fn parse_suffix(px: &mut Px) -> PTerm {
                 parse_args(&mut args, px);
 
                 let right_opt = px.eat(TokenKind::RightParen);
+
                 let arg_list = PArgList {
                     left: left_paren,
                     args,
                     right_opt,
                 };
+
                 left = PTerm::Call {
                     callee: Box::new(left),
                     arg_list,
                 };
             }
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_mul(px: &mut Px) -> PTerm {
+fn parse_mul(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_suffix(px);
+        let right_opt = parse_suffix(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
-            right: Box::new(right),
+            right_opt,
             location: op_token.into_location(),
         }
     };
 
-    let mut left = parse_suffix(px);
+    let mut left = parse_suffix(px)?;
 
     loop {
         match px.next() {
             TokenKind::Star => left = parse_right(BinaryOp::Mul, left, px),
             TokenKind::Slash => left = parse_right(BinaryOp::Div, left, px),
             TokenKind::Percent => left = parse_right(BinaryOp::Mod, left, px),
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_add(px: &mut Px) -> PTerm {
+fn parse_add(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_mul(px);
+        let right_opt = parse_mul(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
-            right: Box::new(right),
+            right_opt,
             location: op_token.into_location(),
         }
     };
 
-    let mut left = parse_mul(px);
+    let mut left = parse_mul(px)?;
 
     loop {
         match px.next() {
             TokenKind::Plus => left = parse_right(BinaryOp::Add, left, px),
             TokenKind::Minus => left = parse_right(BinaryOp::Sub, left, px),
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_bit(px: &mut Px) -> PTerm {
+fn parse_bit(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_add(px);
+        let right_opt = parse_add(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
-            right: Box::new(right),
+            right_opt,
             location: op_token.into_location(),
         }
     };
 
-    let mut left = parse_add(px);
+    let mut left = parse_add(px)?;
 
     loop {
         match px.next() {
@@ -181,24 +118,24 @@ fn parse_bit(px: &mut Px) -> PTerm {
             TokenKind::Hat => left = parse_right(BinaryOp::BitXor, left, px),
             TokenKind::LeftShift => left = parse_right(BinaryOp::LeftShift, left, px),
             TokenKind::RightShift => left = parse_right(BinaryOp::RightShift, left, px),
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_cmp(px: &mut Px) -> PTerm {
+fn parse_cmp(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_bit(px);
+        let right_opt = parse_bit(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
-            right: Box::new(right),
+            right_opt,
             location: op_token.into_location(),
         }
     };
 
-    let mut left = parse_bit(px);
+    let mut left = parse_bit(px)?;
 
     loop {
         match px.next() {
@@ -208,48 +145,42 @@ fn parse_cmp(px: &mut Px) -> PTerm {
             TokenKind::LeftAngleEqual => left = parse_right(BinaryOp::Le, left, px),
             TokenKind::RightAngle => left = parse_right(BinaryOp::Gt, left, px),
             TokenKind::RightAngleEqual => left = parse_right(BinaryOp::Ge, left, px),
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_log(px: &mut Px) -> PTerm {
+fn parse_log(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right = parse_cmp(px);
+        let right_opt = parse_cmp(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
-            right: Box::new(right),
+            right_opt,
             location: op_token.into_location(),
         }
     };
 
-    let mut left = parse_cmp(px);
+    let mut left = parse_cmp(px)?;
 
     loop {
         match px.next() {
             TokenKind::AndAnd => left = parse_right(BinaryOp::LogAnd, left, px),
             TokenKind::PipePipe => left = parse_right(BinaryOp::LogOr, left, px),
-            _ => return left,
+            _ => return Some(left),
         }
     }
 }
 
-fn parse_assign(px: &mut Px) -> PTerm {
+fn parse_assign(px: &mut Px) -> Option<PTerm> {
     parse_log(px)
 }
 
-pub(crate) fn parse_term(px: &mut Px) -> PTerm {
-    assert!(px.next().is_term_first());
-
+pub(crate) fn parse_term(px: &mut Px) -> Option<PTerm> {
     parse_assign(px)
 }
 
-pub(crate) fn eat_term(px: &mut Px) -> Option<PTerm> {
-    if px.next().is_term_first() {
-        Some(parse_term(px))
-    } else {
-        None
-    }
+pub(crate) fn parse_cond(px: &mut Px) -> Option<PTerm> {
+    parse_term(px)
 }

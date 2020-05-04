@@ -37,6 +37,7 @@ mod flow {
 
 #[derive(Debug)]
 enum XCommand {
+    Pop(usize),
     Term(KTerm),
     Prim {
         prim: KPrim,
@@ -95,13 +96,28 @@ impl Xx {
     fn push_term(&mut self, term: KTerm) {
         self.push(XCommand::Term(term));
     }
+
+    fn push_int(&mut self, value: i64, location: Location) {
+        self.push_term(KTerm::Int(TokenData::new(
+            TokenKind::Int,
+            value.to_string(),
+            location,
+        )));
+    }
 }
 
-fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, xx: &mut Xx) {
+fn emit_binary_op(
+    prim: KPrim,
+    left: PTerm,
+    right_opt: Option<Box<PTerm>>,
+    location: Location,
+    xx: &mut Xx,
+) {
     let result = xx.fresh_symbol(&prim.hint_str(), location.clone());
 
-    extend_expr(left, xx);
-    extend_expr(right, xx);
+    gen_term_expr(left, xx);
+    gen_term_expr(*right_opt.unwrap(), xx);
+
     xx.push(XCommand::Prim {
         prim,
         arg_count: 2,
@@ -112,7 +128,7 @@ fn extend_binary_op(prim: KPrim, left: PTerm, right: PTerm, location: Location, 
     });
 }
 
-fn extend_if(
+fn emit_if(
     cond: PTerm,
     gen_body: impl FnOnce(&mut Xx) -> Flow,
     gen_alt: impl FnOnce(&mut Xx) -> Flow,
@@ -122,7 +138,7 @@ fn extend_if(
     let result = xx.fresh_symbol("cond", location.clone());
     let next_label = xx.fresh_symbol("next", location.clone());
 
-    extend_expr(cond, xx);
+    gen_term_expr(cond, xx);
 
     xx.push(XCommand::Prim {
         prim: KPrim::If,
@@ -160,7 +176,7 @@ fn extend_if(
     flow::join(body_flow, alt_flow)
 }
 
-fn extend_expr(term: PTerm, xx: &mut Xx) {
+fn gen_term_expr(term: PTerm, xx: &mut Xx) {
     match term {
         PTerm::Int(token) => {
             xx.push_term(KTerm::Int(token));
@@ -175,10 +191,11 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
             let arg_count = arg_list.args.len() + 1;
             let result = xx.fresh_symbol("result", location.clone());
 
-            extend_expr(*callee, xx);
+            gen_term_expr(*callee, xx);
 
+            // FIXME: propagate flow?
             for arg in arg_list.args {
-                extend_expr(arg.term, xx);
+                gen_expr(arg.expr, xx);
             }
 
             xx.push(XCommand::Prim {
@@ -193,167 +210,71 @@ fn extend_expr(term: PTerm, xx: &mut Xx) {
         PTerm::BinaryOp {
             op,
             left,
-            right,
+            right_opt,
             location,
         } => match op {
-            BinaryOp::Add => extend_binary_op(KPrim::Add, *left, *right, location, xx),
-            BinaryOp::Sub => extend_binary_op(KPrim::Sub, *left, *right, location, xx),
-            BinaryOp::Mul => extend_binary_op(KPrim::Mul, *left, *right, location, xx),
-            BinaryOp::Div => extend_binary_op(KPrim::Div, *left, *right, location, xx),
-            BinaryOp::Mod => extend_binary_op(KPrim::Mod, *left, *right, location, xx),
-            BinaryOp::BitAnd => extend_binary_op(KPrim::BitAnd, *left, *right, location, xx),
-            BinaryOp::BitOr => extend_binary_op(KPrim::BitOr, *left, *right, location, xx),
-            BinaryOp::BitXor => extend_binary_op(KPrim::BitXor, *left, *right, location, xx),
-            BinaryOp::LeftShift => extend_binary_op(KPrim::LeftShift, *left, *right, location, xx),
+            BinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, xx),
+            BinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, xx),
+            BinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, xx),
+            BinaryOp::Div => emit_binary_op(KPrim::Div, *left, right_opt, location, xx),
+            BinaryOp::Mod => emit_binary_op(KPrim::Mod, *left, right_opt, location, xx),
+            BinaryOp::BitAnd => emit_binary_op(KPrim::BitAnd, *left, right_opt, location, xx),
+            BinaryOp::BitOr => emit_binary_op(KPrim::BitOr, *left, right_opt, location, xx),
+            BinaryOp::BitXor => emit_binary_op(KPrim::BitXor, *left, right_opt, location, xx),
+            BinaryOp::LeftShift => emit_binary_op(KPrim::LeftShift, *left, right_opt, location, xx),
             BinaryOp::RightShift => {
-                extend_binary_op(KPrim::RightShift, *left, *right, location, xx)
+                emit_binary_op(KPrim::RightShift, *left, right_opt, location, xx)
             }
-            BinaryOp::Eq => extend_binary_op(KPrim::Eq, *left, *right, location, xx),
-            BinaryOp::Ne => extend_binary_op(KPrim::Ne, *left, *right, location, xx),
-            BinaryOp::Lt => extend_binary_op(KPrim::Lt, *left, *right, location, xx),
-            BinaryOp::Le => extend_binary_op(KPrim::Le, *left, *right, location, xx),
-            BinaryOp::Gt => extend_binary_op(KPrim::Gt, *left, *right, location, xx),
-            BinaryOp::Ge => extend_binary_op(KPrim::Ge, *left, *right, location, xx),
+            BinaryOp::Eq => emit_binary_op(KPrim::Eq, *left, right_opt, location, xx),
+            BinaryOp::Ne => emit_binary_op(KPrim::Ne, *left, right_opt, location, xx),
+            BinaryOp::Lt => emit_binary_op(KPrim::Lt, *left, right_opt, location, xx),
+            BinaryOp::Le => emit_binary_op(KPrim::Le, *left, right_opt, location, xx),
+            BinaryOp::Gt => emit_binary_op(KPrim::Gt, *left, right_opt, location, xx),
+            BinaryOp::Ge => emit_binary_op(KPrim::Ge, *left, right_opt, location, xx),
             BinaryOp::LogAnd => {
-                extend_if(
+                let location1 = location.clone();
+                let _ = emit_if(
                     *left,
                     |xx| {
-                        extend_expr(*right, xx);
+                        gen_term_expr(*right_opt.unwrap(), xx);
                         flow::SEQUENTIAL
                     },
-                    {
-                        let location = location.clone();
-                        move |xx| {
-                            xx.push_term(KTerm::Int(TokenData::new(
-                                TokenKind::Int,
-                                "0".to_string(),
-                                location,
-                            )));
-                            flow::SEQUENTIAL
-                        }
+                    move |xx| {
+                        xx.push_int(0, location);
+                        flow::SEQUENTIAL
                     },
-                    location,
+                    location1,
                     xx,
-                )
-                .ok();
+                );
             }
             BinaryOp::LogOr => {
-                extend_if(
+                let location1 = location.clone();
+                let _ = emit_if(
                     *left,
-                    {
-                        let location = location.clone();
-                        move |xx| {
-                            xx.push_term(KTerm::Int(TokenData::new(
-                                TokenKind::Int,
-                                "1".to_string(),
-                                location,
-                            )));
-                            flow::SEQUENTIAL
-                        }
-                    },
-                    |xx| {
-                        extend_expr(*right, xx);
+                    move |xx| {
+                        xx.push_int(1, location);
                         flow::SEQUENTIAL
                     },
-                    location,
+                    |xx| {
+                        gen_term_expr(*right_opt.unwrap(), xx);
+                        flow::SEQUENTIAL
+                    },
+                    location1,
                     xx,
-                )
-                .ok();
+                );
             }
         },
     }
 }
 
-fn extend_fn_stmt(block_opt: Option<PBlock>, location: Location, xx: &mut Xx) {
-    let fn_name = xx.fresh_symbol("main", location.clone());
-    let return_label = xx.fresh_symbol("return", location.clone());
-
-    let commands = {
-        let previous = std::mem::take(&mut xx.current);
-        let parent_loop = std::mem::take(&mut xx.parent_loop);
-
-        let arg_count = if block_opt.as_ref().unwrap().last_opt.is_some() {
-            1
-        } else {
-            0
-        };
-
-        let flow = extend_block(block_opt.unwrap(), xx);
-        if flow != flow::FN {
-            xx.push(XCommand::Jump {
-                label: return_label.clone(),
-                arg_count,
-            });
+fn gen_expr(expr: PExpr, xx: &mut Xx) -> Flow {
+    match expr {
+        PExpr::Term { term, .. } => {
+            gen_term_expr(term, xx);
+            flow::SEQUENTIAL
         }
-
-        xx.parent_loop = parent_loop;
-        std::mem::replace(&mut xx.current, previous)
-    };
-
-    let (node, labels) = {
-        let mut gx = Gx::default();
-        let node = fold_block(commands, &mut gx);
-        (node, gx.labels)
-    };
-
-    let k_fn = KFn {
-        name: fn_name,
-        params: vec![return_label],
-        body: node,
-        labels,
-    };
-
-    xx.fns.push(k_fn);
-}
-
-fn extend_extern_fn_stmt(
-    name_opt: Option<PName>,
-    param_list: PParamList,
-    result_opt: Option<PResult>,
-    xx: &mut Xx,
-) {
-    let fn_name = match name_opt {
-        Some(name) => xx.name_to_symbol(name),
-        None => return,
-    };
-
-    let result = match result_opt {
-        Some(result) => match result.ty_opt.unwrap().text.as_str() {
-            "i32" => KTy::I32,
-            _ => unimplemented!(),
-        },
-        None => KTy::Unit,
-    };
-
-    let extern_fn = KExternFn {
-        name: fn_name,
-        params: param_list
-            .params
-            .into_iter()
-            .map(|param| (xx.name_to_symbol(param.name), KTy::I32))
-            .collect(),
-        result,
-    };
-
-    xx.extern_fns.push(extern_fn);
-}
-
-fn extend_block(block: PBlock, xx: &mut Xx) -> Flow {
-    for stmt in block.body {
-        extend_stmt(stmt, xx)?;
-    }
-
-    if let Some(last) = block.last_opt {
-        extend_expr(last, xx);
-    }
-    flow::SEQUENTIAL
-}
-
-fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
-    match stmt {
-        PStmt::Expr { .. } => flow::SEQUENTIAL,
-        PStmt::Block(block) => extend_block(block, xx),
-        PStmt::Break { .. } => {
+        PExpr::Block(block) => gen_block(block, xx),
+        PExpr::Break { .. } => {
             let dest = xx
                 .parent_loop
                 .as_ref()
@@ -366,7 +287,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             });
             flow::LOOP
         }
-        PStmt::Continue { .. } => {
+        PExpr::Continue { .. } => {
             let dest = xx
                 .parent_loop
                 .as_ref()
@@ -379,7 +300,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             });
             flow::LOOP
         }
-        PStmt::If {
+        PExpr::If {
             keyword,
             cond_opt,
             body_opt,
@@ -387,13 +308,13 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             ..
         } => {
             let location = keyword.into_location();
-            extend_if(
+            emit_if(
                 cond_opt.unwrap(),
-                |xx| extend_block(body_opt.unwrap(), xx),
+                |xx| gen_block(body_opt.unwrap(), xx),
                 |xx| {
                     let mut alt_flow = flow::SEQUENTIAL;
                     if let Some(alt) = alt_opt {
-                        alt_flow = extend_stmt(*alt, xx);
+                        alt_flow = gen_expr(*alt, xx);
                     }
                     alt_flow
                 },
@@ -401,7 +322,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
                 xx,
             )
         }
-        PStmt::While {
+        PExpr::While {
             keyword,
             cond_opt,
             body_opt,
@@ -421,7 +342,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
                 arg_count: 0,
             });
 
-            extend_expr(cond_opt.unwrap(), xx);
+            gen_term_expr(cond_opt.unwrap(), xx);
 
             xx.push(XCommand::Prim {
                 prim: KPrim::If,
@@ -441,7 +362,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             );
 
             // body:
-            let mut flow = extend_block(body_opt.unwrap(), xx);
+            let mut flow = gen_block(body_opt.unwrap(), xx);
             if flow == flow::SEQUENTIAL {
                 xx.push(XCommand::Jump {
                     label: continue_label.clone(),
@@ -463,10 +384,12 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
                 arg_count: 0,
             });
 
+            xx.push_int(0, Location::new_dummy());
+
             flow::end_loop(&mut flow);
             flow
         }
-        PStmt::Loop { keyword, body_opt } => {
+        PExpr::Loop { keyword, body_opt } => {
             let location = keyword.into_location();
             let continue_label = xx.fresh_symbol("continue_", location.clone());
             let next_label = xx.fresh_symbol("next", location.clone());
@@ -490,7 +413,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             );
 
             // body:
-            let mut flow = extend_block(body_opt.unwrap(), xx);
+            let mut flow = gen_block(body_opt.unwrap(), xx);
             if flow == flow::SEQUENTIAL {
                 xx.push(XCommand::Jump {
                     label: continue_label.clone(),
@@ -506,10 +429,22 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
                 arg_count: 0,
             });
 
+            xx.push_int(0, Location::new_dummy());
+
             flow::end_loop(&mut flow);
             flow
         }
-        PStmt::Let {
+    }
+}
+
+fn gen_decl(decl: PDecl, xx: &mut Xx) -> Flow {
+    match decl {
+        PDecl::Expr(expr) => {
+            let flow = gen_expr(expr, xx);
+            xx.push(XCommand::Pop(1));
+            flow
+        }
+        PDecl::Let {
             keyword,
             name_opt,
             init_opt,
@@ -517,7 +452,7 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
             let result = xx.name_to_symbol(name_opt.expect("missing name"));
             let location = keyword.into_location();
 
-            extend_expr(init_opt.unwrap(), xx);
+            let flow = gen_expr(init_opt.unwrap(), xx);
 
             xx.push(XCommand::Prim {
                 prim: KPrim::Let,
@@ -528,27 +463,99 @@ fn extend_stmt(stmt: PStmt, xx: &mut Xx) -> Flow {
                 location,
             });
 
+            flow
+        }
+        PDecl::Fn { keyword, block_opt } => {
+            let location = keyword.into_location();
+            let fn_name = xx.fresh_symbol("main", location.clone());
+            let return_label = xx.fresh_symbol("return", location.clone());
+
+            let commands = {
+                let previous = std::mem::take(&mut xx.current);
+                let parent_loop = std::mem::take(&mut xx.parent_loop);
+
+                let arg_count = if block_opt.as_ref().unwrap().last_opt.is_some() {
+                    1
+                } else {
+                    0
+                };
+
+                let flow = gen_block(block_opt.unwrap(), xx);
+                if flow != flow::FN {
+                    xx.push(XCommand::Jump {
+                        label: return_label.clone(),
+                        arg_count,
+                    });
+                }
+
+                xx.parent_loop = parent_loop;
+                std::mem::replace(&mut xx.current, previous)
+            };
+
+            let (node, labels) = {
+                let mut gx = Gx::default();
+                let node = fold_block(commands, &mut gx);
+                (node, gx.labels)
+            };
+
+            let k_fn = KFn {
+                name: fn_name,
+                params: vec![return_label],
+                body: node,
+                labels,
+            };
+
+            xx.fns.push(k_fn);
             flow::SEQUENTIAL
         }
-        PStmt::Fn { keyword, block_opt } => {
-            extend_fn_stmt(block_opt, keyword.into_location(), xx);
-            flow::SEQUENTIAL
-        }
-        PStmt::ExternFn {
+        PDecl::ExternFn {
             name_opt,
             param_list_opt,
             result_opt,
             ..
         } => {
-            extend_extern_fn_stmt(name_opt, param_list_opt.unwrap(), result_opt, xx);
+            let fn_name = xx.name_to_symbol(name_opt.unwrap());
+
+            let result = match result_opt {
+                Some(result) => match result.ty_opt.unwrap().text.as_str() {
+                    "i32" => KTy::I32,
+                    _ => unimplemented!(),
+                },
+                None => KTy::Unit,
+            };
+
+            let extern_fn = KExternFn {
+                name: fn_name,
+                params: param_list_opt
+                    .unwrap()
+                    .params
+                    .into_iter()
+                    .map(|param| (xx.name_to_symbol(param.name), KTy::I32))
+                    .collect(),
+                result,
+            };
+
+            xx.extern_fns.push(extern_fn);
             flow::SEQUENTIAL
         }
     }
 }
 
-fn extend_root(root: PRoot, xx: &mut Xx) {
-    for stmt in root.body {
-        let flow = extend_stmt(stmt, xx);
+fn gen_block(block: PBlock, xx: &mut Xx) -> Flow {
+    for decl in block.decls {
+        gen_decl(decl, xx)?;
+    }
+
+    if let Some(last) = block.last_opt {
+        gen_expr(*last, xx)?;
+    }
+
+    flow::SEQUENTIAL
+}
+
+fn gen_root(root: PRoot, xx: &mut Xx) {
+    for decl in root.decls {
+        let flow = gen_decl(decl, xx);
         debug_assert_eq!(flow, flow::SEQUENTIAL);
     }
 }
@@ -586,6 +593,11 @@ impl Gx {
 fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
     while let Some(command) = commands.pop() {
         match command {
+            XCommand::Pop(count) => {
+                for _ in 0..count {
+                    gx.stack.pop();
+                }
+            }
             XCommand::Term(term) => {
                 gx.push_term(term);
             }
@@ -663,7 +675,7 @@ fn fold_block(mut commands: Vec<XCommand>, gx: &mut Gx) -> KNode {
 
 pub(crate) fn cps_conversion(p_root: PRoot) -> KRoot {
     let mut xx = Xx::default();
-    extend_root(p_root, &mut xx);
+    gen_root(p_root, &mut xx);
 
     KRoot {
         extern_fns: xx.extern_fns,

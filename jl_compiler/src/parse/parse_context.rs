@@ -45,11 +45,11 @@ impl ParseContext {
         }
     }
 
-    pub(crate) fn finish(mut self, body: Vec<PStmt>) -> PRoot {
+    pub(crate) fn finish(mut self, decls: Vec<PDecl>) -> PRoot {
         assert_eq!(self.tokens.len(), 1);
         assert_eq!(self.next(), TokenKind::Eof);
 
         let eof = self.bump();
-        PRoot { body, eof }
+        PRoot { decls, eof }
     }
 }
