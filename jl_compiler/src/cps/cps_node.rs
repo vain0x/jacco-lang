@@ -11,13 +11,8 @@ pub(crate) enum XCommand {
         prim: KPrim,
         args: Vec<KTerm>,
         result_opt: Option<KSymbol>,
-        cont_ids: Vec<XContId>,
+        cont_count: usize,
         location: Location,
-    },
-    Jump {
-        label: KSymbol,
-        args: Vec<KTerm>,
-        end_of: XContId,
     },
     Label {
         label: KSymbol,
@@ -65,85 +60,64 @@ impl fmt::Debug for KSymbol {
 }
 
 #[derive(Clone)]
-pub(crate) enum KNode {
-    Abort,
-    Prim {
-        prim: KPrim,
-        args: Vec<KTerm>,
-        results: Vec<KSymbol>,
-        conts: Vec<KNode>,
-    },
-    Jump {
-        label: KSymbol,
-        args: Vec<KTerm>,
-    },
+pub(crate) struct KNode {
+    pub(crate) prim: KPrim,
+    pub(crate) args: Vec<KTerm>,
+    pub(crate) results: Vec<KSymbol>,
+    pub(crate) conts: Vec<KNode>,
+}
+
+impl Default for KNode {
+    fn default() -> Self {
+        KNode {
+            prim: KPrim::Stuck,
+            args: vec![],
+            results: vec![],
+            conts: vec![],
+        }
+    }
 }
 
 impl fmt::Debug for KNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            KNode::Abort => write!(f, "(abort)"),
-            KNode::Prim {
-                prim,
-                args,
-                results,
-                conts,
-            } => {
-                write!(f, "({:?} ", prim)?;
+        write!(f, "({:?} ", self.prim)?;
 
-                {
-                    let mut list = f.debug_list();
-                    for arg in args {
-                        list.entry(arg);
-                    }
-                    list.finish()?;
-                }
-
-                write!(f, " ")?;
-
-                {
-                    let mut list = f.debug_list();
-                    for result in results {
-                        list.entry(result);
-                    }
-                    list.finish()?;
-                }
-
-                if conts.len() == 1 {
-                    write!(f, ") => ")?;
-
-                    for cont in conts {
-                        fmt::Debug::fmt(cont, f)?;
-                    }
-
-                    Ok(())
-                } else {
-                    write!(f, " ")?;
-
-                    let mut list = f.debug_list();
-                    for cont in conts {
-                        list.entry(cont);
-                    }
-                    list.finish()?;
-
-                    write!(f, ")")
-                }
+        {
+            let mut list = f.debug_list();
+            for arg in &self.args {
+                list.entry(arg);
             }
-            KNode::Jump { label, args } => {
-                write!(f, "(jump ")?;
-                fmt::Debug::fmt(label, f)?;
-                write!(f, " ")?;
+            list.finish()?;
+        }
 
-                {
-                    let mut list = f.debug_list();
-                    for arg in args {
-                        list.entry(arg);
-                    }
-                    list.finish()?;
-                }
+        write!(f, " ")?;
 
-                write!(f, ")")
+        {
+            let mut list = f.debug_list();
+            for result in &self.results {
+                list.entry(result);
             }
+            list.finish()?;
+        }
+
+        if self.conts.len() == 1 {
+            write!(f, ") => ")?;
+
+            for cont in &self.conts {
+                fmt::Debug::fmt(cont, f)?;
+            }
+
+            Ok(())
+        } else {
+            write!(f, " ")?;
+
+            let mut list = f.debug_list();
+            for cont in &self.conts {
+                list.entry(cont);
+            }
+            list.finish()?;
+
+            write!(f, ")")
         }
     }
 }

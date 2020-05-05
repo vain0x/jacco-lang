@@ -1,28 +1,34 @@
 int main() {
     if (1) {
-        return (void)0;
+        goto next_4;
     } else {
-        goto ABORT;
-    }
-    //
-next_13:;
-    return if_result_12;
-    //
-next_10:;
-    return 0;
-    //
-next_7:;
-    if (3) {
-        int body3_1 = 30;
-        return (void)0;
-    } else {
-        goto ABORT;
+        goto next_4;
     }
     //
 next_4:;
     if (2) {
-        return (void)0;
+        goto next_6;
     } else {
-        goto ABORT;
+        goto next_6;
     }
+    //
+next_6:;
+    if (3) {
+        int body3_1 = 30;
+        goto next_8;
+    } else {
+        if (4) {
+            int alt31_2 = 31;
+            goto next_10;
+        } else {
+            int alt32_3 = 32;
+            goto next_10;
+        }
+    }
+    //
+next_10:;
+    goto next_8;
+    //
+next_8:;
+    return 0;
 }

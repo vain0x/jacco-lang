@@ -1,25 +1,25 @@
 int main() {
     goto continue__4;
     //
-next_5:;
-    return while_result_3;
-    //
 continue__4:;
     if (1) {
         goto next_5;
     } else {
-        goto ABORT;
+        goto next_5;
     }
+    //
+next_5:;
+    return while_result_3;
 }
 
 int main() {
-    goto continue__10;
+    goto continue__9;
     //
-continue__10:;
-    goto next_11;
+continue__9:;
+    goto next_10;
     //
-next_11:;
-    return loop_result_9;
+next_10:;
+    return loop_result_8;
 }
 
 int main() {

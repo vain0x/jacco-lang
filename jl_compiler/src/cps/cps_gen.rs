@@ -4,7 +4,6 @@ use super::cps_fold::fold_block;
 use super::*;
 use crate::parse::*;
 use crate::token::TokenKind;
-use crate::NO_ID;
 
 struct LoopConstruction {
     break_label: KSymbol,
@@ -54,6 +53,29 @@ impl Gx {
     fn push(&mut self, command: XCommand) {
         self.current.push(command);
     }
+
+    fn do_push_jump(
+        &mut self,
+        label: KSymbol,
+        args: impl IntoIterator<Item = KTerm>,
+        cont_count: usize,
+    ) {
+        self.push(XCommand::Prim {
+            prim: KPrim::Jump,
+            args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
+            result_opt: None,
+            cont_count,
+            location: Location::new_dummy(),
+        });
+    }
+
+    fn push_jump(&mut self, label: KSymbol, args: impl IntoIterator<Item = KTerm>) {
+        self.do_push_jump(label, args, 0);
+    }
+
+    fn push_jump_with_cont(&mut self, label: KSymbol, args: impl IntoIterator<Item = KTerm>) {
+        self.do_push_jump(label, args, 1);
+    }
 }
 
 fn new_int_term(value: i64, location: Location) -> KTerm {
@@ -93,7 +115,7 @@ fn emit_binary_op(
         prim,
         args: vec![left, right],
         result_opt: Some(result.clone()),
-        cont_ids: vec![],
+        cont_count: 1,
         location,
     });
 
@@ -109,14 +131,13 @@ fn emit_if(
 ) -> KTerm {
     let result = gx.fresh_symbol("if_result", location.clone());
     let next_label = gx.fresh_symbol("next", location.clone());
-    let body_cont_id = gx.fresh_id();
 
     let k_cond = gen_term_expr(cond, gx);
 
     gx.push(XCommand::Prim {
         prim: KPrim::If,
         args: vec![k_cond],
-        cont_ids: vec![body_cont_id],
+        cont_count: 2,
         result_opt: None,
         location,
     });
@@ -124,21 +145,13 @@ fn emit_if(
     // body
     {
         let body = gen_body(gx);
-        gx.push(XCommand::Jump {
-            label: next_label.clone(),
-            args: vec![body],
-            end_of: body_cont_id,
-        });
+        gx.push_jump(next_label.clone(), vec![body]);
     }
 
     // alt
     {
         let alt = gen_alt(gx);
-        gx.push(XCommand::Jump {
-            label: next_label.clone(),
-            args: vec![alt],
-            end_of: NO_ID,
-        });
+        gx.push_jump(next_label.clone(), vec![alt]);
     }
 
     gx.push(XCommand::Label {
@@ -173,7 +186,7 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
                 prim: KPrim::CallDirect,
                 args: k_args,
                 result_opt: Some(result.clone()),
-                cont_ids: vec![],
+                cont_count: 1,
                 location,
             });
 
@@ -238,11 +251,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             };
 
             let label = gx.current_break_label().expect("out of loop").clone();
-            gx.push(XCommand::Jump {
-                label,
-                args: vec![],
-                end_of: NO_ID,
-            });
+            // FIXME: break is 1-arity
+            gx.push_jump_with_cont(label, vec![]);
 
             never_term
         }
@@ -253,11 +263,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             };
 
             let label = gx.current_continue_label().expect("out of loop").clone();
-            gx.push(XCommand::Jump {
-                label,
-                args: vec![],
-                end_of: NO_ID,
-            });
+            gx.push_jump_with_cont(label, vec![]);
 
             never_term
         }
@@ -290,13 +296,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("while_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
-            let body_cont_id = gx.fresh_id();
 
-            gx.push(XCommand::Jump {
-                label: continue_label.clone(),
-                args: vec![],
-                end_of: NO_ID,
-            });
+            gx.push_jump(continue_label.clone(), vec![]);
 
             gx.push(XCommand::Label {
                 label: continue_label.clone(),
@@ -309,7 +310,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 prim: KPrim::If,
                 args: vec![k_cond],
                 result_opt: None,
-                cont_ids: vec![body_cont_id],
+                cont_count: 2,
                 location: location.clone(),
             });
 
@@ -324,18 +325,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             // body:
             gen_block(body_opt.unwrap(), gx);
 
-            gx.push(XCommand::Jump {
-                label: continue_label.clone(),
-                args: vec![],
-                end_of: body_cont_id,
-            });
+            gx.push_jump(continue_label.clone(), vec![]);
 
             // alt:
-            gx.push(XCommand::Jump {
-                label: next_label.clone(),
-                args: vec![new_unit_term(location)],
-                end_of: NO_ID,
-            });
+            gx.push_jump(next_label.clone(), vec![new_unit_term(location)]);
 
             gx.parent_loop = parent_loop;
 
@@ -353,11 +346,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
 
-            gx.push(XCommand::Jump {
-                label: continue_label.clone(),
-                args: vec![],
-                end_of: NO_ID,
-            });
+            gx.push_jump(continue_label.clone(), vec![]);
 
             gx.push(XCommand::Label {
                 label: continue_label.clone(),
@@ -375,11 +364,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             // body:
             gen_block(body_opt.unwrap(), gx);
 
-            gx.push(XCommand::Jump {
-                label: continue_label.clone(),
-                args: vec![],
-                end_of: NO_ID,
-            });
+            gx.push_jump(continue_label.clone(), vec![]);
 
             gx.parent_loop = parent_loop;
 
@@ -413,7 +398,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 prim: KPrim::Let,
                 args: vec![k_init],
                 result_opt: Some(result),
-                cont_ids: vec![],
+                cont_count: 1,
                 location,
             });
         }
@@ -428,11 +413,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
                 let k_result = gen_block(block_opt.unwrap(), gx);
 
-                gx.push(XCommand::Jump {
-                    label: return_label.clone(),
-                    args: vec![k_result],
-                    end_of: NO_ID,
-                });
+                gx.push_jump(return_label.clone(), vec![k_result]);
 
                 gx.parent_loop = parent_loop;
                 std::mem::replace(&mut gx.current, previous)
