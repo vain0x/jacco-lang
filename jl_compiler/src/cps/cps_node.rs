@@ -1,6 +1,28 @@
 use super::*;
 use std::fmt;
 
+#[derive(Debug)]
+pub(crate) enum XCommand {
+    Pop(usize),
+    Term(KTerm),
+    Prim {
+        prim: KPrim,
+        arg_count: usize,
+        cont_count: usize,
+        result: KSymbol,
+        use_result: bool,
+        location: Location,
+    },
+    Jump {
+        label: KSymbol,
+        arg_count: usize,
+    },
+    Label {
+        label: KSymbol,
+        arg_count: usize,
+    },
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum KTy {
     Unit,
