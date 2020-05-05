@@ -1,14 +1,14 @@
 int main() {
     goto continue__4;
     //
+next_5:;
+    return 0;
+    //
 continue__4:;
     if (0) {
         int a_1 = 1;
         goto continue__4;
     } else {
-        goto next_5;
+        goto ABORT;
     }
-    //
-next_5:;
-    return 0;
 }

@@ -3,25 +3,25 @@
 use super::*;
 use std::fmt;
 
+pub(crate) type XContId = usize;
+
 #[derive(Debug)]
 pub(crate) enum XCommand {
-    Pop(usize),
-    Term(KTerm),
     Prim {
         prim: KPrim,
-        arg_count: usize,
-        cont_count: usize,
-        result: KSymbol,
-        use_result: bool,
+        args: Vec<KTerm>,
+        result_opt: Option<KSymbol>,
+        cont_ids: Vec<XContId>,
         location: Location,
     },
     Jump {
         label: KSymbol,
-        arg_count: usize,
+        args: Vec<KTerm>,
+        end_of: XContId,
     },
     Label {
         label: KSymbol,
-        arg_count: usize,
+        params: Vec<KSymbol>,
     },
 }
 

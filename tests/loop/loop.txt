@@ -1,10 +1,10 @@
 int main() {
-    goto continue__3;
+    goto continue__4;
     //
-continue__3:;
+continue__4:;
     int a_1 = 1;
-    goto continue__3;
+    goto continue__4;
     //
-next_4:;
-    return (void)0;
+next_5:;
+    return loop_result_3;
 }

@@ -1,49 +1,49 @@
 int main() {
     goto continue__4;
     //
+next_5:;
+    return while_result_3;
+    //
 continue__4:;
     if (0) {
         goto continue__4;
     } else {
-        goto next_5;
+        goto ABORT;
     }
-    //
-next_5:;
-    return (void)0;
 }
 
 int main() {
-    goto continue__8;
+    goto continue__10;
     //
-continue__8:;
-    goto continue__8;
+continue__10:;
+    goto continue__10;
     //
-next_9:;
-    return (void)0;
+next_11:;
+    return loop_result_9;
 }
 
 int main() {
-    goto continue__13;
+    goto continue__15;
     //
-continue__16:;
+next_20:;
+    goto continue__15;
+    //
+next_16:;
+    return while_result_14;
+    //
+continue__19:;
     if (0) {
-        goto continue__16;
+        goto continue__19;
     } else {
-        goto next_17;
+        goto ABORT;
     }
     //
-next_17:;
-    goto continue__13;
-    //
-continue__13:;
+continue__15:;
     if (0) {
-        goto continue__16;
+        goto continue__19;
     } else {
-        goto next_14;
+        goto ABORT;
     }
-    //
-next_14:;
-    return (void)0;
 }
 
 int main() {

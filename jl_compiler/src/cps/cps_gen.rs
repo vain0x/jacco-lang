@@ -1,10 +1,10 @@
 //! 構文木から CPS ノードのもとになる命令列を生成する処理
 
 use super::cps_fold::fold_block;
-use super::flow::Flow;
 use super::*;
 use crate::parse::*;
 use crate::token::TokenKind;
+use crate::NO_ID;
 
 struct LoopConstruction {
     break_label: KSymbol,
@@ -22,6 +22,11 @@ struct Gx {
 }
 
 impl Gx {
+    fn fresh_id(&mut self) -> usize {
+        self.last_id += 1;
+        self.last_id
+    }
+
     fn name_to_symbol(&mut self, name: PName) -> KSymbol {
         KSymbol {
             id: name.name_id,
@@ -31,29 +36,45 @@ impl Gx {
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
-        self.last_id += 1;
-        let id = self.last_id;
+        let id = self.fresh_id();
 
         let text = hint.to_string();
 
         KSymbol { id, text, location }
     }
 
+    fn current_break_label(&self) -> Option<&KSymbol> {
+        self.parent_loop.as_ref().map(|l| &l.break_label)
+    }
+
+    fn current_continue_label(&self) -> Option<&KSymbol> {
+        self.parent_loop.as_ref().map(|l| &l.continue_label)
+    }
+
     fn push(&mut self, command: XCommand) {
         self.current.push(command);
     }
+}
 
-    fn push_term(&mut self, term: KTerm) {
-        self.push(XCommand::Term(term));
-    }
+fn new_int_term(value: i64, location: Location) -> KTerm {
+    KTerm::Int(TokenData::new(TokenKind::Int, value.to_string(), location))
+}
 
-    fn push_int(&mut self, value: i64, location: Location) {
-        self.push_term(KTerm::Int(TokenData::new(
-            TokenKind::Int,
-            value.to_string(),
-            location,
-        )));
-    }
+fn new_false_term(location: Location) -> KTerm {
+    new_int_term(0, location)
+}
+
+fn new_true_term(location: Location) -> KTerm {
+    new_int_term(1, location)
+}
+
+fn new_unit_term(location: Location) -> KTerm {
+    KTerm::Unit { location }
+}
+
+fn new_never_term(location: Location) -> KTerm {
+    // FIXME: the type is ! (never)
+    KTerm::Unit { location }
 }
 
 fn emit_binary_op(
@@ -62,100 +83,101 @@ fn emit_binary_op(
     right_opt: Option<Box<PTerm>>,
     location: Location,
     gx: &mut Gx,
-) {
+) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location.clone());
 
-    gen_term_expr(left, gx);
-    gen_term_expr(*right_opt.unwrap(), gx);
+    let left = gen_term_expr(left, gx);
+    let right = gen_term_expr(*right_opt.unwrap(), gx);
 
     gx.push(XCommand::Prim {
         prim,
-        arg_count: 2,
-        cont_count: 1,
-        result,
-        use_result: true,
+        args: vec![left, right],
+        result_opt: Some(result.clone()),
+        cont_ids: vec![],
         location,
     });
+
+    KTerm::Name(result)
 }
 
 fn emit_if(
     cond: PTerm,
-    gen_body: impl FnOnce(&mut Gx) -> Flow,
-    gen_alt: impl FnOnce(&mut Gx) -> Flow,
+    gen_body: impl FnOnce(&mut Gx) -> KTerm,
+    gen_alt: impl FnOnce(&mut Gx) -> KTerm,
     location: Location,
     gx: &mut Gx,
-) -> Flow {
-    let result = gx.fresh_symbol("cond", location.clone());
+) -> KTerm {
+    let result = gx.fresh_symbol("if_result", location.clone());
     let next_label = gx.fresh_symbol("next", location.clone());
+    let body_cont_id = gx.fresh_id();
 
-    gen_term_expr(cond, gx);
+    let k_cond = gen_term_expr(cond, gx);
 
     gx.push(XCommand::Prim {
         prim: KPrim::If,
-        arg_count: 1,
-        cont_count: 2,
-        result,
-        use_result: false,
+        args: vec![k_cond],
+        cont_ids: vec![body_cont_id],
+        result_opt: None,
         location,
     });
 
-    // body:
-    let body_flow = gen_body(gx);
-    if body_flow == flow::SEQUENTIAL {
+    // body
+    {
+        let body = gen_body(gx);
         gx.push(XCommand::Jump {
             label: next_label.clone(),
-            arg_count: 0,
+            args: vec![body],
+            end_of: body_cont_id,
         });
     }
 
-    // alt:
-    let alt_flow = gen_alt(gx);
-    if alt_flow == flow::SEQUENTIAL {
+    // alt
+    {
+        let alt = gen_alt(gx);
         gx.push(XCommand::Jump {
             label: next_label.clone(),
-            arg_count: 0,
+            args: vec![alt],
+            end_of: NO_ID,
         });
     }
 
-    // next:
     gx.push(XCommand::Label {
         label: next_label,
-        arg_count: 0,
+        params: vec![result.clone()],
     });
 
-    flow::join(body_flow, alt_flow)
+    KTerm::Name(result)
 }
 
-fn gen_term_expr(term: PTerm, gx: &mut Gx) {
+fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
     match term {
-        PTerm::Int(token) => {
-            gx.push_term(KTerm::Int(token));
-        }
+        PTerm::Int(token) => return KTerm::Int(token),
         PTerm::Str(..) => unimplemented!(),
         PTerm::Name(name) => {
             let symbol = gx.name_to_symbol(name);
-            gx.push_term(KTerm::Name(symbol));
+            KTerm::Name(symbol)
         }
         PTerm::Call { callee, arg_list } => {
             let location = arg_list.left.into_location();
-            let arg_count = arg_list.args.len() + 1;
-            let result = gx.fresh_symbol("result", location.clone());
+            let result = gx.fresh_symbol("call_result", location.clone());
 
-            gen_term_expr(*callee, gx);
+            let k_callee = gen_term_expr(*callee, gx);
 
-            // FIXME: propagate flow?
-            for arg in arg_list.args {
-                gen_expr(arg.expr, gx);
+            let mut k_args = vec![k_callee];
+            for p_arg in arg_list.args {
+                let k_arg = gen_expr(p_arg.expr, gx);
+                k_args.push(k_arg);
             }
 
             gx.push(XCommand::Prim {
                 prim: KPrim::CallDirect,
-                arg_count,
-                cont_count: 1,
-                result: result.clone(),
-                use_result: true,
+                args: k_args,
+                result_opt: Some(result.clone()),
+                cont_ids: vec![],
                 location,
             });
+
+            KTerm::Name(result)
         }
         PTerm::BinaryOp {
             op,
@@ -182,73 +204,62 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) {
             BinaryOp::Gt => emit_binary_op(KPrim::Gt, *left, right_opt, location, gx),
             BinaryOp::Ge => emit_binary_op(KPrim::Ge, *left, right_opt, location, gx),
             BinaryOp::LogAnd => {
-                let location1 = location.clone();
-                let _ = emit_if(
+                let false_term = new_false_term(location.clone());
+                emit_if(
                     *left,
-                    |gx| {
-                        gen_term_expr(*right_opt.unwrap(), gx);
-                        flow::SEQUENTIAL
-                    },
-                    move |gx| {
-                        gx.push_int(0, location);
-                        flow::SEQUENTIAL
-                    },
-                    location1,
+                    |gx| gen_term_expr(*right_opt.unwrap(), gx),
+                    move |_| false_term,
+                    location,
                     gx,
-                );
+                )
             }
             BinaryOp::LogOr => {
-                let location1 = location.clone();
-                let _ = emit_if(
+                let true_term = new_true_term(location.clone());
+                emit_if(
                     *left,
-                    move |gx| {
-                        gx.push_int(1, location);
-                        flow::SEQUENTIAL
-                    },
-                    |gx| {
-                        gen_term_expr(*right_opt.unwrap(), gx);
-                        flow::SEQUENTIAL
-                    },
-                    location1,
+                    move |_| true_term,
+                    |gx| gen_term_expr(*right_opt.unwrap(), gx),
+                    location,
                     gx,
-                );
+                )
             }
         },
     }
 }
 
-fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
+fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Term { term, .. } => {
-            gen_term_expr(term, gx);
-            flow::SEQUENTIAL
-        }
+        PExpr::Term { term, .. } => gen_term_expr(term, gx),
         PExpr::Block(block) => gen_block(block, gx),
-        PExpr::Break { .. } => {
-            let dest = gx
-                .parent_loop
-                .as_ref()
-                .expect("out of loop")
-                .break_label
-                .clone();
+        PExpr::Break { keyword, .. } => {
+            let never_term = {
+                let location = keyword.into_location();
+                new_never_term(location)
+            };
+
+            let label = gx.current_break_label().expect("out of loop").clone();
             gx.push(XCommand::Jump {
-                label: dest,
-                arg_count: 0,
+                label,
+                args: vec![],
+                end_of: NO_ID,
             });
-            flow::LOOP
+
+            never_term
         }
-        PExpr::Continue { .. } => {
-            let dest = gx
-                .parent_loop
-                .as_ref()
-                .expect("out of loop")
-                .continue_label
-                .clone();
+        PExpr::Continue { keyword, .. } => {
+            let never_term = {
+                let location = keyword.into_location();
+                new_never_term(location)
+            };
+
+            let label = gx.current_continue_label().expect("out of loop").clone();
             gx.push(XCommand::Jump {
-                label: dest,
-                arg_count: 0,
+                label,
+                args: vec![],
+                end_of: NO_ID,
             });
-            flow::LOOP
+
+            never_term
         }
         PExpr::If {
             keyword,
@@ -258,17 +269,15 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
             ..
         } => {
             let location = keyword.into_location();
+            let location1 = location.clone();
             emit_if(
                 cond_opt.unwrap(),
                 |gx| gen_block(body_opt.unwrap(), gx),
-                |gx| {
-                    let mut alt_flow = flow::SEQUENTIAL;
-                    if let Some(alt) = alt_opt {
-                        alt_flow = gen_expr(*alt, gx);
-                    }
-                    alt_flow
+                move |gx| match alt_opt {
+                    Some(alt) => gen_expr(*alt, gx),
+                    None => new_unit_term(location),
                 },
-                location,
+                location1,
                 gx,
             )
         }
@@ -278,29 +287,30 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
             body_opt,
         } => {
             let location = keyword.into_location();
-            let result = gx.fresh_symbol("cond", location.clone());
+            let result = gx.fresh_symbol("while_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
+            let body_cont_id = gx.fresh_id();
 
             gx.push(XCommand::Jump {
                 label: continue_label.clone(),
-                arg_count: 0,
+                args: vec![],
+                end_of: NO_ID,
             });
 
             gx.push(XCommand::Label {
                 label: continue_label.clone(),
-                arg_count: 0,
+                params: vec![],
             });
 
-            gen_term_expr(cond_opt.unwrap(), gx);
+            let k_cond = gen_term_expr(cond_opt.unwrap(), gx);
 
             gx.push(XCommand::Prim {
                 prim: KPrim::If,
-                arg_count: 1,
-                cont_count: 2,
-                result,
-                use_result: false,
-                location,
+                args: vec![k_cond],
+                result_opt: None,
+                cont_ids: vec![body_cont_id],
+                location: location.clone(),
             });
 
             let parent_loop = std::mem::replace(
@@ -312,20 +322,19 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
             );
 
             // body:
-            let mut flow = gen_block(body_opt.unwrap(), gx);
-            if flow == flow::SEQUENTIAL {
-                gx.push(XCommand::Pop(1));
+            gen_block(body_opt.unwrap(), gx);
 
-                gx.push(XCommand::Jump {
-                    label: continue_label.clone(),
-                    arg_count: 0,
-                });
-            }
+            gx.push(XCommand::Jump {
+                label: continue_label.clone(),
+                args: vec![],
+                end_of: body_cont_id,
+            });
 
             // alt:
             gx.push(XCommand::Jump {
                 label: next_label.clone(),
-                arg_count: 0,
+                args: vec![new_unit_term(location)],
+                end_of: NO_ID,
             });
 
             gx.parent_loop = parent_loop;
@@ -333,29 +342,26 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
             // next:
             gx.push(XCommand::Label {
                 label: next_label,
-                arg_count: 0,
+                params: vec![result.clone()],
             });
 
-            gx.push_term(KTerm::Unit {
-                location: Location::new_dummy(),
-            });
-
-            flow::end_loop(&mut flow);
-            flow
+            KTerm::Name(result)
         }
         PExpr::Loop { keyword, body_opt } => {
             let location = keyword.into_location();
+            let result = gx.fresh_symbol("loop_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
 
             gx.push(XCommand::Jump {
                 label: continue_label.clone(),
-                arg_count: 0,
+                args: vec![],
+                end_of: NO_ID,
             });
 
             gx.push(XCommand::Label {
                 label: continue_label.clone(),
-                arg_count: 0,
+                params: vec![],
             });
 
             let parent_loop = std::mem::replace(
@@ -367,61 +373,49 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> Flow {
             );
 
             // body:
-            let mut flow = gen_block(body_opt.unwrap(), gx);
-            if flow == flow::SEQUENTIAL {
-                gx.push(XCommand::Pop(1));
+            gen_block(body_opt.unwrap(), gx);
 
-                gx.push(XCommand::Jump {
-                    label: continue_label.clone(),
-                    arg_count: 0,
-                });
-            }
+            gx.push(XCommand::Jump {
+                label: continue_label.clone(),
+                args: vec![],
+                end_of: NO_ID,
+            });
 
             gx.parent_loop = parent_loop;
 
             // next:
             gx.push(XCommand::Label {
                 label: next_label,
-                arg_count: 0,
+                params: vec![result.clone()],
             });
 
-            gx.push_term(KTerm::Unit {
-                location: Location::new_dummy(),
-            });
-
-            flow::end_loop(&mut flow);
-            flow
+            KTerm::Name(result)
         }
     }
 }
 
-fn gen_decl(decl: PDecl, gx: &mut Gx) -> Flow {
+fn gen_decl(decl: PDecl, gx: &mut Gx) {
     match decl {
         PDecl::Expr(expr) => {
-            let flow = gen_expr(expr, gx);
-            gx.push(XCommand::Pop(1));
-            flow
+            gen_expr(expr, gx);
         }
         PDecl::Let {
             keyword,
             name_opt,
             init_opt,
         } => {
-            let result = gx.name_to_symbol(name_opt.expect("missing name"));
+            let result = gx.name_to_symbol(name_opt.unwrap());
             let location = keyword.into_location();
 
-            let flow = gen_expr(init_opt.unwrap(), gx);
+            let k_init = gen_expr(init_opt.unwrap(), gx);
 
             gx.push(XCommand::Prim {
                 prim: KPrim::Let,
-                arg_count: 1,
-                cont_count: 1,
-                result,
-                use_result: false,
+                args: vec![k_init],
+                result_opt: Some(result),
+                cont_ids: vec![],
                 location,
             });
-
-            flow
         }
         PDecl::Fn { keyword, block_opt } => {
             let location = keyword.into_location();
@@ -432,23 +426,13 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) -> Flow {
                 let previous = std::mem::take(&mut gx.current);
                 let parent_loop = std::mem::take(&mut gx.parent_loop);
 
-                let arg_count = if block_opt.as_ref().unwrap().last_opt.is_some() {
-                    1
-                } else {
-                    0
-                };
+                let k_result = gen_block(block_opt.unwrap(), gx);
 
-                let flow = gen_block(block_opt.unwrap(), gx);
-                if flow != flow::FN {
-                    if arg_count == 0 {
-                        gx.push(XCommand::Pop(1));
-                    }
-
-                    gx.push(XCommand::Jump {
-                        label: return_label.clone(),
-                        arg_count,
-                    });
-                }
+                gx.push(XCommand::Jump {
+                    label: return_label.clone(),
+                    args: vec![k_result],
+                    end_of: NO_ID,
+                });
 
                 gx.parent_loop = parent_loop;
                 std::mem::replace(&mut gx.current, previous)
@@ -464,7 +448,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) -> Flow {
             };
 
             gx.fns.push(k_fn);
-            flow::SEQUENTIAL
         }
         PDecl::ExternFn {
             name_opt,
@@ -494,30 +477,26 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) -> Flow {
             };
 
             gx.extern_fns.push(extern_fn);
-            flow::SEQUENTIAL
         }
     }
 }
 
-fn gen_block(block: PBlock, gx: &mut Gx) -> Flow {
+fn gen_block(block: PBlock, gx: &mut Gx) -> KTerm {
     for decl in block.decls {
-        gen_decl(decl, gx)?;
+        gen_decl(decl, gx);
     }
 
     if let Some(last) = block.last_opt {
-        gen_expr(*last, gx)?;
+        gen_expr(*last, gx)
     } else {
         let location = block.left.into_location();
-        gx.push_term(KTerm::Unit { location });
+        KTerm::Unit { location }
     }
-
-    flow::SEQUENTIAL
 }
 
 fn gen_root(root: PRoot, gx: &mut Gx) {
     for decl in root.decls {
-        let flow = gen_decl(decl, gx);
-        debug_assert_eq!(flow, flow::SEQUENTIAL);
+        gen_decl(decl, gx);
     }
 }
 

@@ -65,6 +65,9 @@ fn gen_binary_op(
 
 fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
     match node {
+        KNode::Abort => stmts.push(CStmt::Goto {
+            label: "ABORT".to_string(),
+        }),
         KNode::Prim {
             prim,
             ref mut args,
@@ -112,7 +115,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 results.as_mut_slice(),
                 conts.as_mut_slice(),
             ) {
-                ([cond], [_result], [then_cont, else_cont]) => {
+                ([cond], [], [then_cont, else_cont]) => {
                     let cond = gen_term(take_term(cond), cx);
                     let then_cont = gen_node_as_block(take_node(then_cont), cx);
                     let else_cont = gen_node_as_block(take_node(else_cont), cx);
