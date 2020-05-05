@@ -1,3 +1,9 @@
+//! テストランナー
+//!
+//! USAGE: `jl_tests <ソースファイルのパス>`
+//!
+//! `foo.jacco` をコンパイルした結果を `foo.txt` に出力する。
+
 use jl_compiler::compile;
 use std::env;
 use std::fs;

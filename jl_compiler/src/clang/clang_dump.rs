@@ -1,3 +1,5 @@
+//! C言語の構文木を文字列に変換する処理
+
 use super::*;
 use std::io::{self, Write};
 

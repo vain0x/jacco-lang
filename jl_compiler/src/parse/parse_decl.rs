@@ -1,3 +1,5 @@
+//! 宣言の構文解析ルール
+
 use super::*;
 
 fn parse_expr_decl(px: &mut Px) -> Option<PDecl> {

@@ -10,6 +10,8 @@ pub(crate) struct SourceFile {
 
 impl fmt::Debug for SourceFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // ワークスペースのルートからの相対パスを出力する。
+
         fn segments(path: &Path) -> io::Result<Vec<String>> {
             Ok(path
                 .canonicalize()?

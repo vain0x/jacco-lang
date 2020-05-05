@@ -1,3 +1,5 @@
+//! 字句・字句解析
+
 mod keyword;
 mod location;
 mod punctuation;

@@ -1,6 +1,7 @@
 use super::*;
 use std::fmt;
 
+/// 字句データ
 #[derive(Clone)]
 pub(crate) struct TokenData {
     kind: TokenKind,

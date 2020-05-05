@@ -1,6 +1,6 @@
 use super::*;
 
-/// Parsing context.
+/// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
     tokens: Vec<TokenData>,
 }

@@ -1,3 +1,5 @@
+//! 名前解決の処理
+
 use super::*;
 use std::collections::HashMap;
 

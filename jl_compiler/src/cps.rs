@@ -1,3 +1,5 @@
+//! CPS 中間表現
+
 mod cps_fold;
 mod cps_gen;
 mod cps_node;

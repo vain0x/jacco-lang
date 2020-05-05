@@ -1,3 +1,4 @@
+/// 字句の種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TokenKind {
     Eof,

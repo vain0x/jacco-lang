@@ -1,15 +1,17 @@
+//! エラーや警告などのログ
+
 use crate::token::Location;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]
 pub(crate) struct LogItem {
     pub(crate) message: String,
     pub(crate) location: Location,
 }
 
-/// Collection of info/warn/error messages
-/// associated to source locations.
+/// 位置情報と関連付けられたエラーメッセージのコンテナ。
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Logs {
     inner: Rc<RefCell<Vec<LogItem>>>,
@@ -32,6 +34,8 @@ impl Logs {
     }
 }
 
+/// ログを出力するもの。
+/// 記述を煩雑にしないために、所有権や可変性をごまかしている。(自由にクローンできる。`&self` に書き込める。)
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Logger {
     parent: Logs,

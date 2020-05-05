@@ -1,7 +1,9 @@
+//! CPS 中間表現をC言語のコードに変換する処理
+
 use super::*;
 use std::mem;
 
-/// Context of code generation for C language.
+/// C code generation context.
 #[derive(Default)]
 struct Cx {
     decls: Vec<CStmt>,

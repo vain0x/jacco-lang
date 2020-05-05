@@ -1,9 +1,13 @@
 use super::*;
 use std::fmt;
 
+/// テキスト上の範囲
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Range {
+    /// 開始位置
     pub(crate) start: Position,
+
+    /// 終了位置 (終端は範囲外)
     pub(crate) end: Position,
 }
 

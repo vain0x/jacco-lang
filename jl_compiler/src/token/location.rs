@@ -1,6 +1,7 @@
 use super::*;
 use std::fmt;
 
+/// トークンや構文木の位置情報
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Location {
     pub(crate) source: TokenSource,

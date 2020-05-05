@@ -1,9 +1,15 @@
 use std::fmt;
 use std::ops::{Add, AddAssign};
 
+/// テキスト上の位置 (行番号, 列番号)
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Position {
+    /// 行番号。0 から始まる。
+    /// テキスト中の改行の個数に等しい。
     pub(crate) line: usize,
+
+    /// 列番号。0 から始まる。UTF-16 でエンコードしたときのバイト数で表す。
+    /// テキスト中の最後の改行より後にある文字列の長さに等しい。
     pub(crate) character: usize,
 }
 
@@ -75,6 +81,7 @@ impl fmt::Debug for Position {
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // <https://www.gnu.org/prep/standards/html_node/Errors.html>
         write!(f, "{}:{}", self.line + 1, self.character + 1)
     }
 }

@@ -1,3 +1,5 @@
+//! Jacco 言語の構文木の定義
+
 use super::*;
 
 pub(crate) type PNameId = usize;

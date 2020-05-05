@@ -1,3 +1,5 @@
+//! 項の構文解析ルール
+
 use super::*;
 use crate::NO_ID;
 

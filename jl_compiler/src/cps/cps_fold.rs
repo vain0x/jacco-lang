@@ -1,5 +1,8 @@
+//! 命令列から CPS ノードを構築する処理
+
 use super::*;
 
+/// Folding context.
 #[derive(Default)]
 struct Fx {
     stack: Vec<KElement>,

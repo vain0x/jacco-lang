@@ -1,6 +1,7 @@
 use super::*;
 use std::fmt;
 
+/// CPS 原子項
 #[derive(Clone)]
 pub(crate) enum KTerm {
     Unit { location: Location },

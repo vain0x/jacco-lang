@@ -1,3 +1,5 @@
+//! 字句解析のルール
+
 use super::tokenize_context::TokenizeContext;
 use super::*;
 use std::rc::Rc;

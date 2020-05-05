@@ -1,3 +1,5 @@
+//! 構文木から CPS ノードのもとになる命令列を生成する処理
+
 use super::cps_fold::fold_block;
 use super::flow::Flow;
 use super::*;
@@ -9,6 +11,7 @@ struct LoopConstruction {
     continue_label: KSymbol,
 }
 
+/// Code generation context.
 #[derive(Default)]
 struct Gx {
     last_id: usize,

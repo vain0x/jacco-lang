@@ -20,6 +20,7 @@ pub(crate) fn end_loop(flow: &mut Flow) {
     }
 }
 
+/// 合流
 pub(crate) fn join(first: Flow, second: Flow) -> Flow {
     match (first, second) {
         (SEQUENTIAL, _) | (_, SEQUENTIAL) => SEQUENTIAL,

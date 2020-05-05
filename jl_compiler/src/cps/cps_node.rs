@@ -1,3 +1,5 @@
+//! CPS 中間表現や、CPS 中間表現のもとになる命令列の定義
+
 use super::*;
 use std::fmt;
 

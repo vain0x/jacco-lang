@@ -1,8 +1,10 @@
 use super::*;
 use std::fmt;
 
+/// 字句のもとになるもの
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TokenSource {
+    /// コンパイラ側で生成された字句などの出処となるもの。
     Special(&'static str),
     File(SourceFile),
 }

@@ -1,3 +1,5 @@
+//! C言語を生成する機能
+
 mod clang_dump;
 mod clang_gen;
 mod clang_node;

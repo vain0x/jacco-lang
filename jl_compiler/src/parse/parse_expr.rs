@@ -1,3 +1,5 @@
+//! 式の構文解析ルール
+
 use super::*;
 
 fn parse_term_expr(px: &mut Px) -> Option<PExpr> {
