@@ -1,6 +1,7 @@
 use super::*;
 use std::mem;
 
+/// Context of code generation for C language.
 #[derive(Default)]
 struct Cx {
     decls: Vec<CStmt>,

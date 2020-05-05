@@ -1,12 +1,12 @@
 use super::*;
 
 #[derive(Default)]
-struct Gx {
+struct Fx {
     stack: Vec<KElement>,
     labels: Vec<KFn>,
 }
 
-impl Gx {
+impl Fx {
     fn push_term(&mut self, term: KTerm) {
         self.stack.push(KElement::Term(term));
     }
@@ -30,25 +30,25 @@ impl Gx {
     }
 }
 
-fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
+fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) {
     while let Some(command) = commands.pop() {
         match command {
             XCommand::Pop(count) => {
                 for _ in 0..count {
-                    gx.stack.pop();
+                    fx.stack.pop();
                 }
             }
             XCommand::Term(term) => {
-                gx.push_term(term);
+                fx.push_term(term);
             }
             XCommand::Jump { label, arg_count } => {
                 let mut args = vec![];
                 for _ in 0..arg_count {
-                    args.push(gx.pop_term());
+                    args.push(fx.pop_term());
                 }
                 args.reverse();
 
-                gx.push_node(KNode::Jump { label, args });
+                fx.push_node(KNode::Jump { label, args });
                 return;
             }
             XCommand::Prim {
@@ -61,22 +61,22 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
             } => {
                 let mut args = vec![];
                 for _ in 0..arg_count {
-                    args.push(gx.pop_term());
+                    args.push(fx.pop_term());
                 }
                 args.reverse();
 
                 let result = result.with_location(location);
                 if use_result {
-                    gx.push_term(KTerm::Name(result.clone()));
+                    fx.push_term(KTerm::Name(result.clone()));
                 }
 
                 let mut conts = vec![];
                 for _ in 0..cont_count {
-                    do_fold(commands, gx);
-                    conts.push(gx.pop_node());
+                    do_fold(commands, fx);
+                    conts.push(fx.pop_node());
                 }
 
-                gx.push_node(KNode::Prim {
+                fx.push_node(KNode::Prim {
                     prim,
                     args,
                     results: vec![result],
@@ -85,10 +85,10 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
                 return;
             }
             XCommand::Label { label, .. } => {
-                do_fold(commands, gx);
-                let body = gx.pop_node();
+                do_fold(commands, fx);
+                let body = fx.pop_node();
 
-                gx.labels.push(KFn {
+                fx.labels.push(KFn {
                     name: label,
                     params: vec![],
                     body,
@@ -100,17 +100,17 @@ fn do_fold(commands: &mut Vec<XCommand>, gx: &mut Gx) {
 }
 
 pub(crate) fn fold_block(mut commands: Vec<XCommand>) -> (KNode, Vec<KFn>) {
-    let mut gx = Gx::default();
+    let mut fx = Fx::default();
 
     eprintln!("block: {:#?}", commands);
     commands.reverse();
 
-    do_fold(&mut commands, &mut gx);
-    let node = gx.pop_node();
+    do_fold(&mut commands, &mut fx);
+    let node = fx.pop_node();
 
     while let Some(XCommand::Label { .. }) = commands.last() {
-        do_fold(&mut commands, &mut gx);
+        do_fold(&mut commands, &mut fx);
     }
 
-    (node, gx.labels)
+    (node, fx.labels)
 }
