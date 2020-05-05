@@ -1,35 +1,51 @@
 #!/bin/bash
+# 全ケースを実行する:
+# USAGE: ./test
 
-set -eux
+# 1ケースだけ実行する:
+# USAGE: ./test empty
 
-function f() {
+set -eu
+
+f() {
     NAME=$1
+    SRC="tests/$NAME/$NAME.jacco"
 
-    if [[ ! -z $ONLY && $ONLY != $NAME ]]
+    echo "test: $SRC" >&2
+    cargo run --bin jl_tests "$SRC"
+    EXIT_CODE=$?
+
+    if test $EXIT_CODE -ne 0
     then
-        return
+        echo '$?='$? >&2
     fi
-
-    cargo run --bin jl_tests "tests/$NAME/$NAME.jacco"
 }
 
-# ONLY='empty' のように名前を書くと1つだけ実行される。
-ONLY=''
+f_all() {
+    f empty
+    f exit_with_42
+    f extern_fn
+    f add
+    f arithmetic
+    f if
+    f let
+    f operators
+    f complex
+    f while
+    f loop
+    f break
+    f continue
+    f call_direct
+}
 
-f empty
-f exit_with_42
-f extern_fn
-f add
-f arithmetic
-f if
-f let
-f operators
-f complex
-f while
-f loop
-f break
-f continue
-f call_direct
+ONLY=${1:-''}
+
+if ! test -z $ONLY
+then
+    f $ONLY
+else
+    f_all
+fi
 
 # 差分の量を表示する。
 git diff --stat -- 'tests/*/*.txt'
