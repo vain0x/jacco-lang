@@ -3,8 +3,6 @@
 use super::*;
 use std::fmt;
 
-pub(crate) type XContId = usize;
-
 #[derive(Debug)]
 pub(crate) enum XCommand {
     Prim {
@@ -12,7 +10,6 @@ pub(crate) enum XCommand {
         args: Vec<KTerm>,
         result_opt: Option<KSymbol>,
         cont_count: usize,
-        location: Location,
     },
     Label {
         label: KSymbol,
@@ -34,10 +31,6 @@ pub(crate) struct KSymbol {
 }
 
 impl KSymbol {
-    pub(crate) fn with_location(self, location: Location) -> Self {
-        Self { location, ..self }
-    }
-
     pub(crate) fn unique_name(&self) -> String {
         format!("{}_{}", self.text, self.id)
     }
@@ -118,21 +111,6 @@ impl fmt::Debug for KNode {
             list.finish()?;
 
             write!(f, ")")
-        }
-    }
-}
-
-#[derive(Clone)]
-pub(crate) enum KElement {
-    Term(KTerm),
-    Node(KNode),
-}
-
-impl fmt::Debug for KElement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            KElement::Term(term) => fmt::Debug::fmt(term, f),
-            KElement::Node(node) => fmt::Debug::fmt(node, f),
         }
     }
 }

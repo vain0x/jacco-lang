@@ -65,7 +65,6 @@ impl Gx {
             args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
-            location: Location::new_dummy(),
         });
     }
 
@@ -116,7 +115,6 @@ fn emit_binary_op(
         args: vec![left, right],
         result_opt: Some(result.clone()),
         cont_count: 1,
-        location,
     });
 
     KTerm::Name(result)
@@ -139,7 +137,6 @@ fn emit_if(
         args: vec![k_cond],
         cont_count: 2,
         result_opt: None,
-        location,
     });
 
     // body
@@ -187,7 +184,6 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
                 args: k_args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location,
             });
 
             KTerm::Name(result)
@@ -311,7 +307,6 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![k_cond],
                 result_opt: None,
                 cont_count: 2,
-                location: location.clone(),
             });
 
             let parent_loop = std::mem::replace(
@@ -385,12 +380,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gen_expr(expr, gx);
         }
         PDecl::Let {
-            keyword,
-            name_opt,
-            init_opt,
+            name_opt, init_opt, ..
         } => {
             let result = gx.name_to_symbol(name_opt.unwrap());
-            let location = keyword.into_location();
 
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
@@ -399,7 +391,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 args: vec![k_init],
                 result_opt: Some(result),
                 cont_count: 1,
-                location,
             });
         }
         PDecl::Fn { keyword, block_opt } => {

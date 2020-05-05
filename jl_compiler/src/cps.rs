@@ -5,7 +5,6 @@ mod cps_gen;
 mod cps_node;
 mod cps_prim;
 mod cps_term;
-mod flow;
 
 pub(crate) use cps_gen::cps_conversion;
 pub(crate) use cps_node::*;
