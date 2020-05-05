@@ -11,11 +11,10 @@ pub(crate) use parse_tree::*;
 
 use crate::logs::Logger;
 use crate::token::{Location, TokenData, TokenKind};
+use parse_context::Px;
 use parse_decl::parse_semi;
 use parse_expr::{parse_args, parse_block, parse_expr};
 use parse_term::{parse_cond, parse_name, parse_term};
-
-type Px = parse_context::ParseContext;
 
 /// 関数の中か外か。
 /// QUESTION: より適切な名前？

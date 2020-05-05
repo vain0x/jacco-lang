@@ -1,14 +1,15 @@
 use super::*;
 
-pub(crate) struct ParseContext {
+/// Parsing context.
+pub(crate) struct Px {
     tokens: Vec<TokenData>,
 }
 
-impl ParseContext {
+impl Px {
     pub(crate) fn new(mut tokens: Vec<TokenData>) -> Self {
         tokens.reverse();
 
-        ParseContext { tokens }
+        Px { tokens }
     }
 
     fn nth_data(&self, offset: usize) -> Option<&TokenData> {
