@@ -9,7 +9,7 @@ continue__4:;
     }
     //
 next_5:;
-    return 0;
+    return (void)0;
 }
 
 int main() {
@@ -19,7 +19,7 @@ continue__8:;
     goto next_9;
     //
 next_9:;
-    return 0;
+    return (void)0;
 }
 
 int main() {

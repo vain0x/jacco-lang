@@ -23,6 +23,7 @@ fn gen_ty(ty: KTy) -> CTy {
 
 fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     match term {
+        KTerm::Unit { .. } => CExpr::IntLit("(void)0".to_string()),
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Name(symbol) => CExpr::Name(symbol.unique_name()),
     }

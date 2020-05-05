@@ -92,7 +92,7 @@ fn emit_if(
         arg_count: 1,
         cont_count: 2,
         result,
-        use_result: true,
+        use_result: false,
         location,
     });
 
@@ -311,6 +311,8 @@ fn gen_expr(expr: PExpr, xx: &mut Xx) -> Flow {
             // body:
             let mut flow = gen_block(body_opt.unwrap(), xx);
             if flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Pop(1));
+
                 xx.push(XCommand::Jump {
                     label: continue_label.clone(),
                     arg_count: 0,
@@ -331,7 +333,9 @@ fn gen_expr(expr: PExpr, xx: &mut Xx) -> Flow {
                 arg_count: 0,
             });
 
-            xx.push_int(0, Location::new_dummy());
+            xx.push_term(KTerm::Unit {
+                location: Location::new_dummy(),
+            });
 
             flow::end_loop(&mut flow);
             flow
@@ -362,6 +366,8 @@ fn gen_expr(expr: PExpr, xx: &mut Xx) -> Flow {
             // body:
             let mut flow = gen_block(body_opt.unwrap(), xx);
             if flow == flow::SEQUENTIAL {
+                xx.push(XCommand::Pop(1));
+
                 xx.push(XCommand::Jump {
                     label: continue_label.clone(),
                     arg_count: 0,
@@ -376,7 +382,9 @@ fn gen_expr(expr: PExpr, xx: &mut Xx) -> Flow {
                 arg_count: 0,
             });
 
-            xx.push_int(0, Location::new_dummy());
+            xx.push_term(KTerm::Unit {
+                location: Location::new_dummy(),
+            });
 
             flow::end_loop(&mut flow);
             flow
@@ -429,6 +437,10 @@ fn gen_decl(decl: PDecl, xx: &mut Xx) -> Flow {
 
                 let flow = gen_block(block_opt.unwrap(), xx);
                 if flow != flow::FN {
+                    if arg_count == 0 {
+                        xx.push(XCommand::Pop(1));
+                    }
+
                     xx.push(XCommand::Jump {
                         label: return_label.clone(),
                         arg_count,
@@ -491,6 +503,9 @@ fn gen_block(block: PBlock, xx: &mut Xx) -> Flow {
 
     if let Some(last) = block.last_opt {
         gen_expr(*last, xx)?;
+    } else {
+        let location = block.left.into_location();
+        xx.push_term(KTerm::Unit { location });
     }
 
     flow::SEQUENTIAL

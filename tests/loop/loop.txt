@@ -6,5 +6,5 @@ continue__3:;
     goto continue__3;
     //
 next_4:;
-    return 0;
+    return (void)0;
 }
