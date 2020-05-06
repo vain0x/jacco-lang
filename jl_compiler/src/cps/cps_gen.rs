@@ -456,7 +456,7 @@ fn gen_block(block: PBlock, gx: &mut Gx) -> KTerm {
         Some(last) => gen_expr(*last, gx),
         None => {
             let location = block.left.into_location();
-            KTerm::Unit { location }
+            new_unit_term(location)
         }
     }
 }
