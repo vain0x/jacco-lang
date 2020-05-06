@@ -1,20 +1,12 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
-use std::mem;
+use std::mem::take;
 
 /// C code generation context.
 #[derive(Default)]
 struct Cx {
     decls: Vec<CStmt>,
-}
-
-fn take_term(slot: &mut KTerm) -> KTerm {
-    mem::take(slot)
-}
-
-fn take_node(slot: &mut KNode) -> KNode {
-    mem::take(slot)
 }
 
 fn gen_ty(ty: KTy) -> CTy {
@@ -46,10 +38,10 @@ fn gen_binary_op(
         conts.as_mut_slice(),
     ) {
         ([left, right], [result], [cont]) => {
-            let left = gen_term(take_term(left), cx);
-            let right = gen_term(take_term(right), cx);
+            let left = gen_term(take(left), cx);
+            let right = gen_term(take(right), cx);
             stmts.push(CStmt::VarDecl {
-                name: mem::take(result).unique_name(),
+                name: take(result).unique_name(),
                 ty: CTy::Int,
                 init_opt: Some(CExpr::BinaryOp {
                     op,
@@ -57,7 +49,7 @@ fn gen_binary_op(
                     right: Box::new(right),
                 }),
             });
-            gen_node(take_node(cont), stmts, cx);
+            gen_node(take(cont), stmts, cx);
         }
         _ => unimplemented!(),
     }
@@ -74,7 +66,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         KPrim::Stuck => unreachable!(),
         KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
             ([KTerm::Name(label), arg], []) if label.text == "return" => {
-                let arg = gen_term(take_term(arg), cx);
+                let arg = gen_term(take(arg), cx);
                 stmts.push(CStmt::Return(Some(arg)));
             }
             ([KTerm::Name(label)], []) if label.text == "return" => {
@@ -82,7 +74,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             }
             ([KTerm::Name(label), ..], []) => {
                 stmts.push(CStmt::Goto {
-                    label: mem::take(label).unique_name(),
+                    label: take(label).unique_name(),
                 });
             }
             _ => unimplemented!(),
@@ -96,14 +88,14 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 };
 
                 let let_stmt = CStmt::VarDecl {
-                    name: mem::take(result).unique_name(),
+                    name: take(result).unique_name(),
                     ty: CTy::Int,
                     init_opt: Some(call_expr),
                 };
 
                 stmts.push(let_stmt);
 
-                gen_node(take_node(cont), stmts, cx);
+                gen_node(take(cont), stmts, cx);
             }
             _ => unimplemented!(),
         },
@@ -113,13 +105,13 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             conts.as_mut_slice(),
         ) {
             ([init], [result], [cont]) => {
-                let init = gen_term(take_term(init), cx);
+                let init = gen_term(take(init), cx);
                 stmts.push(CStmt::VarDecl {
-                    name: mem::take(result).unique_name(),
+                    name: take(result).unique_name(),
                     ty: CTy::Int,
                     init_opt: Some(init),
                 });
-                gen_node(take_node(cont), stmts, cx);
+                gen_node(take(cont), stmts, cx);
             }
             _ => unimplemented!(),
         },
@@ -129,9 +121,9 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             conts.as_mut_slice(),
         ) {
             ([cond], [], [then_cont, else_cont]) => {
-                let cond = gen_term(take_term(cond), cx);
-                let then_cont = gen_node_as_block(take_node(then_cont), cx);
-                let else_cont = gen_node_as_block(take_node(else_cont), cx);
+                let cond = gen_term(take(cond), cx);
+                let then_cont = gen_node_as_block(take(then_cont), cx);
+                let else_cont = gen_node_as_block(take(else_cont), cx);
 
                 let body = Box::new(CStmt::Block(then_cont));
                 let alt = Box::new(CStmt::Block(else_cont));
