@@ -5,6 +5,7 @@ use std::io::{self, Write};
 
 fn binary_op_to_str(op: &CBinaryOp) -> &str {
     match op {
+        CBinaryOp::Assign => "=",
         CBinaryOp::Add => "+",
         CBinaryOp::Sub => "-",
         CBinaryOp::Mul => "*",

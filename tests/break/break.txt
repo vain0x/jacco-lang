@@ -1,10 +1,13 @@
 int main() {
+    int while_result_3;
     goto continue__4;
     //
 continue__4:;
     if (1) {
+        while_result_3 = (void)0;
         goto next_5;
     } else {
+        while_result_3 = (void)0;
         goto next_5;
     }
     //
@@ -13,9 +16,11 @@ next_5:;
 }
 
 int main() {
+    int loop_result_8;
     goto continue__9;
     //
 continue__9:;
+    loop_result_8 = (void)0;
     goto next_10;
     //
 next_10:;

@@ -1,32 +1,44 @@
 int main() {
+    int if_result_3;
+    int if_result_5;
+    int if_result_9;
+    int if_result_7;
     if (1) {
+        if_result_3 = (void)0;
         goto next_4;
     } else {
+        if_result_3 = (void)0;
         goto next_4;
     }
     //
 next_4:;
     if (2) {
+        if_result_5 = (void)0;
         goto next_6;
     } else {
+        if_result_5 = (void)0;
         goto next_6;
     }
     //
 next_6:;
     if (3) {
         int body3_1 = 30;
+        if_result_7 = (void)0;
         goto next_8;
     } else {
         if (4) {
             int alt31_2 = 31;
+            if_result_9 = (void)0;
             goto next_10;
         } else {
             int alt32_3 = 32;
+            if_result_9 = (void)0;
             goto next_10;
         }
     }
     //
 next_10:;
+    if_result_7 = if_result_9;
     goto next_8;
     //
 next_8:;

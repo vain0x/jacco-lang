@@ -29,12 +29,12 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
                     conts,
                 };
             }
-            XCommand::Label { label, .. } => {
+            XCommand::Label { label, params } => {
                 let body = do_fold(commands, fx);
 
                 fx.labels.push(KFn {
                     name: label,
-                    params: vec![],
+                    params,
                     body,
                     labels: vec![],
                 });

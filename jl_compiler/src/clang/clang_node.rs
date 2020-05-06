@@ -1,6 +1,7 @@
 //! C言語の構文木の定義
 
 pub(crate) enum CBinaryOp {
+    Assign,
     Add,
     Sub,
     Mul,

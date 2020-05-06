@@ -1,7 +1,10 @@
 int main() {
+    int if_result_3;
     if (1) {
+        if_result_3 = 3;
         goto next_4;
     } else {
+        if_result_3 = (void)0;
         goto next_4;
     }
     //

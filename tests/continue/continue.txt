@@ -1,10 +1,12 @@
 int main() {
+    int while_result_3;
     goto continue__4;
     //
 continue__4:;
     if (0) {
         goto continue__4;
     } else {
+        while_result_3 = (void)0;
         goto next_5;
     }
     //
@@ -13,6 +15,7 @@ next_5:;
 }
 
 int main() {
+    int loop_result_8;
     goto continue__9;
     //
 continue__9:;
@@ -23,12 +26,15 @@ next_10:;
 }
 
 int main() {
+    int while_result_16;
+    int while_result_13;
     goto continue__14;
     //
 continue__17:;
     if (0) {
         goto continue__17;
     } else {
+        while_result_16 = (void)0;
         goto next_18;
     }
     //
@@ -39,6 +45,7 @@ continue__14:;
     if (0) {
         goto continue__17;
     } else {
+        while_result_13 = (void)0;
         goto next_15;
     }
     //

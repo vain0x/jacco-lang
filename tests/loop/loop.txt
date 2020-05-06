@@ -1,4 +1,5 @@
 int main() {
+    int loop_result_3;
     goto continue__4;
     //
 continue__4:;

@@ -1,4 +1,6 @@
 int main() {
+    int if_result_19;
+    int if_result_21;
     int add_3 = 1 + 2;
     int add_1 = add_3;
     int sub_4 = 1 - 2;
@@ -32,16 +34,20 @@ int main() {
     int rightshift_18 = 1 >> 2;
     int right_shift_16 = rightshift_18;
     if (2) {
+        if_result_19 = 3;
         goto next_20;
     } else {
+        if_result_19 = 0;
         goto next_20;
     }
     //
 next_20:;
     int log_and_17 = if_result_19;
     if (2) {
+        if_result_21 = 1;
         goto next_22;
     } else {
+        if_result_21 = 3;
         goto next_22;
     }
     //

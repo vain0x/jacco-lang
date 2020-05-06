@@ -1,11 +1,13 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
+use std::collections::HashMap;
 use std::mem::take;
 
 /// C code generation context.
 #[derive(Default)]
 struct Cx {
+    labels: HashMap<String, Vec<KSymbol>>,
     decls: Vec<CStmt>,
 }
 
@@ -72,10 +74,27 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ([KTerm::Name(label)], []) if label.text == "return" => {
                 stmts.push(CStmt::Return(None));
             }
-            ([KTerm::Name(label), ..], []) => {
-                stmts.push(CStmt::Goto {
-                    label: take(label).unique_name(),
-                });
+            ([KTerm::Name(label), args @ ..], []) => {
+                let name = take(label).unique_name();
+                let params = cx
+                    .labels
+                    .get(&name)
+                    .into_iter()
+                    .flatten()
+                    .map(KSymbol::unique_name)
+                    .collect::<Vec<_>>();
+
+                for (param, arg) in params.into_iter().zip(args) {
+                    let arg = gen_term(take(arg), cx);
+
+                    stmts.push(CStmt::Expr(CExpr::BinaryOp {
+                        op: CBinaryOp::Assign,
+                        left: Box::new(CExpr::Name(param)),
+                        right: Box::new(arg),
+                    }))
+                }
+
+                stmts.push(CStmt::Goto { label: name });
             }
             _ => unimplemented!(),
         },
@@ -181,6 +200,19 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     {
         let body = {
             let mut stmts = vec![];
+
+            cx.labels.clear();
+            for KFn { name, params, .. } in &labels {
+                cx.labels.insert(name.unique_name(), params.clone());
+
+                for param in params {
+                    stmts.push(CStmt::VarDecl {
+                        name: param.unique_name(),
+                        ty: CTy::Int,
+                        init_opt: None,
+                    });
+                }
+            }
 
             gen_node(body, &mut stmts, cx);
 
