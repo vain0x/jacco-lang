@@ -34,7 +34,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
 
                 fx.labels.push(KFn {
                     name: label,
-                    params,
+                    params: params.into_iter().collect(),
                     body,
                     labels: vec![],
                 });

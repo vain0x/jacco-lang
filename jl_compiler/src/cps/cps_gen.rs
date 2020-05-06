@@ -26,15 +26,6 @@ impl Gx {
         self.last_id
     }
 
-    fn name_to_symbol(&mut self, name: PName) -> KSymbol {
-        KSymbol {
-            id: name.name_id,
-            text: name.text,
-            ty: KTy::Unresolved,
-            location: name.location,
-        }
-    }
-
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
         let id = self.fresh_id();
 
@@ -165,14 +156,48 @@ fn emit_if(
     KTerm::Name(result)
 }
 
+fn gen_ty(ty_name: PName, _gx: &mut Gx) -> KTy {
+    match ty_name.as_str() {
+        "i32" => KTy::I32,
+        _ => KTy::Unresolved,
+    }
+}
+
+fn gen_name_with_ty(name: PName, ty: KTy, _gx: &mut Gx) -> KSymbol {
+    KSymbol {
+        id: name.name_id,
+        text: name.text,
+        ty,
+        location: name.location,
+    }
+}
+
+fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {
+    gen_name_with_ty(name, KTy::Unresolved, gx)
+}
+
+fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
+    let ty = match param.ty_opt {
+        Some(ty) => gen_ty(ty, gx),
+        None => {
+            eprintln!("param type can't be omit");
+            KTy::Never
+        }
+    };
+
+    gen_name_with_ty(param.name, ty, gx)
+}
+
+fn gen_result(result: PResult, gx: &mut Gx) -> KTy {
+    let ty = result.ty_opt.unwrap();
+    gen_ty(ty, gx)
+}
+
 fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
     match term {
-        PTerm::Int(token) => return KTerm::Int(token),
+        PTerm::Int(token) => KTerm::Int(token),
         PTerm::Str(..) => unimplemented!(),
-        PTerm::Name(name) => {
-            let symbol = gx.name_to_symbol(name);
-            KTerm::Name(symbol)
-        }
+        PTerm::Name(name) => KTerm::Name(gen_name(name, gx)),
         PTerm::Call { callee, arg_list } => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());
@@ -382,8 +407,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::Let {
             name_opt, init_opt, ..
         } => {
-            let result = gx.name_to_symbol(name_opt.unwrap());
-
+            let result = gen_name(name_opt.unwrap(), gx);
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
             gx.push(XCommand::Prim {
@@ -427,27 +451,23 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             result_opt,
             ..
         } => {
-            let fn_name = gx.name_to_symbol(name_opt.unwrap());
-
+            let name = gen_name(name_opt.unwrap(), gx);
+            let params = param_list_opt
+                .unwrap()
+                .params
+                .into_iter()
+                .map(|param| gen_param(param, gx))
+                .collect();
             let result = match result_opt {
-                Some(result) => match result.ty_opt.unwrap().text.as_str() {
-                    "i32" => KTy::I32,
-                    _ => unimplemented!(),
-                },
+                Some(result) => gen_result(result, gx),
                 None => KTy::Unit,
             };
 
             let extern_fn = KExternFn {
-                name: fn_name,
-                params: param_list_opt
-                    .unwrap()
-                    .params
-                    .into_iter()
-                    .map(|param| (gx.name_to_symbol(param.name), KTy::I32))
-                    .collect(),
+                name,
+                params,
                 result,
             };
-
             gx.extern_fns.push(extern_fn);
         }
     }

@@ -11,6 +11,12 @@ pub(crate) struct PName {
     pub(crate) location: Location,
 }
 
+impl PName {
+    pub(crate) fn as_str(&self) -> &str {
+        self.text.as_str()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum PTerm {
     Int(TokenData),

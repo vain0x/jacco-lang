@@ -8,9 +8,9 @@ struct KSymbolRef {
     id: usize,
 }
 
-impl From<&KSymbol> for KSymbolRef {
-    fn from(symbol: &KSymbol) -> Self {
-        KSymbolRef { id: symbol.id }
+impl KSymbol {
+    fn as_symbol_ref(&self) -> KSymbolRef {
+        KSymbolRef { id: self.id }
     }
 }
 
@@ -31,18 +31,17 @@ impl Tx {
 }
 
 fn constraint_ty(symbol: &mut KSymbol, ty: KTy, tx: &mut Tx) -> KTy {
-    let symbol_ref = KSymbolRef::from(&*symbol);
+    let symbol_ref = symbol.as_symbol_ref();
     match tx.symbol_tys.get(&symbol_ref) {
-        Some(ty) => {
+        Some(ty) if *ty != KTy::Unresolved => {
             // FIXME: 型検査
             symbol.ty = ty.clone();
         }
-        None => {
-            if ty != KTy::Unresolved {
-                tx.symbol_tys.insert(symbol_ref, ty.clone());
-                symbol.ty = ty;
-            }
+        _ if ty != KTy::Unresolved => {
+            tx.symbol_tys.insert(symbol_ref, ty.clone());
+            symbol.ty = ty;
         }
+        _ => {}
     }
     symbol.ty.clone()
 }
@@ -64,9 +63,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
             [KTerm::Name(label), args @ ..] => {
-                if let Some(KTy::Fn { param_tys, .. }) =
-                    tx.symbol_tys.get(&KSymbolRef::from(&*label))
-                {
+                if let Some(KTy::Fn { param_tys, .. }) = tx.symbol_tys.get(&label.as_symbol_ref()) {
                     let param_tys = param_tys.to_owned();
                     for (param_ty, arg) in param_tys.into_iter().zip(args.iter_mut()) {
                         resolve_term(arg, param_ty, tx);
@@ -117,15 +114,13 @@ fn resolve_fn_sig(fn_symbol: &KSymbol, params: &[KSymbol], tx: &mut Tx) {
     let mut param_tys = vec![];
 
     for param in params {
-        let param_ty = KTy::I32;
-
         tx.symbol_tys
-            .insert(KSymbolRef::from(param), param_ty.clone());
-        param_tys.push(param_ty);
+            .insert(param.as_symbol_ref(), param.ty.clone());
+        param_tys.push(param.ty.clone());
     }
 
     tx.symbol_tys.insert(
-        KSymbolRef::from(fn_symbol),
+        fn_symbol.as_symbol_ref(),
         KTy::Fn {
             param_tys,
             result_ty: Box::new(KTy::Never),

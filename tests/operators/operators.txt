@@ -42,7 +42,7 @@ int main() {
     }
     //
 next_20:;
-    int log_and_17 = if_result_19;
+    /* unresolved */ void log_and_17 = if_result_19;
     if (2) {
         if_result_21 = 1;
         goto next_22;
@@ -52,6 +52,6 @@ next_20:;
     }
     //
 next_22:;
-    int log_or_18 = if_result_21;
+    /* unresolved */ void log_or_18 = if_result_21;
     return 0;
 }
