@@ -452,11 +452,12 @@ fn gen_block(block: PBlock, gx: &mut Gx) -> KTerm {
         gen_decl(decl, gx);
     }
 
-    if let Some(last) = block.last_opt {
-        gen_expr(*last, gx)
-    } else {
-        let location = block.left.into_location();
-        KTerm::Unit { location }
+    match block.last_opt {
+        Some(last) => gen_expr(*last, gx),
+        None => {
+            let location = block.left.into_location();
+            KTerm::Unit { location }
+        }
     }
 }
 
