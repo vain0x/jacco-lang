@@ -17,16 +17,29 @@ pub(crate) enum XCommand {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum KTy {
+    Unresolved,
+    Never,
     Unit,
     I32,
+    Fn {
+        param_tys: Vec<KTy>,
+        result_ty: Box<KTy>,
+    },
+}
+
+impl Default for KTy {
+    fn default() -> Self {
+        KTy::Unresolved
+    }
 }
 
 #[derive(Clone, Default)]
 pub(crate) struct KSymbol {
     pub(crate) id: usize,
     pub(crate) text: String,
+    pub(crate) ty: KTy,
     pub(crate) location: Location,
 }
 

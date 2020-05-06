@@ -30,6 +30,7 @@ impl Gx {
         KSymbol {
             id: name.name_id,
             text: name.text,
+            ty: KTy::Unresolved,
             location: name.location,
         }
     }
@@ -39,7 +40,12 @@ impl Gx {
 
         let text = hint.to_string();
 
-        KSymbol { id, text, location }
+        KSymbol {
+            id,
+            text,
+            ty: KTy::Unresolved,
+            location,
+        }
     }
 
     fn current_break_label(&self) -> Option<&KSymbol> {
@@ -467,12 +473,17 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
     }
 }
 
-pub(crate) fn cps_conversion(p_root: PRoot) -> KRoot {
-    let mut gx = Gx::default();
-    gen_root(p_root, &mut gx);
+pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> KRoot {
+    let mut k_root = {
+        let mut gx = Gx::default();
+        gen_root(p_root, &mut gx);
+        KRoot {
+            extern_fns: gx.extern_fns,
+            fns: gx.fns,
+        }
+    };
 
-    KRoot {
-        extern_fns: gx.extern_fns,
-        fns: gx.fns,
-    }
+    type_resolution::resolve_types(&mut k_root, logger.clone());
+
+    k_root
 }

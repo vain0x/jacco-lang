@@ -21,7 +21,7 @@ pub(crate) enum CBinaryOp {
 }
 
 pub(crate) enum CTy {
-    #[allow(dead_code)]
+    Other(&'static str),
     Void,
     Int,
 }

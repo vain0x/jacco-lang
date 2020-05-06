@@ -13,6 +13,9 @@ struct Cx {
 
 fn gen_ty(ty: KTy) -> CTy {
     match ty {
+        KTy::Unresolved => CTy::Other("/* unresolved */ void"),
+        KTy::Never => CTy::Other("/* never */ void"),
+        KTy::Fn { .. } => CTy::Other("/* fn */ void"),
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
     }
@@ -42,9 +45,13 @@ fn gen_binary_op(
         ([left, right], [result], [cont]) => {
             let left = gen_term(take(left), cx);
             let right = gen_term(take(right), cx);
+            let (name, ty) = {
+                let result = take(result);
+                (result.unique_name(), gen_ty(result.ty))
+            };
             stmts.push(CStmt::VarDecl {
-                name: take(result).unique_name(),
-                ty: CTy::Int,
+                name,
+                ty,
                 init_opt: Some(CExpr::BinaryOp {
                     op,
                     left: Box::new(left),
@@ -105,10 +112,14 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     let args = args.drain(..).map(|arg| gen_term(arg, cx)).collect();
                     CExpr::Call { cal, args }
                 };
+                let (name, ty) = {
+                    let result = take(result);
+                    (result.unique_name(), gen_ty(result.ty))
+                };
 
                 let let_stmt = CStmt::VarDecl {
-                    name: take(result).unique_name(),
-                    ty: CTy::Int,
+                    name,
+                    ty,
                     init_opt: Some(call_expr),
                 };
 
@@ -125,9 +136,13 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         ) {
             ([init], [result], [cont]) => {
                 let init = gen_term(take(init), cx);
+                let (name, ty) = {
+                    let result = take(result);
+                    (result.unique_name(), gen_ty(result.ty))
+                };
                 stmts.push(CStmt::VarDecl {
-                    name: take(result).unique_name(),
-                    ty: CTy::Int,
+                    name,
+                    ty,
                     init_opt: Some(init),
                 });
                 gen_node(take(cont), stmts, cx);

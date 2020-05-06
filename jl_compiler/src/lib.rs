@@ -24,7 +24,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     front::resolve_name(&mut p_root);
     eprintln!("p_root = {:#?}\n", p_root);
 
-    let k_root = cps::cps_conversion(p_root);
+    let k_root = cps::cps_conversion(p_root, logs.logger());
     eprintln!("k_root = {:#?}\n", k_root);
 
     for item in logs.finish() {
