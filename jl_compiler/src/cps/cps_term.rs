@@ -18,3 +18,11 @@ impl fmt::Debug for KTerm {
         }
     }
 }
+
+impl Default for KTerm {
+    fn default() -> Self {
+        KTerm::Unit {
+            location: Location::default(),
+        }
+    }
+}

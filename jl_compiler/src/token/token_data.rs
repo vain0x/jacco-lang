@@ -18,14 +18,6 @@ impl TokenData {
         }
     }
 
-    pub(crate) fn new_dummy() -> TokenData {
-        TokenData {
-            kind: TokenKind::Other,
-            text: String::new(),
-            location: Location::new_dummy(),
-        }
-    }
-
     pub(crate) fn kind(&self) -> TokenKind {
         self.kind
     }
@@ -63,6 +55,16 @@ impl fmt::Debug for TokenData {
             | TokenKind::Str
             | TokenKind::Ident => write!(f, "{:?}", self.text()),
             _ => write!(f, "{:?}", self.kind()),
+        }
+    }
+}
+
+impl Default for TokenData {
+    fn default() -> Self {
+        TokenData {
+            kind: TokenKind::Other,
+            text: String::default(),
+            location: Location::default(),
         }
     }
 }

@@ -23,7 +23,7 @@ pub(crate) enum KTy {
     I32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct KSymbol {
     pub(crate) id: usize,
     pub(crate) text: String,
@@ -33,16 +33,6 @@ pub(crate) struct KSymbol {
 impl KSymbol {
     pub(crate) fn unique_name(&self) -> String {
         format!("{}_{}", self.text, self.id)
-    }
-}
-
-impl Default for KSymbol {
-    fn default() -> Self {
-        KSymbol {
-            id: usize::default(),
-            text: String::default(),
-            location: Location::new_dummy(),
-        }
     }
 }
 

@@ -13,13 +13,6 @@ impl Location {
         Location { source, range }
     }
 
-    pub(crate) fn new_dummy() -> Location {
-        Location {
-            source: TokenSource::Special("dummy"),
-            range: Range::default(),
-        }
-    }
-
     #[allow(dead_code)]
     pub(crate) fn range(&self) -> Range {
         self.range
@@ -42,5 +35,11 @@ impl Location {
 impl fmt::Debug for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}:{}", self.source, self.range)
+    }
+}
+
+impl Default for Location {
+    fn default() -> Self {
+        Location::new(TokenSource::Special("<default>"), Range::default())
     }
 }

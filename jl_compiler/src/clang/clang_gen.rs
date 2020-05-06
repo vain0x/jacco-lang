@@ -10,7 +10,7 @@ struct Cx {
 }
 
 fn take_term(slot: &mut KTerm) -> KTerm {
-    mem::replace(slot, KTerm::Int(TokenData::new_dummy()))
+    mem::take(slot)
 }
 
 fn take_node(slot: &mut KNode) -> KNode {
