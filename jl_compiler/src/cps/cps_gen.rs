@@ -241,27 +241,21 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Term { term, .. } => gen_term_expr(term, gx),
         PExpr::Block(block) => gen_block(block, gx),
         PExpr::Break { keyword, .. } => {
-            let never_term = {
-                let location = keyword.into_location();
-                new_never_term(location)
-            };
+            let location = keyword.into_location();
 
             let label = gx.current_break_label().expect("out of loop").clone();
-            // FIXME: break is 1-arity
-            gx.push_jump_with_cont(label, vec![]);
+            let unit_term = new_unit_term(location.clone());
+            gx.push_jump_with_cont(label, vec![unit_term]);
 
-            never_term
+            new_never_term(location)
         }
         PExpr::Continue { keyword, .. } => {
-            let never_term = {
-                let location = keyword.into_location();
-                new_never_term(location)
-            };
+            let location = keyword.into_location();
 
             let label = gx.current_continue_label().expect("out of loop").clone();
             gx.push_jump_with_cont(label, vec![]);
 
-            never_term
+            new_never_term(location)
         }
         PExpr::If {
             keyword,
