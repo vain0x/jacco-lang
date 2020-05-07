@@ -1,7 +1,9 @@
 //! CPS 中間表現や、CPS 中間表現のもとになる命令列の定義
 
 use super::*;
+use std::cell::RefCell;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub(crate) enum XCommand {
@@ -17,9 +19,9 @@ pub(crate) enum XCommand {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone)]
 pub(crate) enum KTy {
-    Unresolved,
+    Unresolved(Option<KMetaTy>),
     Never,
     Unit,
     I32,
@@ -29,9 +31,98 @@ pub(crate) enum KTy {
     },
 }
 
+impl KTy {
+    pub(crate) fn new_unresolved() -> KTy {
+        KTy::default()
+    }
+
+    pub(crate) fn resolve(mut self) -> KTy {
+        loop {
+            match self {
+                KTy::Unresolved(Some(ref meta)) if meta.is_bound() => {
+                    self = meta.content_ty().unwrap();
+                    continue;
+                }
+                ty => return ty,
+            }
+        }
+    }
+}
+
 impl Default for KTy {
     fn default() -> Self {
-        KTy::Unresolved
+        KTy::Unresolved(None)
+    }
+}
+
+impl fmt::Debug for KTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KTy::Unresolved(None) => write!(f, "???"),
+            KTy::Unresolved(Some(meta)) => fmt::Debug::fmt(meta, f),
+            KTy::Never => write!(f, "never"),
+            KTy::Unit => write!(f, "()"),
+            KTy::I32 => write!(f, "i32"),
+            KTy::Fn {
+                param_tys,
+                result_ty,
+            } => {
+                write!(f, "fn(")?;
+                for (i, _ty) in param_tys.iter().enumerate() {
+                    if i != 0 {
+                        write!(f, ", ")?;
+                    }
+                    // NOTE: this cause stack overflow
+                    // fmt::Debug::fmt(ty, f)?;
+                    write!(f, "_")?;
+                }
+                write!(f, ") -> ")?;
+                fmt::Debug::fmt(result_ty, f)
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct KMetaTy {
+    slot: Rc<RefCell<Option<KTy>>>,
+    location: Location,
+}
+
+impl KMetaTy {
+    pub(crate) fn new(location: Location) -> Self {
+        KMetaTy {
+            slot: Rc::default(),
+            location,
+        }
+    }
+
+    pub(crate) fn ptr_eq(&self, other: &KMetaTy) -> bool {
+        Rc::ptr_eq(&self.slot, &other.slot)
+    }
+
+    pub(crate) fn content_ty(&self) -> Option<KTy> {
+        self.slot.borrow().clone()
+    }
+
+    pub(crate) fn is_bound(&self) -> bool {
+        self.slot.borrow().is_some()
+    }
+
+    pub(crate) fn bind(&mut self, ty: KTy) {
+        let ty = ty.resolve();
+        let old = std::mem::replace(&mut *self.slot.borrow_mut(), Some(ty));
+        debug_assert!(old.is_none());
+    }
+}
+
+impl fmt::Debug for KMetaTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let p = self.slot.as_ptr() as usize;
+        match self.slot.borrow().as_ref() {
+            None => write!(f, "?<{}>", p),
+            Some(ty) => fmt::Debug::fmt(ty, f),
+        }
     }
 }
 
@@ -51,7 +142,7 @@ impl KSymbol {
 
 impl fmt::Debug for KSymbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}_{}", self.text, self.id)
+        write!(f, "{}_{}: {:?}", self.text, self.id, self.ty)
     }
 }
 

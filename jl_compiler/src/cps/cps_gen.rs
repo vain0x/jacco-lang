@@ -34,7 +34,7 @@ impl Gx {
         KSymbol {
             id,
             text,
-            ty: KTy::Unresolved,
+            ty: KTy::new_unresolved(),
             location,
         }
     }
@@ -159,7 +159,7 @@ fn emit_if(
 fn gen_ty(ty_name: PName, _gx: &mut Gx) -> KTy {
     match ty_name.as_str() {
         "i32" => KTy::I32,
-        _ => KTy::Unresolved,
+        _ => KTy::new_unresolved(),
     }
 }
 
@@ -173,7 +173,7 @@ fn gen_name_with_ty(name: PName, ty: KTy, _gx: &mut Gx) -> KSymbol {
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {
-    gen_name_with_ty(name, KTy::Unresolved, gx)
+    gen_name_with_ty(name, KTy::new_unresolved(), gx)
 }
 
 fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {

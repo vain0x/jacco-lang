@@ -13,7 +13,11 @@ struct Cx {
 
 fn gen_ty(ty: KTy) -> CTy {
     match ty {
-        KTy::Unresolved => CTy::Other("/* unresolved */ void"),
+        KTy::Unresolved(None) => CTy::Other("/* unresolved */ void"),
+        KTy::Unresolved(Some(meta)) => match meta.content_ty() {
+            Some(ty) => gen_ty(ty),
+            None => CTy::Other("/* free */ void"),
+        },
         KTy::Never => CTy::Other("/* never */ void"),
         KTy::Fn { .. } => CTy::Other("/* fn */ void"),
         KTy::Unit => CTy::Void,
