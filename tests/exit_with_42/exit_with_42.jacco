@@ -1,3 +1,3 @@
-pub fn main() -> int {
+pub fn main() -> i32 {
     42
 }
