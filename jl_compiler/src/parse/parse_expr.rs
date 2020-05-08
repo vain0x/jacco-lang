@@ -185,9 +185,8 @@ pub(crate) fn parse_cond(px: &mut Px) -> Option<PTerm> {
 
 fn parse_term_expr(px: &mut Px) -> Option<PExpr> {
     let term = parse_assign(px)?;
-    let semi_opt = px.eat(TokenKind::Semi);
 
-    Some(PExpr::Term { term, semi_opt })
+    Some(PExpr::Term(term))
 }
 
 pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
@@ -214,16 +213,14 @@ fn parse_block_expr(px: &mut Px) -> PExpr {
 
 fn parse_break_expr(px: &mut Px) -> PExpr {
     let keyword = px.expect(TokenKind::Break);
-    let semi_opt = px.eat(TokenKind::Semi);
 
-    PExpr::Break { keyword, semi_opt }
+    PExpr::Break { keyword }
 }
 
 fn parse_continue_expr(px: &mut Px) -> PExpr {
     let keyword = px.expect(TokenKind::Continue);
-    let semi_opt = px.eat(TokenKind::Semi);
 
-    PExpr::Continue { keyword, semi_opt }
+    PExpr::Continue { keyword }
 }
 
 fn parse_if_expr(px: &mut Px) -> PExpr {

@@ -61,7 +61,7 @@ fn resolve_term_expr(term: &mut PTerm, nx: &mut Nx) {
 
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
-        PExpr::Term { term, .. } => {
+        PExpr::Term(term) => {
             resolve_term_expr(term, nx);
         }
         PExpr::Block(block) => {
@@ -115,7 +115,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
 fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
     match decl {
-        PDecl::Expr(expr) => {
+        PDecl::Expr { expr, .. } => {
             resolve_expr(expr, nx);
         }
         PDecl::Let {

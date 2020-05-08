@@ -3,7 +3,10 @@
 use super::*;
 
 fn parse_expr_decl(px: &mut Px) -> Option<PDecl> {
-    parse_expr(px).map(PDecl::Expr)
+    let expr = parse_expr(px)?;
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    Some(PDecl::Expr { expr, semi_opt })
 }
 
 fn parse_let_decl(px: &mut Px) -> PDecl {
@@ -150,8 +153,10 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Opti
 
     if placement == Placement::Local {
         match decls.pop() {
-            Some(PDecl::Expr(last)) => {
-                // only when last is not followed by semi
+            Some(PDecl::Expr {
+                expr: last,
+                semi_opt: None,
+            }) => {
                 last_opt = Some(last);
             }
             Some(last) => decls.push(last),

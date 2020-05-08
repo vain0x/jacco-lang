@@ -269,7 +269,7 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
 
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Term { term, .. } => gen_term_expr(term, gx),
+        PExpr::Term(term) => gen_term_expr(term, gx),
         PExpr::Block(block) => gen_block(block, gx),
         PExpr::Break { keyword, .. } => {
             let location = keyword.into_location();
@@ -401,7 +401,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
 fn gen_decl(decl: PDecl, gx: &mut Gx) {
     match decl {
-        PDecl::Expr(expr) => {
+        PDecl::Expr { expr, .. } => {
             gen_expr(expr, gx);
         }
         PDecl::Let {

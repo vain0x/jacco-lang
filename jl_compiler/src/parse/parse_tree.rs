@@ -78,18 +78,13 @@ pub(crate) struct PBlock {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PExpr {
-    Term {
-        term: PTerm,
-        semi_opt: Option<TokenData>,
-    },
+    Term(PTerm),
     Block(PBlock),
     Break {
         keyword: TokenData,
-        semi_opt: Option<TokenData>,
     },
     Continue {
         keyword: TokenData,
-        semi_opt: Option<TokenData>,
     },
     If {
         keyword: TokenData,
@@ -111,7 +106,10 @@ pub(crate) enum PExpr {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PDecl {
-    Expr(PExpr),
+    Expr {
+        expr: PExpr,
+        semi_opt: Option<TokenData>,
+    },
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,
