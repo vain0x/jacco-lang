@@ -13,7 +13,7 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
     })
 }
 
-fn parse_atom(px: &mut Px) -> Option<PTerm> {
+fn parse_atomic_expr(px: &mut Px) -> Option<PTerm> {
     let term = match px.next() {
         TokenKind::Int => PTerm::Int(px.bump()),
         TokenKind::Str => PTerm::Str(px.bump()),
@@ -23,8 +23,8 @@ fn parse_atom(px: &mut Px) -> Option<PTerm> {
     Some(term)
 }
 
-fn parse_suffix(px: &mut Px) -> Option<PTerm> {
-    let mut left = parse_atom(px)?;
+fn parse_suffix_expr(px: &mut Px) -> Option<PTerm> {
+    let mut left = parse_atomic_expr(px)?;
 
     loop {
         match px.next() {
@@ -55,7 +55,7 @@ fn parse_suffix(px: &mut Px) -> Option<PTerm> {
 fn parse_mul(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right_opt = parse_suffix(px).map(Box::new);
+        let right_opt = parse_suffix_expr(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
@@ -64,7 +64,7 @@ fn parse_mul(px: &mut Px) -> Option<PTerm> {
         }
     };
 
-    let mut left = parse_suffix(px)?;
+    let mut left = parse_suffix_expr(px)?;
 
     loop {
         match px.next() {
@@ -125,7 +125,7 @@ fn parse_bit(px: &mut Px) -> Option<PTerm> {
     }
 }
 
-fn parse_cmp(px: &mut Px) -> Option<PTerm> {
+fn parse_comparison(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_bit(px).map(Box::new);
@@ -152,10 +152,10 @@ fn parse_cmp(px: &mut Px) -> Option<PTerm> {
     }
 }
 
-fn parse_log(px: &mut Px) -> Option<PTerm> {
+fn parse_logical(px: &mut Px) -> Option<PTerm> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right_opt = parse_cmp(px).map(Box::new);
+        let right_opt = parse_comparison(px).map(Box::new);
         PTerm::BinaryOp {
             op,
             left: Box::new(left),
@@ -164,7 +164,7 @@ fn parse_log(px: &mut Px) -> Option<PTerm> {
         }
     };
 
-    let mut left = parse_cmp(px)?;
+    let mut left = parse_comparison(px)?;
 
     loop {
         match px.next() {
@@ -176,19 +176,15 @@ fn parse_log(px: &mut Px) -> Option<PTerm> {
 }
 
 fn parse_assign(px: &mut Px) -> Option<PTerm> {
-    parse_log(px)
-}
-
-pub(crate) fn parse_term(px: &mut Px) -> Option<PTerm> {
-    parse_assign(px)
+    parse_logical(px)
 }
 
 pub(crate) fn parse_cond(px: &mut Px) -> Option<PTerm> {
-    parse_term(px)
+    parse_logical(px)
 }
 
 fn parse_term_expr(px: &mut Px) -> Option<PExpr> {
-    let term = parse_term(px)?;
+    let term = parse_assign(px)?;
     let semi_opt = px.eat(TokenKind::Semi);
 
     Some(PExpr::Term { term, semi_opt })
