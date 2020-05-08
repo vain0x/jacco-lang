@@ -18,23 +18,6 @@ impl PName {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum PTerm {
-    Int(TokenData),
-    Str(TokenData),
-    Name(PName),
-    Call {
-        callee: Box<PTerm>,
-        arg_list: PArgList,
-    },
-    BinaryOp {
-        op: BinaryOp,
-        left: Box<PTerm>,
-        right_opt: Option<Box<PTerm>>,
-        location: Location,
-    },
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct PParam {
     pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
@@ -78,7 +61,19 @@ pub(crate) struct PBlock {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PExpr {
-    Term(PTerm),
+    Int(TokenData),
+    Str(TokenData),
+    Name(PName),
+    Call {
+        callee: Box<PExpr>,
+        arg_list: PArgList,
+    },
+    BinaryOp {
+        op: BinaryOp,
+        left: Box<PExpr>,
+        right_opt: Option<Box<PExpr>>,
+        location: Location,
+    },
     Block(PBlock),
     Break {
         keyword: TokenData,
@@ -88,14 +83,14 @@ pub(crate) enum PExpr {
     },
     If {
         keyword: TokenData,
-        cond_opt: Option<PTerm>,
+        cond_opt: Option<Box<PExpr>>,
         body_opt: Option<PBlock>,
         else_opt: Option<TokenData>,
         alt_opt: Option<Box<PExpr>>,
     },
     While {
         keyword: TokenData,
-        cond_opt: Option<PTerm>,
+        cond_opt: Option<Box<PExpr>>,
         body_opt: Option<PBlock>,
     },
     Loop {

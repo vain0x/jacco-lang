@@ -97,15 +97,15 @@ fn new_never_term(location: Location) -> KTerm {
 
 fn emit_binary_op(
     prim: KPrim,
-    left: PTerm,
-    right_opt: Option<Box<PTerm>>,
+    left: PExpr,
+    right_opt: Option<Box<PExpr>>,
     location: Location,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location.clone());
 
-    let left = gen_term_expr(left, gx);
-    let right = gen_term_expr(*right_opt.unwrap(), gx);
+    let left = gen_expr(left, gx);
+    let right = gen_expr(*right_opt.unwrap(), gx);
 
     gx.push(XCommand::Prim {
         prim,
@@ -118,7 +118,7 @@ fn emit_binary_op(
 }
 
 fn emit_if(
-    cond: PTerm,
+    cond: PExpr,
     gen_body: impl FnOnce(&mut Gx) -> KTerm,
     gen_alt: impl FnOnce(&mut Gx) -> KTerm,
     location: Location,
@@ -127,7 +127,7 @@ fn emit_if(
     let result = gx.fresh_symbol("if_result", location.clone());
     let next_label = gx.fresh_symbol("next", location.clone());
 
-    let k_cond = gen_term_expr(cond, gx);
+    let k_cond = gen_expr(cond, gx);
 
     gx.push(XCommand::Prim {
         prim: KPrim::If,
@@ -193,16 +193,16 @@ fn gen_result(result: PResult, gx: &mut Gx) -> KTy {
     gen_ty(ty, gx)
 }
 
-fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
-    match term {
-        PTerm::Int(token) => KTerm::Int(token),
-        PTerm::Str(..) => unimplemented!(),
-        PTerm::Name(name) => KTerm::Name(gen_name(name, gx)),
-        PTerm::Call { callee, arg_list } => {
+fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
+    match expr {
+        PExpr::Int(token) => KTerm::Int(token),
+        PExpr::Str(..) => unimplemented!(),
+        PExpr::Name(name) => KTerm::Name(gen_name(name, gx)),
+        PExpr::Call { callee, arg_list } => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());
 
-            let k_callee = gen_term_expr(*callee, gx);
+            let k_callee = gen_expr(*callee, gx);
 
             let mut k_args = vec![k_callee];
             for p_arg in arg_list.args {
@@ -219,7 +219,7 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
-        PTerm::BinaryOp {
+        PExpr::BinaryOp {
             op,
             left,
             right_opt,
@@ -247,7 +247,7 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
                 let false_term = new_false_term(location.clone());
                 emit_if(
                     *left,
-                    |gx| gen_term_expr(*right_opt.unwrap(), gx),
+                    |gx| gen_expr(*right_opt.unwrap(), gx),
                     move |_| false_term,
                     location,
                     gx,
@@ -258,18 +258,12 @@ fn gen_term_expr(term: PTerm, gx: &mut Gx) -> KTerm {
                 emit_if(
                     *left,
                     move |_| true_term,
-                    |gx| gen_term_expr(*right_opt.unwrap(), gx),
+                    |gx| gen_expr(*right_opt.unwrap(), gx),
                     location,
                     gx,
                 )
             }
         },
-    }
-}
-
-fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
-    match expr {
-        PExpr::Term(term) => gen_term_expr(term, gx),
         PExpr::Block(block) => gen_block(block, gx),
         PExpr::Break { keyword, .. } => {
             let location = keyword.into_location();
@@ -298,7 +292,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let location = keyword.into_location();
             let location1 = location.clone();
             emit_if(
-                cond_opt.unwrap(),
+                *cond_opt.unwrap(),
                 |gx| gen_block(body_opt.unwrap(), gx),
                 move |gx| match alt_opt {
                     Some(alt) => gen_expr(*alt, gx),
@@ -325,7 +319,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 params: vec![],
             });
 
-            let k_cond = gen_term_expr(cond_opt.unwrap(), gx);
+            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
 
             gx.push(XCommand::Prim {
                 prim: KPrim::If,

@@ -30,10 +30,10 @@ fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     nx.env.insert(name.text.clone(), name.name_id);
 }
 
-fn resolve_term_expr(term: &mut PTerm, nx: &mut Nx) {
-    match term {
-        PTerm::Int(_) | PTerm::Str(_) => {}
-        PTerm::Name(name) => match nx.env.get(&name.text) {
+fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
+    match expr {
+        PExpr::Int(_) | PExpr::Str(_) => {}
+        PExpr::Name(name) => match nx.env.get(&name.text) {
             Some(name_id) => {
                 name.name_id = *name_id;
             }
@@ -41,28 +41,20 @@ fn resolve_term_expr(term: &mut PTerm, nx: &mut Nx) {
                 eprintln!("undefined {:?}", name);
             }
         },
-        PTerm::Call { callee, arg_list } => {
-            resolve_term_expr(callee, nx);
+        PExpr::Call { callee, arg_list } => {
+            resolve_expr(callee, nx);
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
-        PTerm::BinaryOp {
+        PExpr::BinaryOp {
             left, right_opt, ..
         } => {
-            resolve_term_expr(left, nx);
+            resolve_expr(left, nx);
 
             if let Some(right) = right_opt {
-                resolve_term_expr(right, nx);
+                resolve_expr(right, nx);
             }
-        }
-    }
-}
-
-fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
-    match expr {
-        PExpr::Term(term) => {
-            resolve_term_expr(term, nx);
         }
         PExpr::Block(block) => {
             resolve_block(block, nx);
@@ -74,7 +66,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             ..
         } => {
             if let Some(cond) = cond_opt {
-                resolve_term_expr(cond, nx);
+                resolve_expr(cond, nx);
             }
 
             if let Some(block) = body_opt {
@@ -93,7 +85,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             cond_opt, body_opt, ..
         } => {
             if let Some(cond) = cond_opt {
-                resolve_term_expr(cond, nx);
+                resolve_expr(cond, nx);
             }
 
             if let Some(block) = body_opt {
