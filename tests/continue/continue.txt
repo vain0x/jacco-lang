@@ -1,56 +1,56 @@
 int continue_in_while() {
     int while_result_3;
-    goto continue__4;
+    goto continue__1;
     //
-continue__4:;
+continue__1:;
     if (0) {
-        goto continue__4;
+        goto continue__1;
     } else {
         while_result_3 = (void)0;
-        goto next_5;
+        goto next_2;
     }
     //
-next_5:;
+next_2:;
     return while_result_3;
 }
 
 int continue_in_loop() {
-    int loop_result_8;
-    goto continue__9;
+    int loop_result_6;
+    goto continue__4;
     //
-continue__9:;
-    goto continue__9;
+continue__4:;
+    goto continue__4;
     //
-next_10:;
-    return loop_result_8;
+next_5:;
+    return loop_result_6;
 }
 
 int nested_continue() {
-    int while_result_16;
-    int while_result_13;
-    goto continue__14;
+    int while_result_9;
+    int while_result_12;
+    goto continue__10;
     //
-continue__17:;
+continue__7:;
     if (0) {
-        goto continue__17;
+        goto continue__7;
     } else {
-        while_result_16 = (void)0;
-        goto next_18;
+        while_result_9 = (void)0;
+        goto next_8;
     }
     //
-next_18:;
-    goto continue__14;
+next_8:;
+    goto continue__10;
     //
-continue__14:;
+continue__10:;
     if (0) {
-        goto continue__17;
+        goto continue__7;
     } else {
-        while_result_13 = (void)0;
-        goto next_15;
+        while_result_12 = (void)0;
+        goto next_11;
     }
     //
-next_15:;
-    return while_result_13;
+next_11:;
+    return while_result_12;
 }
 
 int main() {

@@ -139,21 +139,44 @@ impl fmt::Debug for KMetaTy {
 
 #[derive(Clone, Default)]
 pub(crate) struct KSymbol {
-    pub(crate) id: usize,
     pub(crate) text: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
+    pub(crate) id_slot: Rc<RefCell<Option<usize>>>,
+    pub(crate) def_ty_slot: Rc<RefCell<KTy>>,
 }
 
 impl KSymbol {
-    pub(crate) fn unique_name(&self) -> String {
-        format!("{}_{}", self.text, self.id)
+    fn init_id(&self, mut get_id: impl FnMut() -> usize) {
+        let mut slot = self.id_slot.borrow_mut();
+        if slot.is_none() {
+            *slot = Some(get_id());
+        }
+    }
+
+    pub(crate) fn unique_name(&self, ids: &mut IdProvider) -> String {
+        self.init_id(|| ids.next());
+
+        match *self.id_slot.borrow() {
+            Some(id) => format!("{}_{}", self.text, id),
+            None => format!("{}<{:X?}>", self.text, self.def_ty_slot.as_ptr()),
+        }
+    }
+
+    pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
+        &self.def_ty_slot
     }
 }
 
 impl fmt::Debug for KSymbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}_{}: {:?}", self.text, self.id, self.ty)
+        write!(
+            f,
+            "{}_{:X?}: {:?}",
+            self.text,
+            self.def_ty_slot.as_ptr(),
+            self.ty
+        )
     }
 }
 

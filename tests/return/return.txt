@@ -1,12 +1,12 @@
 int main() {
-    int if_result_3;
+    int if_result_2;
     if (1) {
         return 1;
     } else {
-        if_result_3 = (void)0;
-        goto next_4;
+        if_result_2 = (void)0;
+        goto next_1;
     }
     //
-next_4:;
+next_1:;
     return 0;
 }

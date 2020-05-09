@@ -1,11 +1,11 @@
 int main() {
     int loop_result_3;
-    goto continue__4;
+    goto continue__1;
     //
-continue__4:;
-    int a_1 = 1;
-    goto continue__4;
+continue__1:;
+    int a_4 = 1;
+    goto continue__1;
     //
-next_5:;
+next_2:;
     return loop_result_3;
 }

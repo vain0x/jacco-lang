@@ -1,42 +1,42 @@
 int break_from_while() {
     int while_result_3;
-    goto continue__4;
+    goto continue__1;
     //
-continue__4:;
+continue__1:;
     if (1) {
         while_result_3 = (void)0;
-        goto next_5;
+        goto next_2;
     } else {
         while_result_3 = (void)0;
-        goto next_5;
+        goto next_2;
     }
     //
-next_5:;
+next_2:;
     return while_result_3;
 }
 
 int break_from_loop() {
-    int loop_result_8;
-    goto continue__9;
+    int loop_result_6;
+    goto continue__4;
     //
-continue__9:;
-    loop_result_8 = (void)0;
-    goto next_10;
+continue__4:;
+    loop_result_6 = (void)0;
+    goto next_5;
     //
-next_10:;
-    return loop_result_8;
+next_5:;
+    return loop_result_6;
 }
 
 int break_with_arg() {
-    int loop_result_13;
-    goto continue__14;
+    int loop_result_9;
+    goto continue__7;
     //
-continue__14:;
-    loop_result_13 = 2;
-    goto next_15;
+continue__7:;
+    loop_result_9 = 2;
+    goto next_8;
     //
-next_15:;
-    return loop_result_13;
+next_8:;
+    return loop_result_9;
 }
 
 int main() {

@@ -1,7 +1,7 @@
 int main() {
-    int mul_4 = 1 * 2;
-    int add_5 = 3 + 4;
-    /* free */ void call_result_6 = g_0();
-    /* free */ void call_result_3 = f_0(mul_4, add_5, call_result_6);
-    return call_result_3;
+    int mul_1 = 1 * 2;
+    int add_2 = 3 + 4;
+    /* free */ void call_result_3 = g_0();
+    /* free */ void call_result_4 = f_0(mul_1, add_2, call_result_3);
+    return call_result_4;
 }

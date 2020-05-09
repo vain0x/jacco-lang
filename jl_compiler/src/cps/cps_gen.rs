@@ -4,6 +4,9 @@ use super::cps_fold::fold_block;
 use super::*;
 use crate::parse::*;
 use crate::token::TokenKind;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 struct FnConstruction {
     return_label: KSymbol,
@@ -17,7 +20,7 @@ struct LoopConstruction {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
-    last_id: usize,
+    symbols: HashMap<usize, (Rc<RefCell<Option<usize>>>, Rc<RefCell<KTy>>)>,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
@@ -29,26 +32,29 @@ struct Gx {
 impl Gx {
     fn new(logger: Logger) -> Self {
         Self {
+            symbols: vec![(
+                0,
+                (
+                    Rc::new(RefCell::new(Some(0))),
+                    Rc::new(RefCell::new(KTy::Never)),
+                ),
+            )]
+            .into_iter()
+            .collect(),
             logger,
             ..Self::default()
         }
     }
 
-    fn fresh_id(&mut self) -> usize {
-        self.last_id += 1;
-        self.last_id
-    }
-
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
-        let id = self.fresh_id();
-
         let text = hint.to_string();
 
         KSymbol {
-            id,
             text,
             ty: KTy::new_unresolved(),
             location,
+            id_slot: Rc::default(),
+            def_ty_slot: Rc::new(RefCell::new(KTy::new_unresolved())),
         }
     }
 
@@ -212,12 +218,29 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_name_with_ty(name: PName, ty: KTy, _gx: &mut Gx) -> KSymbol {
+fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
+    let id_slot;
+    let def_ty_slot;
+
+    match gx.symbols.get(&name.name_id) {
+        Some(slots) => {
+            id_slot = slots.0.clone();
+            def_ty_slot = slots.1.clone();
+        }
+        None => {
+            id_slot = Rc::default();
+            def_ty_slot = Rc::new(RefCell::new(ty.clone()));
+            gx.symbols
+                .insert(name.name_id, (id_slot.clone(), def_ty_slot.clone()));
+        }
+    }
+
     KSymbol {
-        id: name.name_id,
         text: name.text,
         ty,
         location: name.location,
+        id_slot,
+        def_ty_slot,
     }
 }
 
@@ -502,7 +525,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         } => {
             let location = keyword.into_location();
             let fn_name = gen_name(name_opt.unwrap(), gx);
-            gx.fresh_id(); // FIXME: 調整
             let return_label = gx.fresh_symbol("return", location.clone());
             let fn_construction = FnConstruction {
                 return_label: return_label.clone(),

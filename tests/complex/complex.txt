@@ -1,64 +1,64 @@
 int main() {
-    int if_result_3;
-    int if_result_5;
-    int if_result_9;
-    int if_result_7;
+    int if_result_2;
+    int if_result_4;
+    int if_result_6;
+    int if_result_8;
     if (1) {
-        if_result_3 = (void)0;
-        goto next_4;
+        if_result_2 = (void)0;
+        goto next_1;
     } else {
-        if_result_3 = (void)0;
-        goto next_4;
+        if_result_2 = (void)0;
+        goto next_1;
     }
     //
-next_4:;
+next_1:;
     if (2) {
-        if_result_5 = (void)0;
-        goto next_6;
+        if_result_4 = (void)0;
+        goto next_3;
     } else {
-        if_result_5 = (void)0;
-        goto next_6;
+        if_result_4 = (void)0;
+        goto next_3;
     }
     //
-next_6:;
+next_3:;
     if (3) {
-        int body3_1 = 30;
-        if_result_7 = (void)0;
-        goto next_8;
+        int body3_9 = 30;
+        if_result_8 = (void)0;
+        goto next_7;
     } else {
         if (4) {
-            int alt31_2 = 31;
-            if_result_9 = (void)0;
-            goto next_10;
+            int alt31_10 = 31;
+            if_result_6 = (void)0;
+            goto next_5;
         } else {
-            int alt32_3 = 32;
-            if_result_9 = (void)0;
-            goto next_10;
+            int alt32_11 = 32;
+            if_result_6 = (void)0;
+            goto next_5;
         }
     }
     //
-next_10:;
-    if_result_7 = if_result_9;
-    goto next_8;
+next_5:;
+    if_result_8 = if_result_6;
+    goto next_7;
     //
-next_8:;
-    void unit_4 = (void)0;
-    int group_expr_5 = 1;
-    int a_6 = 1;
-    */* fn */ void ref_11 = &a_6;
-    /* free */ void p_7 = ref_11;
-    */* fn */ void ref_13 = &a_6;
-    **/* fn */ void ref_12 = &ref_13;
-    /* free */ void pp1_8 = ref_12;
-    *void ref_14 = &p_7;
-    *void pp2_9 = ref_14;
-    /* free */ void deref_15 = *p_7;
-    /* free */ void p1d_10 = deref_15;
-    */* free */ void deref_17 = *pp1_8;
-    /* free */ void deref_16 = *deref_17;
-    /* free */ void pp1dd_11 = deref_16;
-    */* free */ void deref_19 = *pp2_9;
-    /* free */ void deref_18 = *deref_19;
-    /* free */ void pp2dd_12 = deref_18;
+next_7:;
+    void unit_12 = (void)0;
+    int group_expr_13 = 1;
+    int a_14 = 1;
+    *int ref_15 = &a_14;
+    *int p_16 = ref_15;
+    *int ref_17 = &a_14;
+    **int ref_18 = &ref_17;
+    **int pp1_19 = ref_18;
+    **int ref_20 = &p_16;
+    **int pp2_21 = ref_20;
+    int deref_22 = *p_16;
+    int p1d_23 = deref_22;
+    *int deref_24 = *pp1_19;
+    int deref_25 = *deref_24;
+    int pp1dd_26 = deref_25;
+    *int deref_27 = *pp2_21;
+    int deref_28 = *deref_27;
+    int pp2dd_29 = deref_28;
     return 0;
 }

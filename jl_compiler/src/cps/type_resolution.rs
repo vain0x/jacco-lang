@@ -1,23 +1,9 @@
 //! 型推論・型検査
 
 use super::*;
-use std::collections::HashMap;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-struct KSymbolRef {
-    id: usize,
-}
-
-impl KSymbol {
-    fn as_symbol_ref(&self) -> KSymbolRef {
-        KSymbolRef { id: self.id }
-    }
-}
 
 #[derive(Default)]
-struct InitMetaTys {
-    env: HashMap<KSymbolRef, KTy>,
-}
+struct InitMetaTys;
 
 impl InitMetaTys {
     fn on_symbol_def(&mut self, symbol: &mut KSymbol) {
@@ -26,7 +12,8 @@ impl InitMetaTys {
             symbol.ty = KTy::Unresolved(Some(meta));
         }
 
-        self.env.insert(symbol.as_symbol_ref(), symbol.ty.clone());
+        let mut def_ty_slot = symbol.def_ty_slot().borrow_mut();
+        *def_ty_slot = symbol.ty.clone();
     }
 
     fn on_node(&mut self, node: &mut KNode) {
@@ -40,6 +27,8 @@ impl InitMetaTys {
     }
 
     fn on_fn(&mut self, k_fn: &mut KFn) {
+        self.on_symbol_def(&mut k_fn.name);
+
         for param in &mut k_fn.params {
             self.on_symbol_def(param);
         }
@@ -51,28 +40,29 @@ impl InitMetaTys {
         }
     }
 
-    fn execute(mut self, root: &mut KRoot, tx: &mut Tx) {
+    fn execute(mut self, root: &mut KRoot, _tx: &mut Tx) {
         for k_fn in &mut root.fns {
             self.on_fn(k_fn);
         }
 
-        tx.symbol_tys = self.env;
+        for extern_fn in &mut root.extern_fns {
+            self.on_symbol_def(&mut extern_fn.name);
+
+            for param in &mut extern_fn.params {
+                self.on_symbol_def(param);
+            }
+        }
     }
 }
 
 /// Typing context.
 struct Tx {
-    symbol_tys: HashMap<KSymbolRef, KTy>,
-    #[allow(dead_code)]
     logger: Logger,
 }
 
 impl Tx {
     fn new(logger: Logger) -> Self {
-        Tx {
-            symbol_tys: HashMap::default(),
-            logger,
-        }
+        Tx { logger }
     }
 }
 
@@ -80,8 +70,8 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
-        (KTy::Unresolved(None), _) | (_, KTy::Unresolved(None)) => {
-            unreachable!("don't try to unify unresolved meta tys")
+        (KTy::Unresolved(None), other) | (other, KTy::Unresolved(None)) => {
+            unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
         }
         (KTy::Unresolved(Some(left)), KTy::Unresolved(Some(right))) if left.ptr_eq(&right) => {}
         (KTy::Unresolved(Some(mut meta)), other) | (other, KTy::Unresolved(Some(mut meta))) => {
@@ -130,27 +120,10 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     }
 }
 
-fn constrain_symbol_ty(symbol: &mut KSymbol, required_ty: KTy, tx: &mut Tx) {
-    let symbol_ref = symbol.as_symbol_ref();
-
-    match tx.symbol_tys.get(&symbol_ref) {
-        Some(current_ty) => {
-            symbol.ty = current_ty.clone();
-            unify(current_ty.clone(), required_ty, symbol.location.clone(), tx);
-        }
-        None => {
-            symbol.ty = required_ty.clone();
-            tx.symbol_tys.insert(symbol_ref, required_ty);
-        }
-    }
-}
-
-fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
-    if let Some(ty) = tx.symbol_tys.get(&symbol.as_symbol_ref()) {
-        constrain_symbol_ty(symbol, ty.clone(), tx);
-    }
-
-    symbol.ty.clone()
+fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
+    let current_ty = symbol.def_ty_slot().borrow().clone();
+    symbol.ty = current_ty.clone();
+    current_ty
 }
 
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
@@ -268,36 +241,32 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
-fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &mut [KSymbol], tx: &mut Tx) {
-    for param in params.iter_mut() {
-        tx.symbol_tys
-            .insert(param.as_symbol_ref(), param.ty.clone());
-    }
-
+fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], tx: &mut Tx) {
     let fn_ty = KTy::Fn {
         param_tys: params.iter().map(|param| param.ty.clone()).collect(),
         result_ty: Box::new(KTy::Never),
     };
 
-    fn_symbol.ty = fn_ty.clone();
-    tx.symbol_tys.insert(fn_symbol.as_symbol_ref(), fn_ty);
+    let location = fn_symbol.location.clone();
+    unify(fn_symbol.ty.clone(), fn_ty, location, tx)
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     InitMetaTys::default().execute(root, tx);
 
-    // 関数とパラメータの型情報をシンボルテーブルに登録する。
+    println!("{:#?}", root);
+
     for k_fn in &mut root.fns {
-        resolve_fn_sig(&mut k_fn.name, &mut k_fn.params, tx);
+        resolve_fn_sig(&mut k_fn.name, &k_fn.params, tx);
 
         for label in &mut k_fn.labels {
-            resolve_fn_sig(&mut label.name, &mut label.params, tx);
+            resolve_fn_sig(&mut label.name, &label.params, tx);
         }
     }
 
-    // for extern_fn in &mut root.extern_fns {
-    //     resolve_fn_params(&mut extern_fn.params, tx);
-    // }
+    for extern_fn in &mut root.extern_fns {
+        resolve_fn_sig(&mut extern_fn.name, &extern_fn.params, tx);
+    }
 
     // 項の型を解決する。
     for k_fn in &mut root.fns {

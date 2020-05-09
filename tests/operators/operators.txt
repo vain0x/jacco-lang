@@ -1,61 +1,61 @@
 int main() {
-    int if_result_19;
-    int if_result_21;
-    int add_3 = 1 + 2;
-    int add_1 = add_3;
-    int sub_4 = 1 - 2;
-    int sub_2 = sub_4;
-    int mul_5 = 1 * 2;
-    int mul_3 = mul_5;
-    int div_6 = 1 / 2;
-    int div_4 = div_6;
-    int mod_7 = 1 % 2;
-    int modulo_5 = mod_7;
-    int eq_8 = 1 == 2;
-    int eq_6 = eq_8;
-    int ne_9 = 1 != 2;
-    int ne_7 = ne_9;
-    int lt_10 = 1 < 2;
-    int lt_8 = lt_10;
-    int le_11 = 1 <= 2;
-    int le_9 = le_11;
-    int gt_12 = 1 > 2;
-    int gt_10 = gt_12;
-    int ge_13 = 1 >= 2;
-    int ge_11 = ge_13;
-    int bitand_14 = 1 & 2;
-    int bit_and_12 = bitand_14;
-    int bitor_15 = 1 | 2;
-    int bit_or_13 = bitor_15;
-    int bitxor_16 = 1 ^ 2;
-    int bit_xor_14 = bitxor_16;
-    int leftshift_17 = 1 << 2;
-    int left_shift_15 = leftshift_17;
-    int rightshift_18 = 1 >> 2;
-    int right_shift_16 = rightshift_18;
+    int if_result_2;
+    int if_result_4;
+    int add_5 = 1 + 2;
+    int add_6 = add_5;
+    int sub_7 = 1 - 2;
+    int sub_8 = sub_7;
+    int mul_9 = 1 * 2;
+    int mul_10 = mul_9;
+    int div_11 = 1 / 2;
+    int div_12 = div_11;
+    int mod_13 = 1 % 2;
+    int modulo_14 = mod_13;
+    int eq_15 = 1 == 2;
+    int eq_16 = eq_15;
+    int ne_17 = 1 != 2;
+    int ne_18 = ne_17;
+    int lt_19 = 1 < 2;
+    int lt_20 = lt_19;
+    int le_21 = 1 <= 2;
+    int le_22 = le_21;
+    int gt_23 = 1 > 2;
+    int gt_24 = gt_23;
+    int ge_25 = 1 >= 2;
+    int ge_26 = ge_25;
+    int bitand_27 = 1 & 2;
+    int bit_and_28 = bitand_27;
+    int bitor_29 = 1 | 2;
+    int bit_or_30 = bitor_29;
+    int bitxor_31 = 1 ^ 2;
+    int bit_xor_32 = bitxor_31;
+    int leftshift_33 = 1 << 2;
+    int left_shift_34 = leftshift_33;
+    int rightshift_35 = 1 >> 2;
+    int right_shift_36 = rightshift_35;
     if (2) {
-        if_result_19 = 3;
-        goto next_20;
+        if_result_2 = 3;
+        goto next_1;
     } else {
-        if_result_19 = 0;
-        goto next_20;
+        if_result_2 = 0;
+        goto next_1;
     }
     //
-next_20:;
-    int log_and_17 = if_result_19;
+next_1:;
+    int log_and_37 = if_result_2;
     if (2) {
-        if_result_21 = 1;
-        goto next_22;
+        if_result_4 = 1;
+        goto next_3;
     } else {
-        if_result_21 = 3;
-        goto next_22;
+        if_result_4 = 3;
+        goto next_3;
     }
     //
-next_22:;
-    int log_or_18 = if_result_21;
-    int minus_23 = -2;
-    int minus_19 = minus_23;
-    int negate_24 = !2;
-    int negate_20 = negate_24;
+next_3:;
+    int log_or_38 = if_result_4;
+    int minus_39 = -2;
+    int minus_40 = minus_39;
+    int negate_41 = !2;
+    int negate_42 = negate_41;
     return 0;
 }

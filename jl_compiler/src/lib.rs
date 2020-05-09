@@ -1,6 +1,7 @@
 mod clang;
 mod cps;
 mod front;
+mod id_provider;
 mod logs;
 mod parse;
 mod source;

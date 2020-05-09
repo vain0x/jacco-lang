@@ -7,6 +7,7 @@ use std::mem::take;
 /// C code generation context.
 #[derive(Default)]
 struct Cx {
+    ids: IdProvider,
     labels: HashMap<String, Vec<String>>,
     decls: Vec<CStmt>,
 }
@@ -28,15 +29,15 @@ fn gen_ty(ty: KTy) -> CTy {
     }
 }
 
-fn gen_param(param: KSymbol) -> (String, CTy) {
-    (param.unique_name(), gen_ty(param.ty))
+fn gen_param(param: KSymbol, cx: &mut Cx) -> (String, CTy) {
+    (param.unique_name(&mut cx.ids), gen_ty(param.ty))
 }
 
-fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
+fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => CExpr::IntLit("(void)0".to_string()),
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
-        KTerm::Name(symbol) => CExpr::Name(symbol.unique_name()),
+        KTerm::Name(symbol) => CExpr::Name(symbol.unique_name(&mut cx.ids)),
     }
 }
 
@@ -55,7 +56,7 @@ fn gen_unary_op(
     ) {
         ([arg], [result], [cont]) => {
             let arg = gen_term(take(arg), cx);
-            let (name, ty) = gen_param(take(result));
+            let (name, ty) = gen_param(take(result), cx);
             stmts.push(CStmt::VarDecl {
                 name,
                 ty,
@@ -86,7 +87,7 @@ fn gen_binary_op(
         ([left, right], [result], [cont]) => {
             let left = gen_term(take(left), cx);
             let right = gen_term(take(right), cx);
-            let (name, ty) = gen_param(take(result));
+            let (name, ty) = gen_param(take(result), cx);
             stmts.push(CStmt::VarDecl {
                 name,
                 ty,
@@ -120,7 +121,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 stmts.push(CStmt::Return(None));
             }
             ([KTerm::Name(label), args @ ..], []) => {
-                let name = take(label).unique_name();
+                let name = take(label).unique_name(&mut cx.ids);
                 let params = cx
                     .labels
                     .get(&name)
@@ -150,7 +151,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     let args = args.drain(..).map(|arg| gen_term(arg, cx)).collect();
                     CExpr::Call { cal, args }
                 };
-                let (name, ty) = gen_param(take(result));
+                let (name, ty) = gen_param(take(result), cx);
 
                 let let_stmt = CStmt::VarDecl {
                     name,
@@ -171,7 +172,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         ) {
             ([init], [result], [cont]) => {
                 let init = gen_term(take(init), cx);
-                let (name, ty) = gen_param(take(result));
+                let (name, ty) = gen_param(take(result), cx);
                 stmts.push(CStmt::VarDecl {
                     name,
                     ty,
@@ -235,9 +236,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         result,
     } in root.extern_fns
     {
+        let params = params
+            .into_iter()
+            .map(|param| gen_param(param, cx))
+            .collect();
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.text,
-            params: params.into_iter().map(gen_param).collect(),
+            params,
             result_ty: gen_ty(result),
         });
     }
@@ -251,14 +256,16 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             cx.labels.clear();
             for KFn { name, params, .. } in &labels {
-                cx.labels.insert(
-                    name.unique_name(),
-                    params.into_iter().map(KSymbol::unique_name).collect(),
-                );
+                let fn_name = name.unique_name(&mut cx.ids);
+                let params = params
+                    .into_iter()
+                    .map(|param| param.unique_name(&mut cx.ids))
+                    .collect::<Vec<_>>();
+                cx.labels.insert(fn_name, params.clone());
 
-                for param in params {
+                for name in params {
                     stmts.push(CStmt::VarDecl {
-                        name: param.unique_name(),
+                        name,
                         ty: CTy::Int,
                         init_opt: None,
                     });
@@ -269,7 +276,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             for KFn { name, body, .. } in labels {
                 stmts.push(CStmt::Label {
-                    label: name.unique_name(),
+                    label: name.unique_name(&mut cx.ids),
                 });
                 gen_node(body, &mut stmts, cx);
             }

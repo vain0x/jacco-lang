@@ -1,4 +1,4 @@
 int main() {
-    int add_3 = 40 + 2;
-    return add_3;
+    int add_1 = 40 + 2;
+    return add_1;
 }
