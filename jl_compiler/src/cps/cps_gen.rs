@@ -317,6 +317,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
+        PExpr::Return { .. } => unimplemented!(),
         PExpr::If {
             keyword,
             cond_opt,

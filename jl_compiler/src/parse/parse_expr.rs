@@ -239,6 +239,13 @@ fn parse_continue_expr(px: &mut Px) -> PExpr {
     PExpr::Continue { keyword }
 }
 
+fn parse_return_expr(px: &mut Px) -> PExpr {
+    let keyword = px.expect(TokenKind::Return);
+    let arg_opt = parse_expr(px).map(Box::new);
+
+    PExpr::Return { keyword, arg_opt }
+}
+
 fn parse_if_expr(px: &mut Px) -> PExpr {
     let keyword = px.expect(TokenKind::If);
 
@@ -296,6 +303,7 @@ pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {
     let expr = match px.next() {
         TokenKind::Break => parse_break_expr(px),
         TokenKind::Continue => parse_continue_expr(px),
+        TokenKind::Return => parse_return_expr(px),
         TokenKind::If => parse_if_expr(px),
         TokenKind::While => parse_while_expr(px),
         TokenKind::Loop => parse_loop_expr(px),

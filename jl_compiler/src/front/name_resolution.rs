@@ -106,7 +106,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 });
             }
         }
-        PExpr::Break { .. } | PExpr::Continue { .. } => {}
+        PExpr::Break { .. } | PExpr::Continue { .. } | PExpr::Return { .. } => {}
     }
 }
 

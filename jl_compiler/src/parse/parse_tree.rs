@@ -97,6 +97,10 @@ pub(crate) enum PExpr {
     Continue {
         keyword: TokenData,
     },
+    Return {
+        keyword: TokenData,
+        arg_opt: Option<Box<PExpr>>,
+    },
     If {
         keyword: TokenData,
         cond_opt: Option<Box<PExpr>>,
