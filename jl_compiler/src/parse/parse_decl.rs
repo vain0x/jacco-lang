@@ -203,7 +203,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
         _ => true,
     });
 
-    let mut px = Px::new(tokens);
+    let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
 

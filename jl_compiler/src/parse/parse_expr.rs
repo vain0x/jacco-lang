@@ -250,7 +250,7 @@ fn parse_if_expr(px: &mut Px) -> PExpr {
             TokenKind::LeftBrace => Some(Box::new(parse_block_expr(px))),
             TokenKind::If => Some(Box::new(parse_if_expr(px))),
             _ => {
-                // error
+                p_error("expected 'if' or '{ ... }'", px);
                 None
             }
         }
@@ -312,7 +312,7 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
             _ => {
                 let expr = match parse_expr(px) {
                     None => {
-                        // error
+                        p_error("expected argument", px);
                         px.bump();
                         continue;
                     }

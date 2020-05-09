@@ -3,13 +3,18 @@ use super::*;
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
     tokens: Vec<TokenData>,
+    logger: Logger,
 }
 
 impl Px {
-    pub(crate) fn new(mut tokens: Vec<TokenData>) -> Self {
+    pub(crate) fn new(mut tokens: Vec<TokenData>, logger: Logger) -> Self {
         tokens.reverse();
 
-        Px { tokens }
+        Px { tokens, logger }
+    }
+
+    pub(crate) fn logger(&self) -> &Logger {
+        &self.logger
     }
 
     fn nth_data(&self, offset: usize) -> Option<&TokenData> {
@@ -53,4 +58,9 @@ impl Px {
         let eof = self.bump();
         PRoot { decls, eof }
     }
+}
+
+pub(crate) fn p_error(message: impl Into<String>, px: &mut Px) {
+    px.logger()
+        .error(px.nth_data(0).unwrap().location().clone(), message);
 }
