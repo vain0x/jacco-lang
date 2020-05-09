@@ -92,6 +92,7 @@ pub(crate) enum PExpr {
     Block(PBlock),
     Break {
         keyword: TokenData,
+        arg_opt: Option<Box<PExpr>>,
     },
     Continue {
         keyword: TokenData,

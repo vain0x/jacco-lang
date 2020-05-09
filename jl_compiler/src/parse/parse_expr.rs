@@ -228,8 +228,9 @@ fn parse_block_expr(px: &mut Px) -> PExpr {
 
 fn parse_break_expr(px: &mut Px) -> PExpr {
     let keyword = px.expect(TokenKind::Break);
+    let arg_opt = parse_expr(px).map(Box::new);
 
-    PExpr::Break { keyword }
+    PExpr::Break { keyword, arg_opt }
 }
 
 fn parse_continue_expr(px: &mut Px) -> PExpr {
