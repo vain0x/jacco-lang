@@ -23,9 +23,17 @@ struct Gx {
     current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
     fns: Vec<KFn>,
+    logger: Logger,
 }
 
 impl Gx {
+    fn new(logger: Logger) -> Self {
+        Self {
+            logger,
+            ..Self::default()
+        }
+    }
+
     fn fresh_id(&mut self) -> usize {
         self.last_id += 1;
         self.last_id
@@ -185,12 +193,16 @@ fn emit_if(
     KTerm::Name(result)
 }
 
-fn gen_ty(ty: PTy, _gx: &mut Gx) -> KTy {
+fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     match ty {
         PTy::Name(name) => match name.as_str() {
             "i32" => KTy::I32,
             _ => {
-                // error
+                // FIXME: location info
+                gx.logger.error(
+                    Location::default(),
+                    format!("undefined type name {:?}", name.as_str()),
+                );
                 KTy::new_unresolved()
             }
         },
@@ -570,7 +582,7 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
 
 pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> KRoot {
     let mut k_root = {
-        let mut gx = Gx::default();
+        let mut gx = Gx::new(logger.clone());
         gen_root(p_root, &mut gx);
         KRoot {
             extern_fns: gx.extern_fns,
