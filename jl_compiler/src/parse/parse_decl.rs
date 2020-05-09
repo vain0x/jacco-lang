@@ -2,6 +2,47 @@
 
 use super::*;
 
+fn parse_param_list(px: &mut Px) -> Option<PParamList> {
+    let left = px.eat(TokenKind::LeftParen)?;
+
+    let mut params = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
+            TokenKind::Ident => {
+                let name = parse_name(px).unwrap();
+
+                let colon_opt = px.eat(TokenKind::Colon);
+
+                let ty_opt = if colon_opt.is_some() {
+                    parse_ty(px)
+                } else {
+                    None
+                };
+
+                let comma_opt = px.eat(TokenKind::Comma);
+
+                params.push(PParam {
+                    name,
+                    colon_opt,
+                    ty_opt,
+                    comma_opt,
+                })
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    let right_opt = px.eat(TokenKind::RightParen);
+
+    Some(PParamList {
+        left,
+        right_opt,
+        params,
+    })
+}
+
 fn parse_result(px: &mut Px) -> Option<PResult> {
     let arrow = px.eat(TokenKind::RightSlimArrow)?;
     let ty_opt = parse_ty(px);
@@ -58,46 +99,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
 
     let name_opt = parse_name(px);
 
-    let param_list_opt = if let Some(left) = px.eat(TokenKind::LeftParen) {
-        let mut params = vec![];
-
-        loop {
-            match px.next() {
-                TokenKind::Eof | TokenKind::RightParen => break,
-                TokenKind::Ident => {
-                    let name = parse_name(px).unwrap();
-
-                    let colon_opt = px.eat(TokenKind::Colon);
-
-                    let ty_opt = if colon_opt.is_some() {
-                        parse_ty(px)
-                    } else {
-                        None
-                    };
-
-                    let comma_opt = px.eat(TokenKind::Comma);
-
-                    params.push(PParam {
-                        name,
-                        colon_opt,
-                        ty_opt,
-                        comma_opt,
-                    })
-                }
-                _ => unimplemented!(),
-            }
-        }
-
-        let right_opt = px.eat(TokenKind::RightParen);
-
-        Some(PParamList {
-            left,
-            right_opt,
-            params,
-        })
-    } else {
-        None
-    };
+    let param_list_opt = parse_param_list(px);
 
     let result_opt = parse_result(px);
 
