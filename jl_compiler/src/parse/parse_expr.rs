@@ -52,10 +52,31 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
     }
 }
 
+fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
+    let parse_right = |op, px: &mut Px| {
+        let op_token = px.bump();
+        let arg_opt = parse_suffix_expr(px).map(Box::new);
+        let location = op_token.into_location();
+        Some(PExpr::UnaryOp {
+            op,
+            arg_opt,
+            location,
+        })
+    };
+
+    match px.next() {
+        TokenKind::And => parse_right(PUnaryOp::Ref, px),
+        TokenKind::Bang => parse_right(PUnaryOp::Negate, px),
+        TokenKind::Minus => parse_right(PUnaryOp::Minus, px),
+        TokenKind::Star => parse_right(PUnaryOp::Deref, px),
+        _ => parse_suffix_expr(px),
+    }
+}
+
 fn parse_mul(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
-        let right_opt = parse_suffix_expr(px).map(Box::new);
+        let right_opt = parse_prefix_expr(px).map(Box::new);
         PExpr::BinaryOp {
             op,
             left: Box::new(left),
@@ -64,7 +85,7 @@ fn parse_mul(px: &mut Px) -> Option<PExpr> {
         }
     };
 
-    let mut left = parse_suffix_expr(px)?;
+    let mut left = parse_prefix_expr(px)?;
 
     loop {
         match px.next() {

@@ -95,6 +95,26 @@ fn new_never_term(location: Location) -> KTerm {
     KTerm::Unit { location }
 }
 
+fn emit_unary_op(
+    prim: KPrim,
+    arg_opt: Option<Box<PExpr>>,
+    location: Location,
+    gx: &mut Gx,
+) -> KTerm {
+    let result = gx.fresh_symbol(&prim.hint_str(), location);
+
+    let arg = gen_expr(*arg_opt.unwrap(), gx);
+
+    gx.push(XCommand::Prim {
+        prim,
+        args: vec![arg],
+        result_opt: Some(result.clone()),
+        cont_count: 1,
+    });
+
+    KTerm::Name(result)
+}
+
 fn emit_binary_op(
     prim: KPrim,
     left: PExpr,
@@ -102,7 +122,7 @@ fn emit_binary_op(
     location: Location,
     gx: &mut Gx,
 ) -> KTerm {
-    let result = gx.fresh_symbol(&prim.hint_str(), location.clone());
+    let result = gx.fresh_symbol(&prim.hint_str(), location);
 
     let left = gen_expr(left, gx);
     let right = gen_expr(*right_opt.unwrap(), gx);
@@ -222,6 +242,16 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
+        PExpr::UnaryOp {
+            op,
+            arg_opt,
+            location,
+        } => match op {
+            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
+            PUnaryOp::Ref => emit_unary_op(KPrim::Ref, arg_opt, location, gx),
+            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
+            PUnaryOp::Negate => emit_unary_op(KPrim::Negate, arg_opt, location, gx),
+        },
         PExpr::BinaryOp {
             op,
             left,

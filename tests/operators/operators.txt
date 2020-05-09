@@ -53,5 +53,9 @@ next_20:;
     //
 next_22:;
     int log_or_18 = if_result_21;
+    int minus_23 = -2;
+    int minus_19 = minus_23;
+    int negate_24 = !2;
+    int negate_20 = negate_24;
     return 0;
 }

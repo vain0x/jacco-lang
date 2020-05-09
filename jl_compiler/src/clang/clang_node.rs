@@ -1,5 +1,12 @@
 //! C言語の構文木の定義
 
+pub(crate) enum CUnaryOp {
+    Deref,
+    Ref,
+    Minus,
+    Negate,
+}
+
 pub(crate) enum CBinaryOp {
     Assign,
     Add,
@@ -34,8 +41,10 @@ pub(crate) enum CExpr {
         cal: Box<CExpr>,
         args: Vec<CExpr>,
     },
-    #[allow(dead_code)]
-    Neg(Box<CExpr>),
+    UnaryOp {
+        op: CUnaryOp,
+        arg: Box<CExpr>,
+    },
     BinaryOp {
         op: CBinaryOp,
         left: Box<CExpr>,

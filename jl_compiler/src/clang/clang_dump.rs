@@ -3,6 +3,15 @@
 use super::*;
 use std::io::{self, Write};
 
+fn unary_op_to_str(op: &CUnaryOp) -> &str {
+    match op {
+        CUnaryOp::Deref => "*",
+        CUnaryOp::Ref => "&",
+        CUnaryOp::Minus => "-",
+        CUnaryOp::Negate => "!",
+    }
+}
+
 fn binary_op_to_str(op: &CBinaryOp) -> &str {
     match op {
         CBinaryOp::Assign => "=",
@@ -59,8 +68,8 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             }
             write!(out, ")")
         }
-        CExpr::Neg(arg) => {
-            write!(out, "!")?;
+        CExpr::UnaryOp { op, arg } => {
+            write!(out, "{}", unary_op_to_str(op))?;
             write_expr(arg, indent, out)
         }
         CExpr::BinaryOp { op, left, right } => {

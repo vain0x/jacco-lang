@@ -17,5 +17,7 @@ pub fn main() -> i32 {
     let right_shift = 1 >> 2;
     let log_and = 2 && 3;
     let log_or = 2 || 3;
+    let minus = -2;
+    let negate = !2;
     0
 }

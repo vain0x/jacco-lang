@@ -6,10 +6,12 @@ mod parse_decl;
 mod parse_expr;
 mod parse_tree;
 mod parse_ty;
+mod unary_op;
 
 pub(crate) use binary_op::PBinaryOp;
 pub(crate) use parse_decl::parse_tokens;
 pub(crate) use parse_tree::*;
+pub(crate) use unary_op::PUnaryOp;
 
 use crate::logs::Logger;
 use crate::token::{Location, TokenData, TokenKind};

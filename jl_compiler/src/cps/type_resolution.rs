@@ -198,6 +198,23 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => {}
         },
+        KPrim::Deref | KPrim::Ref => unimplemented!(),
+        KPrim::Minus => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([arg], [result]) => {
+                let arg_ty = resolve_term(arg, tx);
+                unify(arg_ty, result.ty.clone(), location, tx);
+                // FIXME: bool or iNN
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::Negate => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([arg], [result]) => {
+                let arg_ty = resolve_term(arg, tx);
+                unify(arg_ty, result.ty.clone(), location, tx);
+                // FIXME: bool or iNN or uNN
+            }
+            _ => unimplemented!(),
+        },
         KPrim::Add
         | KPrim::Sub
         | KPrim::Mul

@@ -37,6 +37,36 @@ fn gen_term(term: KTerm, _cx: &mut Cx) -> CExpr {
     }
 }
 
+fn gen_unary_op(
+    op: CUnaryOp,
+    args: &mut Vec<KTerm>,
+    results: &mut Vec<KSymbol>,
+    conts: &mut Vec<KNode>,
+    stmts: &mut Vec<CStmt>,
+    cx: &mut Cx,
+) {
+    match (
+        args.as_mut_slice(),
+        results.as_mut_slice(),
+        conts.as_mut_slice(),
+    ) {
+        ([arg], [result], [cont]) => {
+            let arg = gen_term(take(arg), cx);
+            let (name, ty) = gen_param(take(result));
+            stmts.push(CStmt::VarDecl {
+                name,
+                ty,
+                init_opt: Some(CExpr::UnaryOp {
+                    op,
+                    arg: Box::new(arg),
+                }),
+            });
+            gen_node(take(cont), stmts, cx);
+        }
+        _ => unimplemented!(),
+    }
+}
+
 fn gen_binary_op(
     op: CBinaryOp,
     args: &mut Vec<KTerm>,
@@ -164,6 +194,10 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
+        KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, stmts, cx),
+        KPrim::Ref => gen_unary_op(CUnaryOp::Ref, args, results, conts, stmts, cx),
+        KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, stmts, cx),
+        KPrim::Negate => gen_unary_op(CUnaryOp::Negate, args, results, conts, stmts, cx),
         KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, stmts, cx),
         KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, stmts, cx),
         KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),

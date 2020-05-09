@@ -47,6 +47,11 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
+        PExpr::UnaryOp { arg_opt, .. } => {
+            if let Some(arg) = arg_opt {
+                resolve_expr(arg, nx);
+            }
+        }
         PExpr::BinaryOp {
             left, right_opt, ..
         } => {
