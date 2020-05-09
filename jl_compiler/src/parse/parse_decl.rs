@@ -160,7 +160,7 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Opti
         match parse_decl(px) {
             Some(decl) => decls.push(decl),
             None => {
-                eprintln!("expected decl {:?}", px.next());
+                p_error("expected decl", px);
                 px.bump();
             }
         }
