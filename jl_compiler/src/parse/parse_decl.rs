@@ -94,15 +94,11 @@ fn parse_fn_decl(px: &mut Px) -> PDecl {
 
 fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
     let extern_keyword = px.expect(TokenKind::Extern);
-
     let fn_keyword = px.expect(TokenKind::Fn);
 
     let name_opt = parse_name(px);
-
     let param_list_opt = parse_param_list(px);
-
     let result_opt = parse_result(px);
-
     let semi_opt = px.eat(TokenKind::Semi);
 
     PDecl::ExternFn {
@@ -119,7 +115,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     let decl = match px.next() {
         TokenKind::Let => parse_let_decl(px),
         TokenKind::Fn => parse_fn_decl(px),
-        TokenKind::Extern => parse_extern_fn_decl(px),
+        TokenKind::Extern if px.nth(1) == TokenKind::Fn => parse_extern_fn_decl(px),
         _ => return parse_expr_decl(px),
     };
     Some(decl)
