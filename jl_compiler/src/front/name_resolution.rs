@@ -64,6 +64,11 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         PExpr::Block(block) => {
             resolve_block(block, nx);
         }
+        PExpr::Break { arg_opt, .. } | PExpr::Return { arg_opt, .. } => {
+            if let Some(arg) = arg_opt {
+                resolve_expr(arg, nx);
+            }
+        }
         PExpr::If {
             cond_opt,
             body_opt,
@@ -106,7 +111,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 });
             }
         }
-        PExpr::Break { .. } | PExpr::Continue { .. } | PExpr::Return { .. } => {}
+        PExpr::Continue { .. } => {}
     }
 }
 
