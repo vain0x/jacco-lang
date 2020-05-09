@@ -1,6 +1,7 @@
 //! 名前解決の処理
 
 use super::*;
+use crate::logs::Logger;
 use std::collections::HashMap;
 
 /// Naming context.
@@ -8,9 +9,17 @@ use std::collections::HashMap;
 struct Nx {
     last_id: PNameId,
     env: HashMap<String, PNameId>,
+    logger: Logger,
 }
 
 impl Nx {
+    fn new(logger: Logger) -> Self {
+        Self {
+            logger,
+            ..Self::default()
+        }
+    }
+
     fn fresh_id(&mut self) -> PNameId {
         self.last_id += 1;
         self.last_id
@@ -38,7 +47,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 name.name_id = *name_id;
             }
             None => {
-                eprintln!("undefined {:?}", name);
+                nx.logger.error(name.location.clone(), "undefined");
             }
         },
         PExpr::Tuple(arg_list) => {
@@ -172,8 +181,8 @@ fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
     }
 }
 
-pub(crate) fn resolve_name(p_root: &mut PRoot) {
-    let mut nx = Nx::default();
+pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) {
+    let mut nx = Nx::new(logger);
 
     for decl in &mut p_root.decls {
         resolve_decl(decl, &mut nx);

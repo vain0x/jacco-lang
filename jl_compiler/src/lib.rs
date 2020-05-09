@@ -21,7 +21,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     eprintln!("tokens = {:#?}\n", tokens);
 
     let mut p_root = parse::parse_tokens(tokens, logs.logger());
-    front::resolve_name(&mut p_root);
+    front::resolve_name(&mut p_root, logs.logger());
     eprintln!("p_root = {:#?}\n", p_root);
 
     let k_root = cps::cps_conversion(p_root, logs.logger());
