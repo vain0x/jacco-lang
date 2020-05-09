@@ -39,6 +39,12 @@ fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     nx.env.insert(name.text.clone(), name.name_id);
 }
 
+fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
+    if let Some(pat) = pat_opt {
+        resolve_pat(pat, nx);
+    }
+}
+
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
         PExpr::Int(_) | PExpr::Str(_) => {}
@@ -57,31 +63,25 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }
         PExpr::Call { callee, arg_list } => {
             resolve_expr(callee, nx);
+
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
         PExpr::UnaryOp { arg_opt, .. } => {
-            if let Some(arg) = arg_opt {
-                resolve_expr(arg, nx);
-            }
+            resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }
         PExpr::BinaryOp {
             left, right_opt, ..
         } => {
             resolve_expr(left, nx);
-
-            if let Some(right) = right_opt {
-                resolve_expr(right, nx);
-            }
+            resolve_expr_opt(right_opt.as_deref_mut(), nx);
         }
         PExpr::Block(block) => {
             resolve_block(block, nx);
         }
         PExpr::Break { arg_opt, .. } | PExpr::Return { arg_opt, .. } => {
-            if let Some(arg) = arg_opt {
-                resolve_expr(arg, nx);
-            }
+            resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }
         PExpr::If {
             cond_opt,
@@ -89,33 +89,18 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             alt_opt,
             ..
         } => {
-            if let Some(cond) = cond_opt {
-                resolve_expr(cond, nx);
-            }
-
-            if let Some(block) = body_opt {
-                resolve_block(block, nx);
-            }
-
-            if let Some(alt) = alt_opt {
-                resolve_expr(alt, nx);
-            }
+            resolve_expr_opt(cond_opt.as_deref_mut(), nx);
+            resolve_block_opt(body_opt.as_mut(), nx);
+            resolve_expr_opt(alt_opt.as_deref_mut(), nx);
         }
         PExpr::While {
             cond_opt, body_opt, ..
         } => {
-            if let Some(cond) = cond_opt {
-                resolve_expr(cond, nx);
-            }
-
-            if let Some(block) = body_opt {
-                resolve_block(block, nx);
-            }
+            resolve_expr_opt(cond_opt.as_deref_mut(), nx);
+            resolve_block_opt(body_opt.as_mut(), nx);
         }
         PExpr::Loop { body_opt, .. } => {
-            if let Some(block) = body_opt {
-                resolve_block(block, nx);
-            }
+            resolve_block_opt(body_opt.as_mut(), nx);
         }
         PExpr::Continue { .. } => {}
     }
@@ -129,29 +114,26 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         PDecl::Let {
             name_opt, init_opt, ..
         } => {
-            if let Some(init) = init_opt {
-                resolve_expr(init, nx);
-            }
-
-            if let Some(name) = name_opt {
-                resolve_pat(name, nx);
-            }
+            resolve_expr_opt(init_opt.as_mut(), nx);
+            resolve_pat_opt(name_opt.as_mut(), nx)
         }
         PDecl::Fn { block_opt, .. } => {
-            if let Some(block) = block_opt {
-                resolve_block(block, nx);
-            }
+            resolve_block_opt(block_opt.as_mut(), nx);
         }
         PDecl::ExternFn { param_list_opt, .. } => {
-            if let Some(params) = param_list_opt
-                .as_mut()
-                .map(|param_list| &mut param_list.params)
-            {
-                for param in params {
-                    resolve_pat(&mut param.name, nx);
-                }
+            let params = param_list_opt
+                .into_iter()
+                .flat_map(|param_list| param_list.params.iter_mut());
+            for param in params {
+                resolve_pat(&mut param.name, nx);
             }
         }
+    }
+}
+
+fn resolve_expr_opt(expr_opt: Option<&mut PExpr>, nx: &mut Nx) {
+    if let Some(expr) = expr_opt {
+        resolve_expr(expr, nx);
     }
 }
 
@@ -165,6 +147,12 @@ fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
             resolve_expr(last, nx);
         }
     })
+}
+
+fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
+    if let Some(block) = block_opt {
+        resolve_block(block, nx);
+    }
 }
 
 pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) {
