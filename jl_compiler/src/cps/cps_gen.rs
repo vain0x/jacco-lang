@@ -229,7 +229,8 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     let ty = match param.ty_opt {
         Some(ty) => gen_ty(ty, gx),
         None => {
-            eprintln!("param type can't be omit");
+            gx.logger
+                .error(param.name.location.clone(), "param type is mandatory");
             KTy::Never
         }
     };
