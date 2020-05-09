@@ -66,7 +66,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
                     let colon_opt = px.eat(TokenKind::Colon);
 
                     let ty_opt = if colon_opt.is_some() {
-                        parse_name(px)
+                        parse_ty(px)
                     } else {
                         None
                     };
@@ -98,7 +98,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
     let result_opt = match px.eat(TokenKind::RightSlimArrow) {
         None => None,
         Some(arrow) => {
-            let ty_opt = parse_name(px);
+            let ty_opt = parse_ty(px);
             Some(PResult { arrow, ty_opt })
         }
     };

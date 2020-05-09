@@ -18,10 +18,26 @@ impl PName {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum PTy {
+    Name(PName),
+    Never {
+        bang: TokenData,
+    },
+    Unit {
+        left: TokenData,
+        right_opt: Option<TokenData>,
+    },
+    Ptr {
+        star: TokenData,
+        ty_opt: Option<Box<PTy>>,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PParam {
     pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
-    pub(crate) ty_opt: Option<PName>,
+    pub(crate) ty_opt: Option<PTy>,
     pub(crate) comma_opt: Option<TokenData>,
 }
 
@@ -35,7 +51,7 @@ pub(crate) struct PParamList {
 #[derive(Clone, Debug)]
 pub(crate) struct PResult {
     pub(crate) arrow: TokenData,
-    pub(crate) ty_opt: Option<PName>,
+    pub(crate) ty_opt: Option<PTy>,
 }
 
 #[derive(Clone, Debug)]

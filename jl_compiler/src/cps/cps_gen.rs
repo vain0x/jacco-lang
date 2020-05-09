@@ -156,10 +156,18 @@ fn emit_if(
     KTerm::Name(result)
 }
 
-fn gen_ty(ty_name: PName, _gx: &mut Gx) -> KTy {
-    match ty_name.as_str() {
-        "i32" => KTy::I32,
-        _ => KTy::new_unresolved(),
+fn gen_ty(ty: PTy, _gx: &mut Gx) -> KTy {
+    match ty {
+        PTy::Name(name) => match name.as_str() {
+            "i32" => KTy::I32,
+            _ => {
+                // error
+                KTy::new_unresolved()
+            }
+        },
+        PTy::Never { .. } => KTy::Never,
+        PTy::Unit { .. } => KTy::Unit,
+        PTy::Ptr { .. } => unimplemented!(),
     }
 }
 

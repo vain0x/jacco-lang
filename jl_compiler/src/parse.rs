@@ -5,6 +5,7 @@ mod parse_context;
 mod parse_decl;
 mod parse_expr;
 mod parse_tree;
+mod parse_ty;
 
 pub(crate) use binary_op::BinaryOp;
 pub(crate) use parse_decl::parse_tokens;
@@ -15,6 +16,7 @@ use crate::token::{Location, TokenData, TokenKind};
 use parse_context::Px;
 use parse_decl::parse_semi;
 use parse_expr::{parse_block, parse_expr, parse_name};
+use parse_ty::parse_ty;
 
 /// 関数の中か外か。
 /// FIXME: より適切な名前？
