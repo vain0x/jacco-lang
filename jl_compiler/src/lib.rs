@@ -28,7 +28,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     eprintln!("k_root = {:#?}\n", k_root);
 
     for item in logs.finish() {
-        eprintln!("ERROR({:?})\n    {}", item.location, item.message);
+        println!("ERROR({:?})\n    {}", item.location, item.message);
     }
 
     clang::clang_dump(k_root)

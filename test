@@ -5,20 +5,25 @@
 # 1ケースだけ実行する:
 # USAGE: ./test empty
 
+# コンパイラの標準入出力は test_stdout.md/test_stderr.md に出力される。
+
 set -eu
 
 f() {
     NAME=$1
     SRC="tests/$NAME/$NAME.jacco"
 
-    echo "test: $SRC" >&2
-    cargo run --bin jl_tests "$SRC"
+    echo 'test: '$SRC
+    echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
+    cargo run --bin jl_tests "$SRC" 2>>test_stderr.md | tee -a test_stdout.md
     EXIT_CODE=$?
 
     if test $EXIT_CODE -ne 0
     then
-        echo '$?='$? >&2
+        echo '$?='$? | tee -a test_stdout.md >&2
     fi
+
+    echo '```' | tee -a test_stderr.md >>test_stdout.md
 }
 
 f_all() {
@@ -40,6 +45,9 @@ f_all() {
 }
 
 ONLY=${1:-''}
+
+: >test_stdout.md
+: >test_stderr.md
 
 if ! test -z $ONLY
 then
