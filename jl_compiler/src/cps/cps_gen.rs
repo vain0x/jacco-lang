@@ -230,6 +230,17 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Int(token) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(name) => KTerm::Name(gen_name(name, gx)),
+        PExpr::Tuple(mut arg_list) => {
+            let is_tuple = arg_list.is_tuple();
+            match arg_list.args.as_mut_slice() {
+                [] => {
+                    let location = arg_list.left.into_location();
+                    new_unit_term(location)
+                }
+                [arg] if !is_tuple => gen_expr(std::mem::take(&mut arg.expr), gx),
+                _ => unimplemented!("tuple literal is not supported yet"),
+            }
+        }
         PExpr::Call { callee, arg_list } => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());

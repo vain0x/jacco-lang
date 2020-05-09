@@ -61,6 +61,19 @@ pub(crate) struct PArgList {
     pub(crate) args: Vec<PArg>,
 }
 
+impl PArgList {
+    pub(crate) fn is_tuple(&self) -> bool {
+        match self.args.as_slice() {
+            []
+            | [PArg {
+                comma_opt: Some(_), ..
+            }]
+            | [_, _, ..] => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct PBlock {
     pub(crate) left: TokenData,
@@ -74,6 +87,7 @@ pub(crate) enum PExpr {
     Int(TokenData),
     Str(TokenData),
     Name(PName),
+    Tuple(PArgList),
     Call {
         callee: Box<PExpr>,
         arg_list: PArgList,
@@ -117,6 +131,12 @@ pub(crate) enum PExpr {
         keyword: TokenData,
         body_opt: Option<PBlock>,
     },
+}
+
+impl Default for PExpr {
+    fn default() -> Self {
+        PExpr::Str(TokenData::default())
+    }
 }
 
 #[derive(Clone, Debug)]

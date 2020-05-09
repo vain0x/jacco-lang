@@ -41,6 +41,11 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 eprintln!("undefined {:?}", name);
             }
         },
+        PExpr::Tuple(arg_list) => {
+            for arg in &mut arg_list.args {
+                resolve_expr(&mut arg.expr, nx);
+            }
+        }
         PExpr::Call { callee, arg_list } => {
             resolve_expr(callee, nx);
             for arg in &mut arg_list.args {

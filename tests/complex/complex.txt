@@ -42,5 +42,7 @@ next_10:;
     goto next_8;
     //
 next_8:;
+    void unit_4 = (void)0;
+    int group_expr_5 = 1;
     return 0;
 }

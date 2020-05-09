@@ -18,6 +18,7 @@ fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::Int => PExpr::Int(px.bump()),
         TokenKind::Str => PExpr::Str(px.bump()),
         TokenKind::Ident => PExpr::Name(parse_name(px).unwrap()),
+        TokenKind::LeftParen => PExpr::Tuple(parse_arg_list(px)),
         _ => return None,
     };
     Some(term)
@@ -29,18 +30,7 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
     loop {
         match px.next() {
             TokenKind::LeftParen => {
-                let left_paren = px.bump();
-
-                let mut args = vec![];
-                parse_args(&mut args, px);
-
-                let right_opt = px.eat(TokenKind::RightParen);
-
-                let arg_list = PArgList {
-                    left: left_paren,
-                    args,
-                    right_opt,
-                };
+                let arg_list = parse_arg_list(px);
 
                 left = PExpr::Call {
                     callee: Box::new(left),
@@ -339,5 +329,20 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
                 }
             }
         }
+    }
+}
+
+fn parse_arg_list(px: &mut Px) -> PArgList {
+    let left = px.expect(TokenKind::LeftParen);
+
+    let mut args = vec![];
+    parse_args(&mut args, px);
+
+    let right_opt = px.eat(TokenKind::RightParen);
+
+    PArgList {
+        left,
+        args,
+        right_opt,
     }
 }

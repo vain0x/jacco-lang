@@ -10,5 +10,8 @@ pub fn main() -> i32 {
         let alt32 = 32;
     }
 
+    let unit = ();
+    let group_expr = (1);
+
     0
 }
