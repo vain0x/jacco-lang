@@ -27,6 +27,18 @@ next_10:;
     return loop_result_8;
 }
 
+int break_with_arg() {
+    int loop_result_13;
+    goto continue__14;
+    //
+continue__14:;
+    loop_result_13 = 2;
+    goto next_15;
+    //
+next_15:;
+    return loop_result_13;
+}
+
 int main() {
     return 0;
 }

@@ -10,6 +10,12 @@ fn break_from_loop() {
     }
 }
 
+fn break_with_arg() {
+    loop {
+        break 2;
+    }
+}
+
 pub fn main() -> i32 {
     0
 }

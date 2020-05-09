@@ -309,12 +309,15 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
         },
         PExpr::Block(block) => gen_block(block, gx),
-        PExpr::Break { keyword, .. } => {
+        PExpr::Break { keyword, arg_opt } => {
             let location = keyword.into_location();
 
             let label = gx.current_break_label().expect("out of loop").clone();
-            let unit_term = new_unit_term(location.clone());
-            gx.push_jump_with_cont(label, vec![unit_term]);
+            let arg = match arg_opt {
+                Some(arg) => gen_expr(*arg, gx),
+                None => new_unit_term(location.clone()),
+            };
+            gx.push_jump_with_cont(label, vec![arg]);
 
             new_never_term(location)
         }
