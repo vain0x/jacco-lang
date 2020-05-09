@@ -94,15 +94,11 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             }
 
             if let Some(block) = body_opt {
-                nx.enter_scope(|nx| {
-                    resolve_block(block, nx);
-                });
+                resolve_block(block, nx);
             }
 
             if let Some(alt) = alt_opt {
-                nx.enter_scope(|nx| {
-                    resolve_expr(alt, nx);
-                });
+                resolve_expr(alt, nx);
             }
         }
         PExpr::While {
@@ -113,16 +109,12 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             }
 
             if let Some(block) = body_opt {
-                nx.enter_scope(|nx| {
-                    resolve_block(block, nx);
-                });
+                resolve_block(block, nx);
             }
         }
         PExpr::Loop { body_opt, .. } => {
             if let Some(block) = body_opt {
-                nx.enter_scope(|nx| {
-                    resolve_block(block, nx);
-                });
+                resolve_block(block, nx);
             }
         }
         PExpr::Continue { .. } => {}
@@ -147,15 +139,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         }
         PDecl::Fn { block_opt, .. } => {
             if let Some(block) = block_opt {
-                nx.enter_scope(|nx| {
-                    for decl in &mut block.decls {
-                        resolve_decl(decl, nx);
-                    }
-
-                    if let Some(last) = &mut block.last_opt {
-                        resolve_expr(last, nx);
-                    }
-                });
+                resolve_block(block, nx);
             }
         }
         PDecl::ExternFn { param_list_opt, .. } => {
@@ -172,13 +156,15 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 }
 
 fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
-    for decl in &mut block.decls {
-        resolve_decl(decl, nx);
-    }
+    nx.enter_scope(|nx| {
+        for decl in &mut block.decls {
+            resolve_decl(decl, nx);
+        }
 
-    if let Some(last) = &mut block.last_opt {
-        resolve_expr(last, nx);
-    }
+        if let Some(last) = &mut block.last_opt {
+            resolve_expr(last, nx);
+        }
+    })
 }
 
 pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) {
