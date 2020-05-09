@@ -79,7 +79,7 @@ pub(crate) enum PExpr {
         arg_list: PArgList,
     },
     BinaryOp {
-        op: BinaryOp,
+        op: PBinaryOp,
         left: Box<PExpr>,
         right_opt: Option<Box<PExpr>>,
         location: Location,

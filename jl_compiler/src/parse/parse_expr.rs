@@ -68,9 +68,9 @@ fn parse_mul(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
-            TokenKind::Star => left = parse_right(BinaryOp::Mul, left, px),
-            TokenKind::Slash => left = parse_right(BinaryOp::Div, left, px),
-            TokenKind::Percent => left = parse_right(BinaryOp::Mod, left, px),
+            TokenKind::Star => left = parse_right(PBinaryOp::Mul, left, px),
+            TokenKind::Slash => left = parse_right(PBinaryOp::Div, left, px),
+            TokenKind::Percent => left = parse_right(PBinaryOp::Mod, left, px),
             _ => return Some(left),
         }
     }
@@ -92,8 +92,8 @@ fn parse_add(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
-            TokenKind::Plus => left = parse_right(BinaryOp::Add, left, px),
-            TokenKind::Minus => left = parse_right(BinaryOp::Sub, left, px),
+            TokenKind::Plus => left = parse_right(PBinaryOp::Add, left, px),
+            TokenKind::Minus => left = parse_right(PBinaryOp::Sub, left, px),
             _ => return Some(left),
         }
     }
@@ -115,11 +115,11 @@ fn parse_bit(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
-            TokenKind::And => left = parse_right(BinaryOp::BitAnd, left, px),
-            TokenKind::Pipe => left = parse_right(BinaryOp::BitOr, left, px),
-            TokenKind::Hat => left = parse_right(BinaryOp::BitXor, left, px),
-            TokenKind::LeftShift => left = parse_right(BinaryOp::LeftShift, left, px),
-            TokenKind::RightShift => left = parse_right(BinaryOp::RightShift, left, px),
+            TokenKind::And => left = parse_right(PBinaryOp::BitAnd, left, px),
+            TokenKind::Pipe => left = parse_right(PBinaryOp::BitOr, left, px),
+            TokenKind::Hat => left = parse_right(PBinaryOp::BitXor, left, px),
+            TokenKind::LeftShift => left = parse_right(PBinaryOp::LeftShift, left, px),
+            TokenKind::RightShift => left = parse_right(PBinaryOp::RightShift, left, px),
             _ => return Some(left),
         }
     }
@@ -141,12 +141,12 @@ fn parse_comparison(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
-            TokenKind::EqualEqual => left = parse_right(BinaryOp::Eq, left, px),
-            TokenKind::BangEqual => left = parse_right(BinaryOp::Ne, left, px),
-            TokenKind::LeftAngle => left = parse_right(BinaryOp::Lt, left, px),
-            TokenKind::LeftAngleEqual => left = parse_right(BinaryOp::Le, left, px),
-            TokenKind::RightAngle => left = parse_right(BinaryOp::Gt, left, px),
-            TokenKind::RightAngleEqual => left = parse_right(BinaryOp::Ge, left, px),
+            TokenKind::EqualEqual => left = parse_right(PBinaryOp::Eq, left, px),
+            TokenKind::BangEqual => left = parse_right(PBinaryOp::Ne, left, px),
+            TokenKind::LeftAngle => left = parse_right(PBinaryOp::Lt, left, px),
+            TokenKind::LeftAngleEqual => left = parse_right(PBinaryOp::Le, left, px),
+            TokenKind::RightAngle => left = parse_right(PBinaryOp::Gt, left, px),
+            TokenKind::RightAngleEqual => left = parse_right(PBinaryOp::Ge, left, px),
             _ => return Some(left),
         }
     }
@@ -168,8 +168,8 @@ fn parse_logical(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
-            TokenKind::AndAnd => left = parse_right(BinaryOp::LogAnd, left, px),
-            TokenKind::PipePipe => left = parse_right(BinaryOp::LogOr, left, px),
+            TokenKind::AndAnd => left = parse_right(PBinaryOp::LogAnd, left, px),
+            TokenKind::PipePipe => left = parse_right(PBinaryOp::LogOr, left, px),
             _ => return Some(left),
         }
     }

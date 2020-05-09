@@ -228,25 +228,27 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             right_opt,
             location,
         } => match op {
-            BinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
-            BinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
-            BinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),
-            BinaryOp::Div => emit_binary_op(KPrim::Div, *left, right_opt, location, gx),
-            BinaryOp::Mod => emit_binary_op(KPrim::Mod, *left, right_opt, location, gx),
-            BinaryOp::BitAnd => emit_binary_op(KPrim::BitAnd, *left, right_opt, location, gx),
-            BinaryOp::BitOr => emit_binary_op(KPrim::BitOr, *left, right_opt, location, gx),
-            BinaryOp::BitXor => emit_binary_op(KPrim::BitXor, *left, right_opt, location, gx),
-            BinaryOp::LeftShift => emit_binary_op(KPrim::LeftShift, *left, right_opt, location, gx),
-            BinaryOp::RightShift => {
+            PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
+            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
+            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),
+            PBinaryOp::Div => emit_binary_op(KPrim::Div, *left, right_opt, location, gx),
+            PBinaryOp::Mod => emit_binary_op(KPrim::Mod, *left, right_opt, location, gx),
+            PBinaryOp::BitAnd => emit_binary_op(KPrim::BitAnd, *left, right_opt, location, gx),
+            PBinaryOp::BitOr => emit_binary_op(KPrim::BitOr, *left, right_opt, location, gx),
+            PBinaryOp::BitXor => emit_binary_op(KPrim::BitXor, *left, right_opt, location, gx),
+            PBinaryOp::LeftShift => {
+                emit_binary_op(KPrim::LeftShift, *left, right_opt, location, gx)
+            }
+            PBinaryOp::RightShift => {
                 emit_binary_op(KPrim::RightShift, *left, right_opt, location, gx)
             }
-            BinaryOp::Eq => emit_binary_op(KPrim::Eq, *left, right_opt, location, gx),
-            BinaryOp::Ne => emit_binary_op(KPrim::Ne, *left, right_opt, location, gx),
-            BinaryOp::Lt => emit_binary_op(KPrim::Lt, *left, right_opt, location, gx),
-            BinaryOp::Le => emit_binary_op(KPrim::Le, *left, right_opt, location, gx),
-            BinaryOp::Gt => emit_binary_op(KPrim::Gt, *left, right_opt, location, gx),
-            BinaryOp::Ge => emit_binary_op(KPrim::Ge, *left, right_opt, location, gx),
-            BinaryOp::LogAnd => {
+            PBinaryOp::Eq => emit_binary_op(KPrim::Eq, *left, right_opt, location, gx),
+            PBinaryOp::Ne => emit_binary_op(KPrim::Ne, *left, right_opt, location, gx),
+            PBinaryOp::Lt => emit_binary_op(KPrim::Lt, *left, right_opt, location, gx),
+            PBinaryOp::Le => emit_binary_op(KPrim::Le, *left, right_opt, location, gx),
+            PBinaryOp::Gt => emit_binary_op(KPrim::Gt, *left, right_opt, location, gx),
+            PBinaryOp::Ge => emit_binary_op(KPrim::Ge, *left, right_opt, location, gx),
+            PBinaryOp::LogAnd => {
                 let false_term = new_false_term(location.clone());
                 emit_if(
                     *left,
@@ -256,7 +258,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     gx,
                 )
             }
-            BinaryOp::LogOr => {
+            PBinaryOp::LogOr => {
                 let true_term = new_true_term(location.clone());
                 emit_if(
                     *left,

@@ -7,7 +7,7 @@ mod parse_expr;
 mod parse_tree;
 mod parse_ty;
 
-pub(crate) use binary_op::BinaryOp;
+pub(crate) use binary_op::PBinaryOp;
 pub(crate) use parse_decl::parse_tokens;
 pub(crate) use parse_tree::*;
 
