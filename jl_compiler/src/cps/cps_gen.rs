@@ -196,11 +196,6 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     gen_name_with_ty(param.name, ty, gx)
 }
 
-fn gen_result(result: PResult, gx: &mut Gx) -> KTy {
-    let ty = result.ty_opt.unwrap();
-    gen_ty(ty, gx)
-}
-
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(token) => KTerm::Int(token),
@@ -467,7 +462,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 .map(|param| gen_param(param, gx))
                 .collect();
             let result = match result_opt {
-                Some(result) => gen_result(result, gx),
+                Some(ty) => gen_ty(ty, gx),
                 None => KTy::Unit,
             };
 

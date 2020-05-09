@@ -48,13 +48,6 @@ pub(crate) struct PParamList {
     pub(crate) params: Vec<PParam>,
 }
 
-/// 結果型注釈 (`-> T`)
-#[derive(Clone, Debug)]
-pub(crate) struct PResult {
-    pub(crate) arrow: TokenData,
-    pub(crate) ty_opt: Option<PTy>,
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PArg {
     pub(crate) expr: PExpr,
@@ -135,7 +128,8 @@ pub(crate) enum PDecl {
         keyword: TokenData,
         name_opt: Option<PName>,
         param_list_opt: Option<PParamList>,
-        result_opt: Option<PResult>,
+        arrow_opt: Option<TokenData>,
+        result_opt: Option<PTy>,
         block_opt: Option<PBlock>,
     },
     ExternFn {
@@ -143,7 +137,8 @@ pub(crate) enum PDecl {
         fn_keyword: TokenData,
         name_opt: Option<PName>,
         param_list_opt: Option<PParamList>,
-        result_opt: Option<PResult>,
+        arrow_opt: Option<TokenData>,
+        result_opt: Option<PTy>,
         semi_opt: Option<TokenData>,
     },
 }
