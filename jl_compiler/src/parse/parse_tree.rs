@@ -125,7 +125,11 @@ pub(crate) enum PDecl {
     Let {
         keyword: TokenData,
         name_opt: Option<PName>,
+        colon_opt: Option<TokenData>,
+        ty_opt: Option<PTy>,
+        equal_opt: Option<TokenData>,
         init_opt: Option<PExpr>,
+        semi_opt: Option<TokenData>,
     },
     Fn {
         keyword: TokenData,
