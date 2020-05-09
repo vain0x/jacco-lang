@@ -34,6 +34,29 @@ impl Nx {
     }
 }
 
+fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
+    match ty {
+        PTy::Name(name) => match name.as_str() {
+            "i32" => {
+                // FIXME: これの型が i32 であることを記録する。
+            }
+            _ => {
+                nx.logger.error(name.location.clone(), "undefined type");
+            }
+        },
+        PTy::Never { .. } | PTy::Unit { .. } => {}
+        PTy::Ptr { ty_opt, .. } => {
+            resolve_ty_opt(ty_opt.as_deref_mut(), nx);
+        }
+    }
+}
+
+fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
+    if let Some(ty) = ty_opt {
+        resolve_ty(ty, nx);
+    }
+}
+
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     name.name_id = nx.fresh_id();
     nx.env.insert(name.text.clone(), name.name_id);
@@ -106,27 +129,48 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     }
 }
 
+fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) {
+    let params = param_list_opt
+        .into_iter()
+        .flat_map(|param_list| param_list.params.iter_mut());
+    for param in params {
+        resolve_pat(&mut param.name, nx);
+        resolve_ty_opt(param.ty_opt.as_mut(), nx);
+    }
+}
+
 fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
     match decl {
         PDecl::Expr { expr, .. } => {
             resolve_expr(expr, nx);
         }
         PDecl::Let {
-            name_opt, init_opt, ..
+            name_opt,
+            ty_opt,
+            init_opt,
+            ..
         } => {
             resolve_expr_opt(init_opt.as_mut(), nx);
+            resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_pat_opt(name_opt.as_mut(), nx)
         }
-        PDecl::Fn { block_opt, .. } => {
+        PDecl::Fn {
+            param_list_opt,
+            result_opt,
+            block_opt,
+            ..
+        } => {
+            resolve_param_list_opt(param_list_opt.as_mut(), nx);
+            resolve_ty_opt(result_opt.as_mut(), nx);
             resolve_block_opt(block_opt.as_mut(), nx);
         }
-        PDecl::ExternFn { param_list_opt, .. } => {
-            let params = param_list_opt
-                .into_iter()
-                .flat_map(|param_list| param_list.params.iter_mut());
-            for param in params {
-                resolve_pat(&mut param.name, nx);
-            }
+        PDecl::ExternFn {
+            param_list_opt,
+            result_opt,
+            ..
+        } => {
+            resolve_ty_opt(result_opt.as_mut(), nx);
+            resolve_param_list_opt(param_list_opt.as_mut(), nx)
         }
     }
 }
