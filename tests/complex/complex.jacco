@@ -13,5 +13,13 @@ pub fn main() -> i32 {
     let unit = ();
     let group_expr = (1);
 
+    let a = 1;
+    let p = &a;
+    let pp1 = &(&a);
+    let pp2 = &p;
+    let p1d = *p;
+    let pp1dd = **pp1;
+    let pp2dd = **pp2;
+
     0
 }

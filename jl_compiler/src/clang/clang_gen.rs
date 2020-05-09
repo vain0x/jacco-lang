@@ -22,6 +22,9 @@ fn gen_ty(ty: KTy) -> CTy {
         KTy::Fn { .. } => CTy::Other("/* fn */ void"),
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
+        KTy::Ptr { ty } => CTy::Ptr {
+            ty: Box::new(gen_ty(*ty)),
+        },
     }
 }
 

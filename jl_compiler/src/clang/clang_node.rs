@@ -31,6 +31,7 @@ pub(crate) enum CTy {
     Other(&'static str),
     Void,
     Int,
+    Ptr { ty: Box<CTy> },
 }
 
 pub(crate) enum CExpr {

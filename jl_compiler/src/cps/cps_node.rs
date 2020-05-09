@@ -25,6 +25,9 @@ pub(crate) enum KTy {
     Never,
     Unit,
     I32,
+    Ptr {
+        ty: Box<KTy>,
+    },
     Fn {
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
@@ -34,6 +37,10 @@ pub(crate) enum KTy {
 impl KTy {
     pub(crate) fn new_unresolved() -> KTy {
         KTy::default()
+    }
+
+    pub(crate) fn into_ptr(self) -> KTy {
+        KTy::Ptr { ty: Box::new(self) }
     }
 
     pub(crate) fn resolve(mut self) -> KTy {
@@ -63,6 +70,10 @@ impl fmt::Debug for KTy {
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::I32 => write!(f, "i32"),
+            KTy::Ptr { ty } => {
+                write!(f, "*")?;
+                fmt::Debug::fmt(&ty, f)
+            }
             KTy::Fn {
                 param_tys,
                 result_ty,

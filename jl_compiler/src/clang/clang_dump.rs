@@ -41,11 +41,15 @@ fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     Ok(())
 }
 
-fn write_ty(ty: &CTy, _indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match ty {
         CTy::Other(text) => write!(out, "{}", text),
         CTy::Void => write!(out, "void"),
         CTy::Int => write!(out, "int"),
+        CTy::Ptr { ty } => {
+            write!(out, "*")?;
+            write_ty(&ty, indent, out)
+        }
     }
 }
 

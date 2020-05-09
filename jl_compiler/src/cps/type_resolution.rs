@@ -95,6 +95,10 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 
         (KTy::Unit, KTy::Unit) | (KTy::I32, KTy::I32) => {}
 
+        (KTy::Ptr { ty: left }, KTy::Ptr { ty: right }) => {
+            unify(*left, *right, location, tx);
+        }
+
         (
             KTy::Fn {
                 param_tys: left_param_tys,
@@ -120,7 +124,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
             }
         }
 
-        (KTy::Unit, _) | (KTy::I32, _) | (KTy::Fn { .. }, _) => {
+        (KTy::Unit, _) | (KTy::I32, _) | (KTy::Ptr { .. }, _) | (KTy::Fn { .. }, _) => {
             tx.logger.error(location, "type mismatch");
         }
     }
@@ -196,9 +200,22 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let init_ty = resolve_term(init, tx);
                 unify(init_ty, result.ty.clone(), location, tx);
             }
-            _ => {}
+            _ => unimplemented!(),
         },
-        KPrim::Deref | KPrim::Ref => unimplemented!(),
+        KPrim::Deref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([arg], [result]) => {
+                let arg_ty = resolve_term(arg, tx);
+                unify(arg_ty, result.ty.clone().into_ptr(), location, tx);
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::Ref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([arg], [result]) => {
+                let arg_ty = resolve_term(arg, tx);
+                unify(arg_ty.into_ptr(), result.ty.clone(), location, tx);
+            }
+            _ => unimplemented!(),
+        },
         KPrim::Minus => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);

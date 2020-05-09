@@ -45,7 +45,7 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
 fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, px: &mut Px| {
         let op_token = px.bump();
-        let arg_opt = parse_suffix_expr(px).map(Box::new);
+        let arg_opt = parse_prefix_expr(px).map(Box::new);
         let location = op_token.into_location();
         Some(PExpr::UnaryOp {
             op,
