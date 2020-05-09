@@ -129,6 +129,9 @@ pub(crate) enum PDecl {
     },
     Fn {
         keyword: TokenData,
+        name_opt: Option<PName>,
+        param_list_opt: Option<PParamList>,
+        result_opt: Option<PResult>,
         block_opt: Option<PBlock>,
     },
     ExternFn {

@@ -1,4 +1,4 @@
-int main() {
+int continue_in_while() {
     int while_result_3;
     goto continue__4;
     //
@@ -14,7 +14,7 @@ next_5:;
     return while_result_3;
 }
 
-int main() {
+int continue_in_loop() {
     int loop_result_8;
     goto continue__9;
     //
@@ -25,7 +25,7 @@ next_10:;
     return loop_result_8;
 }
 
-int main() {
+int nested_continue() {
     int while_result_16;
     int while_result_13;
     goto continue__14;

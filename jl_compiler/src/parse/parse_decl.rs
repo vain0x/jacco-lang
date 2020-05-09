@@ -81,15 +81,18 @@ fn parse_let_decl(px: &mut Px) -> PDecl {
 fn parse_fn_decl(px: &mut Px) -> PDecl {
     let keyword = px.expect(TokenKind::Fn);
 
-    px.eat(TokenKind::Ident);
-    px.eat(TokenKind::LeftParen);
-    px.eat(TokenKind::RightParen);
-
-    parse_result(px);
-
+    let name_opt = parse_name(px);
+    let param_list_opt = parse_param_list(px);
+    let result_opt = parse_result(px);
     let block_opt = parse_block(px);
 
-    PDecl::Fn { keyword, block_opt }
+    PDecl::Fn {
+        keyword,
+        name_opt,
+        param_list_opt,
+        result_opt,
+        block_opt,
+    }
 }
 
 fn parse_extern_fn_decl(px: &mut Px) -> PDecl {

@@ -419,9 +419,15 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 cont_count: 1,
             });
         }
-        PDecl::Fn { keyword, block_opt } => {
+        PDecl::Fn {
+            keyword,
+            name_opt,
+            block_opt,
+            ..
+        } => {
             let location = keyword.into_location();
-            let fn_name = gx.fresh_symbol("main", location.clone());
+            let fn_name = gen_name(name_opt.unwrap(), gx);
+            gx.fresh_id(); // FIXME: 調整
             let return_label = gx.fresh_symbol("return", location.clone());
 
             let commands = {
