@@ -36,6 +36,7 @@ f_all() {
     f break
     f continue
     f call_direct
+    f return
 }
 
 ONLY=${1:-''}

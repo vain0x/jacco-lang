@@ -5,6 +5,10 @@ use super::*;
 use crate::parse::*;
 use crate::token::TokenKind;
 
+struct FnConstruction {
+    return_label: KSymbol,
+}
+
 struct LoopConstruction {
     break_label: KSymbol,
     continue_label: KSymbol,
@@ -16,6 +20,7 @@ struct Gx {
     last_id: usize,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
+    current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
     fns: Vec<KFn>,
 }
@@ -45,6 +50,10 @@ impl Gx {
 
     fn current_continue_label(&self) -> Option<&KSymbol> {
         self.parent_loop.as_ref().map(|l| &l.continue_label)
+    }
+
+    fn current_return_label(&self) -> Option<&KSymbol> {
+        self.current_fn.as_ref().map(|f| &f.return_label)
     }
 
     fn push(&mut self, command: XCommand) {
@@ -317,7 +326,18 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::Return { .. } => unimplemented!(),
+        PExpr::Return { keyword, arg_opt } => {
+            let location = keyword.into_location();
+
+            let label = gx.current_return_label().expect("out of fn").clone();
+            let arg = match arg_opt {
+                Some(arg) => gen_expr(*arg, gx),
+                None => new_unit_term(location.clone()),
+            };
+            gx.push_jump_with_cont(label, vec![arg]);
+
+            new_never_term(location)
+        }
         PExpr::If {
             keyword,
             cond_opt,
@@ -457,8 +477,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let fn_name = gen_name(name_opt.unwrap(), gx);
             gx.fresh_id(); // FIXME: 調整
             let return_label = gx.fresh_symbol("return", location.clone());
+            let fn_construction = FnConstruction {
+                return_label: return_label.clone(),
+            };
 
             let commands = {
+                let prev_fn = std::mem::replace(&mut gx.current_fn, Some(fn_construction));
                 let previous = std::mem::take(&mut gx.current);
                 let parent_loop = std::mem::take(&mut gx.parent_loop);
 
@@ -466,6 +490,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
                 gx.push_jump(return_label.clone(), vec![k_result]);
 
+                gx.current_fn = prev_fn;
                 gx.parent_loop = parent_loop;
                 std::mem::replace(&mut gx.current, previous)
             };
