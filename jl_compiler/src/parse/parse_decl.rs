@@ -2,6 +2,12 @@
 
 use super::*;
 
+fn parse_result(px: &mut Px) -> Option<PResult> {
+    let arrow = px.eat(TokenKind::RightSlimArrow)?;
+    let ty_opt = parse_ty(px);
+    Some(PResult { arrow, ty_opt })
+}
+
 fn parse_expr_decl(px: &mut Px) -> Option<PDecl> {
     let expr = parse_expr(px)?;
     let semi_opt = px.eat(TokenKind::Semi);
@@ -38,9 +44,7 @@ fn parse_fn_decl(px: &mut Px) -> PDecl {
     px.eat(TokenKind::LeftParen);
     px.eat(TokenKind::RightParen);
 
-    if px.eat(TokenKind::RightSlimArrow).is_some() {
-        px.eat(TokenKind::Ident);
-    }
+    parse_result(px);
 
     let block_opt = parse_block(px);
 
@@ -95,13 +99,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
         None
     };
 
-    let result_opt = match px.eat(TokenKind::RightSlimArrow) {
-        None => None,
-        Some(arrow) => {
-            let ty_opt = parse_ty(px);
-            Some(PResult { arrow, ty_opt })
-        }
-    };
+    let result_opt = parse_result(px);
 
     let semi_opt = px.eat(TokenKind::Semi);
 

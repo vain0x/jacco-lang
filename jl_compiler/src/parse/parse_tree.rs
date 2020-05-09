@@ -48,6 +48,7 @@ pub(crate) struct PParamList {
     pub(crate) params: Vec<PParam>,
 }
 
+/// 結果型注釈 (`-> T`)
 #[derive(Clone, Debug)]
 pub(crate) struct PResult {
     pub(crate) arrow: TokenData,
