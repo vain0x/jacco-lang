@@ -9,7 +9,14 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+fn init_log() {
+    let env = env_logger::Env::default().default_filter_or("trace");
+    env_logger::from_env(env).init();
+}
+
 fn main() {
+    init_log();
+
     let mut args = env::args_os();
     args.next();
 

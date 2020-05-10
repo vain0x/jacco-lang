@@ -48,7 +48,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
 pub(crate) fn fold_block(mut commands: Vec<XCommand>) -> (KNode, Vec<KFn>) {
     let mut fx = Fx::default();
 
-    eprintln!("block: {:#?}", commands);
+    trace!("block: {:#?}", commands);
     commands.reverse();
 
     let node = do_fold(&mut commands, &mut fx);

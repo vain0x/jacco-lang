@@ -8,3 +8,7 @@ edition = "2018"
 
 [dependencies]
 jl_compiler = { path = "../jl_compiler" }
+
+# 環境変数に基づいてログ出力を行うロガーの実装。
+# <https://github.com/sebasmagri/env_logger>
+env_logger = "0.7"

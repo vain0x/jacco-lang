@@ -15,3 +15,4 @@ pub(crate) use cps_term::KTerm;
 use crate::id_provider::IdProvider;
 use crate::logs::Logger;
 use crate::token::{Location, TokenData};
+use log::trace;

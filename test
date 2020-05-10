@@ -15,14 +15,9 @@ f() {
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
-    cargo run --bin jl_tests "$SRC" 2>>test_stderr.md | tee -a test_stdout.md
-    EXIT_CODE=$?
-
-    if test $EXIT_CODE -ne 0
-    then
-        echo '$?='$? | tee -a test_stdout.md >&2
-    fi
-
+    cargo run --bin jl_tests "$SRC" \
+        1> >(tee -a test_stdout.md >&2) \
+        2> >(tee -a test_stderr.md | grep -E 'panicked|ERROR' 1>&2)
     echo '```' | tee -a test_stderr.md >>test_stdout.md
 }
 
@@ -57,4 +52,4 @@ else
 fi
 
 # 差分の量を表示する。
-git diff --stat -- 'tests/*/*.txt'
+git --no-pager diff --stat -- 'tests/*/*.txt'

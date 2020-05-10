@@ -254,8 +254,6 @@ fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], tx: &mut Tx) {
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     InitMetaTys::default().execute(root, tx);
 
-    println!("{:#?}", root);
-
     for k_fn in &mut root.fns {
         resolve_fn_sig(&mut k_fn.name, &k_fn.params, tx);
 
