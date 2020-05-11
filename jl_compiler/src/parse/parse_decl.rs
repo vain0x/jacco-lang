@@ -12,15 +12,7 @@ fn parse_param_list(px: &mut Px) -> Option<PParamList> {
             TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
             TokenKind::Ident => {
                 let name = parse_name(px).unwrap();
-
-                let colon_opt = px.eat(TokenKind::Colon);
-
-                let ty_opt = if colon_opt.is_some() {
-                    parse_ty(px)
-                } else {
-                    None
-                };
-
+                let (colon_opt, ty_opt) = parse_ty_ascription(px);
                 let comma_opt = px.eat(TokenKind::Comma);
 
                 params.push(PParam {
@@ -65,12 +57,7 @@ fn parse_let_decl(px: &mut Px) -> PDecl {
     let keyword = px.expect(TokenKind::Let);
 
     let name_opt = parse_name(px);
-    let colon_opt = px.eat(TokenKind::Colon);
-    let ty_opt = if colon_opt.is_some() {
-        parse_ty(px)
-    } else {
-        None
-    };
+    let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
     let equal_opt = px.eat(TokenKind::Equal);
     let init_opt = if equal_opt.is_some() {
