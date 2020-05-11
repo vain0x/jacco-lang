@@ -51,12 +51,10 @@ impl Px {
         }
     }
 
-    pub(crate) fn finish(mut self, decls: Vec<PDecl>) -> PRoot {
+    pub(crate) fn finish(mut self) -> TokenData {
         assert_eq!(self.tokens.len(), 1);
-        assert_eq!(self.next(), TokenKind::Eof);
 
-        let eof = self.bump();
-        PRoot { decls, eof }
+        self.expect(TokenKind::Eof)
     }
 }
 
