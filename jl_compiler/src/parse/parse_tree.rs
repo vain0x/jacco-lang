@@ -26,19 +26,31 @@ impl PName {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PNameTy(pub(crate) PName);
+
+#[derive(Clone, Debug)]
+pub(crate) struct PNeverTy {
+    pub(crate) bang: TokenData,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PUnitTy {
+    pub(crate) left: TokenData,
+    pub(crate) right_opt: Option<TokenData>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PPtrTy {
+    pub(crate) star: TokenData,
+    pub(crate) ty_opt: Option<Box<PTy>>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum PTy {
-    Name(PName),
-    Never {
-        bang: TokenData,
-    },
-    Unit {
-        left: TokenData,
-        right_opt: Option<TokenData>,
-    },
-    Ptr {
-        star: TokenData,
-        ty_opt: Option<Box<PTy>>,
-    },
+    Name(PNameTy),
+    Never(PNeverTy),
+    Unit(PUnitTy),
+    Ptr(PPtrTy),
 }
 
 #[derive(Clone, Debug)]
@@ -91,94 +103,156 @@ pub(crate) struct PBlock {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PIntExpr {
+    pub(crate) token: TokenData,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PStrExpr {
+    pub(crate) token: TokenData,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PNameExpr(pub(crate) PName);
+
+#[derive(Clone, Debug)]
+pub(crate) struct PTupleExpr {
+    pub(crate) arg_list: PArgList,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PCallExpr {
+    pub(crate) callee: Box<PExpr>,
+    pub(crate) arg_list: PArgList,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PUnaryOpExpr {
+    pub(crate) op: PUnaryOp,
+    pub(crate) arg_opt: Option<Box<PExpr>>,
+    pub(crate) location: Location,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PBinaryOpExpr {
+    pub(crate) op: PBinaryOp,
+    pub(crate) left: Box<PExpr>,
+    pub(crate) right_opt: Option<Box<PExpr>>,
+    pub(crate) location: Location,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PBlockExpr(pub(crate) PBlock);
+
+#[derive(Clone, Debug)]
+pub(crate) struct PBreakExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) arg_opt: Option<Box<PExpr>>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PContinueExpr {
+    pub(crate) keyword: TokenData,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PReturnExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) arg_opt: Option<Box<PExpr>>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PIfExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) cond_opt: Option<Box<PExpr>>,
+    pub(crate) body_opt: Option<PBlock>,
+    pub(crate) else_opt: Option<TokenData>,
+    pub(crate) alt_opt: Option<Box<PExpr>>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PWhileExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) cond_opt: Option<Box<PExpr>>,
+    pub(crate) body_opt: Option<PBlock>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PLoopExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) body_opt: Option<PBlock>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum PExpr {
-    Int(TokenData),
-    Str(TokenData),
-    Name(PName),
-    Tuple(PArgList),
-    Call {
-        callee: Box<PExpr>,
-        arg_list: PArgList,
-    },
-    UnaryOp {
-        op: PUnaryOp,
-        arg_opt: Option<Box<PExpr>>,
-        location: Location,
-    },
-    BinaryOp {
-        op: PBinaryOp,
-        left: Box<PExpr>,
-        right_opt: Option<Box<PExpr>>,
-        location: Location,
-    },
-    Block(PBlock),
-    Break {
-        keyword: TokenData,
-        arg_opt: Option<Box<PExpr>>,
-    },
-    Continue {
-        keyword: TokenData,
-    },
-    Return {
-        keyword: TokenData,
-        arg_opt: Option<Box<PExpr>>,
-    },
-    If {
-        keyword: TokenData,
-        cond_opt: Option<Box<PExpr>>,
-        body_opt: Option<PBlock>,
-        else_opt: Option<TokenData>,
-        alt_opt: Option<Box<PExpr>>,
-    },
-    While {
-        keyword: TokenData,
-        cond_opt: Option<Box<PExpr>>,
-        body_opt: Option<PBlock>,
-    },
-    Loop {
-        keyword: TokenData,
-        body_opt: Option<PBlock>,
-    },
+    Int(PIntExpr),
+    Str(PStrExpr),
+    Name(PNameExpr),
+    Tuple(PTupleExpr),
+    Call(PCallExpr),
+    UnaryOp(PUnaryOpExpr),
+    BinaryOp(PBinaryOpExpr),
+    Block(PBlockExpr),
+    Break(PBreakExpr),
+    Continue(PContinueExpr),
+    Return(PReturnExpr),
+    If(PIfExpr),
+    While(PWhileExpr),
+    Loop(PLoopExpr),
 }
 
 impl Default for PExpr {
     fn default() -> Self {
-        PExpr::Str(TokenData::default())
+        PExpr::Str(PStrExpr {
+            token: TokenData::default(),
+        })
     }
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PExprDecl {
+    pub(crate) expr: PExpr,
+    pub(crate) semi_opt: Option<TokenData>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PLetDecl {
+    pub(crate) keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) colon_opt: Option<TokenData>,
+    pub(crate) ty_opt: Option<PTy>,
+    pub(crate) equal_opt: Option<TokenData>,
+    pub(crate) init_opt: Option<PExpr>,
+    pub(crate) semi_opt: Option<TokenData>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PFnDecl {
+    pub(crate) keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) param_list_opt: Option<PParamList>,
+    pub(crate) arrow_opt: Option<TokenData>,
+    pub(crate) result_opt: Option<PTy>,
+    pub(crate) block_opt: Option<PBlock>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PExternFnDecl {
+    pub(crate) extern_keyword: TokenData,
+    pub(crate) fn_keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) param_list_opt: Option<PParamList>,
+    pub(crate) arrow_opt: Option<TokenData>,
+    pub(crate) result_opt: Option<PTy>,
+    pub(crate) semi_opt: Option<TokenData>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum PDecl {
-    Expr {
-        expr: PExpr,
-        semi_opt: Option<TokenData>,
-    },
-    Let {
-        keyword: TokenData,
-        name_opt: Option<PName>,
-        colon_opt: Option<TokenData>,
-        ty_opt: Option<PTy>,
-        equal_opt: Option<TokenData>,
-        init_opt: Option<PExpr>,
-        semi_opt: Option<TokenData>,
-    },
-    Fn {
-        keyword: TokenData,
-        name_opt: Option<PName>,
-        param_list_opt: Option<PParamList>,
-        arrow_opt: Option<TokenData>,
-        result_opt: Option<PTy>,
-        block_opt: Option<PBlock>,
-    },
-    ExternFn {
-        extern_keyword: TokenData,
-        fn_keyword: TokenData,
-        name_opt: Option<PName>,
-        param_list_opt: Option<PParamList>,
-        arrow_opt: Option<TokenData>,
-        result_opt: Option<PTy>,
-        semi_opt: Option<TokenData>,
-    },
+    Expr(PExprDecl),
+    Let(PLetDecl),
+    Fn(PFnDecl),
+    ExternFn(PExternFnDecl),
 }
 
 #[derive(Clone, Debug)]

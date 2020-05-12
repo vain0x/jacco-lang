@@ -36,7 +36,7 @@ impl Nx {
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
     match ty {
-        PTy::Name(name) => match name.text() {
+        PTy::Name(PNameTy(name)) => match name.text() {
             "i32" => {
                 // FIXME: これの型が i32 であることを記録する。
             }
@@ -44,8 +44,8 @@ fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
                 nx.logger.error(name.location().clone(), "undefined type");
             }
         },
-        PTy::Never { .. } | PTy::Unit { .. } => {}
-        PTy::Ptr { ty_opt, .. } => {
+        PTy::Never(_) | PTy::Unit(_) => {}
+        PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             resolve_ty_opt(ty_opt.as_deref_mut(), nx);
         }
     }
@@ -71,7 +71,7 @@ fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
         PExpr::Int(_) | PExpr::Str(_) => {}
-        PExpr::Name(name) => match nx.env.get(name.text()) {
+        PExpr::Name(PNameExpr(name)) => match nx.env.get(name.text()) {
             Some(name_id) => {
                 name.name_id = *name_id;
             }
@@ -79,50 +79,50 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 nx.logger.error(name.location().clone(), "undefined");
             }
         },
-        PExpr::Tuple(arg_list) => {
+        PExpr::Tuple(PTupleExpr { arg_list }) => {
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
-        PExpr::Call { callee, arg_list } => {
+        PExpr::Call(PCallExpr { callee, arg_list }) => {
             resolve_expr(callee, nx);
 
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
-        PExpr::UnaryOp { arg_opt, .. } => {
+        PExpr::UnaryOp(PUnaryOpExpr { arg_opt, .. }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             left, right_opt, ..
-        } => {
+        }) => {
             resolve_expr(left, nx);
             resolve_expr_opt(right_opt.as_deref_mut(), nx);
         }
-        PExpr::Block(block) => {
+        PExpr::Block(PBlockExpr(block)) => {
             resolve_block(block, nx);
         }
-        PExpr::Break { arg_opt, .. } | PExpr::Return { arg_opt, .. } => {
+        PExpr::Break(PBreakExpr { arg_opt, .. }) | PExpr::Return(PReturnExpr { arg_opt, .. }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }
-        PExpr::If {
+        PExpr::If(PIfExpr {
             cond_opt,
             body_opt,
             alt_opt,
             ..
-        } => {
+        }) => {
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
             resolve_block_opt(body_opt.as_mut(), nx);
             resolve_expr_opt(alt_opt.as_deref_mut(), nx);
         }
-        PExpr::While {
+        PExpr::While(PWhileExpr {
             cond_opt, body_opt, ..
-        } => {
+        }) => {
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
             resolve_block_opt(body_opt.as_mut(), nx);
         }
-        PExpr::Loop { body_opt, .. } => {
+        PExpr::Loop(PLoopExpr { body_opt, .. }) => {
             resolve_block_opt(body_opt.as_mut(), nx);
         }
         PExpr::Continue { .. } => {}
@@ -141,34 +141,34 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
 
 fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
     match decl {
-        PDecl::Expr { expr, .. } => {
+        PDecl::Expr(PExprDecl { expr, .. }) => {
             resolve_expr(expr, nx);
         }
-        PDecl::Let {
+        PDecl::Let(PLetDecl {
             name_opt,
             ty_opt,
             init_opt,
             ..
-        } => {
+        }) => {
             resolve_expr_opt(init_opt.as_mut(), nx);
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_pat_opt(name_opt.as_mut(), nx)
         }
-        PDecl::Fn {
+        PDecl::Fn(PFnDecl {
             param_list_opt,
             result_opt,
             block_opt,
             ..
-        } => {
+        }) => {
             resolve_param_list_opt(param_list_opt.as_mut(), nx);
             resolve_ty_opt(result_opt.as_mut(), nx);
             resolve_block_opt(block_opt.as_mut(), nx);
         }
-        PDecl::ExternFn {
+        PDecl::ExternFn(PExternFnDecl {
             param_list_opt,
             result_opt,
             ..
-        } => {
+        }) => {
             resolve_ty_opt(result_opt.as_mut(), nx);
             resolve_param_list_opt(param_list_opt.as_mut(), nx)
         }

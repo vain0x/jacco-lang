@@ -14,10 +14,12 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
 
 fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
     let term = match px.next() {
-        TokenKind::Int => PExpr::Int(px.bump()),
-        TokenKind::Str => PExpr::Str(px.bump()),
-        TokenKind::Ident => PExpr::Name(parse_name(px).unwrap()),
-        TokenKind::LeftParen => PExpr::Tuple(parse_arg_list(px)),
+        TokenKind::Int => PExpr::Int(PIntExpr { token: px.bump() }),
+        TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
+        TokenKind::Ident => PExpr::Name(PNameExpr(parse_name(px).unwrap())),
+        TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
+            arg_list: parse_arg_list(px),
+        }),
         _ => return None,
     };
     Some(term)
@@ -31,10 +33,10 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
             TokenKind::LeftParen => {
                 let arg_list = parse_arg_list(px);
 
-                left = PExpr::Call {
+                left = PExpr::Call(PCallExpr {
                     callee: Box::new(left),
                     arg_list,
-                };
+                });
             }
             _ => return Some(left),
         }
@@ -46,11 +48,11 @@ fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
         let op_token = px.bump();
         let arg_opt = parse_prefix_expr(px).map(Box::new);
         let location = op_token.into_location();
-        Some(PExpr::UnaryOp {
+        Some(PExpr::UnaryOp(PUnaryOpExpr {
             op,
             arg_opt,
             location,
-        })
+        }))
     };
 
     match px.next() {
@@ -66,12 +68,12 @@ fn parse_mul(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_prefix_expr(px).map(Box::new);
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        }
+        })
     };
 
     let mut left = parse_prefix_expr(px)?;
@@ -90,12 +92,12 @@ fn parse_add(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_mul(px).map(Box::new);
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        }
+        })
     };
 
     let mut left = parse_mul(px)?;
@@ -113,12 +115,12 @@ fn parse_bit(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_add(px).map(Box::new);
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        }
+        })
     };
 
     let mut left = parse_add(px)?;
@@ -139,12 +141,12 @@ fn parse_comparison(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_bit(px).map(Box::new);
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        }
+        })
     };
 
     let mut left = parse_bit(px)?;
@@ -166,12 +168,12 @@ fn parse_logical(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, left, px: &mut Px| {
         let op_token = px.bump();
         let right_opt = parse_comparison(px).map(Box::new);
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        }
+        })
     };
 
     let mut left = parse_comparison(px)?;
@@ -208,46 +210,43 @@ pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
     })
 }
 
-fn parse_block_expr(px: &mut Px) -> PExpr {
+fn parse_block_expr(px: &mut Px) -> PBlockExpr {
     assert_eq!(px.next(), TokenKind::LeftBrace);
 
-    let block = parse_block(px).unwrap();
-    PExpr::Block(block)
+    PBlockExpr(parse_block(px).unwrap())
 }
 
-fn parse_break_expr(px: &mut Px) -> PExpr {
+fn parse_break_expr(px: &mut Px) -> PBreakExpr {
     let keyword = px.expect(TokenKind::Break);
     let arg_opt = parse_expr(px).map(Box::new);
 
-    PExpr::Break { keyword, arg_opt }
+    PBreakExpr { keyword, arg_opt }
 }
 
-fn parse_continue_expr(px: &mut Px) -> PExpr {
+fn parse_continue_expr(px: &mut Px) -> PContinueExpr {
     let keyword = px.expect(TokenKind::Continue);
 
-    PExpr::Continue { keyword }
+    PContinueExpr { keyword }
 }
 
-fn parse_return_expr(px: &mut Px) -> PExpr {
+fn parse_return_expr(px: &mut Px) -> PReturnExpr {
     let keyword = px.expect(TokenKind::Return);
     let arg_opt = parse_expr(px).map(Box::new);
 
-    PExpr::Return { keyword, arg_opt }
+    PReturnExpr { keyword, arg_opt }
 }
 
-fn parse_if_expr(px: &mut Px) -> PExpr {
+fn parse_if_expr(px: &mut Px) -> PIfExpr {
     let keyword = px.expect(TokenKind::If);
 
     let cond_opt = parse_cond(px).map(Box::new);
-
     let body_opt = parse_block(px);
-
     let else_opt = px.eat(TokenKind::Else);
 
     let alt_opt = if else_opt.is_some() {
         match px.next() {
-            TokenKind::LeftBrace => Some(Box::new(parse_block_expr(px))),
-            TokenKind::If => Some(Box::new(parse_if_expr(px))),
+            TokenKind::LeftBrace => Some(Box::new(PExpr::Block(parse_block_expr(px)))),
+            TokenKind::If => Some(Box::new(PExpr::If(parse_if_expr(px)))),
             _ => {
                 p_error("expected 'if' or '{ ... }'", px);
                 None
@@ -257,7 +256,7 @@ fn parse_if_expr(px: &mut Px) -> PExpr {
         None
     };
 
-    PExpr::If {
+    PIfExpr {
         keyword,
         cond_opt,
         body_opt,
@@ -266,36 +265,35 @@ fn parse_if_expr(px: &mut Px) -> PExpr {
     }
 }
 
-fn parse_while_expr(px: &mut Px) -> PExpr {
+fn parse_while_expr(px: &mut Px) -> PWhileExpr {
     let keyword = px.expect(TokenKind::While);
 
     let cond_opt = parse_cond(px).map(Box::new);
-
     let body_opt = parse_block(px);
 
-    PExpr::While {
+    PWhileExpr {
         keyword,
         cond_opt,
         body_opt,
     }
 }
 
-fn parse_loop_expr(px: &mut Px) -> PExpr {
+fn parse_loop_expr(px: &mut Px) -> PLoopExpr {
     let keyword = px.expect(TokenKind::Loop);
 
     let body_opt = parse_block(px);
 
-    PExpr::Loop { keyword, body_opt }
+    PLoopExpr { keyword, body_opt }
 }
 
 pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {
     let expr = match px.next() {
-        TokenKind::Break => parse_break_expr(px),
-        TokenKind::Continue => parse_continue_expr(px),
-        TokenKind::Return => parse_return_expr(px),
-        TokenKind::If => parse_if_expr(px),
-        TokenKind::While => parse_while_expr(px),
-        TokenKind::Loop => parse_loop_expr(px),
+        TokenKind::Break => PExpr::Break(parse_break_expr(px)),
+        TokenKind::Continue => PExpr::Continue(parse_continue_expr(px)),
+        TokenKind::Return => PExpr::Return(parse_return_expr(px)),
+        TokenKind::If => PExpr::If(parse_if_expr(px)),
+        TokenKind::While => PExpr::While(parse_while_expr(px)),
+        TokenKind::Loop => PExpr::Loop(parse_loop_expr(px)),
         _ => return parse_assign(px),
     };
     Some(expr)

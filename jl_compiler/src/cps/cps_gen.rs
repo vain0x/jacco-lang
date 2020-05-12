@@ -201,7 +201,7 @@ fn emit_if(
 
 fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     match ty {
-        PTy::Name(name) => match name.text() {
+        PTy::Name(PNameTy(name)) => match name.text() {
             "i32" => KTy::I32,
             _ => {
                 // FIXME: location info
@@ -212,9 +212,9 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
                 KTy::new_unresolved()
             }
         },
-        PTy::Never { .. } => KTy::Never,
-        PTy::Unit { .. } => KTy::Unit,
-        PTy::Ptr { .. } => unimplemented!(),
+        PTy::Never(_) => KTy::Never,
+        PTy::Unit(_) => KTy::Unit,
+        PTy::Ptr(_) => unimplemented!(),
     }
 }
 
@@ -265,10 +265,10 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
 
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Int(token) => KTerm::Int(token),
+        PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
-        PExpr::Name(name) => KTerm::Name(gen_name(name, gx)),
-        PExpr::Tuple(mut arg_list) => {
+        PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
+        PExpr::Tuple(PTupleExpr { mut arg_list }) => {
             let is_tuple = arg_list.is_tuple();
             match arg_list.args.as_mut_slice() {
                 [] => {
@@ -279,7 +279,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 _ => unimplemented!("tuple literal is not supported yet"),
             }
         }
-        PExpr::Call { callee, arg_list } => {
+        PExpr::Call(PCallExpr { callee, arg_list }) => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());
 
@@ -300,22 +300,22 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
-        PExpr::UnaryOp {
+        PExpr::UnaryOp(PUnaryOpExpr {
             op,
             arg_opt,
             location,
-        } => match op {
+        }) => match op {
             PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
             PUnaryOp::Ref => emit_unary_op(KPrim::Ref, arg_opt, location, gx),
             PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
             PUnaryOp::Negate => emit_unary_op(KPrim::Negate, arg_opt, location, gx),
         },
-        PExpr::BinaryOp {
+        PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left,
             right_opt,
             location,
-        } => match op {
+        }) => match op {
             PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
             PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
             PBinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),
@@ -357,8 +357,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 )
             }
         },
-        PExpr::Block(block) => gen_block(block, gx),
-        PExpr::Break { keyword, arg_opt } => {
+        PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
+        PExpr::Break(PBreakExpr { keyword, arg_opt }) => {
             let location = keyword.into_location();
 
             let label = gx.current_break_label().expect("out of loop").clone();
@@ -370,7 +370,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::Continue { keyword, .. } => {
+        PExpr::Continue(PContinueExpr { keyword, .. }) => {
             let location = keyword.into_location();
 
             let label = gx.current_continue_label().expect("out of loop").clone();
@@ -378,7 +378,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::Return { keyword, arg_opt } => {
+        PExpr::Return(PReturnExpr { keyword, arg_opt }) => {
             let location = keyword.into_location();
 
             let label = gx.current_return_label().expect("out of fn").clone();
@@ -390,13 +390,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::If {
+        PExpr::If(PIfExpr {
             keyword,
             cond_opt,
             body_opt,
             alt_opt,
             ..
-        } => {
+        }) => {
             let location = keyword.into_location();
             let location1 = location.clone();
             emit_if(
@@ -410,11 +410,11 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 gx,
             )
         }
-        PExpr::While {
+        PExpr::While(PWhileExpr {
             keyword,
             cond_opt,
             body_opt,
-        } => {
+        }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("while_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
@@ -462,7 +462,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
-        PExpr::Loop { keyword, body_opt } => {
+        PExpr::Loop(PLoopExpr { keyword, body_opt }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("loop_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
@@ -503,12 +503,12 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
 fn gen_decl(decl: PDecl, gx: &mut Gx) {
     match decl {
-        PDecl::Expr { expr, .. } => {
+        PDecl::Expr(PExprDecl { expr, .. }) => {
             gen_expr(expr, gx);
         }
-        PDecl::Let {
+        PDecl::Let(PLetDecl {
             name_opt, init_opt, ..
-        } => {
+        }) => {
             let result = gen_name(name_opt.unwrap(), gx);
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
@@ -519,12 +519,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 cont_count: 1,
             });
         }
-        PDecl::Fn {
+        PDecl::Fn(PFnDecl {
             keyword,
             name_opt,
             block_opt,
             ..
-        } => {
+        }) => {
             let location = keyword.into_location();
             let fn_name = gen_name(name_opt.unwrap(), gx);
             let return_label = gx.fresh_symbol("return", location.clone());
@@ -557,12 +557,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             gx.fns.push(k_fn);
         }
-        PDecl::ExternFn {
+        PDecl::ExternFn(PExternFnDecl {
             name_opt,
             param_list_opt,
             result_opt,
             ..
-        } => {
+        }) => {
             let name = gen_name(name_opt.unwrap(), gx);
             let params = param_list_opt
                 .unwrap()

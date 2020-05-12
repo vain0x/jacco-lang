@@ -46,14 +46,14 @@ fn parse_result(px: &mut Px) -> (Option<TokenData>, Option<PTy>) {
     (arrow_opt, ty_opt)
 }
 
-fn parse_expr_decl(px: &mut Px) -> Option<PDecl> {
+fn parse_expr_decl(px: &mut Px) -> Option<PExprDecl> {
     let expr = parse_expr(px)?;
     let semi_opt = px.eat(TokenKind::Semi);
 
-    Some(PDecl::Expr { expr, semi_opt })
+    Some(PExprDecl { expr, semi_opt })
 }
 
-fn parse_let_decl(px: &mut Px) -> PDecl {
+fn parse_let_decl(px: &mut Px) -> PLetDecl {
     let keyword = px.expect(TokenKind::Let);
 
     let name_opt = parse_name(px);
@@ -68,7 +68,7 @@ fn parse_let_decl(px: &mut Px) -> PDecl {
 
     let semi_opt = px.eat(TokenKind::Semi);
 
-    PDecl::Let {
+    PLetDecl {
         keyword,
         name_opt,
         colon_opt,
@@ -79,7 +79,7 @@ fn parse_let_decl(px: &mut Px) -> PDecl {
     }
 }
 
-fn parse_fn_decl(px: &mut Px) -> PDecl {
+fn parse_fn_decl(px: &mut Px) -> PFnDecl {
     let keyword = px.expect(TokenKind::Fn);
 
     let name_opt = parse_name(px);
@@ -87,7 +87,7 @@ fn parse_fn_decl(px: &mut Px) -> PDecl {
     let (arrow_opt, result_opt) = parse_result(px);
     let block_opt = parse_block(px);
 
-    PDecl::Fn {
+    PFnDecl {
         keyword,
         name_opt,
         param_list_opt,
@@ -97,7 +97,7 @@ fn parse_fn_decl(px: &mut Px) -> PDecl {
     }
 }
 
-fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
+fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
     let extern_keyword = px.expect(TokenKind::Extern);
     let fn_keyword = px.expect(TokenKind::Fn);
 
@@ -106,7 +106,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
     let (arrow_opt, result_opt) = parse_result(px);
     let semi_opt = px.eat(TokenKind::Semi);
 
-    PDecl::ExternFn {
+    PExternFnDecl {
         extern_keyword,
         fn_keyword,
         name_opt,
@@ -119,10 +119,12 @@ fn parse_extern_fn_decl(px: &mut Px) -> PDecl {
 
 pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     let decl = match px.next() {
-        TokenKind::Let => parse_let_decl(px),
-        TokenKind::Fn => parse_fn_decl(px),
-        TokenKind::Extern if px.nth(1) == TokenKind::Fn => parse_extern_fn_decl(px),
-        _ => return parse_expr_decl(px),
+        TokenKind::Let => PDecl::Let(parse_let_decl(px)),
+        TokenKind::Fn => PDecl::Fn(parse_fn_decl(px)),
+        TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
+            PDecl::ExternFn(parse_extern_fn_decl(px))
+        }
+        _ => PDecl::Expr(parse_expr_decl(px)?),
     };
     Some(decl)
 }
@@ -155,10 +157,10 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Opti
 
     if placement == Placement::Local {
         match decls.pop() {
-            Some(PDecl::Expr {
+            Some(PDecl::Expr(PExprDecl {
                 expr: last,
                 semi_opt: None,
-            }) => {
+            })) => {
                 last_opt = Some(last);
             }
             Some(last) => decls.push(last),
