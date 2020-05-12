@@ -201,13 +201,13 @@ fn emit_if(
 
 fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     match ty {
-        PTy::Name(name) => match name.as_str() {
+        PTy::Name(name) => match name.text() {
             "i32" => KTy::I32,
             _ => {
                 // FIXME: location info
                 gx.logger.error(
                     Location::default(),
-                    format!("undefined type name {:?}", name.as_str()),
+                    format!("undefined type name {:?}", name.text()),
                 );
                 KTy::new_unresolved()
             }
@@ -235,10 +235,12 @@ fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
         }
     }
 
+    let (text, location) = name.decompose();
+
     KSymbol {
-        text: name.text,
+        text,
         ty,
-        location: name.location,
+        location,
         id_slot,
         def_ty_slot,
     }
@@ -253,7 +255,7 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
         Some(ty) => gen_ty(ty, gx),
         None => {
             gx.logger
-                .error(param.name.location.clone(), "param type is mandatory");
+                .error(param.name.location().clone(), "param type is mandatory");
             KTy::Never
         }
     };

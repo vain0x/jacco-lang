@@ -36,12 +36,12 @@ impl Nx {
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
     match ty {
-        PTy::Name(name) => match name.as_str() {
+        PTy::Name(name) => match name.text() {
             "i32" => {
                 // FIXME: これの型が i32 であることを記録する。
             }
             _ => {
-                nx.logger.error(name.location.clone(), "undefined type");
+                nx.logger.error(name.location().clone(), "undefined type");
             }
         },
         PTy::Never { .. } | PTy::Unit { .. } => {}
@@ -59,7 +59,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     name.name_id = nx.fresh_id();
-    nx.env.insert(name.text.clone(), name.name_id);
+    nx.env.insert(name.text().to_string(), name.name_id);
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
@@ -71,12 +71,12 @@ fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
         PExpr::Int(_) | PExpr::Str(_) => {}
-        PExpr::Name(name) => match nx.env.get(&name.text) {
+        PExpr::Name(name) => match nx.env.get(name.text()) {
             Some(name_id) => {
                 name.name_id = *name_id;
             }
             None => {
-                nx.logger.error(name.location.clone(), "undefined");
+                nx.logger.error(name.location().clone(), "undefined");
             }
         },
         PExpr::Tuple(arg_list) => {

@@ -4,12 +4,11 @@ use super::*;
 use crate::NO_ID;
 
 pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
-    let (_, text, location) = px.eat(TokenKind::Ident)?.decompose();
+    let token = px.eat(TokenKind::Ident)?;
 
     Some(PName {
         name_id: NO_ID,
-        text,
-        location,
+        token,
     })
 }
 

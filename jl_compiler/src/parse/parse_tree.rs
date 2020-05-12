@@ -7,13 +7,21 @@ pub(crate) type PNameId = usize;
 #[derive(Clone, Debug)]
 pub(crate) struct PName {
     pub(crate) name_id: PNameId,
-    pub(crate) text: String,
-    pub(crate) location: Location,
+    pub(crate) token: TokenData,
 }
 
 impl PName {
-    pub(crate) fn as_str(&self) -> &str {
-        self.text.as_str()
+    pub(crate) fn text(&self) -> &str {
+        self.token.text()
+    }
+
+    pub(crate) fn location(&self) -> &Location {
+        self.token.location()
+    }
+
+    pub(crate) fn decompose(self) -> (String, Location) {
+        let (_, text, location) = self.token.decompose();
+        (text, location)
     }
 }
 
