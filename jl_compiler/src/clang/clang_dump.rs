@@ -47,8 +47,8 @@ fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
         CTy::Void => write!(out, "void"),
         CTy::Int => write!(out, "int"),
         CTy::Ptr { ty } => {
-            write!(out, "*")?;
-            write_ty(&ty, indent, out)
+            write_ty(&ty, indent, out)?;
+            write!(out, "*")
         }
     }
 }
