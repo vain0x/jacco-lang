@@ -41,7 +41,7 @@ fn tokenize_comment(tx: &mut Tx) {
 
     tx.eat("//");
 
-    while !tx.at_eof() && char_is_space(tx.next()) {
+    while !tx.at_eof() && !char_is_eol(tx.next()) {
         tx.bump();
     }
 
