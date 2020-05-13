@@ -188,7 +188,24 @@ fn parse_logical(px: &mut Px) -> Option<PExpr> {
 }
 
 fn parse_assign(px: &mut Px) -> Option<PExpr> {
-    parse_logical(px)
+    let mut left = parse_logical(px)?;
+
+    loop {
+        let binary_op = match px.next() {
+            TokenKind::Equal => PBinaryOp::Assign,
+            _ => return Some(left),
+        };
+
+        let op = px.bump();
+        let right_opt = parse_logical(px).map(Box::new);
+
+        left = PExpr::BinaryOp(PBinaryOpExpr {
+            op: binary_op,
+            left: Box::new(left),
+            right_opt,
+            location: op.into_location(),
+        });
+    }
 }
 
 pub(crate) fn parse_cond(px: &mut Px) -> Option<PExpr> {

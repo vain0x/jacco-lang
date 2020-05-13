@@ -26,6 +26,7 @@ pub(crate) enum KPrim {
     Le,
     Gt,
     Ge,
+    Assign,
 }
 
 impl KPrim {

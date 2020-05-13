@@ -1,0 +1,6 @@
+int main() {
+    int x_1 = 0;
+    int* ref_2 = &x_1;
+    *ref_2 = 1;
+    return 0;
+}

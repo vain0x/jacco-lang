@@ -316,6 +316,23 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             right_opt,
             location,
         }) => match op {
+            PBinaryOp::Assign => {
+                // x = a; ==> assign &x, a
+                let result = gx.fresh_symbol("unit", location.clone());
+
+                // FIXME: 左辺値として生成する。(x なら &x、*p なら p。)
+                let left_ref = emit_unary_op(KPrim::Ref, Some(left), location, gx);
+                let right = gen_expr(*right_opt.unwrap(), gx);
+
+                gx.push(XCommand::Prim {
+                    prim: KPrim::Assign,
+                    args: vec![left_ref, right],
+                    result_opt: Some(result.clone()),
+                    cont_count: 1,
+                });
+
+                KTerm::Name(result)
+            }
             PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
             PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
             PBinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),

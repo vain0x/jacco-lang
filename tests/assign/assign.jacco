@@ -1,0 +1,8 @@
+pub fn main() -> i32 {
+    let x = 0;
+    x = 1;
+
+    // let p = &x;
+    // *p = 2;
+    0
+}

@@ -218,6 +218,26 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, stmts, cx),
         KPrim::LeftShift => gen_binary_op(CBinaryOp::LeftShift, args, results, conts, stmts, cx),
         KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, stmts, cx),
+        KPrim::Assign => match (
+            args.as_mut_slice(),
+            results.as_mut_slice(),
+            conts.as_mut_slice(),
+        ) {
+            ([left, right], [_result], [cont]) => {
+                let left = gen_term(take(left), cx);
+                let right = gen_term(take(right), cx);
+                stmts.push(CStmt::Expr(CExpr::BinaryOp {
+                    op: CBinaryOp::Assign,
+                    left: Box::new(CExpr::UnaryOp {
+                        op: CUnaryOp::Deref,
+                        arg: Box::new(left),
+                    }),
+                    right: Box::new(right),
+                }));
+                gen_node(take(cont), stmts, cx);
+            }
+            _ => unimplemented!(),
+        },
     }
 }
 
