@@ -37,6 +37,7 @@ f_all() {
     f continue
     f call_direct
     f return
+    f syntax_error
 }
 
 ONLY=${1:-''}

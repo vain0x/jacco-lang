@@ -37,6 +37,13 @@ impl Range {
             end: self.start.max(other.end),
         }
     }
+
+    pub(crate) fn behind(self) -> Range {
+        Range {
+            start: self.end,
+            end: self.end + Position::new(0, 1),
+        }
+    }
 }
 
 impl fmt::Debug for Range {

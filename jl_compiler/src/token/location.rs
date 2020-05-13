@@ -30,6 +30,13 @@ impl Location {
             ..self
         }
     }
+
+    pub(crate) fn behind(self) -> Location {
+        Location {
+            range: self.range.behind(),
+            ..self
+        }
+    }
 }
 
 impl fmt::Debug for Location {

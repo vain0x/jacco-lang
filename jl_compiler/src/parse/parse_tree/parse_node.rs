@@ -102,6 +102,11 @@ pub(crate) trait PNode {
             _ => Location::default(),
         }
     }
+
+    fn ends_with_block(&self) -> bool {
+        self.last_token()
+            .map_or(false, |token| token.kind() == TokenKind::RightBrace)
+    }
 }
 
 impl<'a, N: PNode> PNode for Box<N> {

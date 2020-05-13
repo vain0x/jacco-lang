@@ -24,6 +24,15 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     trace!("tokens = {:#?}\n", tokens);
 
     let mut p_root = parse::parse_tokens(tokens, logs.logger());
+
+    front::validate_syntax(&p_root, logs.logger());
+    if logs.is_fatal() {
+        for item in logs.finish() {
+            error!("{:?} {}", item.location, item.message);
+        }
+        return String::new();
+    }
+
     front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 

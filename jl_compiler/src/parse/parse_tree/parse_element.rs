@@ -22,6 +22,7 @@ impl<'a> PElementRef<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn location(&self) -> Location {
         match self {
             PElementRef::Token(token) => token.location().clone(),

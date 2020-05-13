@@ -22,6 +22,10 @@ impl Logs {
         Logs::default()
     }
 
+    pub(crate) fn is_fatal(&self) -> bool {
+        !self.inner.borrow().is_empty()
+    }
+
     pub(crate) fn logger(&self) -> Logger {
         Logger {
             parent: self.clone(),
