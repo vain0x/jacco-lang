@@ -335,6 +335,14 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .error(decl.location().behind(), "missed a semicolon?");
             }
         }
+        PDecl::Struct(PStructDecl {
+            name_opt, semi_opt, ..
+        }) => {
+            // FIXME: improve
+            if name_opt.is_none() || semi_opt.is_none() {
+                vx.logger.error(decl.location(), "wrong struct syntax");
+            }
+        }
     }
 }
 

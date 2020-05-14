@@ -12,11 +12,11 @@ struct Cx {
     decls: Vec<CStmt>,
 }
 
-fn gen_ty(ty: KTy) -> CTy {
+fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
     match ty {
         KTy::Unresolved(None) => CTy::Other("/* unresolved */ void"),
         KTy::Unresolved(Some(meta)) => match meta.content_ty() {
-            Some(ty) => gen_ty(ty),
+            Some(ty) => gen_ty(ty, ids),
             None => CTy::Other("/* free */ void"),
         },
         KTy::Never => CTy::Other("/* never */ void"),
@@ -24,13 +24,17 @@ fn gen_ty(ty: KTy) -> CTy {
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => CTy::Ptr {
-            ty: Box::new(gen_ty(*ty)),
+            ty: Box::new(gen_ty(*ty, ids)),
         },
+        KTy::Symbol { def } => CTy::Struct(def.borrow().name.unique_name(ids)),
     }
 }
 
 fn gen_param(param: KSymbol, cx: &mut Cx) -> (String, CTy) {
-    (param.unique_name(&mut cx.ids), gen_ty(param.ty))
+    (
+        param.unique_name(&mut cx.ids),
+        gen_ty(param.ty, &mut cx.ids),
+    )
 }
 
 fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
@@ -250,6 +254,11 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
+    for KStruct { def } in root.structs {
+        let name = def.borrow().name.unique_name(&mut cx.ids);
+        cx.decls.push(CStmt::StructDecl { name });
+    }
+
     for KExternFn {
         name,
         params,
@@ -263,7 +272,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.text,
             params,
-            result_ty: gen_ty(result),
+            result_ty: gen_ty(result, &mut cx.ids),
         });
     }
 

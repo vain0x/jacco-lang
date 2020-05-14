@@ -32,6 +32,7 @@ pub(crate) enum CTy {
     Void,
     Int,
     Ptr { ty: Box<CTy> },
+    Struct(String),
 }
 
 pub(crate) enum CExpr {
@@ -90,6 +91,9 @@ pub(crate) enum CStmt {
         name: String,
         params: Vec<(String, CTy)>,
         result_ty: CTy,
+    },
+    StructDecl {
+        name: String,
     },
 }
 

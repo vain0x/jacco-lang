@@ -41,6 +41,11 @@ fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
                 // FIXME: これの型が i32 であることを記録する。
             }
             _ => {
+                if let Some(&name_id) = nx.env.get(name.text()) {
+                    name.name_id = name_id;
+                    return;
+                }
+
                 nx.logger.error(name.location().clone(), "undefined type");
             }
         },
@@ -171,6 +176,12 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         }) => {
             resolve_ty_opt(result_opt.as_mut(), nx);
             resolve_param_list_opt(param_list_opt.as_mut(), nx)
+        }
+        PDecl::Struct(PStructDecl { name_opt, .. }) => {
+            if let Some(name) = name_opt {
+                name.name_id = nx.fresh_id();
+                nx.env.insert(name.text().to_string(), name.name_id);
+            }
         }
     }
 }

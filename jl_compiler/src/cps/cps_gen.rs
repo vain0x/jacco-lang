@@ -25,6 +25,7 @@ struct Gx {
     parent_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
+    structs: Vec<KStruct>,
     fns: Vec<KFn>,
     logger: Logger,
 }
@@ -204,6 +205,11 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
         PTy::Name(PNameTy(name)) => match name.text() {
             "i32" => KTy::I32,
             _ => {
+                if let Some((_, def_ty_slot)) = gx.symbols.get(&name.name_id) {
+                    assert!(def_ty_slot.borrow().is_symbol());
+                    return def_ty_slot.borrow().clone();
+                }
+
                 // FIXME: location info
                 gx.logger.error(
                     Location::default(),
@@ -608,6 +614,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
             gx.extern_fns.push(extern_fn);
         }
+        PDecl::Struct(PStructDecl { name_opt, .. }) => {
+            let name = gen_name(name_opt.unwrap(), gx);
+            let def = Rc::new(RefCell::new(KStructDef { name }));
+            gx.structs.push(KStruct { def });
+        }
     }
 }
 
@@ -638,8 +649,11 @@ pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> KRoot {
         KRoot {
             extern_fns: gx.extern_fns,
             fns: gx.fns,
+            structs: gx.structs,
         }
     };
+
+    trace!("k_root (untyped) = {:#?}\n", k_root);
 
     type_resolution::resolve_types(&mut k_root, logger.clone());
 

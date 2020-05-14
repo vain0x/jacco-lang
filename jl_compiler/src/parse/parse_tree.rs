@@ -537,11 +537,23 @@ impl PNode for PExternFnDecl {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PStructDecl {
+    pub(crate) keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) semi_opt: Option<TokenData>,
+}
+
+impl PNode for PStructDecl {
+    impl_node_seq! { keyword, name_opt, semi_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum PDecl {
     Expr(PExprDecl),
     Let(PLetDecl),
     Fn(PFnDecl),
     ExternFn(PExternFnDecl),
+    Struct(PStructDecl),
 }
 
 impl PNode for PDecl {
@@ -550,6 +562,7 @@ impl PNode for PDecl {
         PDecl::Let,
         PDecl::Fn,
         PDecl::ExternFn,
+        PDecl::Struct,
     }
 }
 

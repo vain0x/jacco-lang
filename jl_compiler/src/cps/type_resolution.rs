@@ -1,6 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
+use std::rc::Rc;
 
 #[derive(Default)]
 struct InitMetaTys;
@@ -51,6 +52,11 @@ impl InitMetaTys {
             for param in &mut extern_fn.params {
                 self.on_symbol_def(param);
             }
+        }
+
+        for k_struct in &mut root.structs {
+            let mut def = k_struct.def.borrow_mut();
+            self.on_symbol_def(&mut def.name);
         }
     }
 }
@@ -114,7 +120,14 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
             }
         }
 
-        (KTy::Unit, _) | (KTy::I32, _) | (KTy::Ptr { .. }, _) | (KTy::Fn { .. }, _) => {
+        (KTy::Symbol { def: left_def }, KTy::Symbol { def: right_def })
+            if Rc::ptr_eq(&left_def, &right_def) => {}
+
+        (KTy::Unit, _)
+        | (KTy::I32, _)
+        | (KTy::Ptr { .. }, _)
+        | (KTy::Fn { .. }, _)
+        | (KTy::Symbol { .. }, _) => {
             tx.logger.error(location, "type mismatch");
         }
     }
@@ -273,6 +286,13 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
     for extern_fn in &mut root.extern_fns {
         resolve_fn_sig(&mut extern_fn.name, &extern_fn.params, tx);
+    }
+
+    for k_struct in &mut root.structs {
+        let def = &k_struct.def;
+        let ty = KTy::Symbol { def: def.clone() };
+        *def.borrow_mut().name.def_ty_slot().borrow_mut() = ty.clone();
+        def.borrow_mut().name.ty = ty;
     }
 
     // 項の型を解決する。

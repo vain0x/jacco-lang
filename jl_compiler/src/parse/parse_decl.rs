@@ -117,6 +117,19 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
     }
 }
 
+pub(crate) fn parse_struct_decl(px: &mut Px) -> PStructDecl {
+    let keyword = px.expect(TokenKind::Struct);
+
+    let name_opt = parse_name(px);
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PStructDecl {
+        keyword,
+        name_opt,
+        semi_opt,
+    }
+}
+
 pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     let decl = match px.next() {
         TokenKind::Let => PDecl::Let(parse_let_decl(px)),
@@ -124,6 +137,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
         TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
             PDecl::ExternFn(parse_extern_fn_decl(px))
         }
+        TokenKind::Struct => PDecl::Struct(parse_struct_decl(px)),
         _ => PDecl::Expr(parse_expr_decl(px)?),
     };
     Some(decl)

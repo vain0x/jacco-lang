@@ -50,6 +50,7 @@ fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
             write_ty(&ty, indent, out)?;
             write!(out, "*")
         }
+        CTy::Struct(name) => write!(out, "struct {}", name),
     }
 }
 
@@ -168,6 +169,11 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             }
 
             write!(out, ");")
+        }
+        CStmt::StructDecl { name } => {
+            write!(out, "struct {} {{}};\n\n", name)?;
+            write_indent(indent, out)?;
+            write!(out, "struct {} {};", name, name)
         }
     }
 }

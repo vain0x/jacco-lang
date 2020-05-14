@@ -32,11 +32,18 @@ pub(crate) enum KTy {
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
     },
+    Symbol {
+        def: Rc<RefCell<KStructDef>>,
+    },
 }
 
 impl KTy {
     pub(crate) fn new_unresolved() -> KTy {
         KTy::default()
+    }
+
+    pub(crate) fn is_symbol(&self) -> bool {
+        matches!(self, KTy::Symbol {.. })
     }
 
     pub(crate) fn into_ptr(self) -> KTy {
@@ -89,6 +96,10 @@ impl fmt::Debug for KTy {
                 }
                 write!(f, ") -> ")?;
                 fmt::Debug::fmt(result_ty, f)
+            }
+            KTy::Symbol { def } => {
+                let def = def.borrow();
+                write!(f, "struct {}", def.name.text)
             }
         }
     }
@@ -259,7 +270,18 @@ pub(crate) struct KExternFn {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct KStructDef {
+    pub(crate) name: KSymbol,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct KStruct {
+    pub(crate) def: Rc<RefCell<KStructDef>>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct KRoot {
     pub(crate) extern_fns: Vec<KExternFn>,
     pub(crate) fns: Vec<KFn>,
+    pub(crate) structs: Vec<KStruct>,
 }

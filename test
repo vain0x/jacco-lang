@@ -39,6 +39,7 @@ f_all() {
     f return
     f syntax_error
     f assign
+    f unit_like_struct
 }
 
 ONLY=${1:-''}
