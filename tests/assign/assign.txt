@@ -2,5 +2,8 @@ int main() {
     int x_1 = 0;
     int* ref_2 = &x_1;
     *ref_2 = 1;
+    int* ref_3 = &x_1;
+    int* p_4 = ref_3;
+    *p_4 = 2;
     return 0;
 }

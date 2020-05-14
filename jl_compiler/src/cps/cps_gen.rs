@@ -263,6 +263,17 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     gen_name_with_ty(param.name, ty, gx)
 }
 
+fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
+    match expr {
+        PExpr::UnaryOp(PUnaryOpExpr {
+            op: PUnaryOp::Deref,
+            arg_opt: Some(arg),
+            ..
+        }) => gen_expr(*arg, gx),
+        expr => emit_unary_op(KPrim::Ref, Some(Box::new(expr)), location, gx),
+    }
+}
+
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
@@ -306,7 +317,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
-            PUnaryOp::Ref => emit_unary_op(KPrim::Ref, arg_opt, location, gx),
+            PUnaryOp::Ref => gen_expr_lval(*arg_opt.unwrap(), location, gx),
             PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
             PUnaryOp::Negate => emit_unary_op(KPrim::Negate, arg_opt, location, gx),
         },
@@ -317,16 +328,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PBinaryOp::Assign => {
-                // x = a; ==> assign &x, a
                 let result = gx.fresh_symbol("unit", location.clone());
 
-                // FIXME: 左辺値として生成する。(x なら &x、*p なら p。)
-                let left_ref = emit_unary_op(KPrim::Ref, Some(left), location, gx);
+                let left = gen_expr_lval(*left, location, gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
                 gx.push(XCommand::Prim {
                     prim: KPrim::Assign,
-                    args: vec![left_ref, right],
+                    args: vec![left, right],
                     result_opt: Some(result.clone()),
                     cont_count: 1,
                 });
