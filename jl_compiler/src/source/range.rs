@@ -38,10 +38,17 @@ impl Range {
         }
     }
 
+    pub(crate) fn ahead(self) -> Range {
+        Range {
+            start: self.start,
+            end: self.start,
+        }
+    }
+
     pub(crate) fn behind(self) -> Range {
         Range {
             start: self.end,
-            end: self.end + Position::new(0, 1),
+            end: self.end,
         }
     }
 }

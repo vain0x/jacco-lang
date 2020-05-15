@@ -3,7 +3,7 @@ use super::*;
 // タプル構造体のとき $name = 0 とするために tt にしている。
 #[macro_export]
 macro_rules! impl_node_seq {
-    ($($name:tt),+) => {
+    ($($name:tt),+ $(,)?) => {
         fn len(&self) -> usize {
             let mut n = 0;
             $({

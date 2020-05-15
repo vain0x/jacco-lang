@@ -208,8 +208,20 @@ fn parse_assign(px: &mut Px) -> Option<PExpr> {
     }
 }
 
-pub(crate) fn parse_cond(px: &mut Px) -> Option<PExpr> {
-    parse_logical(px)
+pub(crate) fn parse_cond(
+    px: &mut Px,
+) -> (Option<TokenData>, Option<Box<PExpr>>, Option<TokenData>) {
+    let left_paren_opt = px.eat(TokenKind::LeftParen);
+
+    let expr_opt = parse_logical(px).map(Box::new);
+
+    let right_paren_opt = if left_paren_opt.is_some() {
+        px.eat(TokenKind::RightParen)
+    } else {
+        None
+    };
+
+    (left_paren_opt, expr_opt, right_paren_opt)
 }
 
 pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
@@ -256,7 +268,7 @@ fn parse_return_expr(px: &mut Px) -> PReturnExpr {
 fn parse_if_expr(px: &mut Px) -> PIfExpr {
     let keyword = px.expect(TokenKind::If);
 
-    let cond_opt = parse_cond(px).map(Box::new);
+    let (left_paren_opt, cond_opt, right_paren_opt) = parse_cond(px);
     let body_opt = parse_block(px);
     let else_opt = px.eat(TokenKind::Else);
 
@@ -275,7 +287,9 @@ fn parse_if_expr(px: &mut Px) -> PIfExpr {
 
     PIfExpr {
         keyword,
+        left_paren_opt,
         cond_opt,
+        right_paren_opt,
         body_opt,
         else_opt,
         alt_opt,
@@ -285,12 +299,14 @@ fn parse_if_expr(px: &mut Px) -> PIfExpr {
 fn parse_while_expr(px: &mut Px) -> PWhileExpr {
     let keyword = px.expect(TokenKind::While);
 
-    let cond_opt = parse_cond(px).map(Box::new);
+    let (left_paren_opt, cond_opt, right_paren_opt) = parse_cond(px);
     let body_opt = parse_block(px);
 
     PWhileExpr {
         keyword,
+        left_paren_opt,
         cond_opt,
+        right_paren_opt,
         body_opt,
     }
 }

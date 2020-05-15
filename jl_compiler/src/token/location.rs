@@ -31,6 +31,13 @@ impl Location {
         }
     }
 
+    pub(crate) fn ahead(self) -> Location {
+        Location {
+            range: self.range.ahead(),
+            ..self
+        }
+    }
+
     pub(crate) fn behind(self) -> Location {
         Location {
             range: self.range.behind(),

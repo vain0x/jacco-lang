@@ -406,25 +406,37 @@ impl PNode for PReturnExpr {
 #[derive(Clone, Debug)]
 pub(crate) struct PIfExpr {
     pub(crate) keyword: TokenData,
+    pub(crate) left_paren_opt: Option<TokenData>,
     pub(crate) cond_opt: Option<Box<PExpr>>,
+    pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) body_opt: Option<PBlock>,
     pub(crate) else_opt: Option<TokenData>,
     pub(crate) alt_opt: Option<Box<PExpr>>,
 }
 
 impl PNode for PIfExpr {
-    impl_node_seq! { keyword, cond_opt, body_opt, else_opt, alt_opt }
+    impl_node_seq! {
+        keyword,
+        left_paren_opt,
+        cond_opt,
+        right_paren_opt,
+        body_opt,
+        else_opt,
+        alt_opt,
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct PWhileExpr {
     pub(crate) keyword: TokenData,
+    pub(crate) left_paren_opt: Option<TokenData>,
     pub(crate) cond_opt: Option<Box<PExpr>>,
+    pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) body_opt: Option<PBlock>,
 }
 
 impl PNode for PWhileExpr {
-    impl_node_seq! { keyword, cond_opt, body_opt }
+    impl_node_seq! { keyword, left_paren_opt, cond_opt, right_paren_opt, body_opt }
 }
 
 #[derive(Clone, Debug)]

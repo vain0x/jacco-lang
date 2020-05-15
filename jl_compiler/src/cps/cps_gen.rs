@@ -446,6 +446,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             keyword,
             cond_opt,
             body_opt,
+            ..
         }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("while_result", location.clone());
