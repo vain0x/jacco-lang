@@ -1,6 +1,12 @@
-struct A;
+struct A {
+    foo: i32,
+    bar: ()
+}
 
 pub fn main() -> i32 {
-    let a = A {};
+    let a = A {
+        foo: 1,
+        bar: ()
+    };
     0
 }

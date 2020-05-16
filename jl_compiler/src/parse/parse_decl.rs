@@ -117,15 +117,83 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
     }
 }
 
-pub(crate) fn parse_struct_decl(px: &mut Px) -> PStructDecl {
+fn parse_field_decl(px: &mut Px) -> PFieldDecl {
+    let name = parse_name(px).unwrap();
+
+    let colon_opt = px.eat(TokenKind::Colon);
+    let ty_opt = parse_ty(px);
+
+    let comma_opt = px.eat(TokenKind::Comma);
+
+    PFieldDecl {
+        name,
+        colon_opt,
+        ty_opt,
+        comma_opt,
+    }
+}
+
+fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
+    let mut fields = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::Semi | TokenKind::RightBrace => {
+                break;
+            }
+            TokenKind::Ident => {
+                let field = parse_field_decl(px);
+                let can_continue = field.comma_opt.is_some();
+                fields.push(field);
+
+                if !can_continue {
+                    break;
+                }
+            }
+            _ => {
+                // FIXME: recovery
+                p_error("expected a field (`name: ty,`)", px);
+                px.bump();
+                continue;
+            }
+        }
+    }
+
+    fields
+}
+
+fn parse_struct_variant_decl(px: &mut Px) -> PStructVariantDecl {
+    let left_brace = px.expect(TokenKind::LeftBrace);
+    let fields = parse_field_decls(px);
+    let right_brace_opt = px.eat(TokenKind::RightBrace);
+    let comma_opt = px.eat(TokenKind::Comma);
+    PStructVariantDecl {
+        left_brace,
+        fields,
+        right_brace_opt,
+        comma_opt,
+    }
+}
+
+fn parse_variant_decl(px: &mut Px) -> Option<PVariantDecl> {
+    let variant_decl = match px.next() {
+        TokenKind::LeftBrace => PVariantDecl::Struct(parse_struct_variant_decl(px)),
+        _ => return None,
+    };
+    Some(variant_decl)
+}
+
+fn parse_struct_decl(px: &mut Px) -> PStructDecl {
     let keyword = px.expect(TokenKind::Struct);
 
     let name_opt = parse_name(px);
+    let variant_opt = parse_variant_decl(px);
     let semi_opt = px.eat(TokenKind::Semi);
 
     PStructDecl {
         keyword,
         name_opt,
+        variant_opt,
         semi_opt,
     }
 }

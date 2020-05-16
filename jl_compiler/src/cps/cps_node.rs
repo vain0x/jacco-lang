@@ -287,6 +287,12 @@ pub(crate) struct KExternFn {
 #[derive(Clone, Debug)]
 pub(crate) struct KStructDef {
     pub(crate) name: KSymbol,
+    pub(crate) fields: Vec<KFieldDef>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct KFieldDef {
+    pub(crate) name: KSymbol,
 }
 
 #[derive(Clone, Debug)]

@@ -10,6 +10,13 @@ impl Vx {
     }
 }
 
+fn validate_brace_matching(left: &TokenData, right_opt: Option<&TokenData>, vx: &Vx) {
+    if right_opt.is_none() {
+        vx.logger
+            .error(left.location().clone(), "maybe missed a right brace?");
+    }
+}
+
 fn validate_param(param: &PParam, vx: &Vx) {
     match (&param.colon_opt, &param.ty_opt) {
         (Some(_), Some(ty)) => validate_ty(&ty, vx),
@@ -149,6 +156,8 @@ fn validate_block(block: &PBlock, vx: &Vx) {
 
         validate_decl(decl, vx, Placement::Local, semi_required);
     }
+
+    validate_brace_matching(&block.left, block.right_opt.as_ref(), vx);
 }
 
 fn validate_expr(expr: &PExpr, vx: &Vx) {
@@ -163,11 +172,27 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         PExpr::Struct(PStructExpr {
             name: _,
             left_brace,
+            fields,
             right_brace_opt,
         }) => {
-            if right_brace_opt.is_none() {
-                vx.logger
-                    .error(left_brace.location().clone(), "missed a right brace?");
+            validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
+
+            for (i, field) in fields.iter().enumerate() {
+                if field.colon_opt.is_none() {
+                    vx.logger
+                        .error(field.name.location().clone().behind(), "missed a colon?");
+                }
+
+                validate_expr_opt(field.value_opt.as_ref(), vx);
+
+                let comma_is_required = {
+                    let is_last = i + 1 == fields.len();
+                    !is_last
+                };
+                if comma_is_required && field.comma_opt.is_none() {
+                    vx.logger
+                        .error(field.location().behind(), "missed a comma?");
+                }
             }
         }
         PExpr::Tuple(PTupleExpr { arg_list }) => validate_arg_list(arg_list, vx),
@@ -397,11 +422,59 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             }
         }
         PDecl::Struct(PStructDecl {
-            name_opt, semi_opt, ..
+            keyword,
+            name_opt,
+            variant_opt,
+            semi_opt,
         }) => {
-            // FIXME: improve
-            if name_opt.is_none() || semi_opt.is_none() {
-                vx.logger.error(decl.location(), "wrong struct syntax");
+            if name_opt.is_none() {
+                vx.logger
+                    .error(keyword.location().clone(), "maybe missed a struct name?");
+            }
+
+            match variant_opt {
+                Some(PVariantDecl::Struct(PStructVariantDecl {
+                    left_brace,
+                    fields,
+                    right_brace_opt,
+                    comma_opt,
+                })) => {
+                    validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
+
+                    for (i, field) in fields.iter().enumerate() {
+                        if field.colon_opt.is_none() {
+                            vx.logger.error(
+                                field.name.location().clone().behind(),
+                                "maybe missed a colon?",
+                            );
+                        }
+
+                        if field.ty_opt.is_none() {
+                            vx.logger.error(field.location(), "maybe missed a type?");
+                        }
+
+                        let comma_is_required = {
+                            let is_last = i + 1 == fields.len();
+                            !is_last
+                        };
+                        if comma_is_required && field.comma_opt.is_none() {
+                            vx.logger
+                                .error(field.location().behind(), "maybe missed a comma?");
+                        }
+                    }
+
+                    if let Some(comma) = comma_opt {
+                        vx.logger
+                            .error(comma.location().clone(), "comma is not allowed here");
+                    }
+                }
+                None => {}
+            }
+
+            let ends_with_block = || variant_opt.iter().all(|variant| variant.ends_with_block());
+            if semi_required && semi_opt.is_none() && !ends_with_block() {
+                vx.logger
+                    .error(decl.location().behind(), "maybe missed a semicolon?");
             }
         }
     }

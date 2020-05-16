@@ -12,24 +12,79 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
     })
 }
 
+fn parse_field_expr(px: &mut Px) -> PFieldExpr {
+    let name = parse_name(px).unwrap();
+
+    let colon_opt = px.eat(TokenKind::Colon);
+    let value_opt = parse_expr(px);
+
+    let comma_opt = px.eat(TokenKind::Comma);
+
+    PFieldExpr {
+        name,
+        colon_opt,
+        value_opt,
+        comma_opt,
+    }
+}
+
+fn parse_field_exprs(px: &mut Px) -> Vec<PFieldExpr> {
+    let mut fields = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof
+            | TokenKind::Semi
+            | TokenKind::RightParen
+            | TokenKind::RightBracket
+            | TokenKind::RightBrace => {
+                break;
+            }
+            TokenKind::Ident => {
+                let field = parse_field_expr(px);
+                let can_continue = field.comma_opt.is_some();
+                fields.push(field);
+
+                if !can_continue {
+                    break;
+                }
+            }
+            _ => {
+                // FIXME: recovery
+                p_error("expected a field (`name: expr,`)", px);
+                px.bump();
+                continue;
+            }
+        }
+    }
+
+    fields
+}
+
+fn parse_struct_expr(px: &mut Px) -> PExpr {
+    assert_eq!(px.next(), TokenKind::Ident);
+
+    let name = parse_name(px).unwrap();
+
+    if let Some(left_brace) = px.eat(TokenKind::LeftBrace) {
+        let fields = parse_field_exprs(px);
+        let right_brace_opt = px.eat(TokenKind::RightBrace);
+        return PExpr::Struct(PStructExpr {
+            name: PNameTy(name),
+            left_brace,
+            fields,
+            right_brace_opt,
+        });
+    }
+
+    PExpr::Name(PNameExpr(name))
+}
+
 fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
     let term = match px.next() {
         TokenKind::Int => PExpr::Int(PIntExpr { token: px.bump() }),
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
-        TokenKind::Ident => {
-            let name = parse_name(px).unwrap();
-
-            if let Some(left_brace) = px.eat(TokenKind::LeftBrace) {
-                let right_brace_opt = px.eat(TokenKind::RightBrace);
-                return Some(PExpr::Struct(PStructExpr {
-                    name: PNameTy(name),
-                    left_brace,
-                    right_brace_opt,
-                }));
-            }
-
-            PExpr::Name(PNameExpr(name))
-        }
+        TokenKind::Ident => parse_struct_expr(px),
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_arg_list(px),
         }),

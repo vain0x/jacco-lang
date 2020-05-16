@@ -326,14 +326,77 @@ impl PNode for PNameExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PFieldExpr {
+    pub(crate) name: PName,
+    pub(crate) colon_opt: Option<TokenData>,
+    pub(crate) value_opt: Option<PExpr>,
+    pub(crate) comma_opt: Option<TokenData>,
+}
+
+impl PNode for PFieldExpr {
+    impl_node_seq! { name, colon_opt, value_opt, comma_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PStructExpr {
     pub(crate) name: PNameTy,
     pub(crate) left_brace: TokenData,
+    pub(crate) fields: Vec<PFieldExpr>,
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
 impl PNode for PStructExpr {
-    impl_node_seq! { name, left_brace, right_brace_opt }
+    fn len(&self) -> usize {
+        self.fields.len() + 3
+    }
+
+    fn get(&self, mut i: usize) -> Option<PElementRef> {
+        if i == 0 {
+            return try_as_element_ref(&self.name);
+        }
+        i -= 1;
+
+        if i == 0 {
+            return try_as_element_ref(&self.left_brace);
+        }
+        i -= 1;
+
+        let field_count = self.fields.len();
+        if let Some(field) = self.fields.get(i) {
+            return try_as_element_ref(field);
+        }
+        i -= field_count;
+
+        if i == 0 {
+            return try_as_element_ref(&self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
+
+    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
+        if i == 0 {
+            return try_as_element_mut(&mut self.name);
+        }
+        i -= 1;
+
+        if i == 0 {
+            return try_as_element_mut(&mut self.left_brace);
+        }
+        i -= 1;
+
+        let field_count = self.fields.len();
+        if let Some(field) = self.fields.get_mut(i) {
+            return try_as_element_mut(field);
+        }
+        i -= field_count;
+
+        if i == 0 {
+            return try_as_element_mut(&mut self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -562,14 +625,88 @@ impl PNode for PExternFnDecl {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PFieldDecl {
+    pub(crate) name: PName,
+    pub(crate) colon_opt: Option<TokenData>,
+    pub(crate) ty_opt: Option<PTy>,
+    pub(crate) comma_opt: Option<TokenData>,
+}
+
+impl PNode for PFieldDecl {
+    impl_node_seq! { name, colon_opt, ty_opt, comma_opt }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PStructVariantDecl {
+    pub(crate) left_brace: TokenData,
+    pub(crate) fields: Vec<PFieldDecl>,
+    pub(crate) right_brace_opt: Option<TokenData>,
+    pub(crate) comma_opt: Option<TokenData>,
+}
+
+impl PNode for PStructVariantDecl {
+    fn len(&self) -> usize {
+        self.fields.len() + 3
+    }
+
+    fn get(&self, mut i: usize) -> Option<PElementRef> {
+        if i == 0 {
+            return try_as_element_ref(&self.left_brace);
+        }
+        i -= 1;
+
+        let field_count = self.fields.len();
+        if let Some(field) = self.fields.get(i) {
+            return try_as_element_ref(field);
+        }
+        i -= field_count;
+
+        match i {
+            0 => try_as_element_ref(&self.right_brace_opt),
+            1 => try_as_element_ref(&self.comma_opt),
+            _ => unreachable!(),
+        }
+    }
+
+    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
+        if i == 0 {
+            return try_as_element_mut(&mut self.left_brace);
+        }
+        i -= 1;
+
+        let field_count = self.fields.len();
+        if let Some(field) = self.fields.get_mut(i) {
+            return try_as_element_mut(field);
+        }
+        i -= field_count;
+
+        match i {
+            0 => try_as_element_mut(&mut self.right_brace_opt),
+            1 => try_as_element_mut(&mut self.comma_opt),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum PVariantDecl {
+    Struct(PStructVariantDecl),
+}
+
+impl PNode for PVariantDecl {
+    impl_node_choice! { PVariantDecl::Struct }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PStructDecl {
     pub(crate) keyword: TokenData,
     pub(crate) name_opt: Option<PName>,
+    pub(crate) variant_opt: Option<PVariantDecl>,
     pub(crate) semi_opt: Option<TokenData>,
 }
 
 impl PNode for PStructDecl {
-    impl_node_seq! { keyword, name_opt, semi_opt }
+    impl_node_seq! { keyword, name_opt, variant_opt, semi_opt }
 }
 
 #[derive(Clone, Debug)]

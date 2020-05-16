@@ -296,6 +296,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
         PExpr::Struct(PStructExpr { name, .. }) => {
+            // FIXME: フィールドを生成する
             let result = gx.fresh_symbol(name.0.text(), name.location());
             let ty = match gx.struct_map.get(&name.0.name_id) {
                 Some(def) => KTy::Symbol { def: def.clone() },
@@ -653,7 +654,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let name = name_opt.unwrap();
             let name_id = name.name_id;
             let name = gen_name(name, gx);
-            let def = Rc::new(RefCell::new(KStructDef { name }));
+            // FIXME: フィールドを生成する
+            let def = Rc::new(RefCell::new(KStructDef {
+                name,
+                fields: vec![],
+            }));
             gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }
