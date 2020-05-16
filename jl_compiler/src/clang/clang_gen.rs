@@ -110,6 +110,7 @@ fn gen_binary_op(
 fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
     let KNode {
         prim,
+        tys: _,
         ref mut args,
         ref mut results,
         ref mut conts,
@@ -181,6 +182,18 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     name,
                     ty,
                     init_opt: Some(init),
+                });
+                gen_node(take(cont), stmts, cx);
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
+            ([result], [cont]) => {
+                let (name, ty) = gen_param(take(result), cx);
+                stmts.push(CStmt::VarDecl {
+                    name,
+                    ty,
+                    init_opt: None,
                 });
                 gen_node(take(cont), stmts, cx);
             }

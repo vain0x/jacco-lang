@@ -9,6 +9,7 @@ use std::rc::Rc;
 pub(crate) enum XCommand {
     Prim {
         prim: KPrim,
+        tys: Vec<KTy>,
         args: Vec<KTerm>,
         result_opt: Option<KSymbol>,
         cont_count: usize,
@@ -194,6 +195,7 @@ impl fmt::Debug for KSymbol {
 #[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
+    pub(crate) tys: Vec<KTy>,
     pub(crate) args: Vec<KTerm>,
     pub(crate) results: Vec<KSymbol>,
     pub(crate) conts: Vec<KNode>,
@@ -203,6 +205,7 @@ impl Default for KNode {
     fn default() -> Self {
         KNode {
             prim: KPrim::Stuck,
+            tys: vec![],
             args: vec![],
             results: vec![],
             conts: vec![],
@@ -212,7 +215,19 @@ impl Default for KNode {
 
 impl fmt::Debug for KNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:?} ", self.prim)?;
+        if self.tys.is_empty() {
+            write!(f, "({:?}", self.prim)?;
+        } else {
+            write!(f, "({:?}::", self.prim)?;
+
+            let mut list = f.debug_list();
+            for ty in &self.tys {
+                list.entry(ty);
+            }
+            list.finish()?;
+        }
+
+        write!(f, " ")?;
 
         {
             let mut list = f.debug_list();

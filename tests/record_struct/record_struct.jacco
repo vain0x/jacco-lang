@@ -1,0 +1,6 @@
+struct A;
+
+pub fn main() -> i32 {
+    let a = A {};
+    0
+}

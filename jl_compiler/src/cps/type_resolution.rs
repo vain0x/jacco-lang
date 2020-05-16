@@ -174,6 +174,16 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 resolve_term(arg, tx);
             }
         }
+        KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
+            ([ty], [result]) => {
+                unify(ty.clone(), result.ty.clone(), location, tx);
+                if !ty.is_symbol() {
+                    tx.logger
+                        .error(result.location.clone(), "symbol type required");
+                }
+            }
+            _ => unimplemented!(),
+        },
         KPrim::If => match node.args.as_mut_slice() {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);

@@ -21,6 +21,7 @@ struct LoopConstruction {
 #[derive(Default)]
 struct Gx {
     symbols: HashMap<usize, (Rc<RefCell<Option<usize>>>, Rc<RefCell<KTy>>)>,
+    struct_map: HashMap<usize, Rc<RefCell<KStructDef>>>,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
@@ -83,6 +84,7 @@ impl Gx {
     ) {
         self.push(XCommand::Prim {
             prim: KPrim::Jump,
+            tys: vec![],
             args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
@@ -131,6 +133,7 @@ fn emit_unary_op(
 
     gx.push(XCommand::Prim {
         prim,
+        tys: vec![],
         args: vec![arg],
         result_opt: Some(result.clone()),
         cont_count: 1,
@@ -153,6 +156,7 @@ fn emit_binary_op(
 
     gx.push(XCommand::Prim {
         prim,
+        tys: vec![],
         args: vec![left, right],
         result_opt: Some(result.clone()),
         cont_count: 1,
@@ -175,6 +179,7 @@ fn emit_if(
 
     gx.push(XCommand::Prim {
         prim: KPrim::If,
+        tys: vec![],
         args: vec![k_cond],
         cont_count: 2,
         result_opt: None,
@@ -200,24 +205,29 @@ fn emit_if(
     KTerm::Name(result)
 }
 
+fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
+    let name = ty_name.0;
+    match name.text() {
+        "i32" => KTy::I32,
+        _ => {
+            if let Some((_, def_ty_slot)) = gx.symbols.get(&name.name_id) {
+                assert!(def_ty_slot.borrow().is_symbol());
+                return def_ty_slot.borrow().clone();
+            }
+
+            // FIXME: location info
+            gx.logger.error(
+                Location::default(),
+                format!("undefined type name {:?}", name.text()),
+            );
+            KTy::new_unresolved()
+        }
+    }
+}
+
 fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     match ty {
-        PTy::Name(PNameTy(name)) => match name.text() {
-            "i32" => KTy::I32,
-            _ => {
-                if let Some((_, def_ty_slot)) = gx.symbols.get(&name.name_id) {
-                    assert!(def_ty_slot.borrow().is_symbol());
-                    return def_ty_slot.borrow().clone();
-                }
-
-                // FIXME: location info
-                gx.logger.error(
-                    Location::default(),
-                    format!("undefined type name {:?}", name.text()),
-                );
-                KTy::new_unresolved()
-            }
-        },
+        PTy::Name(name) => gen_ty_name(name, gx),
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
         PTy::Ptr(_) => unimplemented!(),
@@ -285,6 +295,26 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
+        PExpr::Struct(PStructExpr { name, .. }) => {
+            let result = gx.fresh_symbol(name.0.text(), name.location());
+            let ty = match gx.struct_map.get(&name.0.name_id) {
+                Some(def) => KTy::Symbol { def: def.clone() },
+                None => {
+                    error!("struct {:?} should be found here", name.0.text());
+                    return new_never_term(name.location());
+                }
+            };
+
+            gx.push(XCommand::Prim {
+                prim: KPrim::Struct,
+                tys: vec![ty],
+                args: vec![],
+                result_opt: Some(result.clone()),
+                cont_count: 1,
+            });
+
+            KTerm::Name(result)
+        }
         PExpr::Tuple(PTupleExpr { mut arg_list }) => {
             let is_tuple = arg_list.is_tuple();
             match arg_list.args.as_mut_slice() {
@@ -310,6 +340,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push(XCommand::Prim {
                 prim: KPrim::CallDirect,
+                tys: vec![],
                 args: k_args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
@@ -341,6 +372,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
                 gx.push(XCommand::Prim {
                     prim: KPrim::Assign,
+                    tys: vec![],
                     args: vec![left, right],
                     result_opt: Some(result.clone()),
                     cont_count: 1,
@@ -464,6 +496,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push(XCommand::Prim {
                 prim: KPrim::If,
+                tys: vec![],
                 args: vec![k_cond],
                 result_opt: None,
                 cont_count: 2,
@@ -547,6 +580,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             gx.push(XCommand::Prim {
                 prim: KPrim::Let,
+                tys: vec![],
                 args: vec![k_init],
                 result_opt: Some(result),
                 cont_count: 1,
@@ -616,8 +650,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gx.extern_fns.push(extern_fn);
         }
         PDecl::Struct(PStructDecl { name_opt, .. }) => {
-            let name = gen_name(name_opt.unwrap(), gx);
+            let name = name_opt.unwrap();
+            let name_id = name.name_id;
+            let name = gen_name(name, gx);
             let def = Rc::new(RefCell::new(KStructDef { name }));
+            gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }
     }

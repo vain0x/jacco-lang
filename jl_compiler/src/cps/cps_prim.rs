@@ -4,6 +4,7 @@ pub(crate) enum KPrim {
     Stuck,
     Jump,
     CallDirect,
+    Struct,
     If,
     Let,
     Deref,

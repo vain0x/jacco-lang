@@ -170,11 +170,7 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
 
             write!(out, ");")
         }
-        CStmt::StructDecl { name } => {
-            write!(out, "struct {} {{}};\n\n", name)?;
-            write_indent(indent, out)?;
-            write!(out, "struct {} {};", name, name)
-        }
+        CStmt::StructDecl { name } => write!(out, "struct {} {{}};", name),
     }
 }
 

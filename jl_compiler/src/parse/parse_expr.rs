@@ -16,7 +16,20 @@ fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
     let term = match px.next() {
         TokenKind::Int => PExpr::Int(PIntExpr { token: px.bump() }),
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
-        TokenKind::Ident => PExpr::Name(PNameExpr(parse_name(px).unwrap())),
+        TokenKind::Ident => {
+            let name = parse_name(px).unwrap();
+
+            if let Some(left_brace) = px.eat(TokenKind::LeftBrace) {
+                let right_brace_opt = px.eat(TokenKind::RightBrace);
+                return Some(PExpr::Struct(PStructExpr {
+                    name: PNameTy(name),
+                    left_brace,
+                    right_brace_opt,
+                }));
+            }
+
+            PExpr::Name(PNameExpr(name))
+        }
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_arg_list(px),
         }),

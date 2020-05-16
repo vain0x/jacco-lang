@@ -326,6 +326,17 @@ impl PNode for PNameExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PStructExpr {
+    pub(crate) name: PNameTy,
+    pub(crate) left_brace: TokenData,
+    pub(crate) right_brace_opt: Option<TokenData>,
+}
+
+impl PNode for PStructExpr {
+    impl_node_seq! { name, left_brace, right_brace_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PTupleExpr {
     pub(crate) arg_list: PArgList,
 }
@@ -454,6 +465,7 @@ pub(crate) enum PExpr {
     Int(PIntExpr),
     Str(PStrExpr),
     Name(PNameExpr),
+    Struct(PStructExpr),
     Tuple(PTupleExpr),
     Call(PCallExpr),
     UnaryOp(PUnaryOpExpr),
@@ -480,6 +492,7 @@ impl PNode for PExpr {
         PExpr::Int,
         PExpr::Str,
         PExpr::Name,
+        PExpr::Struct,
         PExpr::Tuple,
         PExpr::Call,
         PExpr::UnaryOp,

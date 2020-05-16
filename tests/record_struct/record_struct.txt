@@ -1,0 +1,7 @@
+struct A_1 {};
+
+int main() {
+    struct A_1 A_2;
+    struct A_1 a_3 = A_2;
+    return 0;
+}

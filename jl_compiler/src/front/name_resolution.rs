@@ -34,21 +34,26 @@ impl Nx {
     }
 }
 
+fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
+    let name = &mut ty_name.0;
+    match name.text() {
+        "i32" => {
+            // FIXME: これの型が i32 であることを記録する。
+        }
+        _ => {
+            if let Some(&name_id) = nx.env.get(name.text()) {
+                name.name_id = name_id;
+                return;
+            }
+
+            nx.logger.error(name.location().clone(), "undefined type");
+        }
+    }
+}
+
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
     match ty {
-        PTy::Name(PNameTy(name)) => match name.text() {
-            "i32" => {
-                // FIXME: これの型が i32 であることを記録する。
-            }
-            _ => {
-                if let Some(&name_id) = nx.env.get(name.text()) {
-                    name.name_id = name_id;
-                    return;
-                }
-
-                nx.logger.error(name.location().clone(), "undefined type");
-            }
-        },
+        PTy::Name(name) => resolve_ty_name(name, nx),
         PTy::Never(_) | PTy::Unit(_) => {}
         PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             resolve_ty_opt(ty_opt.as_deref_mut(), nx);
@@ -84,6 +89,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 nx.logger.error(name.location().clone(), "undefined");
             }
         },
+        PExpr::Struct(PStructExpr { name, .. }) => resolve_ty_name(name, nx),
         PExpr::Tuple(PTupleExpr { arg_list }) => {
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);

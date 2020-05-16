@@ -13,6 +13,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
         match command {
             XCommand::Prim {
                 prim,
+                tys,
                 args,
                 result_opt,
                 cont_count,
@@ -24,6 +25,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
 
                 return KNode {
                     prim,
+                    tys,
                     args,
                     results: result_opt.into_iter().collect(),
                     conts,

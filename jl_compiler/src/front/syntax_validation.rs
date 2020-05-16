@@ -160,6 +160,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             // FIXME: should verify
         }
         PExpr::Name(_) => {}
+        PExpr::Struct(PStructExpr {
+            name: _,
+            left_brace,
+            right_brace_opt,
+        }) => {
+            if right_brace_opt.is_none() {
+                vx.logger
+                    .error(left_brace.location().clone(), "missed a right brace?");
+            }
+        }
         PExpr::Tuple(PTupleExpr { arg_list }) => validate_arg_list(arg_list, vx),
         PExpr::Call(PCallExpr { callee, arg_list }) => {
             validate_expr(&callee, vx);
