@@ -1,6 +1,6 @@
 struct A_1 {
-    int foo_2,
-    void bar_3
+    int foo_2;
+    void bar_3;
 };
 
 int main() {

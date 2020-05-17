@@ -178,15 +178,12 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
         }
         CStmt::StructDecl { name, fields } => {
             write!(out, "struct {} {{", name)?;
-            for (i, (name, ty)) in fields.iter().enumerate() {
-                if i != 0 {
-                    write!(out, ",")?;
-                }
-
+            for (name, ty) in fields {
                 let indent = indent + 1;
                 write!(out, "\n")?;
                 write_indent(indent, out)?;
                 write_param(&name, &ty, indent, out)?;
+                write!(out, ";")?;
             }
 
             write!(out, "\n")?;
