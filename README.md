@@ -143,7 +143,6 @@ cargo build
 | cond  | condition     | 条件 |
 | decl  | declaration   | 宣言 |
 | expr  | expression    | 式 |
-| fn    | function      | 関数 |
 | gen   | generation    | 生成 |
 | ident | identifier    | 識別子 |
 | lit   | literal       | リテラル |
