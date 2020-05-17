@@ -145,6 +145,7 @@ cargo build
 | expr  | expression    | 式 |
 | gen   | generation    | 生成 |
 | ident | identifier    | 識別子 |
+| init  | initialization| 初期化 |
 | lit   | literal       | リテラル |
 | mod   | module        | モジュール |
 | mod   | modulo        | 剰余 |

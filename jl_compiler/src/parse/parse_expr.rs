@@ -98,6 +98,16 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
 
     loop {
         match px.next() {
+            TokenKind::Dot => {
+                let dot = px.bump();
+                let name_opt = px.eat(TokenKind::Ident);
+
+                left = PExpr::DotField(PDotFieldExpr {
+                    left: Box::new(left),
+                    dot,
+                    name_opt,
+                });
+            }
             TokenKind::LeftParen => {
                 let arg_list = parse_arg_list(px);
 

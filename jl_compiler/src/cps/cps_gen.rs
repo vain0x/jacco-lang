@@ -332,6 +332,23 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 _ => unimplemented!("tuple literal is not supported yet"),
             }
         }
+        PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
+            let (_, text, location) = name_opt.unwrap().decompose();
+            let result = gx.fresh_symbol(&text, location.clone());
+
+            let left = gen_expr(*left, gx);
+            let field = KTerm::Field { text, location };
+
+            gx.push(XCommand::Prim {
+                prim: KPrim::GetField,
+                tys: vec![],
+                args: vec![left, field],
+                result_opt: Some(result.clone()),
+                cont_count: 1,
+            });
+
+            KTerm::Name(result)
+        }
         PExpr::Call(PCallExpr { callee, arg_list }) => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());

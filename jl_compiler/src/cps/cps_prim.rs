@@ -5,6 +5,7 @@ pub(crate) enum KPrim {
     Jump,
     CallDirect,
     Struct,
+    GetField,
     If,
     Let,
     Deref,

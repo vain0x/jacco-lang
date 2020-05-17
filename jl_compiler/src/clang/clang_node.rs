@@ -39,7 +39,7 @@ pub(crate) enum CExpr {
     IntLit(String),
     Name(String),
     Dot {
-        left: String,
+        left: Box<CExpr>,
         right: String,
     },
     Call {

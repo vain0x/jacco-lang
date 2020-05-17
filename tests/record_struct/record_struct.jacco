@@ -8,5 +8,7 @@ pub fn main() -> i32 {
         foo: 1,
         bar: ()
     };
+    let b = a.foo;
+    // let p = &a.foo;
     0
 }

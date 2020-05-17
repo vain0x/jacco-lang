@@ -42,6 +42,10 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Unit { .. } => CExpr::IntLit("(void)0".to_string()),
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Name(symbol) => CExpr::Name(symbol.unique_name(&mut cx.ids)),
+        KTerm::Field { text, location } => {
+            error!("can't gen field term to c {} ({:?})", text, location);
+            CExpr::IntLit("0".to_string())
+        }
     }
 }
 
@@ -205,7 +209,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     let field_name = field.name.unique_name(&mut cx.ids);
 
                     let left = CExpr::Dot {
-                        left: name.clone(),
+                        left: Box::new(CExpr::Name(name.clone())),
                         right: field_name,
                     };
                     let right = gen_term(take(arg), cx);
@@ -215,6 +219,34 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                         right: Box::new(right),
                     }));
                 }
+
+                gen_node(take(cont), stmts, cx);
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::GetField => match (
+            args.as_mut_slice(),
+            results.as_mut_slice(),
+            conts.as_mut_slice(),
+        ) {
+            (
+                [left, KTerm::Field {
+                    text: field_name, ..
+                }],
+                [result],
+                [cont],
+            ) => {
+                let left = gen_term(take(left), cx);
+                let (name, ty) = gen_param(take(result), cx);
+
+                stmts.push(CStmt::VarDecl {
+                    name,
+                    ty,
+                    init_opt: Some(CExpr::Dot {
+                        left: Box::new(left),
+                        right: take(field_name),
+                    }),
+                });
 
                 gen_node(take(cont), stmts, cx);
             }

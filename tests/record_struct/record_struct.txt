@@ -8,5 +8,7 @@ int main() {
     A_4.foo_2 = 1;
     A_4.bar_3 = (void)0;
     struct A_1 a_5 = A_4;
+    int foo_6 = a_5.foo;
+    int b_7 = foo_6;
     return 0;
 }

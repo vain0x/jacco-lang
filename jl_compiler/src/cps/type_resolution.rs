@@ -148,6 +148,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
+        KTerm::Field { .. } => KTy::new_unresolved(),
     }
 }
 
@@ -194,6 +195,36 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 if !ty.is_symbol() {
                     tx.logger
                         .error(result.location.clone(), "symbol type required");
+                }
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::GetField => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            (
+                [left, KTerm::Field {
+                    text: field_name,
+                    location,
+                }],
+                [result],
+            ) => {
+                let struct_ty = resolve_term(left, tx);
+
+                if let KTy::Symbol { def } = struct_ty.resolve() {
+                    if let Some(field) = def
+                        .borrow()
+                        .fields
+                        .iter()
+                        .find(|field| field.name.text == *field_name)
+                    {
+                        unify(
+                            field.name.ty.clone(),
+                            result.ty.clone(),
+                            location.clone(),
+                            tx,
+                        );
+                    } else {
+                        tx.logger.error(location.clone(), "unknown field");
+                    }
                 }
             }
             _ => unimplemented!(),

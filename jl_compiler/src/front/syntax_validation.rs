@@ -196,6 +196,18 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             }
         }
         PExpr::Tuple(PTupleExpr { arg_list }) => validate_arg_list(arg_list, vx),
+        PExpr::DotField(PDotFieldExpr {
+            left,
+            dot,
+            name_opt,
+        }) => {
+            validate_expr(&left, vx);
+
+            if name_opt.is_none() {
+                vx.logger
+                    .error(dot.location().clone().behind(), "missed field name?");
+            }
+        }
         PExpr::Call(PCallExpr { callee, arg_list }) => {
             validate_expr(&callee, vx);
             validate_arg_list(arg_list, vx);
