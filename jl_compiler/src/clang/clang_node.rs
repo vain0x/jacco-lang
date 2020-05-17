@@ -38,7 +38,10 @@ pub(crate) enum CTy {
 pub(crate) enum CExpr {
     IntLit(String),
     Name(String),
-    #[allow(dead_code)]
+    Dot {
+        left: String,
+        right: String,
+    },
     Call {
         cal: Box<CExpr>,
         args: Vec<CExpr>,
@@ -59,9 +62,7 @@ pub(crate) struct CBlock {
 }
 
 pub(crate) enum CStmt {
-    #[allow(dead_code)]
     Expr(CExpr),
-    #[allow(dead_code)]
     Block(CBlock),
     Label {
         label: String,
@@ -70,7 +71,6 @@ pub(crate) enum CStmt {
         label: String,
     },
     Return(Option<CExpr>),
-    #[allow(dead_code)]
     If {
         cond: CExpr,
         body: Box<CStmt>,
@@ -94,6 +94,7 @@ pub(crate) enum CStmt {
     },
     StructDecl {
         name: String,
+        fields: Vec<(String, CTy)>,
     },
 }
 

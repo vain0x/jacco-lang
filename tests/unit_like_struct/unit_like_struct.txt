@@ -1,4 +1,5 @@
-struct A_1 {};
+struct A_1 {
+};
 
 int main() {
     struct A_1 a_2 = A_1;

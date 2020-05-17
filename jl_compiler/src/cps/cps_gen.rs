@@ -295,8 +295,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
-        PExpr::Struct(PStructExpr { name, .. }) => {
-            // FIXME: フィールドを生成する
+        PExpr::Struct(PStructExpr { name, fields, .. }) => {
             let result = gx.fresh_symbol(name.0.text(), name.location());
             let ty = match gx.struct_map.get(&name.0.name_id) {
                 Some(def) => KTy::Symbol { def: def.clone() },
@@ -306,10 +305,16 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 }
             };
 
+            // FIXME: フィールドに過不足がある、定義時と順番が異なるケースなどに対処
+            let args = fields
+                .into_iter()
+                .map(|field| gen_expr(field.value_opt.unwrap(), gx))
+                .collect();
+
             gx.push(XCommand::Prim {
                 prim: KPrim::Struct,
                 tys: vec![ty],
-                args: vec![],
+                args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
             });
@@ -650,15 +655,27 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
             gx.extern_fns.push(extern_fn);
         }
-        PDecl::Struct(PStructDecl { name_opt, .. }) => {
+        PDecl::Struct(PStructDecl {
+            name_opt,
+            variant_opt,
+            ..
+        }) => {
             let name = name_opt.unwrap();
             let name_id = name.name_id;
             let name = gen_name(name, gx);
-            // FIXME: フィールドを生成する
-            let def = Rc::new(RefCell::new(KStructDef {
-                name,
-                fields: vec![],
-            }));
+
+            let fields = match variant_opt {
+                Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
+                    .into_iter()
+                    .map(|field| {
+                        let name = gen_name(field.name, gx);
+                        KFieldDef { name }
+                    })
+                    .collect(),
+                None => vec![],
+            };
+
+            let def = Rc::new(RefCell::new(KStructDef { name, fields }));
             gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }

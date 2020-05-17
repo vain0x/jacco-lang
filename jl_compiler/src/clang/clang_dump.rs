@@ -54,10 +54,16 @@ fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     }
 }
 
+fn write_param(name: &str, ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+    write_ty(ty, indent, out)?;
+    write!(out, " {}", name)
+}
+
 fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match expr {
         CExpr::IntLit(value) => write!(out, "{}", value),
         CExpr::Name(name) => write!(out, "{}", name),
+        CExpr::Dot { left, right } => write!(out, "{}.{}", left, right),
         CExpr::Call { cal, args } => {
             write_expr(cal, indent, out)?;
             write!(out, "(")?;
@@ -170,7 +176,23 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
 
             write!(out, ");")
         }
-        CStmt::StructDecl { name } => write!(out, "struct {} {{}};", name),
+        CStmt::StructDecl { name, fields } => {
+            write!(out, "struct {} {{", name)?;
+            for (i, (name, ty)) in fields.iter().enumerate() {
+                if i != 0 {
+                    write!(out, ",")?;
+                }
+
+                let indent = indent + 1;
+                write!(out, "\n")?;
+                write_indent(indent, out)?;
+                write_param(&name, &ty, indent, out)?;
+            }
+
+            write!(out, "\n")?;
+            write_indent(indent, out)?;
+            write!(out, "}};")
+        }
     }
 }
 

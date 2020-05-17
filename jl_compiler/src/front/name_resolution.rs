@@ -183,10 +183,23 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_ty_opt(result_opt.as_mut(), nx);
             resolve_param_list_opt(param_list_opt.as_mut(), nx)
         }
-        PDecl::Struct(PStructDecl { name_opt, .. }) => {
+        PDecl::Struct(PStructDecl {
+            name_opt,
+            variant_opt,
+            ..
+        }) => {
             if let Some(name) = name_opt {
                 name.name_id = nx.fresh_id();
                 nx.env.insert(name.text().to_string(), name.name_id);
+            }
+
+            match variant_opt {
+                Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
+                    for field in fields {
+                        field.name.name_id = nx.fresh_id();
+                    }
+                }
+                None => {}
             }
         }
     }

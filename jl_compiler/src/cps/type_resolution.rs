@@ -57,6 +57,10 @@ impl InitMetaTys {
         for k_struct in &mut root.structs {
             let mut def = k_struct.def.borrow_mut();
             self.on_symbol_def(&mut def.name);
+
+            for field in &mut def.fields {
+                self.on_symbol_def(&mut field.name);
+            }
         }
     }
 }
@@ -176,6 +180,16 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         }
         KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
+                let struct_def = match ty {
+                    KTy::Symbol { def } => def.clone(),
+                    _ => unimplemented!(),
+                };
+
+                for (arg, field_def) in node.args.iter_mut().zip(&struct_def.borrow().fields) {
+                    let arg_ty = resolve_term(arg, tx);
+                    unify(arg_ty, field_def.name.ty.clone(), location.clone(), tx);
+                }
+
                 unify(ty.clone(), result.ty.clone(), location, tx);
                 if !ty.is_symbol() {
                     tx.logger

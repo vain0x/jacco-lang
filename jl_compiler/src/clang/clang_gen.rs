@@ -189,12 +189,33 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         },
         KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
+                let struct_def = match result.ty.clone().resolve() {
+                    KTy::Symbol { def } => def.clone(),
+                    _ => unimplemented!(),
+                };
+
                 let (name, ty) = gen_param(take(result), cx);
                 stmts.push(CStmt::VarDecl {
-                    name,
+                    name: name.clone(),
                     ty,
                     init_opt: None,
                 });
+
+                for (arg, field) in args.iter_mut().zip(&struct_def.borrow().fields) {
+                    let field_name = field.name.unique_name(&mut cx.ids);
+
+                    let left = CExpr::Dot {
+                        left: name.clone(),
+                        right: field_name,
+                    };
+                    let right = gen_term(take(arg), cx);
+                    stmts.push(CStmt::Expr(CExpr::BinaryOp {
+                        op: CBinaryOp::Assign,
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    }));
+                }
+
                 gen_node(take(cont), stmts, cx);
             }
             _ => unimplemented!(),
@@ -269,7 +290,13 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 fn gen_root(root: KRoot, cx: &mut Cx) {
     for KStruct { def } in root.structs {
         let name = def.borrow().name.unique_name(&mut cx.ids);
-        cx.decls.push(CStmt::StructDecl { name });
+        let fields = def
+            .borrow()
+            .fields
+            .iter()
+            .map(|field| gen_param(field.name.clone(), cx))
+            .collect();
+        cx.decls.push(CStmt::StructDecl { name, fields });
     }
 
     for KExternFn {

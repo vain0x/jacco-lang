@@ -1,7 +1,12 @@
-struct A_1 {};
+struct A_1 {
+    int foo_2,
+    void bar_3
+};
 
 int main() {
-    struct A_1 A_2;
-    struct A_1 a_3 = A_2;
+    struct A_1 A_4;
+    A_4.foo_2 = 1;
+    A_4.bar_3 = (void)0;
+    struct A_1 a_5 = A_4;
     return 0;
 }
