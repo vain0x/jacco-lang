@@ -279,13 +279,35 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     gen_name_with_ty(param.name, ty, gx)
 }
 
+/// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
 fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::UnaryOp(PUnaryOpExpr {
             op: PUnaryOp::Deref,
             arg_opt: Some(arg),
             ..
-        }) => gen_expr(*arg, gx),
+        }) => {
+            // &*x ==> x
+            gen_expr(*arg, gx)
+        }
+        PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
+            // x.foo は `&(&x)->foo` のような形にコンパイルする。
+            let (_, text, location) = name_opt.unwrap().decompose();
+            let result = gx.fresh_symbol(&format!("{}_ptr", text), location.clone());
+
+            let left = gen_expr_lval(*left, location.clone(), gx);
+            let field = KTerm::Field { text, location };
+
+            gx.push(XCommand::Prim {
+                prim: KPrim::GetField,
+                tys: vec![],
+                args: vec![left, field],
+                result_opt: Some(result.clone()),
+                cont_count: 1,
+            });
+
+            KTerm::Name(result)
+        }
         expr => emit_unary_op(KPrim::Ref, Some(Box::new(expr)), location, gx),
     }
 }
@@ -332,22 +354,28 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 _ => unimplemented!("tuple literal is not supported yet"),
             }
         }
-        PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
-            let (_, text, location) = name_opt.unwrap().decompose();
-            let result = gx.fresh_symbol(&text, location.clone());
+        PExpr::DotField(..) => {
+            let (_, text, location) = match &expr {
+                PExpr::DotField(PDotFieldExpr {
+                    name_opt: Some(name),
+                    ..
+                }) => name.clone().decompose(),
+                _ => unimplemented!(),
+            };
 
-            let left = gen_expr(*left, gx);
-            let field = KTerm::Field { text, location };
+            // FIXME: location
+            let result1 = gen_expr_lval(expr, location.clone(), gx);
+            let result2 = gx.fresh_symbol(&text, location);
 
             gx.push(XCommand::Prim {
-                prim: KPrim::GetField,
+                prim: KPrim::Deref,
                 tys: vec![],
-                args: vec![left, field],
-                result_opt: Some(result.clone()),
+                args: vec![result1],
+                result_opt: Some(result2.clone()),
                 cont_count: 1,
             });
 
-            KTerm::Name(result)
+            KTerm::Name(result2)
         }
         PExpr::Call(PCallExpr { callee, arg_list }) => {
             let location = arg_list.left.into_location();

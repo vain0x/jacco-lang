@@ -63,9 +63,13 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
     match expr {
         CExpr::IntLit(value) => write!(out, "{}", value),
         CExpr::Name(name) => write!(out, "{}", name),
-        CExpr::Dot { left, right } => {
+        CExpr::Dot { left, field } => {
             write_expr(left, indent, out)?;
-            write!(out, ".{}", right)
+            write!(out, ".{}", field)
+        }
+        CExpr::Arrow { left, field } => {
+            write_expr(left, indent, out)?;
+            write!(out, "->{}", field)
         }
         CExpr::Call { cal, args } => {
             write_expr(cal, indent, out)?;

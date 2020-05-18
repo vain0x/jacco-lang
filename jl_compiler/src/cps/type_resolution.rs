@@ -207,9 +207,15 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 }],
                 [result],
             ) => {
-                let struct_ty = resolve_term(left, tx);
+                let left_ty = resolve_term(left, tx);
 
-                if let KTy::Symbol { def } = struct_ty.resolve() {
+                if let Some(def) = match left_ty.resolve() {
+                    KTy::Ptr { ty } => match ty.resolve() {
+                        KTy::Symbol { def } => Some(def),
+                        _ => None,
+                    },
+                    _ => None,
+                } {
                     if let Some(field) = def
                         .borrow()
                         .fields
@@ -217,7 +223,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         .find(|field| field.name.text == *field_name)
                     {
                         unify(
-                            field.name.ty.clone(),
+                            field.name.ty.clone().into_ptr(),
                             result.ty.clone(),
                             location.clone(),
                             tx,

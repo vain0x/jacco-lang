@@ -3,12 +3,21 @@ struct A {
     bar: ()
 }
 
+struct Deep {
+    inner: A,
+}
+
 pub fn main() -> i32 {
     let a = A {
         foo: 1,
         bar: ()
     };
-    let b = a.foo;
-    // let p = &a.foo;
+    let a_foo_val = a.foo;
+    let a_foo_ptr = &a.foo;
+    a.foo = 2;
+    let deep = Deep {
+        inner: a,
+    };
+    deep.inner.foo = 3;
     0
 }

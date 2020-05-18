@@ -5,6 +5,7 @@ pub(crate) enum KPrim {
     Jump,
     CallDirect,
     Struct,
+    /// 構造体へのポインタから特定のフィールドへのポインタを取得する。(`&p->field`)
     GetField,
     If,
     Let,

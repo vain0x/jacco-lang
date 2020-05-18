@@ -208,10 +208,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 for (arg, field) in args.iter_mut().zip(&struct_def.borrow().fields) {
                     let field_name = field.name.unique_name(&mut cx.ids);
 
-                    let left = CExpr::Dot {
-                        left: Box::new(CExpr::Name(name.clone())),
-                        right: field_name,
-                    };
+                    let left = CExpr::Name(name.clone()).into_dot(field_name);
                     let right = gen_term(take(arg), cx);
                     stmts.push(CStmt::Expr(CExpr::BinaryOp {
                         op: CBinaryOp::Assign,
@@ -242,10 +239,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 stmts.push(CStmt::VarDecl {
                     name,
                     ty,
-                    init_opt: Some(CExpr::Dot {
-                        left: Box::new(left),
-                        right: take(field_name),
-                    }),
+                    init_opt: Some(left.into_arrow(take(field_name)).into_ref()),
                 });
 
                 gen_node(take(cont), stmts, cx);

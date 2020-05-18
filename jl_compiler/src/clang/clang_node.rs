@@ -40,7 +40,11 @@ pub(crate) enum CExpr {
     Name(String),
     Dot {
         left: Box<CExpr>,
-        right: String,
+        field: String,
+    },
+    Arrow {
+        left: Box<CExpr>,
+        field: String,
     },
     Call {
         cal: Box<CExpr>,
@@ -55,6 +59,29 @@ pub(crate) enum CExpr {
         left: Box<CExpr>,
         right: Box<CExpr>,
     },
+}
+
+impl CExpr {
+    pub(crate) fn into_ref(self) -> CExpr {
+        CExpr::UnaryOp {
+            op: CUnaryOp::Ref,
+            arg: Box::new(self),
+        }
+    }
+
+    pub(crate) fn into_dot(self, field: impl Into<String>) -> CExpr {
+        CExpr::Dot {
+            left: Box::new(self),
+            field: field.into(),
+        }
+    }
+
+    pub(crate) fn into_arrow(self, field: impl Into<String>) -> CExpr {
+        CExpr::Arrow {
+            left: Box::new(self),
+            field: field.into(),
+        }
+    }
 }
 
 pub(crate) struct CBlock {

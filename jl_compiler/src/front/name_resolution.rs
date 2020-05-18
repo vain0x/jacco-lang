@@ -89,7 +89,13 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 nx.logger.error(name.location().clone(), "undefined");
             }
         },
-        PExpr::Struct(PStructExpr { name, .. }) => resolve_ty_name(name, nx),
+        PExpr::Struct(PStructExpr { name, fields, .. }) => {
+            resolve_ty_name(name, nx);
+
+            for field in fields {
+                resolve_expr_opt(field.value_opt.as_mut(), nx);
+            }
+        }
         PExpr::Tuple(PTupleExpr { arg_list }) => {
             for arg in &mut arg_list.args {
                 resolve_expr(&mut arg.expr, nx);
@@ -201,6 +207,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
                     for field in fields {
                         field.name.name_id = nx.fresh_id();
+                        resolve_ty_opt(field.ty_opt.as_mut(), nx);
                     }
                 }
                 None => {}
