@@ -20,7 +20,7 @@ struct LoopConstruction {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
-    symbols: HashMap<usize, (Rc<RefCell<Option<usize>>>, Rc<RefCell<KTy>>)>,
+    symbols: HashMap<usize, Rc<KVarDef>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructDef>>>,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
@@ -36,10 +36,10 @@ impl Gx {
         Self {
             symbols: vec![(
                 0,
-                (
-                    Rc::new(RefCell::new(Some(0))),
-                    Rc::new(RefCell::new(KTy::Never)),
-                ),
+                Rc::new(KVarDef {
+                    id_opt: RefCell::new(Some(0)),
+                    ty: RefCell::new(KTy::Never),
+                }),
             )]
             .into_iter()
             .collect(),
@@ -55,8 +55,7 @@ impl Gx {
             text,
             ty: KTy::new_unresolved(),
             location,
-            id_slot: Rc::default(),
-            def_ty_slot: Rc::new(RefCell::new(KTy::new_unresolved())),
+            def: Rc::default(),
         }
     }
 
@@ -210,9 +209,9 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
     match name.text() {
         "i32" => KTy::I32,
         _ => {
-            if let Some((_, def_ty_slot)) = gx.symbols.get(&name.name_id) {
-                assert!(def_ty_slot.borrow().is_symbol());
-                return def_ty_slot.borrow().clone();
+            if let Some(def) = gx.symbols.get(&name.name_id) {
+                assert!(def.ty.borrow().is_symbol());
+                return def.ty.borrow().clone();
             }
 
             // FIXME: location info
@@ -235,21 +234,14 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
 }
 
 fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
-    let id_slot;
-    let def_ty_slot;
-
-    match gx.symbols.get(&name.name_id) {
-        Some(slots) => {
-            id_slot = slots.0.clone();
-            def_ty_slot = slots.1.clone();
-        }
+    let def = match gx.symbols.get(&name.name_id) {
+        Some(def) => def.clone(),
         None => {
-            id_slot = Rc::default();
-            def_ty_slot = Rc::new(RefCell::new(ty.clone()));
-            gx.symbols
-                .insert(name.name_id, (id_slot.clone(), def_ty_slot.clone()));
+            let def = Rc::new(KVarDef::new_with_ty(ty.clone()));
+            gx.symbols.insert(name.name_id, def.clone());
+            def
         }
-    }
+    };
 
     let (text, location) = name.decompose();
 
@@ -257,8 +249,7 @@ fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
         text,
         ty,
         location,
-        id_slot,
-        def_ty_slot,
+        def,
     }
 }
 

@@ -150,18 +150,32 @@ impl fmt::Debug for KMetaTyDef {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub(crate) struct KVarDef {
+    pub(crate) id_opt: RefCell<Option<usize>>,
+    pub(crate) ty: RefCell<KTy>,
+}
+
+impl KVarDef {
+    pub(crate) fn new_with_ty(ty: KTy) -> Self {
+        KVarDef {
+            ty: RefCell::new(ty),
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub(crate) struct KSymbol {
     pub(crate) text: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
-    pub(crate) id_slot: Rc<RefCell<Option<usize>>>,
-    pub(crate) def_ty_slot: Rc<RefCell<KTy>>,
+    pub(crate) def: Rc<KVarDef>,
 }
 
 impl KSymbol {
     fn init_id(&self, mut get_id: impl FnMut() -> usize) {
-        let mut slot = self.id_slot.borrow_mut();
+        let mut slot = self.def.id_opt.borrow_mut();
         if slot.is_none() {
             *slot = Some(get_id());
         }
@@ -170,14 +184,14 @@ impl KSymbol {
     pub(crate) fn unique_name(&self, ids: &mut IdProvider) -> String {
         self.init_id(|| ids.next());
 
-        match *self.id_slot.borrow() {
+        match *self.def.id_opt.borrow() {
             Some(id) => format!("{}_{}", self.text, id),
-            None => format!("{}<{:X?}>", self.text, self.def_ty_slot.as_ptr()),
+            None => format!("{}<{:X?}>", self.text, self.def.as_ref() as *const _),
         }
     }
 
     pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
-        &self.def_ty_slot
+        &self.def.ty
     }
 }
 
@@ -187,7 +201,7 @@ impl fmt::Debug for KSymbol {
             f,
             "{}_{:X?}: {:?}",
             self.text,
-            self.def_ty_slot.as_ptr(),
+            self.def.as_ref() as *const _,
             self.ty
         )
     }
