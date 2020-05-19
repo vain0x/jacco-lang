@@ -22,7 +22,8 @@ pub(crate) enum XCommand {
 
 #[derive(Clone)]
 pub(crate) enum KTy {
-    Unresolved(Option<KMetaTyDef>),
+    Unresolved,
+    Meta(KMetaTyDef),
     Never,
     Unit,
     I32,
@@ -54,7 +55,7 @@ impl KTy {
     pub(crate) fn resolve(mut self) -> KTy {
         loop {
             match self {
-                KTy::Unresolved(Some(ref meta)) if meta.is_bound() => {
+                KTy::Meta(ref meta) if meta.is_bound() => {
                     self = meta.content_ty().unwrap();
                     continue;
                 }
@@ -66,15 +67,15 @@ impl KTy {
 
 impl Default for KTy {
     fn default() -> Self {
-        KTy::Unresolved(None)
+        KTy::Unresolved
     }
 }
 
 impl fmt::Debug for KTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            KTy::Unresolved(None) => write!(f, "???"),
-            KTy::Unresolved(Some(meta)) => fmt::Debug::fmt(meta, f),
+            KTy::Unresolved => write!(f, "???"),
+            KTy::Meta(meta) => fmt::Debug::fmt(meta, f),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::I32 => write!(f, "i32"),

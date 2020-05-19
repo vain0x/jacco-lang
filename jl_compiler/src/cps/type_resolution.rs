@@ -8,9 +8,9 @@ struct InitMetaTys;
 
 impl InitMetaTys {
     fn on_symbol_def(&mut self, symbol: &mut KSymbol) {
-        if let KTy::Unresolved(None) = symbol.ty {
+        if let KTy::Unresolved = symbol.ty {
             let meta = KMetaTyDef::new(symbol.location.clone());
-            symbol.ty = KTy::Unresolved(Some(meta));
+            symbol.ty = KTy::Meta(meta);
         }
 
         let mut def_ty_slot = symbol.def_ty_slot().borrow_mut();
@@ -80,11 +80,11 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
-        (KTy::Unresolved(None), other) | (other, KTy::Unresolved(None)) => {
+        (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
             unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
         }
-        (KTy::Unresolved(Some(left)), KTy::Unresolved(Some(right))) if left.ptr_eq(&right) => {}
-        (KTy::Unresolved(Some(mut meta)), other) | (other, KTy::Unresolved(Some(mut meta))) => {
+        (KTy::Meta(left), KTy::Meta(right)) if left.ptr_eq(&right) => {}
+        (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {
             if meta.is_bound() {
                 unify(meta.content_ty().unwrap(), other, location, tx);
             } else {

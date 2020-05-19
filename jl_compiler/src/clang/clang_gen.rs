@@ -14,8 +14,8 @@ struct Cx {
 
 fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
     match ty {
-        KTy::Unresolved(None) => CTy::Other("/* unresolved */ void"),
-        KTy::Unresolved(Some(meta)) => match meta.content_ty() {
+        KTy::Unresolved => CTy::Other("/* unresolved */ void"),
+        KTy::Meta(meta) => match meta.content_ty() {
             Some(ty) => gen_ty(ty, ids),
             None => CTy::Other("/* free */ void"),
         },
