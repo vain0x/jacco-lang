@@ -85,11 +85,14 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
         }
         (KTy::Meta(left), KTy::Meta(right)) if Rc::ptr_eq(&left, &right) => {}
         (KTy::Meta(meta), other) | (other, KTy::Meta(meta)) => {
-            if meta.is_bound() {
-                unify(meta.content_ty().unwrap(), other, location, tx);
-            } else {
-                // FIXME: occurrence check
-                meta.bind(other);
+            match meta.try_resolve() {
+                Some(ty) => {
+                    unify(ty, other, location, tx);
+                }
+                None => {
+                    // FIXME: occurrence check
+                    meta.bind(other);
+                }
             }
         }
 

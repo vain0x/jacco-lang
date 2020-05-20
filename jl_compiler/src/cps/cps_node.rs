@@ -49,12 +49,27 @@ impl KTy {
     }
 
     pub(crate) fn resolve(mut self) -> KTy {
+        fn detect_infinite_loop(hint: &str) {
+            let tick = {
+                static mut CELL: usize = 0;
+                unsafe {
+                    CELL += 1;
+                    CELL
+                }
+            };
+            assert!(tick < 10_000_000, "Infinite loop? ({})", hint);
+        }
+
         loop {
             match self {
-                KTy::Meta(ref meta) if meta.is_bound() => {
-                    self = meta.content_ty().unwrap();
-                    continue;
-                }
+                KTy::Meta(ref meta) => match meta.try_resolve() {
+                    None => return self,
+                    Some(ty) => {
+                        detect_infinite_loop("resolve meta ty");
+                        self = ty;
+                        continue;
+                    }
+                },
                 ty => return ty,
             }
         }
@@ -119,12 +134,10 @@ impl KMetaTyData {
         }
     }
 
-    pub(crate) fn content_ty(&self) -> Option<KTy> {
-        self.ty_opt.borrow().clone()
-    }
-
-    pub(crate) fn is_bound(&self) -> bool {
-        self.ty_opt.borrow().is_some()
+    pub(crate) fn try_resolve(&self) -> Option<KTy> {
+        let slot = self.ty_opt.borrow();
+        let ty = slot.as_ref()?;
+        Some(ty.clone())
     }
 
     pub(crate) fn bind(&self, ty: KTy) {
