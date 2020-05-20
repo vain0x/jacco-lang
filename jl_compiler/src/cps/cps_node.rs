@@ -107,37 +107,37 @@ pub(crate) type KMetaTy = Rc<KMetaTyData>;
 
 #[derive(Clone)]
 pub(crate) struct KMetaTyData {
-    slot: RefCell<Option<KTy>>,
+    ty_opt: RefCell<Option<KTy>>,
     location: Location,
 }
 
 impl KMetaTyData {
     pub(crate) fn new(location: Location) -> Self {
         KMetaTyData {
-            slot: RefCell::default(),
+            ty_opt: RefCell::default(),
             location,
         }
     }
 
     pub(crate) fn content_ty(&self) -> Option<KTy> {
-        self.slot.borrow().clone()
+        self.ty_opt.borrow().clone()
     }
 
     pub(crate) fn is_bound(&self) -> bool {
-        self.slot.borrow().is_some()
+        self.ty_opt.borrow().is_some()
     }
 
     pub(crate) fn bind(&self, ty: KTy) {
         let ty = ty.resolve();
-        let old = std::mem::replace(&mut *self.slot.borrow_mut(), Some(ty));
+        let old = std::mem::replace(&mut *self.ty_opt.borrow_mut(), Some(ty));
         debug_assert!(old.is_none());
     }
 }
 
 impl fmt::Debug for KMetaTyData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let p = self.slot.as_ptr() as usize;
-        match self.slot.borrow().as_ref() {
+        let p = self.ty_opt.as_ptr() as usize;
+        match self.ty_opt.borrow().as_ref() {
             None => write!(f, "?<{}>", p),
             Some(ty) => fmt::Debug::fmt(ty, f),
         }
