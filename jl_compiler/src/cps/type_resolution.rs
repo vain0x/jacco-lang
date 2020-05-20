@@ -9,7 +9,7 @@ struct InitMetaTys;
 impl InitMetaTys {
     fn on_symbol_def(&mut self, symbol: &mut KSymbol) {
         if let KTy::Unresolved = symbol.ty {
-            let meta = KMetaTyDef::new(symbol.location.clone());
+            let meta = KMetaTyData::new(symbol.location.clone());
             symbol.ty = KTy::Meta(meta);
         }
 

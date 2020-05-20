@@ -23,7 +23,7 @@ pub(crate) enum XCommand {
 #[derive(Clone)]
 pub(crate) enum KTy {
     Unresolved,
-    Meta(KMetaTyDef),
+    Meta(KMetaTyData),
     Never,
     Unit,
     I32,
@@ -104,20 +104,20 @@ impl fmt::Debug for KTy {
 }
 
 #[derive(Clone)]
-pub(crate) struct KMetaTyDef {
+pub(crate) struct KMetaTyData {
     slot: Rc<RefCell<Option<KTy>>>,
     location: Location,
 }
 
-impl KMetaTyDef {
+impl KMetaTyData {
     pub(crate) fn new(location: Location) -> Self {
-        KMetaTyDef {
+        KMetaTyData {
             slot: Rc::default(),
             location,
         }
     }
 
-    pub(crate) fn ptr_eq(&self, other: &KMetaTyDef) -> bool {
+    pub(crate) fn ptr_eq(&self, other: &KMetaTyData) -> bool {
         Rc::ptr_eq(&self.slot, &other.slot)
     }
 
@@ -136,7 +136,7 @@ impl KMetaTyDef {
     }
 }
 
-impl fmt::Debug for KMetaTyDef {
+impl fmt::Debug for KMetaTyData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let p = self.slot.as_ptr() as usize;
         match self.slot.borrow().as_ref() {
