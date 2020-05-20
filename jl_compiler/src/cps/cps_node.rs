@@ -35,7 +35,7 @@ pub(crate) enum KTy {
         result_ty: Box<KTy>,
     },
     Symbol {
-        def: Rc<RefCell<KStructDef>>,
+        def: Rc<RefCell<KStructData>>,
     },
 }
 
@@ -296,7 +296,7 @@ pub(crate) struct KExternFn {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KStructDef {
+pub(crate) struct KStructData {
     pub(crate) name: KSymbol,
     pub(crate) fields: Vec<KFieldDef>,
 }
@@ -308,7 +308,7 @@ pub(crate) struct KFieldDef {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStruct {
-    pub(crate) def: Rc<RefCell<KStructDef>>,
+    pub(crate) def: Rc<RefCell<KStructData>>,
 }
 
 #[derive(Clone, Debug)]

@@ -21,7 +21,7 @@ struct LoopConstruction {
 #[derive(Default)]
 struct Gx {
     symbols: HashMap<usize, Rc<KVarDef>>,
-    struct_map: HashMap<usize, Rc<RefCell<KStructDef>>>,
+    struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
@@ -711,7 +711,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => vec![],
             };
 
-            let def = Rc::new(RefCell::new(KStructDef { name, fields }));
+            let def = Rc::new(RefCell::new(KStructData { name, fields }));
             gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }
