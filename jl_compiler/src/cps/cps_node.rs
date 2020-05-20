@@ -23,7 +23,7 @@ pub(crate) enum XCommand {
 #[derive(Clone)]
 pub(crate) enum KTy {
     Unresolved,
-    Meta(KMetaTyData),
+    Meta(KMetaTy),
     Never,
     Unit,
     I32,
@@ -103,22 +103,20 @@ impl fmt::Debug for KTy {
     }
 }
 
+pub(crate) type KMetaTy = Rc<KMetaTyData>;
+
 #[derive(Clone)]
 pub(crate) struct KMetaTyData {
-    slot: Rc<RefCell<Option<KTy>>>,
+    slot: RefCell<Option<KTy>>,
     location: Location,
 }
 
 impl KMetaTyData {
     pub(crate) fn new(location: Location) -> Self {
         KMetaTyData {
-            slot: Rc::default(),
+            slot: RefCell::default(),
             location,
         }
-    }
-
-    pub(crate) fn ptr_eq(&self, other: &KMetaTyData) -> bool {
-        Rc::ptr_eq(&self.slot, &other.slot)
     }
 
     pub(crate) fn content_ty(&self) -> Option<KTy> {
@@ -129,7 +127,7 @@ impl KMetaTyData {
         self.slot.borrow().is_some()
     }
 
-    pub(crate) fn bind(&mut self, ty: KTy) {
+    pub(crate) fn bind(&self, ty: KTy) {
         let ty = ty.resolve();
         let old = std::mem::replace(&mut *self.slot.borrow_mut(), Some(ty));
         debug_assert!(old.is_none());

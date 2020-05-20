@@ -9,7 +9,7 @@ struct InitMetaTys;
 impl InitMetaTys {
     fn on_symbol_def(&mut self, symbol: &mut KSymbol) {
         if let KTy::Unresolved = symbol.ty {
-            let meta = KMetaTyData::new(symbol.location.clone());
+            let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
             symbol.ty = KTy::Meta(meta);
         }
 
@@ -83,8 +83,8 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
         (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
             unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
         }
-        (KTy::Meta(left), KTy::Meta(right)) if left.ptr_eq(&right) => {}
-        (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {
+        (KTy::Meta(left), KTy::Meta(right)) if Rc::ptr_eq(&left, &right) => {}
+        (KTy::Meta(meta), other) | (other, KTy::Meta(meta)) => {
             if meta.is_bound() {
                 unify(meta.content_ty().unwrap(), other, location, tx);
             } else {
