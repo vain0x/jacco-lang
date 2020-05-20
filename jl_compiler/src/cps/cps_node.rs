@@ -298,11 +298,11 @@ pub(crate) struct KExternFn {
 #[derive(Clone, Debug)]
 pub(crate) struct KStructData {
     pub(crate) name: KSymbol,
-    pub(crate) fields: Vec<KFieldDef>,
+    pub(crate) fields: Vec<KFieldData>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KFieldDef {
+pub(crate) struct KFieldData {
     pub(crate) name: KSymbol,
 }
 

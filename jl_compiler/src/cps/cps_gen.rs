@@ -705,7 +705,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     .into_iter()
                     .map(|field| {
                         let name = gen_name(field.name, gx);
-                        KFieldDef { name }
+                        KFieldData { name }
                     })
                     .collect(),
                 None => vec![],
