@@ -148,7 +148,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::Field { .. } => KTy::new_unresolved(),
+        KTerm::Field { .. } => unreachable!(),
     }
 }
 

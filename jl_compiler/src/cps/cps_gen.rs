@@ -53,7 +53,7 @@ impl Gx {
 
         KSymbol {
             text,
-            ty: KTy::new_unresolved(),
+            ty: KTy::default(),
             location,
             def: Rc::default(),
         }
@@ -219,7 +219,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
                 Location::default(),
                 format!("undefined type name {:?}", name.text()),
             );
-            KTy::new_unresolved()
+            KTy::Unresolved
         }
     }
 }
@@ -254,7 +254,7 @@ fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {
-    gen_name_with_ty(name, KTy::new_unresolved(), gx)
+    gen_name_with_ty(name, KTy::default(), gx)
 }
 
 fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {

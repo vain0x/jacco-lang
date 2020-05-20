@@ -40,10 +40,6 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
-    pub(crate) fn new_unresolved() -> KTy {
-        KTy::default()
-    }
-
     pub(crate) fn is_symbol(&self) -> bool {
         matches!(self, KTy::Symbol {.. })
     }
