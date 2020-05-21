@@ -20,7 +20,7 @@ struct LoopConstruction {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
-    symbols: HashMap<usize, Rc<KVarDef>>,
+    symbols: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
     current: Vec<XCommand>,
     parent_loop: Option<LoopConstruction>,
@@ -36,7 +36,7 @@ impl Gx {
         Self {
             symbols: vec![(
                 0,
-                Rc::new(KVarDef {
+                Rc::new(KVarData {
                     id_opt: RefCell::new(Some(0)),
                     ty: RefCell::new(KTy::Never),
                 }),
@@ -237,7 +237,7 @@ fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
     let def = match gx.symbols.get(&name.name_id) {
         Some(def) => def.clone(),
         None => {
-            let def = Rc::new(KVarDef::new_with_ty(ty.clone()));
+            let def = Rc::new(KVarData::new_with_ty(ty.clone()));
             gx.symbols.insert(name.name_id, def.clone());
             def
         }

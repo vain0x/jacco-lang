@@ -158,14 +158,14 @@ impl fmt::Debug for KMetaTyData {
 }
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KVarDef {
+pub(crate) struct KVarData {
     pub(crate) id_opt: RefCell<Option<usize>>,
     pub(crate) ty: RefCell<KTy>,
 }
 
-impl KVarDef {
+impl KVarData {
     pub(crate) fn new_with_ty(ty: KTy) -> Self {
-        KVarDef {
+        KVarData {
             ty: RefCell::new(ty),
             ..Default::default()
         }
@@ -177,7 +177,7 @@ pub(crate) struct KSymbol {
     pub(crate) text: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
-    pub(crate) def: Rc<KVarDef>,
+    pub(crate) def: Rc<KVarData>,
 }
 
 impl KSymbol {
