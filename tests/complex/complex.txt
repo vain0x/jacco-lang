@@ -1,64 +1,64 @@
 int main() {
+    int if_result_1;
     int if_result_2;
+    int if_result_3;
     int if_result_4;
-    int if_result_6;
-    int if_result_8;
     if (1) {
-        if_result_2 = (void)0;
+        if_result_1 = (void)0;
         goto next_1;
     } else {
-        if_result_2 = (void)0;
+        if_result_1 = (void)0;
         goto next_1;
     }
     //
 next_1:;
     if (2) {
-        if_result_4 = (void)0;
-        goto next_3;
+        if_result_2 = (void)0;
+        goto next_2;
     } else {
-        if_result_4 = (void)0;
-        goto next_3;
+        if_result_2 = (void)0;
+        goto next_2;
     }
     //
-next_3:;
+next_2:;
     if (3) {
-        int body3_9 = 30;
-        if_result_8 = (void)0;
-        goto next_7;
+        int body3_1 = 30;
+        if_result_4 = (void)0;
+        goto next_4;
     } else {
         if (4) {
-            int alt31_10 = 31;
-            if_result_6 = (void)0;
-            goto next_5;
+            int alt31_1 = 31;
+            if_result_3 = (void)0;
+            goto next_3;
         } else {
-            int alt32_11 = 32;
-            if_result_6 = (void)0;
-            goto next_5;
+            int alt32_1 = 32;
+            if_result_3 = (void)0;
+            goto next_3;
         }
     }
     //
-next_5:;
-    if_result_8 = if_result_6;
-    goto next_7;
+next_3:;
+    if_result_4 = if_result_3;
+    goto next_4;
     //
-next_7:;
-    void unit_12 = (void)0;
-    int group_expr_13 = 1;
-    int a_14 = 1;
-    int* ref_15 = &a_14;
-    int* p_16 = ref_15;
-    int* ref_17 = &a_14;
-    int** ref_18 = &ref_17;
-    int** pp1_19 = ref_18;
-    int** ref_20 = &p_16;
-    int** pp2_21 = ref_20;
-    int deref_22 = *p_16;
-    int p1d_23 = deref_22;
-    int* deref_24 = *pp1_19;
-    int deref_25 = *deref_24;
-    int pp1dd_26 = deref_25;
-    int* deref_27 = *pp2_21;
-    int deref_28 = *deref_27;
-    int pp2dd_29 = deref_28;
+next_4:;
+    void unit_1 = (void)0;
+    int group_expr_1 = 1;
+    int a_1 = 1;
+    int* ref_1 = &a_1;
+    int* p_1 = ref_1;
+    int* ref_2 = &a_1;
+    int** ref_3 = &ref_2;
+    int** pp1_1 = ref_3;
+    int** ref_4 = &p_1;
+    int** pp2_1 = ref_4;
+    int deref_1 = *p_1;
+    int p1d_1 = deref_1;
+    int* deref_2 = *pp1_1;
+    int deref_3 = *deref_2;
+    int pp1dd_1 = deref_3;
+    int* deref_4 = *pp2_1;
+    int deref_5 = *deref_4;
+    int pp2dd_1 = deref_5;
     return 0;
 }

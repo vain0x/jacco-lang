@@ -7,19 +7,42 @@ use std::mem::take;
 /// C code generation context.
 #[derive(Default)]
 struct Cx {
-    ids: IdProvider,
+    name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
     decls: Vec<CStmt>,
 }
 
-fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
+impl Cx {
+    fn ident_id(&mut self, name: &str) -> usize {
+        let ids = match self.name_map.get_mut(name) {
+            Some(ids) => ids,
+            None => {
+                self.name_map
+                    .insert(name.to_string(), IdProvider::default());
+                self.name_map.get_mut(name).unwrap()
+            }
+        };
+
+        ids.next()
+    }
+}
+
+fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
+    let id_opt = symbol.def.id_opt.borrow().as_ref().cloned();
+    let id = id_opt.unwrap_or_else(|| cx.ident_id(&symbol.text));
+    *symbol.def.id_opt.borrow_mut() = Some(id);
+
+    format!("{}_{:x}", symbol.text, id)
+}
+
+fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
     match ty {
         KTy::Unresolved => {
             error!("Unexpected unresolved type {:?}", ty);
             CTy::Other("/* unresolved */ void")
         }
         KTy::Meta(meta) => match meta.try_resolve() {
-            Some(ty) => gen_ty(ty, ids),
+            Some(ty) => gen_ty(ty, cx),
             None => {
                 error!("Unexpected free type {:?}", meta);
                 CTy::Other("/* free */ void")
@@ -36,16 +59,13 @@ fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
         }
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
-        KTy::Ptr { ty } => gen_ty(*ty, ids).into_ptr(),
-        KTy::Symbol { def } => CTy::Struct(def.borrow().name.unique_name(ids)),
+        KTy::Ptr { ty } => gen_ty(*ty, cx).into_ptr(),
+        KTy::Symbol { def } => CTy::Struct(unique_name(&def.borrow().name, cx)),
     }
 }
 
 fn gen_param(param: KSymbol, cx: &mut Cx) -> (String, CTy) {
-    (
-        param.unique_name(&mut cx.ids),
-        gen_ty(param.ty, &mut cx.ids),
-    )
+    (unique_name(&param, cx), gen_ty(param.ty, cx))
 }
 
 fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
@@ -55,7 +75,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             CExpr::IntLit("(void)0".to_string())
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
-        KTerm::Name(symbol) => CExpr::Name(symbol.unique_name(&mut cx.ids)),
+        KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::Field { text, location } => {
             error!("can't gen field term to c {} ({:?})", text, location);
             CExpr::IntLit("0".to_string())
@@ -137,7 +157,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 stmts.push(CStmt::Return(None));
             }
             ([KTerm::Name(label), args @ ..], []) => {
-                let name = take(label).unique_name(&mut cx.ids);
+                let name = unique_name(&label, cx);
                 let params = cx
                     .labels
                     .get(&name)
@@ -213,7 +233,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 });
 
                 for (arg, field) in args.iter_mut().zip(&struct_def.borrow().fields) {
-                    let field_name = field.name.unique_name(&mut cx.ids);
+                    let field_name = unique_name(&field.name, cx);
 
                     let left = CExpr::Name(name.clone()).into_dot(field_name);
                     let right = gen_term(take(arg), cx);
@@ -315,7 +335,7 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
     for KStruct { def } in root.structs {
-        let name = def.borrow().name.unique_name(&mut cx.ids);
+        let name = unique_name(&def.borrow().name, cx);
         let fields = def
             .borrow()
             .fields
@@ -335,10 +355,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .into_iter()
             .map(|param| gen_param(param, cx))
             .collect();
+        let result_ty = gen_ty(result, cx);
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.text,
             params,
-            result_ty: gen_ty(result, &mut cx.ids),
+            result_ty,
         });
     }
 
@@ -351,10 +372,10 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             cx.labels.clear();
             for KFn { name, params, .. } in &labels {
-                let fn_name = name.unique_name(&mut cx.ids);
+                let fn_name = unique_name(&name, cx);
                 let params = params
                     .into_iter()
-                    .map(|param| param.unique_name(&mut cx.ids))
+                    .map(|param| unique_name(&param, cx))
                     .collect::<Vec<_>>();
                 cx.labels.insert(fn_name, params.clone());
 
@@ -371,7 +392,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             for KFn { name, body, .. } in labels {
                 stmts.push(CStmt::Label {
-                    label: name.unique_name(&mut cx.ids),
+                    label: unique_name(&name, cx),
                 });
                 gen_node(body, &mut stmts, cx);
             }

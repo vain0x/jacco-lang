@@ -1,16 +1,16 @@
 int main() {
-    int while_result_3;
+    int while_result_1;
     goto continue__1;
     //
 continue__1:;
     if (0) {
-        int a_4 = 1;
+        int a_1 = 1;
         goto continue__1;
     } else {
-        while_result_3 = (void)0;
-        goto next_2;
+        while_result_1 = (void)0;
+        goto next_1;
     }
     //
-next_2:;
+next_1:;
     return 0;
 }

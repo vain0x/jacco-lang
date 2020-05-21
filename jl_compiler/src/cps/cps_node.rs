@@ -181,22 +181,6 @@ pub(crate) struct KSymbol {
 }
 
 impl KSymbol {
-    fn init_id(&self, mut get_id: impl FnMut() -> usize) {
-        let mut slot = self.def.id_opt.borrow_mut();
-        if slot.is_none() {
-            *slot = Some(get_id());
-        }
-    }
-
-    pub(crate) fn unique_name(&self, ids: &mut IdProvider) -> String {
-        self.init_id(|| ids.next());
-
-        match *self.def.id_opt.borrow() {
-            Some(id) => format!("{}_{}", self.text, id),
-            None => format!("{}<{:X?}>", self.text, self.def.as_ref() as *const _),
-        }
-    }
-
     pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
         &self.def.ty
     }

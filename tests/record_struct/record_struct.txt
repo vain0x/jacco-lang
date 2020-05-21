@@ -1,33 +1,33 @@
 struct A_1 {
-    int foo_2;
-    void bar_3;
+    int foo_1;
+    void bar_1;
 };
 
-struct Deep_4 {
-    struct A_1 inner_5;
+struct Deep_1 {
+    struct A_1 inner_1;
 };
 
 int main() {
-    struct A_1 A_6;
-    A_6.foo_2 = 1;
-    A_6.bar_3 = (void)0;
-    struct A_1 a_7 = A_6;
-    struct A_1* ref_8 = &a_7;
-    int* foo_ptr_9 = &ref_8->foo;
-    int foo_10 = *foo_ptr_9;
-    int a_foo_val_11 = foo_10;
-    struct A_1* ref_12 = &a_7;
-    int* foo_ptr_13 = &ref_12->foo;
-    int* a_foo_ptr_14 = foo_ptr_13;
-    struct A_1* ref_15 = &a_7;
-    int* foo_ptr_16 = &ref_15->foo;
-    *foo_ptr_16 = 2;
-    struct Deep_4 Deep_17;
-    Deep_17.inner_5 = a_7;
-    struct Deep_4 deep_18 = Deep_17;
-    struct Deep_4* ref_19 = &deep_18;
-    struct A_1* inner_ptr_20 = &ref_19->inner;
-    int* foo_ptr_21 = &inner_ptr_20->foo;
-    *foo_ptr_21 = 3;
+    struct A_1 A_2;
+    A_2.foo_1 = 1;
+    A_2.bar_1 = (void)0;
+    struct A_1 a_1 = A_2;
+    struct A_1* ref_1 = &a_1;
+    int* foo_ptr_1 = &ref_1->foo;
+    int foo_2 = *foo_ptr_1;
+    int a_foo_val_1 = foo_2;
+    struct A_1* ref_2 = &a_1;
+    int* foo_ptr_2 = &ref_2->foo;
+    int* a_foo_ptr_1 = foo_ptr_2;
+    struct A_1* ref_3 = &a_1;
+    int* foo_ptr_3 = &ref_3->foo;
+    *foo_ptr_3 = 2;
+    struct Deep_1 Deep_2;
+    Deep_2.inner_1 = a_1;
+    struct Deep_1 deep_1 = Deep_2;
+    struct Deep_1* ref_4 = &deep_1;
+    struct A_1* inner_ptr_1 = &ref_4->inner;
+    int* foo_ptr_4 = &inner_ptr_1->foo;
+    *foo_ptr_4 = 3;
     return 0;
 }

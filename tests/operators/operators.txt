@@ -1,61 +1,61 @@
 int main() {
+    int if_result_1;
     int if_result_2;
-    int if_result_4;
-    int add_5 = 1 + 2;
-    int add_6 = add_5;
-    int sub_7 = 1 - 2;
-    int sub_8 = sub_7;
-    int mul_9 = 1 * 2;
-    int mul_10 = mul_9;
-    int div_11 = 1 / 2;
-    int div_12 = div_11;
-    int mod_13 = 1 % 2;
-    int modulo_14 = mod_13;
-    int eq_15 = 1 == 2;
-    int eq_16 = eq_15;
-    int ne_17 = 1 != 2;
-    int ne_18 = ne_17;
-    int lt_19 = 1 < 2;
-    int lt_20 = lt_19;
-    int le_21 = 1 <= 2;
-    int le_22 = le_21;
-    int gt_23 = 1 > 2;
-    int gt_24 = gt_23;
-    int ge_25 = 1 >= 2;
-    int ge_26 = ge_25;
-    int bitand_27 = 1 & 2;
-    int bit_and_28 = bitand_27;
-    int bitor_29 = 1 | 2;
-    int bit_or_30 = bitor_29;
-    int bitxor_31 = 1 ^ 2;
-    int bit_xor_32 = bitxor_31;
-    int leftshift_33 = 1 << 2;
-    int left_shift_34 = leftshift_33;
-    int rightshift_35 = 1 >> 2;
-    int right_shift_36 = rightshift_35;
+    int add_1 = 1 + 2;
+    int add_2 = add_1;
+    int sub_1 = 1 - 2;
+    int sub_2 = sub_1;
+    int mul_1 = 1 * 2;
+    int mul_2 = mul_1;
+    int div_1 = 1 / 2;
+    int div_2 = div_1;
+    int mod_1 = 1 % 2;
+    int modulo_1 = mod_1;
+    int eq_1 = 1 == 2;
+    int eq_2 = eq_1;
+    int ne_1 = 1 != 2;
+    int ne_2 = ne_1;
+    int lt_1 = 1 < 2;
+    int lt_2 = lt_1;
+    int le_1 = 1 <= 2;
+    int le_2 = le_1;
+    int gt_1 = 1 > 2;
+    int gt_2 = gt_1;
+    int ge_1 = 1 >= 2;
+    int ge_2 = ge_1;
+    int bitand_1 = 1 & 2;
+    int bit_and_1 = bitand_1;
+    int bitor_1 = 1 | 2;
+    int bit_or_1 = bitor_1;
+    int bitxor_1 = 1 ^ 2;
+    int bit_xor_1 = bitxor_1;
+    int leftshift_1 = 1 << 2;
+    int left_shift_1 = leftshift_1;
+    int rightshift_1 = 1 >> 2;
+    int right_shift_1 = rightshift_1;
     if (2) {
-        if_result_2 = 3;
+        if_result_1 = 3;
         goto next_1;
     } else {
-        if_result_2 = 0;
+        if_result_1 = 0;
         goto next_1;
     }
     //
 next_1:;
-    int log_and_37 = if_result_2;
+    int log_and_1 = if_result_1;
     if (2) {
-        if_result_4 = 1;
-        goto next_3;
+        if_result_2 = 1;
+        goto next_2;
     } else {
-        if_result_4 = 3;
-        goto next_3;
+        if_result_2 = 3;
+        goto next_2;
     }
     //
-next_3:;
-    int log_or_38 = if_result_4;
-    int minus_39 = -2;
-    int minus_40 = minus_39;
-    int negate_41 = !2;
-    int negate_42 = negate_41;
+next_2:;
+    int log_or_1 = if_result_2;
+    int minus_1 = -2;
+    int minus_2 = minus_1;
+    int negate_1 = !2;
+    int negate_2 = negate_1;
     return 0;
 }

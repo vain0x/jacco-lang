@@ -1,10 +1,10 @@
 int main() {
-    int if_result_2;
+    int if_result_1;
     if (1) {
-        if_result_2 = (void)0;
+        if_result_1 = (void)0;
         goto next_1;
     } else {
-        if_result_2 = (void)0;
+        if_result_1 = (void)0;
         goto next_1;
     }
     //
