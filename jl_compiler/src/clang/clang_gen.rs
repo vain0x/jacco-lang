@@ -2,13 +2,14 @@
 
 use super::*;
 use std::collections::HashMap;
-use std::mem::take;
+use std::mem::{replace, take};
 
 /// C code generation context.
 #[derive(Default)]
 struct Cx {
     name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
+    stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
 }
 
@@ -24,6 +25,14 @@ impl Cx {
         };
 
         ids.next()
+    }
+
+    fn enter_block(&mut self, gen_fn: impl FnOnce(&mut Self)) -> Vec<CStmt> {
+        let stmts = take(&mut self.stmts);
+
+        gen_fn(self);
+
+        replace(&mut self.stmts, stmts)
     }
 }
 
@@ -88,7 +97,6 @@ fn gen_unary_op(
     args: &mut Vec<KTerm>,
     results: &mut Vec<KSymbol>,
     conts: &mut Vec<KNode>,
-    stmts: &mut Vec<CStmt>,
     cx: &mut Cx,
 ) {
     match (
@@ -99,12 +107,12 @@ fn gen_unary_op(
         ([arg], [result], [cont]) => {
             let arg = gen_term(take(arg), cx);
             let (name, ty) = gen_param(take(result), cx);
-            stmts.push(CStmt::VarDecl {
+            cx.stmts.push(CStmt::VarDecl {
                 name,
                 ty,
                 init_opt: Some(arg.into_unary_op(op)),
             });
-            gen_node(take(cont), stmts, cx);
+            gen_node(take(cont), cx);
         }
         _ => unimplemented!(),
     }
@@ -115,7 +123,6 @@ fn gen_binary_op(
     args: &mut Vec<KTerm>,
     results: &mut Vec<KSymbol>,
     conts: &mut Vec<KNode>,
-    stmts: &mut Vec<CStmt>,
     cx: &mut Cx,
 ) {
     match (
@@ -127,18 +134,18 @@ fn gen_binary_op(
             let left = gen_term(take(left), cx);
             let right = gen_term(take(right), cx);
             let (name, ty) = gen_param(take(result), cx);
-            stmts.push(CStmt::VarDecl {
+            cx.stmts.push(CStmt::VarDecl {
                 name,
                 ty,
                 init_opt: Some(left.into_binary_op(op, right)),
             });
-            gen_node(take(cont), stmts, cx);
+            gen_node(take(cont), cx);
         }
         _ => unimplemented!(),
     }
 }
 
-fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
+fn gen_node(mut node: KNode, cx: &mut Cx) {
     let KNode {
         prim,
         tys: _,
@@ -151,10 +158,10 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
         KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
             ([KTerm::Name(label), arg], []) if label.text == "return" => {
                 let arg = gen_term(take(arg), cx);
-                stmts.push(CStmt::Return(Some(arg)));
+                cx.stmts.push(CStmt::Return(Some(arg)));
             }
             ([KTerm::Name(label)], []) if label.text == "return" => {
-                stmts.push(CStmt::Return(None));
+                cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Name(label), args @ ..], []) => {
                 let name = unique_name(&label, cx);
@@ -169,14 +176,14 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 for (param, arg) in params.into_iter().zip(args) {
                     let arg = gen_term(take(arg), cx);
 
-                    stmts.push(
+                    cx.stmts.push(
                         CExpr::Name(param)
                             .into_binary_op(CBinaryOp::Assign, arg)
                             .into_stmt(),
                     );
                 }
 
-                stmts.push(CStmt::Goto { label: name });
+                cx.stmts.push(CStmt::Goto { label: name });
             }
             _ => unimplemented!(),
         },
@@ -195,9 +202,9 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                     init_opt: Some(call_expr),
                 };
 
-                stmts.push(let_stmt);
+                cx.stmts.push(let_stmt);
 
-                gen_node(take(cont), stmts, cx);
+                gen_node(take(cont), cx);
             }
             _ => unimplemented!(),
         },
@@ -209,12 +216,12 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ([init], [result], [cont]) => {
                 let init = gen_term(take(init), cx);
                 let (name, ty) = gen_param(take(result), cx);
-                stmts.push(CStmt::VarDecl {
+                cx.stmts.push(CStmt::VarDecl {
                     name,
                     ty,
                     init_opt: Some(init),
                 });
-                gen_node(take(cont), stmts, cx);
+                gen_node(take(cont), cx);
             }
             _ => unimplemented!(),
         },
@@ -226,7 +233,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 };
 
                 let (name, ty) = gen_param(take(result), cx);
-                stmts.push(CStmt::VarDecl {
+                cx.stmts.push(CStmt::VarDecl {
                     name: name.clone(),
                     ty,
                     init_opt: None,
@@ -237,10 +244,11 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
 
                     let left = CExpr::Name(name.clone()).into_dot(field_name);
                     let right = gen_term(take(arg), cx);
-                    stmts.push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
+                    cx.stmts
+                        .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
                 }
 
-                gen_node(take(cont), stmts, cx);
+                gen_node(take(cont), cx);
             }
             _ => unimplemented!(),
         },
@@ -259,13 +267,13 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 let left = gen_term(take(left), cx);
                 let (name, ty) = gen_param(take(result), cx);
 
-                stmts.push(CStmt::VarDecl {
+                cx.stmts.push(CStmt::VarDecl {
                     name,
                     ty,
                     init_opt: Some(left.into_arrow(take(field_name)).into_ref()),
                 });
 
-                gen_node(take(cont), stmts, cx);
+                gen_node(take(cont), cx);
             }
             _ => unimplemented!(),
         },
@@ -281,30 +289,30 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
 
                 let body = Box::new(CStmt::Block(then_cont));
                 let alt = Box::new(CStmt::Block(else_cont));
-                stmts.push(CStmt::If { cond, body, alt });
+                cx.stmts.push(CStmt::If { cond, body, alt });
             }
             _ => unimplemented!(),
         },
-        KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, stmts, cx),
-        KPrim::Ref => gen_unary_op(CUnaryOp::Ref, args, results, conts, stmts, cx),
-        KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, stmts, cx),
-        KPrim::Negate => gen_unary_op(CUnaryOp::Negate, args, results, conts, stmts, cx),
-        KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, stmts, cx),
-        KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, stmts, cx),
-        KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, stmts, cx),
-        KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, stmts, cx),
-        KPrim::Mod => gen_binary_op(CBinaryOp::Mod, args, results, conts, stmts, cx),
-        KPrim::Eq => gen_binary_op(CBinaryOp::Eq, args, results, conts, stmts, cx),
-        KPrim::Ne => gen_binary_op(CBinaryOp::Ne, args, results, conts, stmts, cx),
-        KPrim::Lt => gen_binary_op(CBinaryOp::Lt, args, results, conts, stmts, cx),
-        KPrim::Le => gen_binary_op(CBinaryOp::Le, args, results, conts, stmts, cx),
-        KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, stmts, cx),
-        KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, stmts, cx),
-        KPrim::BitAnd => gen_binary_op(CBinaryOp::BitAnd, args, results, conts, stmts, cx),
-        KPrim::BitOr => gen_binary_op(CBinaryOp::BitOr, args, results, conts, stmts, cx),
-        KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, stmts, cx),
-        KPrim::LeftShift => gen_binary_op(CBinaryOp::LeftShift, args, results, conts, stmts, cx),
-        KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, stmts, cx),
+        KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, cx),
+        KPrim::Ref => gen_unary_op(CUnaryOp::Ref, args, results, conts, cx),
+        KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, cx),
+        KPrim::Negate => gen_unary_op(CUnaryOp::Negate, args, results, conts, cx),
+        KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, cx),
+        KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, cx),
+        KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, cx),
+        KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, cx),
+        KPrim::Mod => gen_binary_op(CBinaryOp::Mod, args, results, conts, cx),
+        KPrim::Eq => gen_binary_op(CBinaryOp::Eq, args, results, conts, cx),
+        KPrim::Ne => gen_binary_op(CBinaryOp::Ne, args, results, conts, cx),
+        KPrim::Lt => gen_binary_op(CBinaryOp::Lt, args, results, conts, cx),
+        KPrim::Le => gen_binary_op(CBinaryOp::Le, args, results, conts, cx),
+        KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, cx),
+        KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, cx),
+        KPrim::BitAnd => gen_binary_op(CBinaryOp::BitAnd, args, results, conts, cx),
+        KPrim::BitOr => gen_binary_op(CBinaryOp::BitOr, args, results, conts, cx),
+        KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, cx),
+        KPrim::LeftShift => gen_binary_op(CBinaryOp::LeftShift, args, results, conts, cx),
+        KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, cx),
         KPrim::Assign => match (
             args.as_mut_slice(),
             results.as_mut_slice(),
@@ -313,12 +321,12 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ([left, right], [_result], [cont]) => {
                 let left = gen_term(take(left), cx);
                 let right = gen_term(take(right), cx);
-                stmts.push(
+                cx.stmts.push(
                     left.into_unary_op(CUnaryOp::Deref)
                         .into_binary_op(CBinaryOp::Assign, right)
                         .into_stmt(),
                 );
-                gen_node(take(cont), stmts, cx);
+                gen_node(take(cont), cx);
             }
             _ => unimplemented!(),
         },
@@ -326,10 +334,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
 }
 
 fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
-    let mut stmts = vec![];
-
-    gen_node(node, &mut stmts, cx);
-
+    let stmts = cx.enter_block(|cx| gen_node(node, cx));
     CBlock { body: stmts }
 }
 
@@ -367,9 +372,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         name, body, labels, ..
     } in root.fns
     {
-        let body = {
-            let mut stmts = vec![];
-
+        let body = cx.enter_block(|cx| {
             cx.labels.clear();
             for KFn { name, params, .. } in &labels {
                 let fn_name = unique_name(&name, cx);
@@ -380,7 +383,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
                 cx.labels.insert(fn_name, params.clone());
 
                 for name in params {
-                    stmts.push(CStmt::VarDecl {
+                    cx.stmts.push(CStmt::VarDecl {
                         name,
                         ty: CTy::Int,
                         init_opt: None,
@@ -388,23 +391,20 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
                 }
             }
 
-            gen_node(body, &mut stmts, cx);
+            gen_node(body, cx);
 
             for KFn { name, body, .. } in labels {
-                stmts.push(CStmt::Label {
-                    label: unique_name(&name, cx),
-                });
-                gen_node(body, &mut stmts, cx);
+                let label = unique_name(&name, cx);
+                cx.stmts.push(CStmt::Label { label });
+                gen_node(body, cx);
             }
-
-            CBlock { body: stmts }
-        };
+        });
 
         cx.decls.push(CStmt::FnDecl {
             name: name.text,
             params: vec![],
             result_ty: CTy::Int,
-            body,
+            body: CBlock { body },
         });
     }
 }
