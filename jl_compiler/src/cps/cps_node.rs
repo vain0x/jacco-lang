@@ -51,10 +51,10 @@ impl KTy {
     pub(crate) fn resolve(mut self) -> KTy {
         fn detect_infinite_loop(hint: &str) {
             let tick = {
-                static mut CELL: usize = 0;
+                static mut TICK: usize = 0;
                 unsafe {
-                    CELL += 1;
-                    CELL
+                    TICK += 1;
+                    TICK
                 }
             };
             assert!(tick < 10_000_000, "Infinite loop? ({})", hint);
