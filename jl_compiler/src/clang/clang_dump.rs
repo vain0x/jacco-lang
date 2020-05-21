@@ -143,16 +143,14 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_stmt(alt, indent, out)
         }
         CStmt::VarDecl { name, ty, init_opt } => {
-            write_ty(ty, indent, out)?;
+            write_var_with_ty(name, ty, indent, out)?;
 
-            match init_opt {
-                Some(init) => {
-                    write!(out, " {} = ", name)?;
-                    write_expr(init, indent, out)?;
-                    write!(out, ";")
-                }
-                None => write!(out, " {};", name),
+            if let Some(init) = init_opt {
+                write!(out, " = ")?;
+                write_expr(init, indent, out)?;
             }
+
+            write!(out, ";")
         }
         CStmt::FnDecl {
             name,
