@@ -58,7 +58,8 @@ fn write_ty(ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     }
 }
 
-fn write_param(name: &str, ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+/// 変数と型を書き込む。(`int foo` や `void (*f)()` など。)
+fn write_var_with_ty(name: &str, ty: &CTy, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     write_ty(ty, indent, out)?;
     write!(out, " {}", name)
 }
@@ -193,7 +194,7 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
                 let indent = indent + 1;
                 write!(out, "\n")?;
                 write_indent(indent, out)?;
-                write_param(&name, &ty, indent, out)?;
+                write_var_with_ty(&name, &ty, indent, out)?;
                 write!(out, ";")?;
             }
 
