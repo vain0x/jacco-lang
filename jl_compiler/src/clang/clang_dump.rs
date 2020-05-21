@@ -3,34 +3,38 @@
 use super::*;
 use std::io::{self, Write};
 
-fn unary_op_to_str(op: &CUnaryOp) -> &str {
-    match op {
-        CUnaryOp::Deref => "*",
-        CUnaryOp::Ref => "&",
-        CUnaryOp::Minus => "-",
-        CUnaryOp::Negate => "!",
+impl CUnaryOp {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CUnaryOp::Deref => "*",
+            CUnaryOp::Ref => "&",
+            CUnaryOp::Minus => "-",
+            CUnaryOp::Negate => "!",
+        }
     }
 }
 
-fn binary_op_to_str(op: &CBinaryOp) -> &str {
-    match op {
-        CBinaryOp::Assign => "=",
-        CBinaryOp::Add => "+",
-        CBinaryOp::Sub => "-",
-        CBinaryOp::Mul => "*",
-        CBinaryOp::Div => "/",
-        CBinaryOp::Mod => "%",
-        CBinaryOp::BitAnd => "&",
-        CBinaryOp::BitOr => "|",
-        CBinaryOp::BitXor => "^",
-        CBinaryOp::LeftShift => "<<",
-        CBinaryOp::RightShift => ">>",
-        CBinaryOp::Eq => "==",
-        CBinaryOp::Ne => "!=",
-        CBinaryOp::Lt => "<",
-        CBinaryOp::Le => "<=",
-        CBinaryOp::Gt => ">",
-        CBinaryOp::Ge => ">=",
+impl CBinaryOp {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CBinaryOp::Assign => "=",
+            CBinaryOp::Add => "+",
+            CBinaryOp::Sub => "-",
+            CBinaryOp::Mul => "*",
+            CBinaryOp::Div => "/",
+            CBinaryOp::Mod => "%",
+            CBinaryOp::BitAnd => "&",
+            CBinaryOp::BitOr => "|",
+            CBinaryOp::BitXor => "^",
+            CBinaryOp::LeftShift => "<<",
+            CBinaryOp::RightShift => ">>",
+            CBinaryOp::Eq => "==",
+            CBinaryOp::Ne => "!=",
+            CBinaryOp::Lt => "<",
+            CBinaryOp::Le => "<=",
+            CBinaryOp::Gt => ">",
+            CBinaryOp::Ge => ">=",
+        }
     }
 }
 
@@ -87,12 +91,12 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, ")")
         }
         CExpr::UnaryOp { op, arg } => {
-            write!(out, "{}", unary_op_to_str(op))?;
+            write!(out, "{}", op.as_str())?;
             write_expr(arg, indent, out)
         }
         CExpr::BinaryOp { op, left, right } => {
             write_expr(left, indent, out)?;
-            write!(out, " {} ", binary_op_to_str(op))?;
+            write!(out, " {} ", op.as_str())?;
             write_expr(right, indent, out)
         }
     }
