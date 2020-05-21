@@ -64,6 +64,20 @@ fn write_var_with_ty(name: &str, ty: &CTy, indent: usize, out: &mut Vec<u8>) -> 
     write!(out, " {}", name)
 }
 
+fn write_param_list(params: &[(String, CTy)], indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+    write!(out, "(")?;
+
+    for (i, (name, ty)) in params.iter().enumerate() {
+        if i != 0 {
+            write!(out, ", ")?;
+        }
+
+        write_var_with_ty(name, ty, indent, out)?;
+    }
+
+    write!(out, ")")
+}
+
 fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     match expr {
         CExpr::IntLit(value) => write!(out, "{}", value),
@@ -147,18 +161,9 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             body,
         } => {
             write_ty(result_ty, indent, out)?;
-            write!(out, " {}(", name)?;
-
-            for (i, (param, ty)) in params.iter().enumerate() {
-                if i != 0 {
-                    write!(out, ", ")?;
-                }
-
-                write_ty(ty, indent, out)?;
-                write!(out, " {}", param)?;
-            }
-
-            write!(out, ") ")?;
+            write!(out, " {}", name)?;
+            write_param_list(&params, indent, out)?;
+            write!(out, " ")?;
             write_block(body, indent, out)
         }
         CStmt::ExternFnDecl {
@@ -166,21 +171,10 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             params,
             result_ty,
         } => {
-            // FIXME: FnDecl と重複してしまっている。
-
             write_ty(result_ty, indent, out)?;
-            write!(out, " {}(", name)?;
-
-            for (i, (param, ty)) in params.iter().enumerate() {
-                if i != 0 {
-                    write!(out, ", ")?;
-                }
-
-                write_ty(ty, indent, out)?;
-                write!(out, " {}", param)?;
-            }
-
-            write!(out, ");")
+            write!(out, " {}", name)?;
+            write_param_list(&params, indent, out)?;
+            write!(out, ";")
         }
         CStmt::StructDecl { name, fields } => {
             write!(out, "struct {} {{", name)?;
