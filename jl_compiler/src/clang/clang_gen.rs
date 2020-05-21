@@ -14,13 +14,26 @@ struct Cx {
 
 fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
     match ty {
-        KTy::Unresolved => CTy::Other("/* unresolved */ void"),
+        KTy::Unresolved => {
+            error!("Unexpected unresolved type {:?}", ty);
+            CTy::Other("/* unresolved */ void")
+        }
         KTy::Meta(meta) => match meta.try_resolve() {
             Some(ty) => gen_ty(ty, ids),
-            None => CTy::Other("/* free */ void"),
+            None => {
+                error!("Unexpected free type {:?}", meta);
+                CTy::Other("/* free */ void")
+            }
         },
-        KTy::Never => CTy::Other("/* never */ void"),
-        KTy::Fn { .. } => CTy::Other("/* fn */ void"),
+        KTy::Never => {
+            // FIXME: error!
+            CTy::Other("/* never */ void")
+        }
+        KTy::Fn { .. } => {
+            // FIXME: この時点で fn 型は除去されているべき
+            error!("Unexpected fn type {:?}", ty);
+            CTy::Other("/* fn */ void")
+        }
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, ids).into_ptr(),
@@ -37,7 +50,10 @@ fn gen_param(param: KSymbol, cx: &mut Cx) -> (String, CTy) {
 
 fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
     match term {
-        KTerm::Unit { .. } => CExpr::IntLit("(void)0".to_string()),
+        KTerm::Unit { .. } => {
+            // FIXME: error!
+            CExpr::IntLit("(void)0".to_string())
+        }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Name(symbol) => CExpr::Name(symbol.unique_name(&mut cx.ids)),
         KTerm::Field { text, location } => {
