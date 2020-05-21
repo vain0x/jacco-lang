@@ -23,9 +23,7 @@ fn gen_ty(ty: KTy, ids: &mut IdProvider) -> CTy {
         KTy::Fn { .. } => CTy::Other("/* fn */ void"),
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
-        KTy::Ptr { ty } => CTy::Ptr {
-            ty: Box::new(gen_ty(*ty, ids)),
-        },
+        KTy::Ptr { ty } => gen_ty(*ty, ids).into_ptr(),
         KTy::Symbol { def } => CTy::Struct(def.borrow().name.unique_name(ids)),
     }
 }
@@ -68,10 +66,7 @@ fn gen_unary_op(
             stmts.push(CStmt::VarDecl {
                 name,
                 ty,
-                init_opt: Some(CExpr::UnaryOp {
-                    op,
-                    arg: Box::new(arg),
-                }),
+                init_opt: Some(arg.into_unary_op(op)),
             });
             gen_node(take(cont), stmts, cx);
         }
@@ -99,11 +94,7 @@ fn gen_binary_op(
             stmts.push(CStmt::VarDecl {
                 name,
                 ty,
-                init_opt: Some(CExpr::BinaryOp {
-                    op,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                }),
+                init_opt: Some(left.into_binary_op(op, right)),
             });
             gen_node(take(cont), stmts, cx);
         }
@@ -142,11 +133,11 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
                 for (param, arg) in params.into_iter().zip(args) {
                     let arg = gen_term(take(arg), cx);
 
-                    stmts.push(CStmt::Expr(CExpr::BinaryOp {
-                        op: CBinaryOp::Assign,
-                        left: Box::new(CExpr::Name(param)),
-                        right: Box::new(arg),
-                    }))
+                    stmts.push(
+                        CExpr::Name(param)
+                            .into_binary_op(CBinaryOp::Assign, arg)
+                            .into_stmt(),
+                    );
                 }
 
                 stmts.push(CStmt::Goto { label: name });
@@ -210,11 +201,7 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
 
                     let left = CExpr::Name(name.clone()).into_dot(field_name);
                     let right = gen_term(take(arg), cx);
-                    stmts.push(CStmt::Expr(CExpr::BinaryOp {
-                        op: CBinaryOp::Assign,
-                        left: Box::new(left),
-                        right: Box::new(right),
-                    }));
+                    stmts.push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
                 }
 
                 gen_node(take(cont), stmts, cx);
@@ -290,14 +277,11 @@ fn gen_node(mut node: KNode, stmts: &mut Vec<CStmt>, cx: &mut Cx) {
             ([left, right], [_result], [cont]) => {
                 let left = gen_term(take(left), cx);
                 let right = gen_term(take(right), cx);
-                stmts.push(CStmt::Expr(CExpr::BinaryOp {
-                    op: CBinaryOp::Assign,
-                    left: Box::new(CExpr::UnaryOp {
-                        op: CUnaryOp::Deref,
-                        arg: Box::new(left),
-                    }),
-                    right: Box::new(right),
-                }));
+                stmts.push(
+                    left.into_unary_op(CUnaryOp::Deref)
+                        .into_binary_op(CBinaryOp::Assign, right)
+                        .into_stmt(),
+                );
                 gen_node(take(cont), stmts, cx);
             }
             _ => unimplemented!(),

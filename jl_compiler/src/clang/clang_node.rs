@@ -35,6 +35,12 @@ pub(crate) enum CTy {
     Struct(String),
 }
 
+impl CTy {
+    pub(crate) fn into_ptr(self) -> CTy {
+        CTy::Ptr { ty: Box::new(self) }
+    }
+}
+
 pub(crate) enum CExpr {
     IntLit(String),
     Name(String),
@@ -81,6 +87,25 @@ impl CExpr {
             left: Box::new(self),
             field: field.into(),
         }
+    }
+
+    pub(crate) fn into_unary_op(self, unary_op: CUnaryOp) -> CExpr {
+        CExpr::UnaryOp {
+            op: unary_op,
+            arg: Box::new(self),
+        }
+    }
+
+    pub(crate) fn into_binary_op(self, binary_op: CBinaryOp, right: CExpr) -> CExpr {
+        CExpr::BinaryOp {
+            op: binary_op,
+            left: Box::new(self),
+            right: Box::new(right),
+        }
+    }
+
+    pub(crate) fn into_stmt(self) -> CStmt {
+        CStmt::Expr(self)
     }
 }
 
