@@ -39,8 +39,8 @@ impl CBinaryOp {
 }
 
 fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
-    for _ in 0..indent * 4 {
-        write!(out, " ")?;
+    for _ in 0..indent {
+        write!(out, "    ")?;
     }
     Ok(())
 }
