@@ -80,12 +80,10 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_expr(cal, indent, out)?;
             write!(out, "(")?;
 
-            let mut first = true;
-            for arg in args {
-                if !first {
+            for (i, arg) in args.iter().enumerate() {
+                if i != 0 {
                     write!(out, ", ")?;
                 }
-                first = false;
 
                 write_expr(arg, indent, out)?;
             }
@@ -151,12 +149,10 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_ty(result_ty, indent, out)?;
             write!(out, " {}(", name)?;
 
-            let mut first = true;
-            for (param, ty) in params {
-                if !first {
+            for (i, (param, ty)) in params.iter().enumerate() {
+                if i != 0 {
                     write!(out, ", ")?;
                 }
-                first = false;
 
                 write_ty(ty, indent, out)?;
                 write!(out, " {}", param)?;
@@ -175,12 +171,10 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_ty(result_ty, indent, out)?;
             write!(out, " {}(", name)?;
 
-            let mut first = true;
-            for (param, ty) in params {
-                if !first {
+            for (i, (param, ty)) in params.iter().enumerate() {
+                if i != 0 {
                     write!(out, ", ")?;
                 }
-                first = false;
 
                 write_ty(ty, indent, out)?;
                 write!(out, " {}", param)?;
@@ -224,12 +218,10 @@ fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<(
 }
 
 fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
-    let mut first = true;
-    for decl in &root.body {
-        if !first {
+    for (i, decl) in root.body.iter().enumerate() {
+        if i != 0 {
             write!(out, "\n")?;
         }
-        first = false;
 
         write_indent(indent, out)?;
         write_stmt(decl, indent, out)?;
