@@ -138,7 +138,6 @@ cargo build
 | alt   | alternative   | 代替 |
 | arg   | argument      | 実引数 |
 | attr  | attribute     | 属性 |
-| cal   | callee        | 呼び出される関数 |
 | cont  | continuation  | 継続 |
 | cond  | condition     | 条件 |
 | decl  | declaration   | 宣言 |

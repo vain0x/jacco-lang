@@ -208,8 +208,8 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                     .error(dot.location().clone().behind(), "missed field name?");
             }
         }
-        PExpr::Call(PCallExpr { callee, arg_list }) => {
-            validate_expr(&callee, vx);
+        PExpr::Call(PCallExpr { left, arg_list }) => {
+            validate_expr(&left, vx);
             validate_arg_list(arg_list, vx);
         }
         PExpr::UnaryOp(PUnaryOpExpr {

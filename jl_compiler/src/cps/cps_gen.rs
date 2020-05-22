@@ -368,13 +368,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result2)
         }
-        PExpr::Call(PCallExpr { callee, arg_list }) => {
+        PExpr::Call(PCallExpr { left, arg_list }) => {
             let location = arg_list.left.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());
 
-            let k_callee = gen_expr(*callee, gx);
+            let k_left = gen_expr(*left, gx);
 
-            let mut k_args = vec![k_callee];
+            let mut k_args = vec![k_left];
             for p_arg in arg_list.args {
                 let k_arg = gen_expr(p_arg.expr, gx);
                 k_args.push(k_arg);

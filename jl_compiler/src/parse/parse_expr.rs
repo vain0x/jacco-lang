@@ -112,7 +112,7 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
                 let arg_list = parse_arg_list(px);
 
                 left = PExpr::Call(PCallExpr {
-                    callee: Box::new(left),
+                    left: Box::new(left),
                     arg_list,
                 });
             }

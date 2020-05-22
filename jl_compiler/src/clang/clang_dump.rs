@@ -90,8 +90,8 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_expr(left, indent, out)?;
             write!(out, "->{}", field)
         }
-        CExpr::Call { cal, args } => {
-            write_expr(cal, indent, out)?;
+        CExpr::Call { left, args } => {
+            write_expr(left, indent, out)?;
             write!(out, "(")?;
 
             for (i, arg) in args.iter().enumerate() {

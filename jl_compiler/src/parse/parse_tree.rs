@@ -421,12 +421,12 @@ impl PNode for PDotFieldExpr {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PCallExpr {
-    pub(crate) callee: Box<PExpr>,
+    pub(crate) left: Box<PExpr>,
     pub(crate) arg_list: PArgList,
 }
 
 impl PNode for PCallExpr {
-    impl_node_seq! { callee, arg_list }
+    impl_node_seq! { left, arg_list }
 }
 
 #[derive(Clone, Debug)]
