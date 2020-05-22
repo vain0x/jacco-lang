@@ -1,6 +1,7 @@
 //! 命令列から CPS ノードを構築する処理
 
 use super::*;
+use std::iter::repeat_with;
 
 /// Folding context.
 #[derive(Default)]
@@ -19,7 +20,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
                 cont_count,
                 ..
             } => {
-                let conts = std::iter::repeat_with(|| do_fold(commands, fx))
+                let conts = repeat_with(|| do_fold(commands, fx))
                     .take(cont_count)
                     .collect();
 

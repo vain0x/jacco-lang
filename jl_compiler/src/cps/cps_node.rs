@@ -3,6 +3,7 @@
 use super::*;
 use std::cell::RefCell;
 use std::fmt;
+use std::mem::replace;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -142,7 +143,7 @@ impl KMetaTyData {
 
     pub(crate) fn bind(&self, ty: KTy) {
         let ty = ty.resolve();
-        let old = std::mem::replace(&mut *self.ty_opt.borrow_mut(), Some(ty));
+        let old = replace(&mut *self.ty_opt.borrow_mut(), Some(ty));
         debug_assert!(old.is_none());
     }
 }

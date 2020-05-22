@@ -6,6 +6,8 @@ use crate::parse::*;
 use crate::token::TokenKind;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::iter::once;
+use std::mem::{replace, take};
 use std::rc::Rc;
 
 struct FnConstruction {
@@ -98,7 +100,7 @@ impl Gx {
         self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
-            args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
+            args: once(KTerm::Name(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
         });
@@ -334,7 +336,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     let location = arg_list.left.into_location();
                     new_unit_term(location)
                 }
-                [arg] if !is_tuple => gen_expr(std::mem::take(&mut arg.expr), gx),
+                [arg] if !is_tuple => gen_expr(take(&mut arg.expr), gx),
                 _ => unimplemented!("tuple literal is not supported yet"),
             }
         }
@@ -521,7 +523,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 cont_count: 2,
             });
 
-            let parent_loop = std::mem::replace(
+            let parent_loop = replace(
                 &mut gx.parent_loop,
                 Some(LoopConstruction {
                     break_label: next_label.clone(),
@@ -554,7 +556,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push_label(continue_label.clone(), vec![]);
 
-            let parent_loop = std::mem::replace(
+            let parent_loop = replace(
                 &mut gx.parent_loop,
                 Some(LoopConstruction {
                     break_label: next_label.clone(),
@@ -604,9 +606,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
 
             let commands = {
-                let prev_fn = std::mem::replace(&mut gx.current_fn, Some(fn_construction));
-                let previous = std::mem::take(&mut gx.current);
-                let parent_loop = std::mem::take(&mut gx.parent_loop);
+                let prev_fn = replace(&mut gx.current_fn, Some(fn_construction));
+                let previous = take(&mut gx.current);
+                let parent_loop = take(&mut gx.parent_loop);
 
                 let k_result = gen_block(block_opt.unwrap(), gx);
 
@@ -614,7 +616,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
                 gx.current_fn = prev_fn;
                 gx.parent_loop = parent_loop;
-                std::mem::replace(&mut gx.current, previous)
+                replace(&mut gx.current, previous)
             };
 
             let (node, labels) = fold_block(commands);

@@ -12,14 +12,16 @@ use log::{error, trace};
 const NO_ID: usize = 0;
 
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
+    use std::rc::Rc;
+
     trace!("source_path = {:?}", source_path);
 
     let logs = logs::Logs::new();
 
-    let source_path = std::rc::Rc::new(std::path::PathBuf::from(source_path));
+    let source_path = Rc::new(std::path::PathBuf::from(source_path));
     let source_file = source::SourceFile { source_path };
     let token_source = token::TokenSource::File(source_file);
-    let source_code = std::rc::Rc::new(source_code.to_string());
+    let source_code = Rc::new(source_code.to_string());
     let tokens = token::tokenize(token_source, source_code);
     trace!("tokens = {:#?}\n", tokens);
 

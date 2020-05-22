@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::Sum;
 use std::ops::{Add, AddAssign};
 
 /// テキスト上の位置 (行番号, 列番号)
@@ -67,7 +68,7 @@ impl Add for Position {
     }
 }
 
-impl std::iter::Sum for Position {
+impl Sum for Position {
     fn sum<I: Iterator<Item = Position>>(iter: I) -> Position {
         iter.fold(Position::default(), Add::add)
     }

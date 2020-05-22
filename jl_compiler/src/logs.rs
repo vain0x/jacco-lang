@@ -2,6 +2,7 @@
 
 use crate::token::Location;
 use std::cell::RefCell;
+use std::mem::take;
 use std::rc::Rc;
 
 /// 位置情報と関連付けられたエラーメッセージ
@@ -34,7 +35,7 @@ impl Logs {
 
     pub(crate) fn finish(self) -> Vec<LogItem> {
         let mut inner = self.inner.try_borrow_mut().expect("can't share logs");
-        std::mem::take(&mut inner)
+        take(&mut inner)
     }
 }
 
