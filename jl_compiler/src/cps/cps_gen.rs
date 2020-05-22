@@ -75,6 +75,10 @@ impl Gx {
         self.current.push(command);
     }
 
+    fn push_label(&mut self, label: KSymbol, params: Vec<KSymbol>) {
+        self.push(XCommand::Label { label, params })
+    }
+
     fn do_push_jump(
         &mut self,
         label: KSymbol,
@@ -196,10 +200,7 @@ fn emit_if(
         gx.push_jump(next_label.clone(), vec![alt]);
     }
 
-    gx.push(XCommand::Label {
-        label: next_label,
-        params: vec![result.clone()],
-    });
+    gx.push_label(next_label, vec![result.clone()]);
 
     KTerm::Name(result)
 }
@@ -529,10 +530,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push_jump(continue_label.clone(), vec![]);
 
-            gx.push(XCommand::Label {
-                label: continue_label.clone(),
-                params: vec![],
-            });
+            gx.push_label(continue_label.clone(), vec![]);
 
             let k_cond = gen_expr(*cond_opt.unwrap(), gx);
 
@@ -563,10 +561,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             gx.parent_loop = parent_loop;
 
             // next:
-            gx.push(XCommand::Label {
-                label: next_label,
-                params: vec![result.clone()],
-            });
+            gx.push_label(next_label, vec![result.clone()]);
 
             KTerm::Name(result)
         }
@@ -578,10 +573,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push_jump(continue_label.clone(), vec![]);
 
-            gx.push(XCommand::Label {
-                label: continue_label.clone(),
-                params: vec![],
-            });
+            gx.push_label(continue_label.clone(), vec![]);
 
             let parent_loop = std::mem::replace(
                 &mut gx.parent_loop,
@@ -599,10 +591,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             gx.parent_loop = parent_loop;
 
             // next:
-            gx.push(XCommand::Label {
-                label: next_label,
-                params: vec![result.clone()],
-            });
+            gx.push_label(next_label, vec![result.clone()]);
 
             KTerm::Name(result)
         }
