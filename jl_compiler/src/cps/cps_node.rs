@@ -6,7 +6,7 @@ use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub(crate) enum XCommand {
+pub(crate) enum KCommand {
     Prim {
         prim: KPrim,
         tys: Vec<KTy>,

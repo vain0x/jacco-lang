@@ -22,7 +22,7 @@ struct LoopConstruction {
 struct Gx {
     symbols: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
-    current: Vec<XCommand>,
+    current: Vec<KCommand>,
     parent_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
@@ -71,16 +71,16 @@ impl Gx {
         self.current_fn.as_ref().map(|f| &f.return_label)
     }
 
-    fn push(&mut self, command: XCommand) {
+    fn push(&mut self, command: KCommand) {
         self.current.push(command);
     }
 
     fn push_label(&mut self, label: KSymbol, params: Vec<KSymbol>) {
-        self.push(XCommand::Label { label, params })
+        self.push(KCommand::Label { label, params })
     }
 
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
-        self.push(XCommand::Prim {
+        self.push(KCommand::Prim {
             prim,
             tys: vec![],
             args,
@@ -95,7 +95,7 @@ impl Gx {
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
     ) {
-        self.push(XCommand::Prim {
+        self.push(KCommand::Prim {
             prim: KPrim::Jump,
             tys: vec![],
             args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
@@ -178,7 +178,7 @@ fn emit_if(
 
     let k_cond = gen_expr(cond, gx);
 
-    gx.push(XCommand::Prim {
+    gx.push(KCommand::Prim {
         prim: KPrim::If,
         tys: vec![],
         args: vec![k_cond],
@@ -317,7 +317,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 .map(|field| gen_expr(field.value_opt.unwrap(), gx))
                 .collect();
 
-            gx.push(XCommand::Prim {
+            gx.push(KCommand::Prim {
                 prim: KPrim::Struct,
                 tys: vec![ty],
                 args,
@@ -391,7 +391,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 let left = gen_expr_lval(*left, location.clone(), gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
-                gx.push(XCommand::Prim {
+                gx.push(KCommand::Prim {
                     prim: KPrim::Assign,
                     tys: vec![],
                     args: vec![left, right],
@@ -513,7 +513,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             let k_cond = gen_expr(*cond_opt.unwrap(), gx);
 
-            gx.push(XCommand::Prim {
+            gx.push(KCommand::Prim {
                 prim: KPrim::If,
                 tys: vec![],
                 args: vec![k_cond],

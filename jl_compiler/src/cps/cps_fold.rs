@@ -8,10 +8,10 @@ struct Fx {
     labels: Vec<KFn>,
 }
 
-fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
+fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
     while let Some(command) = commands.pop() {
         match command {
-            XCommand::Prim {
+            KCommand::Prim {
                 prim,
                 tys,
                 args,
@@ -31,7 +31,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
                     conts,
                 };
             }
-            XCommand::Label { label, params } => {
+            KCommand::Label { label, params } => {
                 let body = do_fold(commands, fx);
 
                 fx.labels.push(KFn {
@@ -47,7 +47,7 @@ fn do_fold(commands: &mut Vec<XCommand>, fx: &mut Fx) -> KNode {
     KNode::default()
 }
 
-pub(crate) fn fold_block(mut commands: Vec<XCommand>) -> (KNode, Vec<KFn>) {
+pub(crate) fn fold_block(mut commands: Vec<KCommand>) -> (KNode, Vec<KFn>) {
     let mut fx = Fx::default();
 
     trace!("block: {:#?}", commands);
@@ -55,7 +55,7 @@ pub(crate) fn fold_block(mut commands: Vec<XCommand>) -> (KNode, Vec<KFn>) {
 
     let node = do_fold(&mut commands, &mut fx);
 
-    while let Some(XCommand::Label { .. }) = commands.last() {
+    while let Some(KCommand::Label { .. }) = commands.last() {
         do_fold(&mut commands, &mut fx);
     }
 
