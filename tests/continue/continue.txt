@@ -11,7 +11,7 @@ continue__1:;
     }
     //
 next_1:;
-    return while_result_1;
+    return (void)0;
 }
 
 int continue_in_loop() {
@@ -50,7 +50,7 @@ continue__4:;
     }
     //
 next_4:;
-    return while_result_3;
+    return (void)0;
 }
 
 int main() {

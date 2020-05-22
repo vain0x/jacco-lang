@@ -505,6 +505,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("while_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
+            let unit_term = new_unit_term(location);
 
             gx.push_jump(continue_label.clone(), vec![]);
 
@@ -534,14 +535,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             gx.push_jump(continue_label.clone(), vec![]);
 
             // alt:
-            gx.push_jump(next_label.clone(), vec![new_unit_term(location)]);
+            gx.push_jump(next_label.clone(), vec![unit_term.clone()]);
 
             gx.parent_loop = parent_loop;
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
 
-            KTerm::Name(result)
+            unit_term
         }
         PExpr::Loop(PLoopExpr { keyword, body_opt }) => {
             let location = keyword.into_location();
