@@ -22,7 +22,7 @@ struct LoopConstruction {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
-    symbols: HashMap<usize, Rc<KVarData>>,
+    var_map: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
     current: Vec<KCommand>,
     parent_loop: Option<LoopConstruction>,
@@ -36,7 +36,7 @@ struct Gx {
 impl Gx {
     fn new(logger: Logger) -> Self {
         Self {
-            symbols: vec![(
+            var_map: vec![(
                 0,
                 Rc::new(KVarData {
                     id_opt: RefCell::new(Some(0)),
@@ -210,7 +210,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
     match name.text() {
         "i32" => KTy::I32,
         _ => {
-            if let Some(def) = gx.symbols.get(&name.name_id) {
+            if let Some(def) = gx.var_map.get(&name.name_id) {
                 assert!(def.ty.borrow().is_symbol());
                 return def.ty.borrow().clone();
             }
@@ -235,11 +235,11 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
 }
 
 fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
-    let def = match gx.symbols.get(&name.name_id) {
+    let def = match gx.var_map.get(&name.name_id) {
         Some(def) => def.clone(),
         None => {
             let def = Rc::new(KVarData::new_with_ty(ty.clone()));
-            gx.symbols.insert(name.name_id, def.clone());
+            gx.var_map.insert(name.name_id, def.clone());
             def
         }
     };
