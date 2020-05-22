@@ -218,7 +218,7 @@ fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<(
 }
 
 fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
-    for (i, decl) in root.body.iter().enumerate() {
+    for (i, decl) in root.decls.iter().enumerate() {
         if i != 0 {
             write!(out, "\n")?;
         }

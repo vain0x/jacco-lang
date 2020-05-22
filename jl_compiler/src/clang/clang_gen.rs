@@ -409,5 +409,5 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 pub(crate) fn gen(k_root: KRoot) -> CRoot {
     let mut cx = Cx::default();
     gen_root(k_root, &mut cx);
-    CRoot { body: cx.decls }
+    CRoot { decls: cx.decls }
 }

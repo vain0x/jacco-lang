@@ -158,5 +158,5 @@ pub(crate) enum CStmt {
 }
 
 pub(crate) struct CRoot {
-    pub(crate) body: Vec<CStmt>,
+    pub(crate) decls: Vec<CStmt>,
 }
