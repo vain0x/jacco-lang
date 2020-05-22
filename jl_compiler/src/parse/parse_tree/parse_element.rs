@@ -21,14 +21,6 @@ impl<'a> PElementRef<'a> {
             PElementRef::Node(node) => node.last_token(),
         }
     }
-
-    #[allow(dead_code)]
-    pub(crate) fn location(&self) -> Location {
-        match self {
-            PElementRef::Token(token) => token.location().clone(),
-            PElementRef::Node(node) => node.location(),
-        }
-    }
 }
 
 impl<'a> From<&'a TokenData> for PElementRef<'a> {
@@ -40,6 +32,15 @@ impl<'a> From<&'a TokenData> for PElementRef<'a> {
 impl<'a, N: PNode> From<&'a N> for PElementRef<'a> {
     fn from(node: &'a N) -> PElementRef<'a> {
         PElementRef::Node(node)
+    }
+}
+
+impl HaveLocation for PElementRef<'_> {
+    fn location(&self) -> Location {
+        match self {
+            PElementRef::Token(token) => token.location().clone(),
+            PElementRef::Node(node) => (*node).location(),
+        }
     }
 }
 
@@ -66,6 +67,15 @@ impl<'a> From<PElementMut<'a>> for PElementRef<'a> {
         match element {
             PElementMut::Token(token) => PElementRef::Token(token),
             PElementMut::Node(node) => PElementRef::Node(node),
+        }
+    }
+}
+
+impl HaveLocation for PElementMut<'_> {
+    fn location(&self) -> Location {
+        match self {
+            PElementMut::Token(token) => token.location().clone(),
+            PElementMut::Node(node) => (&**node).location(),
         }
     }
 }

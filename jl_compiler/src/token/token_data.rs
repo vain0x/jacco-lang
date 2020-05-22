@@ -30,8 +30,7 @@ impl TokenData {
         self.text
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn location(&self) -> &Location {
+    pub(crate) fn as_location(&self) -> &Location {
         &self.location
     }
 

@@ -57,3 +57,19 @@ impl Default for Location {
         Location::new(TokenSource::Special("<default>"), Range::default())
     }
 }
+
+pub(crate) trait HaveLocation {
+    fn location(&self) -> Location;
+}
+
+impl HaveLocation for Location {
+    fn location(&self) -> Location {
+        self.clone()
+    }
+}
+
+impl HaveLocation for TokenData {
+    fn location(&self) -> Location {
+        self.as_location().clone()
+    }
+}

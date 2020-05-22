@@ -96,9 +96,9 @@ pub(crate) trait PNode {
         None
     }
 
-    fn location(&self) -> Location {
+    fn to_location(&self) -> Location {
         match (self.first_token(), self.last_token()) {
-            (Some(first), Some(last)) => first.location().clone().unite(last.location()),
+            (Some(first), Some(last)) => first.location().clone().unite(&last.location()),
             _ => Location::default(),
         }
     }
@@ -106,6 +106,18 @@ pub(crate) trait PNode {
     fn ends_with_block(&self) -> bool {
         self.last_token()
             .map_or(false, |token| token.kind() == TokenKind::RightBrace)
+    }
+}
+
+impl HaveLocation for &dyn PNode {
+    fn location(&self) -> Location {
+        self.to_location()
+    }
+}
+
+impl<N: PNode> HaveLocation for N {
+    fn location(&self) -> Location {
+        self.to_location()
     }
 }
 

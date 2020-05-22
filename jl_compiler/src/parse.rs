@@ -14,7 +14,7 @@ pub(crate) use parse_tree::*;
 pub(crate) use unary_op::PUnaryOp;
 
 use crate::logs::Logger;
-use crate::token::{Location, TokenData, TokenKind};
+use crate::token::{HaveLocation, Location, TokenData, TokenKind};
 use parse_context::{p_error, Px};
 use parse_decl::parse_semi;
 use parse_expr::{parse_block, parse_expr, parse_name};

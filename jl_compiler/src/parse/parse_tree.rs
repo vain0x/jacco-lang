@@ -23,10 +23,6 @@ impl PName {
         self.token.text()
     }
 
-    pub(crate) fn location(&self) -> &Location {
-        self.token.location()
-    }
-
     pub(crate) fn decompose(self) -> (String, Location) {
         let (_, text, location) = self.token.decompose();
         (text, location)

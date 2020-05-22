@@ -13,5 +13,5 @@ pub(crate) use cps_prim::KPrim;
 pub(crate) use cps_term::KTerm;
 
 use crate::logs::Logger;
-use crate::token::{Location, TokenData};
+use crate::token::{HaveLocation, Location, TokenData};
 use log::{error, trace};

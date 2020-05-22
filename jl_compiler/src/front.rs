@@ -8,4 +8,4 @@ pub(crate) use syntax_validation::validate_syntax;
 
 use crate::logs::Logger;
 use crate::parse::*;
-use crate::token::{Location, TokenData};
+use crate::token::{HaveLocation, Location, TokenData};

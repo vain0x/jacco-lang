@@ -416,7 +416,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             let location = extern_keyword
                 .location()
                 .clone()
-                .unite(fn_keyword.location());
+                .unite(&fn_keyword.location());
 
             if name_opt.is_none() {
                 vx.logger
