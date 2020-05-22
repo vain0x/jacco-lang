@@ -130,13 +130,11 @@ impl PNode for PParamList {
         if i == 0 {
             return try_as_element_ref(&self.left);
         }
-
         i -= 1;
 
         if let Some(param) = self.params.get(i) {
             return try_as_element_ref(param);
         }
-
         i -= self.params.len();
 
         if i == 0 {
@@ -150,14 +148,12 @@ impl PNode for PParamList {
         if i == 0 {
             return try_as_element_mut(&mut self.left);
         }
-
         i -= 1;
 
         let param_count = self.params.len();
         if let Some(param) = self.params.get_mut(i) {
             return try_as_element_mut(param);
         }
-
         i -= param_count;
 
         if i == 0 {
@@ -207,13 +203,11 @@ impl PNode for PArgList {
         if i == 0 {
             return try_as_element_ref(&self.left);
         }
-
         i -= 1;
 
         if let Some(arg) = self.args.get(i) {
             return try_as_element_ref(arg);
         }
-
         i -= self.args.len();
 
         if i == 0 {
@@ -227,14 +221,12 @@ impl PNode for PArgList {
         if i == 0 {
             return try_as_element_mut(&mut self.left);
         }
-
         i -= 1;
 
         let arg_count = self.args.len();
         if let Some(arg) = self.args.get_mut(i) {
             return try_as_element_mut(arg);
         }
-
         i -= arg_count;
 
         if i == 0 {
@@ -262,13 +254,11 @@ impl PNode for PBlock {
         if i == 0 {
             return try_as_element_ref(&self.left);
         }
-
         i -= 1;
 
         if let Some(decl) = self.decls.get(i) {
             return try_as_element_ref(decl);
         }
-
         i -= self.decls.len();
 
         match i {
@@ -282,14 +272,12 @@ impl PNode for PBlock {
         if i == 0 {
             return try_as_element_mut(&mut self.left);
         }
-
         i -= 1;
 
         let decl_count = self.decls.len();
         if let Some(decl) = self.decls.get_mut(i) {
             return try_as_element_mut(decl);
         }
-
         i -= decl_count;
 
         match i {
@@ -770,7 +758,6 @@ impl PNode for PRoot {
         if let Some(decl) = self.decls.get_mut(i) {
             return try_as_element_mut(decl);
         }
-
         i -= decl_count;
 
         if i == 0 {
