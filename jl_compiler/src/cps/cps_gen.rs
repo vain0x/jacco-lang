@@ -379,7 +379,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
             PUnaryOp::Ref => gen_expr_lval(*arg_opt.unwrap(), location, gx),
             PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
-            PUnaryOp::Negate => emit_unary_op(KPrim::Negate, arg_opt, location, gx),
+            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt, location, gx),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
             op,

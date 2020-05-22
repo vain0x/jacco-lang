@@ -12,7 +12,7 @@ pub(crate) enum KPrim {
     Deref,
     Ref,
     Minus,
-    Negate,
+    Not,
     Add,
     Sub,
     Mul,

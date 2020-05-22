@@ -9,7 +9,7 @@ impl CUnaryOp {
             CUnaryOp::Deref => "*",
             CUnaryOp::Ref => "&",
             CUnaryOp::Minus => "-",
-            CUnaryOp::Negate => "!",
+            CUnaryOp::Not => "!",
         }
     }
 }

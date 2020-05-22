@@ -55,7 +55,7 @@ next_2:;
     int log_or_1 = if_result_2;
     int minus_1 = -2;
     int minus_2 = minus_1;
-    int negate_1 = !2;
-    int negate_2 = negate_1;
+    int not_1 = !2;
+    int not_2 = not_1;
     return 0;
 }

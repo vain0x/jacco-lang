@@ -8,5 +8,5 @@ pub(crate) enum PUnaryOp {
     /// `-`
     Minus,
     /// `!`
-    Negate,
+    Not,
 }

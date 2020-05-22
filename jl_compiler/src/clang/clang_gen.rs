@@ -297,7 +297,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, cx),
         KPrim::Ref => gen_unary_op(CUnaryOp::Ref, args, results, conts, cx),
         KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, cx),
-        KPrim::Negate => gen_unary_op(CUnaryOp::Negate, args, results, conts, cx),
+        KPrim::Not => gen_unary_op(CUnaryOp::Not, args, results, conts, cx),
         KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, cx),
         KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, cx),
         KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, cx),

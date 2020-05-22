@@ -135,7 +135,7 @@ fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
 
     match px.next() {
         TokenKind::And => parse_right(PUnaryOp::Ref, px),
-        TokenKind::Bang => parse_right(PUnaryOp::Negate, px),
+        TokenKind::Bang => parse_right(PUnaryOp::Not, px),
         TokenKind::Minus => parse_right(PUnaryOp::Minus, px),
         TokenKind::Star => parse_right(PUnaryOp::Deref, px),
         _ => parse_suffix_expr(px),

@@ -4,7 +4,7 @@ pub(crate) enum CUnaryOp {
     Deref,
     Ref,
     Minus,
-    Negate,
+    Not,
 }
 
 pub(crate) enum CBinaryOp {

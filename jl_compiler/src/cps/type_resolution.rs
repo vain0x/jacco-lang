@@ -274,7 +274,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Negate => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+        KPrim::Not => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 unify(arg_ty, result.ty.clone(), location, tx);
