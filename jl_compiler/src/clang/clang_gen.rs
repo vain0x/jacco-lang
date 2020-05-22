@@ -190,9 +190,10 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         KPrim::CallDirect => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
                 let call_expr = {
-                    let left = Box::new(gen_term(args.remove(0), cx));
-                    let args = args.drain(..).map(|arg| gen_term(arg, cx)).collect();
-                    CExpr::Call { left, args }
+                    let mut args = args.drain(..);
+                    let left = gen_term(args.next().unwrap(), cx);
+                    let args = args.map(|arg| gen_term(arg, cx));
+                    left.into_call(args)
                 };
                 let (name, ty) = gen_param(take(result), cx);
 

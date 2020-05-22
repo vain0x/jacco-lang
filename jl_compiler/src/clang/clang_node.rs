@@ -89,6 +89,13 @@ impl CExpr {
         }
     }
 
+    pub(crate) fn into_call(self, args: impl Iterator<Item = CExpr>) -> CExpr {
+        CExpr::Call {
+            left: Box::new(self),
+            args: args.collect(),
+        }
+    }
+
     pub(crate) fn into_unary_op(self, unary_op: CUnaryOp) -> CExpr {
         CExpr::UnaryOp {
             op: unary_op,
