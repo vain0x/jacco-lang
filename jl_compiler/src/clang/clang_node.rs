@@ -117,7 +117,7 @@ impl CExpr {
 }
 
 pub(crate) struct CBlock {
-    pub(crate) body: Vec<CStmt>,
+    pub(crate) stmts: Vec<CStmt>,
 }
 
 pub(crate) enum CStmt {

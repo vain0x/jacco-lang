@@ -332,7 +332,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
 
 fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
     let stmts = cx.enter_block(|cx| gen_node(node, cx));
-    CBlock { body: stmts }
+    CBlock { stmts }
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
@@ -369,7 +369,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         name, body, labels, ..
     } in root.fns
     {
-        let body = cx.enter_block(|cx| {
+        let stmts = cx.enter_block(|cx| {
             cx.labels.clear();
             for KFn { name, params, .. } in &labels {
                 let fn_name = unique_name(&name, cx);
@@ -401,7 +401,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             name: name.text,
             params: vec![],
             result_ty: CTy::Int,
-            body: CBlock { body },
+            body: CBlock { stmts },
         });
     }
 }

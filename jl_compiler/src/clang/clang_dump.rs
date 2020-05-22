@@ -200,14 +200,14 @@ fn write_stmt_with_indent(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io:
 }
 
 fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
-    let body = &block.body;
+    let stmts = &block.stmts;
 
-    if body.is_empty() {
+    if stmts.is_empty() {
         write!(out, "{{}}")
     } else {
         write!(out, "{{\n")?;
 
-        for stmt in body {
+        for stmt in stmts {
             write_stmt_with_indent(stmt, indent + 1, out)?;
             write!(out, "\n")?;
         }
