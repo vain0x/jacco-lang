@@ -6,7 +6,7 @@ pub(crate) enum PBinaryOp {
     Sub,
     Mul,
     Div,
-    Mod,
+    Modulo,
     BitAnd,
     BitOr,
     BitXor,

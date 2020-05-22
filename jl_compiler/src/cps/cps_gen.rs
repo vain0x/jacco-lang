@@ -405,7 +405,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
             PBinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),
             PBinaryOp::Div => emit_binary_op(KPrim::Div, *left, right_opt, location, gx),
-            PBinaryOp::Mod => emit_binary_op(KPrim::Mod, *left, right_opt, location, gx),
+            PBinaryOp::Modulo => emit_binary_op(KPrim::Modulo, *left, right_opt, location, gx),
             PBinaryOp::BitAnd => emit_binary_op(KPrim::BitAnd, *left, right_opt, location, gx),
             PBinaryOp::BitOr => emit_binary_op(KPrim::BitOr, *left, right_opt, location, gx),
             PBinaryOp::BitXor => emit_binary_op(KPrim::BitXor, *left, right_opt, location, gx),

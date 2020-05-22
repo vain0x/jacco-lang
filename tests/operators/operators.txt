@@ -9,8 +9,8 @@ int main() {
     int mul_2 = mul_1;
     int div_1 = 1 / 2;
     int div_2 = div_1;
-    int mod_1 = 1 % 2;
-    int modulo_1 = mod_1;
+    int modulo_1 = 1 % 2;
+    int modulo_2 = modulo_1;
     int eq_1 = 1 == 2;
     int eq_2 = eq_1;
     int ne_1 = 1 != 2;

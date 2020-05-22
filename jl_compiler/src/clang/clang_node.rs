@@ -13,7 +13,7 @@ pub(crate) enum CBinaryOp {
     Sub,
     Mul,
     Div,
-    Mod,
+    Modulo,
     BitAnd,
     BitOr,
     BitXor,

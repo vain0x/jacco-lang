@@ -17,7 +17,7 @@ pub(crate) enum KPrim {
     Sub,
     Mul,
     Div,
-    Mod,
+    Modulo,
     BitAnd,
     BitOr,
     BitXor,

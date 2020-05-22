@@ -286,7 +286,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         | KPrim::Sub
         | KPrim::Mul
         | KPrim::Div
-        | KPrim::Mod
+        | KPrim::Modulo
         | KPrim::BitAnd
         | KPrim::BitOr
         | KPrim::BitXor

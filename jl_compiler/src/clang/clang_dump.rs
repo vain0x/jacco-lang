@@ -22,7 +22,7 @@ impl CBinaryOp {
             CBinaryOp::Sub => "-",
             CBinaryOp::Mul => "*",
             CBinaryOp::Div => "/",
-            CBinaryOp::Mod => "%",
+            CBinaryOp::Modulo => "%",
             CBinaryOp::BitAnd => "&",
             CBinaryOp::BitOr => "|",
             CBinaryOp::BitXor => "^",

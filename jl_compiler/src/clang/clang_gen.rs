@@ -302,7 +302,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, cx),
         KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, cx),
         KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, cx),
-        KPrim::Mod => gen_binary_op(CBinaryOp::Mod, args, results, conts, cx),
+        KPrim::Modulo => gen_binary_op(CBinaryOp::Modulo, args, results, conts, cx),
         KPrim::Eq => gen_binary_op(CBinaryOp::Eq, args, results, conts, cx),
         KPrim::Ne => gen_binary_op(CBinaryOp::Ne, args, results, conts, cx),
         KPrim::Lt => gen_binary_op(CBinaryOp::Lt, args, results, conts, cx),

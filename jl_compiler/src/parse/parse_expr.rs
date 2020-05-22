@@ -160,7 +160,7 @@ fn parse_mul(px: &mut Px) -> Option<PExpr> {
         match px.next() {
             TokenKind::Star => left = parse_right(PBinaryOp::Mul, left, px),
             TokenKind::Slash => left = parse_right(PBinaryOp::Div, left, px),
-            TokenKind::Percent => left = parse_right(PBinaryOp::Mod, left, px),
+            TokenKind::Percent => left = parse_right(PBinaryOp::Modulo, left, px),
             _ => return Some(left),
         }
     }
