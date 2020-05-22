@@ -175,16 +175,16 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, ";")
         }
         CStmt::StructDecl { name, fields } => {
-            write!(out, "struct {} {{", name)?;
+            write!(out, "struct {} {{\n", name)?;
+
             for (name, ty) in fields {
                 let indent = indent + 1;
-                write!(out, "\n")?;
                 write_indent(indent, out)?;
                 write_var_with_ty(&name, &ty, indent, out)?;
                 write!(out, ";")?;
+                write!(out, "\n")?;
             }
 
-            write!(out, "\n")?;
             write_indent(indent, out)?;
             write!(out, "}};")
         }
@@ -198,12 +198,14 @@ fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<(
         write!(out, "{{}}")
     } else {
         write!(out, "{{\n")?;
-        for stmt in body.iter() {
+
+        for stmt in body {
             let indent = indent + 1;
             write_indent(indent, out)?;
             write_stmt(stmt, indent, out)?;
             write!(out, "\n")?;
         }
+
         write_indent(indent, out)?;
         write!(out, "}}")
     }
