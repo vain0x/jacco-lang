@@ -79,6 +79,16 @@ impl Gx {
         self.push(XCommand::Label { label, params })
     }
 
+    fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
+        self.push(XCommand::Prim {
+            prim,
+            tys: vec![],
+            args,
+            result_opt: Some(result),
+            cont_count: 1,
+        });
+    }
+
     fn do_push_jump(
         &mut self,
         label: KSymbol,
@@ -134,13 +144,7 @@ fn emit_unary_op(
 
     let arg = gen_expr(*arg_opt.unwrap(), gx);
 
-    gx.push(XCommand::Prim {
-        prim,
-        tys: vec![],
-        args: vec![arg],
-        result_opt: Some(result.clone()),
-        cont_count: 1,
-    });
+    gx.push_prim_1(prim, vec![arg], result.clone());
 
     KTerm::Name(result)
 }
@@ -157,13 +161,7 @@ fn emit_binary_op(
     let left = gen_expr(left, gx);
     let right = gen_expr(*right_opt.unwrap(), gx);
 
-    gx.push(XCommand::Prim {
-        prim,
-        tys: vec![],
-        args: vec![left, right],
-        result_opt: Some(result.clone()),
-        cont_count: 1,
-    });
+    gx.push_prim_1(prim, vec![left, right], result.clone());
 
     KTerm::Name(result)
 }
@@ -184,8 +182,8 @@ fn emit_if(
         prim: KPrim::If,
         tys: vec![],
         args: vec![k_cond],
-        cont_count: 2,
         result_opt: None,
+        cont_count: 2,
     });
 
     // body
@@ -290,13 +288,7 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
             let left = gen_expr_lval(*left, location.clone(), gx);
             let field = KTerm::Field { text, location };
 
-            gx.push(XCommand::Prim {
-                prim: KPrim::GetField,
-                tys: vec![],
-                args: vec![left, field],
-                result_opt: Some(result.clone()),
-                cont_count: 1,
-            });
+            gx.push_prim_1(KPrim::GetField, vec![left, field], result.clone());
 
             KTerm::Name(result)
         }
@@ -359,13 +351,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let result1 = gen_expr_lval(expr, location.clone(), gx);
             let result2 = gx.fresh_symbol(&text, location);
 
-            gx.push(XCommand::Prim {
-                prim: KPrim::Deref,
-                tys: vec![],
-                args: vec![result1],
-                result_opt: Some(result2.clone()),
-                cont_count: 1,
-            });
+            gx.push_prim_1(KPrim::Deref, vec![result1], result2.clone());
 
             KTerm::Name(result2)
         }
@@ -381,13 +367,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 k_args.push(k_arg);
             }
 
-            gx.push(XCommand::Prim {
-                prim: KPrim::CallDirect,
-                tys: vec![],
-                args: k_args,
-                result_opt: Some(result.clone()),
-                cont_count: 1,
-            });
+            gx.push_prim_1(KPrim::CallDirect, k_args, result.clone());
 
             KTerm::Name(result)
         }
@@ -413,13 +393,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 let left = gen_expr_lval(*left, location, gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
-                gx.push(XCommand::Prim {
-                    prim: KPrim::Assign,
-                    tys: vec![],
-                    args: vec![left, right],
-                    result_opt: Some(result.clone()),
-                    cont_count: 1,
-                });
+                gx.push_prim_1(KPrim::Assign, vec![left, right], result.clone());
 
                 KTerm::Name(result)
             }
@@ -609,13 +583,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let result = gen_name(name_opt.unwrap(), gx);
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
-            gx.push(XCommand::Prim {
-                prim: KPrim::Let,
-                tys: vec![],
-                args: vec![k_init],
-                result_opt: Some(result),
-                cont_count: 1,
-            });
+            gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
         PDecl::Fn(PFnDecl {
             keyword,
