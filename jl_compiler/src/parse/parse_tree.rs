@@ -602,12 +602,12 @@ pub(crate) struct PFnDecl {
     pub(crate) name_opt: Option<PName>,
     pub(crate) param_list_opt: Option<PParamList>,
     pub(crate) arrow_opt: Option<TokenData>,
-    pub(crate) result_opt: Option<PTy>,
+    pub(crate) result_ty_opt: Option<PTy>,
     pub(crate) block_opt: Option<PBlock>,
 }
 
 impl PNode for PFnDecl {
-    impl_node_seq! { keyword, name_opt, param_list_opt, arrow_opt, result_opt, block_opt }
+    impl_node_seq! { keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, block_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -617,12 +617,12 @@ pub(crate) struct PExternFnDecl {
     pub(crate) name_opt: Option<PName>,
     pub(crate) param_list_opt: Option<PParamList>,
     pub(crate) arrow_opt: Option<TokenData>,
-    pub(crate) result_opt: Option<PTy>,
+    pub(crate) result_ty_opt: Option<PTy>,
     pub(crate) semi_opt: Option<TokenData>,
 }
 
 impl PNode for PExternFnDecl {
-    impl_node_seq! { extern_keyword, fn_keyword, name_opt, param_list_opt, arrow_opt, result_opt, semi_opt }
+    impl_node_seq! { extern_keyword, fn_keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, semi_opt }
 }
 
 #[derive(Clone, Debug)]

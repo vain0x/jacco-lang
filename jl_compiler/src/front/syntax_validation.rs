@@ -380,7 +380,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             name_opt,
             param_list_opt,
             arrow_opt,
-            result_opt,
+            result_ty_opt,
             block_opt,
         }) => {
             if name_opt.is_none() {
@@ -395,7 +395,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .error(keyword.location().clone(), "missed param list?"),
             }
 
-            validate_result(arrow_opt.as_ref(), result_opt.as_ref(), vx);
+            validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
 
             match block_opt {
                 Some(block) => validate_block(block, vx),
@@ -410,7 +410,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             name_opt,
             param_list_opt,
             arrow_opt,
-            result_opt,
+            result_ty_opt,
             semi_opt,
         }) => {
             let location = extern_keyword
@@ -428,7 +428,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                 None => vx.logger.error(location.clone(), "missed param list?"),
             }
 
-            validate_result(arrow_opt.as_ref(), result_opt.as_ref(), vx);
+            validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
 
             if semi_required && semi_opt.is_none() {
                 vx.logger

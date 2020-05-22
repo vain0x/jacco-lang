@@ -633,7 +633,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::ExternFn(PExternFnDecl {
             name_opt,
             param_list_opt,
-            result_opt,
+            result_ty_opt,
             ..
         }) => {
             let name = gen_name(name_opt.unwrap(), gx);
@@ -643,7 +643,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 .into_iter()
                 .map(|param| gen_param(param, gx))
                 .collect();
-            let result = match result_opt {
+            let result_ty = match result_ty_opt {
                 Some(ty) => gen_ty(ty, gx),
                 None => KTy::Unit,
             };
@@ -651,7 +651,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let extern_fn = KExternFn {
                 name,
                 params,
-                result,
+                result_ty,
             };
             gx.extern_fns.push(extern_fn);
         }

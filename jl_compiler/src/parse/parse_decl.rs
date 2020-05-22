@@ -36,7 +36,7 @@ fn parse_param_list(px: &mut Px) -> Option<PParamList> {
 }
 
 /// 結果型注釈 (`-> T`) のパース
-fn parse_result(px: &mut Px) -> (Option<TokenData>, Option<PTy>) {
+fn parse_result_ty(px: &mut Px) -> (Option<TokenData>, Option<PTy>) {
     let arrow_opt = px.eat(TokenKind::RightSlimArrow);
     let ty_opt = if arrow_opt.is_some() {
         parse_ty(px)
@@ -84,7 +84,7 @@ fn parse_fn_decl(px: &mut Px) -> PFnDecl {
 
     let name_opt = parse_name(px);
     let param_list_opt = parse_param_list(px);
-    let (arrow_opt, result_opt) = parse_result(px);
+    let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let block_opt = parse_block(px);
 
     PFnDecl {
@@ -92,7 +92,7 @@ fn parse_fn_decl(px: &mut Px) -> PFnDecl {
         name_opt,
         param_list_opt,
         arrow_opt,
-        result_opt,
+        result_ty_opt,
         block_opt,
     }
 }
@@ -103,7 +103,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
 
     let name_opt = parse_name(px);
     let param_list_opt = parse_param_list(px);
-    let (arrow_opt, result_opt) = parse_result(px);
+    let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let semi_opt = px.eat(TokenKind::Semi);
 
     PExternFnDecl {
@@ -112,7 +112,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
         name_opt,
         param_list_opt,
         arrow_opt,
-        result_opt,
+        result_ty_opt,
         semi_opt,
     }
 }

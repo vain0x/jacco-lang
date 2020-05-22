@@ -350,14 +350,14 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     for KExternFn {
         name,
         params,
-        result,
+        result_ty,
     } in root.extern_fns
     {
         let params = params
             .into_iter()
             .map(|param| gen_param(param, cx))
             .collect();
-        let result_ty = gen_ty(result, cx);
+        let result_ty = gen_ty(result_ty, cx);
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.text,
             params,

@@ -288,7 +288,7 @@ pub(crate) struct KFn {
 pub(crate) struct KExternFn {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
-    pub(crate) result: KTy,
+    pub(crate) result_ty: KTy,
 }
 
 #[derive(Clone, Debug)]

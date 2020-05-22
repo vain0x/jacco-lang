@@ -177,20 +177,20 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         }
         PDecl::Fn(PFnDecl {
             param_list_opt,
-            result_opt,
+            result_ty_opt,
             block_opt,
             ..
         }) => {
             resolve_param_list_opt(param_list_opt.as_mut(), nx);
-            resolve_ty_opt(result_opt.as_mut(), nx);
+            resolve_ty_opt(result_ty_opt.as_mut(), nx);
             resolve_block_opt(block_opt.as_mut(), nx);
         }
         PDecl::ExternFn(PExternFnDecl {
             param_list_opt,
-            result_opt,
+            result_ty_opt,
             ..
         }) => {
-            resolve_ty_opt(result_opt.as_mut(), nx);
+            resolve_ty_opt(result_ty_opt.as_mut(), nx);
             resolve_param_list_opt(param_list_opt.as_mut(), nx)
         }
         PDecl::Struct(PStructDecl {
