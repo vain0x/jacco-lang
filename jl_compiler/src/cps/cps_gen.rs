@@ -388,14 +388,18 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PBinaryOp::Assign => {
-                let result = gx.fresh_symbol("unit", location.clone());
-
-                let left = gen_expr_lval(*left, location, gx);
+                let left = gen_expr_lval(*left, location.clone(), gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
-                gx.push_prim_1(KPrim::Assign, vec![left, right], result.clone());
+                gx.push(XCommand::Prim {
+                    prim: KPrim::Assign,
+                    tys: vec![],
+                    args: vec![left, right],
+                    result_opt: None,
+                    cont_count: 1,
+                });
 
-                KTerm::Name(result)
+                new_unit_term(location)
             }
             PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
             PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),

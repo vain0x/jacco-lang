@@ -312,11 +312,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
         }
         KPrim::Assign => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            ([left, right], [result]) => {
+            ([left, right], []) => {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 unify(left_ty, right_ty.into_ptr(), location.clone(), tx);
-                unify(result.ty.clone(), KTy::Unit, location, tx);
             }
             _ => unimplemented!(),
         },
