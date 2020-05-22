@@ -24,8 +24,8 @@ struct LoopConstruction {
 struct Gx {
     var_map: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
-    current: Vec<KCommand>,
-    parent_loop: Option<LoopConstruction>,
+    current_commands: Vec<KCommand>,
+    current_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
     structs: Vec<KStruct>,
@@ -62,11 +62,11 @@ impl Gx {
     }
 
     fn current_break_label(&self) -> Option<&KSymbol> {
-        self.parent_loop.as_ref().map(|l| &l.break_label)
+        self.current_loop.as_ref().map(|l| &l.break_label)
     }
 
     fn current_continue_label(&self) -> Option<&KSymbol> {
-        self.parent_loop.as_ref().map(|l| &l.continue_label)
+        self.current_loop.as_ref().map(|l| &l.continue_label)
     }
 
     fn current_return_label(&self) -> Option<&KSymbol> {
@@ -74,7 +74,7 @@ impl Gx {
     }
 
     fn push(&mut self, command: KCommand) {
-        self.current.push(command);
+        self.current_commands.push(command);
     }
 
     fn push_label(&mut self, label: KSymbol, params: Vec<KSymbol>) {
@@ -524,7 +524,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             });
 
             let parent_loop = replace(
-                &mut gx.parent_loop,
+                &mut gx.current_loop,
                 Some(LoopConstruction {
                     break_label: next_label.clone(),
                     continue_label: continue_label.clone(),
@@ -539,7 +539,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             // alt:
             gx.push_jump(next_label.clone(), vec![unit_term.clone()]);
 
-            gx.parent_loop = parent_loop;
+            gx.current_loop = parent_loop;
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -557,7 +557,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             gx.push_label(continue_label.clone(), vec![]);
 
             let parent_loop = replace(
-                &mut gx.parent_loop,
+                &mut gx.current_loop,
                 Some(LoopConstruction {
                     break_label: next_label.clone(),
                     continue_label: continue_label.clone(),
@@ -569,7 +569,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push_jump(continue_label.clone(), vec![]);
 
-            gx.parent_loop = parent_loop;
+            gx.current_loop = parent_loop;
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -606,17 +606,17 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
 
             let commands = {
-                let prev_fn = replace(&mut gx.current_fn, Some(fn_construction));
-                let previous = take(&mut gx.current);
-                let parent_loop = take(&mut gx.parent_loop);
+                let parent_fn = replace(&mut gx.current_fn, Some(fn_construction));
+                let parent_loop = take(&mut gx.current_loop);
+                let parent_commands = take(&mut gx.current_commands);
 
                 let k_result = gen_block(block_opt.unwrap(), gx);
 
                 gx.push_jump(return_label.clone(), vec![k_result]);
 
-                gx.current_fn = prev_fn;
-                gx.parent_loop = parent_loop;
-                replace(&mut gx.current, previous)
+                gx.current_fn = parent_fn;
+                gx.current_loop = parent_loop;
+                replace(&mut gx.current_commands, parent_commands)
             };
 
             let (node, labels) = fold_block(commands);
