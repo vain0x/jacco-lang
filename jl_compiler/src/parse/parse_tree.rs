@@ -67,12 +67,12 @@ impl PNode for PNeverTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PUnitTy {
-    pub(crate) left: TokenData,
-    pub(crate) right_opt: Option<TokenData>,
+    pub(crate) left_paren: TokenData,
+    pub(crate) right_paren_opt: Option<TokenData>,
 }
 
 impl PNode for PUnitTy {
-    impl_node_seq! { left, right_opt }
+    impl_node_seq! { left_paren, right_paren_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -116,9 +116,9 @@ impl PNode for PParam {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PParamList {
-    pub(crate) left: TokenData,
+    pub(crate) left_paren: TokenData,
     pub(crate) params: Vec<PParam>,
-    pub(crate) right_opt: Option<TokenData>,
+    pub(crate) right_paren_opt: Option<TokenData>,
 }
 
 impl PNode for PParamList {
@@ -128,7 +128,7 @@ impl PNode for PParamList {
 
     fn get(&self, mut i: usize) -> Option<PElementRef> {
         if i == 0 {
-            return try_as_element_ref(&self.left);
+            return try_as_element_ref(&self.left_paren);
         }
         i -= 1;
 
@@ -138,7 +138,7 @@ impl PNode for PParamList {
         i -= self.params.len();
 
         if i == 0 {
-            return try_as_element_ref(&self.right_opt);
+            return try_as_element_ref(&self.right_paren_opt);
         }
 
         unreachable!();
@@ -146,7 +146,7 @@ impl PNode for PParamList {
 
     fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
         if i == 0 {
-            return try_as_element_mut(&mut self.left);
+            return try_as_element_mut(&mut self.left_paren);
         }
         i -= 1;
 
@@ -157,7 +157,7 @@ impl PNode for PParamList {
         i -= param_count;
 
         if i == 0 {
-            return try_as_element_mut(&mut self.right_opt);
+            return try_as_element_mut(&mut self.right_paren_opt);
         }
 
         unreachable!();
@@ -176,9 +176,9 @@ impl PNode for PArg {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PArgList {
-    pub(crate) left: TokenData,
+    pub(crate) left_paren: TokenData,
     pub(crate) args: Vec<PArg>,
-    pub(crate) right_opt: Option<TokenData>,
+    pub(crate) right_paren_opt: Option<TokenData>,
 }
 
 impl PArgList {
@@ -201,7 +201,7 @@ impl PNode for PArgList {
 
     fn get(&self, mut i: usize) -> Option<PElementRef> {
         if i == 0 {
-            return try_as_element_ref(&self.left);
+            return try_as_element_ref(&self.left_paren);
         }
         i -= 1;
 
@@ -211,7 +211,7 @@ impl PNode for PArgList {
         i -= self.args.len();
 
         if i == 0 {
-            return try_as_element_ref(&self.right_opt);
+            return try_as_element_ref(&self.right_paren_opt);
         }
 
         unreachable!();
@@ -219,7 +219,7 @@ impl PNode for PArgList {
 
     fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
         if i == 0 {
-            return try_as_element_mut(&mut self.left);
+            return try_as_element_mut(&mut self.left_paren);
         }
         i -= 1;
 
@@ -230,7 +230,7 @@ impl PNode for PArgList {
         i -= arg_count;
 
         if i == 0 {
-            return try_as_element_mut(&mut self.right_opt);
+            return try_as_element_mut(&mut self.right_paren_opt);
         }
 
         unreachable!();
@@ -239,10 +239,10 @@ impl PNode for PArgList {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PBlock {
-    pub(crate) left: TokenData,
+    pub(crate) left_brace: TokenData,
     pub(crate) decls: Vec<PDecl>,
     pub(crate) last_opt: Option<Box<PExpr>>,
-    pub(crate) right_opt: Option<TokenData>,
+    pub(crate) right_brace_opt: Option<TokenData>,
 }
 
 impl PNode for PBlock {
@@ -252,7 +252,7 @@ impl PNode for PBlock {
 
     fn get(&self, mut i: usize) -> Option<PElementRef> {
         if i == 0 {
-            return try_as_element_ref(&self.left);
+            return try_as_element_ref(&self.left_brace);
         }
         i -= 1;
 
@@ -263,14 +263,14 @@ impl PNode for PBlock {
 
         match i {
             0 => try_as_element_ref(&self.last_opt),
-            1 => try_as_element_ref(&self.right_opt),
+            1 => try_as_element_ref(&self.right_brace_opt),
             _ => unreachable!(),
         }
     }
 
     fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
         if i == 0 {
-            return try_as_element_mut(&mut self.left);
+            return try_as_element_mut(&mut self.left_brace);
         }
         i -= 1;
 
@@ -282,7 +282,7 @@ impl PNode for PBlock {
 
         match i {
             0 => try_as_element_mut(&mut self.last_opt),
-            1 => try_as_element_mut(&mut self.right_opt),
+            1 => try_as_element_mut(&mut self.right_brace_opt),
             _ => unreachable!(),
         }
     }

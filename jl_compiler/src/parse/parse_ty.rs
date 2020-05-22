@@ -7,9 +7,12 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
             Some(PTy::Name(PNameTy(name)))
         }
         TokenKind::LeftParen => {
-            let left = px.bump();
-            let right_opt = px.eat(TokenKind::RightParen);
-            Some(PTy::Unit(PUnitTy { left, right_opt }))
+            let left_paren = px.bump();
+            let right_paren_opt = px.eat(TokenKind::RightParen);
+            Some(PTy::Unit(PUnitTy {
+                left_paren,
+                right_paren_opt,
+            }))
         }
         TokenKind::Bang => {
             let bang = px.bump();

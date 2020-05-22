@@ -3,7 +3,7 @@
 use super::*;
 
 fn parse_param_list(px: &mut Px) -> Option<PParamList> {
-    let left = px.eat(TokenKind::LeftParen)?;
+    let left_paren = px.eat(TokenKind::LeftParen)?;
 
     let mut params = vec![];
 
@@ -26,11 +26,11 @@ fn parse_param_list(px: &mut Px) -> Option<PParamList> {
         }
     }
 
-    let right_opt = px.eat(TokenKind::RightParen);
+    let right_paren_opt = px.eat(TokenKind::RightParen);
 
     Some(PParamList {
-        left,
-        right_opt,
+        left_paren,
+        right_paren_opt,
         params,
     })
 }

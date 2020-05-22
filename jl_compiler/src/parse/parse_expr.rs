@@ -303,15 +303,15 @@ pub(crate) fn parse_cond(
 }
 
 pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
-    let left = px.eat(TokenKind::LeftBrace)?;
+    let left_brace = px.eat(TokenKind::LeftBrace)?;
 
     let (decls, last_opt) = parse_semi(Placement::Local, px);
 
-    let right_opt = px.eat(TokenKind::RightBrace);
+    let right_brace_opt = px.eat(TokenKind::RightBrace);
 
     Some(PBlock {
-        left,
-        right_opt,
+        left_brace,
+        right_brace_opt,
         decls,
         last_opt: last_opt.map(Box::new),
     })
@@ -441,16 +441,16 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
 }
 
 fn parse_arg_list(px: &mut Px) -> PArgList {
-    let left = px.expect(TokenKind::LeftParen);
+    let left_paren = px.expect(TokenKind::LeftParen);
 
     let mut args = vec![];
     parse_args(&mut args, px);
 
-    let right_opt = px.eat(TokenKind::RightParen);
+    let right_paren_opt = px.eat(TokenKind::RightParen);
 
     PArgList {
-        left,
+        left_paren,
         args,
-        right_opt,
+        right_paren_opt,
     }
 }

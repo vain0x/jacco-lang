@@ -37,7 +37,7 @@ fn validate_param_list(param_list: &PParamList, vx: &Vx) {
         }
     }
 
-    if param_list.right_opt.is_none() {
+    if param_list.right_paren_opt.is_none() {
         vx.logger.error(
             param_list.location().clone(),
             "maybe missing closing paren?",
@@ -70,7 +70,7 @@ fn validate_arg_list(arg_list: &PArgList, vx: &Vx) {
         }
     }
 
-    if arg_list.right_opt.is_none() {
+    if arg_list.right_paren_opt.is_none() {
         vx.logger
             .error(arg_list.location().clone(), "maybe missed closing paren?");
     }
@@ -79,8 +79,10 @@ fn validate_arg_list(arg_list: &PArgList, vx: &Vx) {
 fn validate_ty(ty: &PTy, vx: &Vx) {
     match ty {
         PTy::Name(_) | PTy::Never { .. } => {}
-        PTy::Unit(PUnitTy { right_opt, .. }) => {
-            if right_opt.is_none() {
+        PTy::Unit(PUnitTy {
+            right_paren_opt, ..
+        }) => {
+            if right_paren_opt.is_none() {
                 vx.logger
                     .error(ty.location().clone(), "maybe missed closing paren?");
             }
@@ -157,7 +159,7 @@ fn validate_block(block: &PBlock, vx: &Vx) {
         validate_decl(decl, vx, Placement::Local, semi_required);
     }
 
-    validate_brace_matching(&block.left, block.right_opt.as_ref(), vx);
+    validate_brace_matching(&block.left_brace, block.right_brace_opt.as_ref(), vx);
 }
 
 fn validate_expr(expr: &PExpr, vx: &Vx) {

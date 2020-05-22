@@ -333,7 +333,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let is_tuple = arg_list.is_tuple();
             match arg_list.args.as_mut_slice() {
                 [] => {
-                    let location = arg_list.left.into_location();
+                    let location = arg_list.location();
                     new_unit_term(location)
                 }
                 [arg] if !is_tuple => gen_expr(take(&mut arg.expr), gx),
@@ -358,7 +358,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KTerm::Name(result2)
         }
         PExpr::Call(PCallExpr { left, arg_list }) => {
-            let location = arg_list.left.into_location();
+            let location = arg_list.left_paren.into_location();
             let result = gx.fresh_symbol("call_result", location.clone());
 
             let k_left = gen_expr(*left, gx);
@@ -690,7 +690,7 @@ fn gen_block(block: PBlock, gx: &mut Gx) -> KTerm {
     match block.last_opt {
         Some(last) => gen_expr(*last, gx),
         None => {
-            let location = block.left.into_location();
+            let location = block.left_brace.into_location();
             new_unit_term(location)
         }
     }
