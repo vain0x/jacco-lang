@@ -1,13 +1,14 @@
 //! 名前解決の処理
 
 use super::*;
+use crate::id_provider::IdProvider;
 use crate::logs::Logger;
 use std::collections::HashMap;
 
 /// Naming context.
 #[derive(Default)]
 struct Nx {
-    last_id: PNameId,
+    ids: IdProvider,
     env: HashMap<String, PNameId>,
     logger: Logger,
 }
@@ -21,8 +22,7 @@ impl Nx {
     }
 
     fn fresh_id(&mut self) -> PNameId {
-        self.last_id += 1;
-        self.last_id
+        self.ids.next()
     }
 
     fn enter_scope(&mut self, mut do_resolve: impl FnMut(&mut Nx)) {
