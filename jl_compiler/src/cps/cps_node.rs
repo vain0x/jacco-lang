@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub(crate) enum KCommand {
-    Prim {
+    Node {
         prim: KPrim,
         tys: Vec<KTy>,
         args: Vec<KTerm>,

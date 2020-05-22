@@ -80,7 +80,7 @@ impl Gx {
     }
 
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
-        self.push(KCommand::Prim {
+        self.push(KCommand::Node {
             prim,
             tys: vec![],
             args,
@@ -95,7 +95,7 @@ impl Gx {
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
     ) {
-        self.push(KCommand::Prim {
+        self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
             args: std::iter::once(KTerm::Name(label)).chain(args).collect(),
@@ -178,7 +178,7 @@ fn emit_if(
 
     let k_cond = gen_expr(cond, gx);
 
-    gx.push(KCommand::Prim {
+    gx.push(KCommand::Node {
         prim: KPrim::If,
         tys: vec![],
         args: vec![k_cond],
@@ -317,7 +317,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 .map(|field| gen_expr(field.value_opt.unwrap(), gx))
                 .collect();
 
-            gx.push(KCommand::Prim {
+            gx.push(KCommand::Node {
                 prim: KPrim::Struct,
                 tys: vec![ty],
                 args,
@@ -391,7 +391,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 let left = gen_expr_lval(*left, location.clone(), gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
-                gx.push(KCommand::Prim {
+                gx.push(KCommand::Node {
                     prim: KPrim::Assign,
                     tys: vec![],
                     args: vec![left, right],
@@ -513,7 +513,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             let k_cond = gen_expr(*cond_opt.unwrap(), gx);
 
-            gx.push(KCommand::Prim {
+            gx.push(KCommand::Node {
                 prim: KPrim::If,
                 tys: vec![],
                 args: vec![k_cond],

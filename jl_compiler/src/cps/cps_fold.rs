@@ -11,7 +11,7 @@ struct Fx {
 fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
     while let Some(command) = commands.pop() {
         match command {
-            KCommand::Prim {
+            KCommand::Node {
                 prim,
                 tys,
                 args,
