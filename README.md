@@ -1,6 +1,6 @@
 # THE JACCO LANGUAGE
 
-WIP
+WIP: [TODOs](https://github.com/vain0x/languages/projects/1)
 
 **ジャッコ言語** (`jacco-lang`) は自作プログラミング言語。
 
