@@ -10,7 +10,7 @@ int main() {
         if_result_1 = (void)0;
         goto next_1;
     }
-    //
+
 next_1:;
     if (2) {
         if_result_2 = (void)0;
@@ -19,7 +19,7 @@ next_1:;
         if_result_2 = (void)0;
         goto next_2;
     }
-    //
+
 next_2:;
     if (3) {
         int body3_1 = 30;
@@ -36,11 +36,11 @@ next_2:;
             goto next_3;
         }
     }
-    //
+
 next_3:;
     if_result_4 = if_result_3;
     goto next_4;
-    //
+
 next_4:;
     void unit_1 = (void)0;
     int group_expr_1 = 1;

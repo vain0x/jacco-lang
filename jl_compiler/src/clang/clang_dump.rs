@@ -101,6 +101,7 @@ fn write_expr(expr: &CExpr, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
 
                 write_expr(arg, indent, out)?;
             }
+
             write!(out, ")")
         }
         CExpr::UnaryOp { op, arg } => {
@@ -122,11 +123,6 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, ";")
         }
         CStmt::Block(body) => write_block(body, indent, out),
-        CStmt::Label { label } => {
-            write!(out, "//\n")?;
-            write_indent(indent.saturating_sub(1), out)?;
-            write!(out, "{}:;", label)
-        }
         CStmt::Goto { label } => write!(out, "goto {};", label),
         CStmt::Return(None) => write!(out, "return;"),
         CStmt::Return(Some(arg)) => {
@@ -188,7 +184,19 @@ fn write_stmt(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write_indent(indent, out)?;
             write!(out, "}};")
         }
+        CStmt::Label { .. } => unreachable!(),
     }
+}
+
+fn write_stmt_with_indent(stmt: &CStmt, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
+    if let CStmt::Label { label } = stmt {
+        write!(out, "\n")?;
+        write_indent(indent.saturating_sub(1), out)?;
+        return write!(out, "{}:;", label);
+    }
+
+    write_indent(indent, out)?;
+    write_stmt(stmt, indent, out)
 }
 
 fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
@@ -200,9 +208,7 @@ fn write_block(block: &CBlock, indent: usize, out: &mut Vec<u8>) -> io::Result<(
         write!(out, "{{\n")?;
 
         for stmt in body {
-            let indent = indent + 1;
-            write_indent(indent, out)?;
-            write_stmt(stmt, indent, out)?;
+            write_stmt_with_indent(stmt, indent + 1, out)?;
             write!(out, "\n")?;
         }
 
@@ -217,8 +223,7 @@ fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
             write!(out, "\n")?;
         }
 
-        write_indent(indent, out)?;
-        write_stmt(decl, indent, out)?;
+        write_stmt_with_indent(decl, indent, out)?;
         write!(out, "\n")?;
     }
     Ok(())

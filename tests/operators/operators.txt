@@ -40,7 +40,7 @@ int main() {
         if_result_1 = 0;
         goto next_1;
     }
-    //
+
 next_1:;
     int log_and_1 = if_result_1;
     if (2) {
@@ -50,7 +50,7 @@ next_1:;
         if_result_2 = 3;
         goto next_2;
     }
-    //
+
 next_2:;
     int log_or_1 = if_result_2;
     int minus_1 = -2;
