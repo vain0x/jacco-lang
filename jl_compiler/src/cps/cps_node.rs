@@ -199,6 +199,12 @@ impl fmt::Debug for KSymbol {
     }
 }
 
+impl HaveLocation for KSymbol {
+    fn location(&self) -> Location {
+        self.location.clone()
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,

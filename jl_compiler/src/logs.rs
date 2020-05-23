@@ -47,7 +47,7 @@ pub(crate) struct Logger {
 }
 
 impl Logger {
-    pub(crate) fn error(&self, have_location: impl HaveLocation, message: impl Into<String>) {
+    pub(crate) fn error(&self, have_location: &impl HaveLocation, message: impl Into<String>) {
         let message = message.into();
         let location = have_location.location();
         let mut inner = self.parent.inner.borrow_mut();

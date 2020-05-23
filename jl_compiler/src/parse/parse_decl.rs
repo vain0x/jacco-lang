@@ -264,10 +264,7 @@ fn parse_root(px: &mut Px) -> Vec<PDecl> {
 pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot {
     tokens.retain(|token| match token.kind() {
         TokenKind::Other => {
-            logger.error(
-                token.location().clone(),
-                format!("invalid token {:?}", token.text()),
-            );
+            logger.error(token, format!("invalid token {:?}", token.text()));
             false
         }
         TokenKind::Space | TokenKind::Comment => false,

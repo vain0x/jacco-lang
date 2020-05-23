@@ -12,17 +12,14 @@ impl Vx {
 
 fn validate_brace_matching(left: &TokenData, right_opt: Option<&TokenData>, vx: &Vx) {
     if right_opt.is_none() {
-        vx.logger
-            .error(left.location().clone(), "maybe missed a right brace?");
+        vx.logger.error(left, "maybe missed a right brace?");
     }
 }
 
 fn validate_param(param: &PParam, vx: &Vx) {
     match (&param.colon_opt, &param.ty_opt) {
         (Some(_), Some(ty)) => validate_ty(&ty, vx),
-        _ => vx
-            .logger
-            .error(param.location().clone(), "maybe missed type ascription?"),
+        _ => vx.logger.error(param, "maybe missed type ascription?"),
     }
 }
 
@@ -32,25 +29,19 @@ fn validate_param_list(param_list: &PParamList, vx: &Vx) {
 
         let is_last = i + 1 == param_list.params.len();
         if !is_last && param.comma_opt.is_none() {
-            vx.logger
-                .error(param.location().clone(), "maybe missing following comma?");
+            vx.logger.error(param, "maybe missing following comma?");
         }
     }
 
     if param_list.right_paren_opt.is_none() {
-        vx.logger.error(
-            param_list.location().clone(),
-            "maybe missing closing paren?",
-        );
+        vx.logger.error(param_list, "maybe missing closing paren?");
     }
 }
 
 fn validate_result(arrow_opt: Option<&TokenData>, ty_opt: Option<&PTy>, vx: &Vx) {
     match (arrow_opt, ty_opt) {
         (Some(_), Some(ty)) => validate_ty(ty, vx),
-        (Some(arrow), None) => vx
-            .logger
-            .error(arrow.location().clone(), "missed the type of result?"),
+        (Some(arrow), None) => vx.logger.error(arrow, "missed the type of result?"),
         (None, Some(_)) | (None, None) => {}
     }
 }
@@ -65,14 +56,12 @@ fn validate_arg_list(arg_list: &PArgList, vx: &Vx) {
 
         let is_last = i + 1 == arg_list.args.len();
         if !is_last && arg.comma_opt.is_none() {
-            vx.logger
-                .error(arg.location().clone(), "maybe missed following comma?");
+            vx.logger.error(arg, "maybe missed following comma?");
         }
     }
 
     if arg_list.right_paren_opt.is_none() {
-        vx.logger
-            .error(arg_list.location().clone(), "maybe missed closing paren?");
+        vx.logger.error(arg_list, "maybe missed closing paren?");
     }
 }
 
@@ -83,14 +72,12 @@ fn validate_ty(ty: &PTy, vx: &Vx) {
             right_paren_opt, ..
         }) => {
             if right_paren_opt.is_none() {
-                vx.logger
-                    .error(ty.location().clone(), "maybe missed closing paren?");
+                vx.logger.error(ty, "maybe missed closing paren?");
             }
         }
         PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             if ty_opt.is_none() {
-                vx.logger
-                    .error(ty.location().clone(), "maybe missed following type?");
+                vx.logger.error(ty, "maybe missed following type?");
             }
         }
     }
@@ -116,33 +103,33 @@ fn validate_cond(
             // Pass.
         }
         (None, None, None) | (Some(_), None, Some(_)) => {
-            vx.logger.error(get_location(), "maybe missed condition?");
+            vx.logger.error(&get_location(), "maybe missed condition?");
         }
         (None, Some(expr), None) => {
             vx.logger.error(
-                expr.location(),
+                expr,
                 "maybe missed a pair of parenthesis around the condition?",
             );
         }
         (Some(_), Some(expr), None) => {
             vx.logger
-                .error(expr.location().behind(), "maybe missed a right paren?");
+                .error(&expr.location().behind(), "maybe missed a right paren?");
         }
         (None, Some(expr), Some(_)) => {
             vx.logger.error(
-                expr.location().ahead(),
+                &expr.location().ahead(),
                 "maybe missed a left paren in front of the condition?",
             );
         }
         (None, None, Some(paren)) => {
             vx.logger.error(
-                paren.location().clone().ahead(),
+                &paren.location().ahead(),
                 "maybe missed a left paren and condition?",
             );
         }
         (Some(paren), None, None) => {
             vx.logger.error(
-                paren.location().clone().behind(),
+                &paren.location().behind(),
                 "maybe missed a condition and a right paren?",
             );
         }
@@ -182,7 +169,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             for (i, field) in fields.iter().enumerate() {
                 if field.colon_opt.is_none() {
                     vx.logger
-                        .error(field.name.location().clone().behind(), "missed a colon?");
+                        .error(&field.name.location().behind(), "missed a colon?");
                 }
 
                 validate_expr_opt(field.value_opt.as_ref(), vx);
@@ -193,7 +180,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                 };
                 if comma_is_required && field.comma_opt.is_none() {
                     vx.logger
-                        .error(field.location().behind(), "missed a comma?");
+                        .error(&field.location().behind(), "missed a comma?");
                 }
             }
         }
@@ -207,7 +194,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 
             if name_opt.is_none() {
                 vx.logger
-                    .error(dot.location().clone().behind(), "missed field name?");
+                    .error(&dot.location().behind(), "missed field name?");
             }
         }
         PExpr::Call(PCallExpr { left, arg_list }) => {
@@ -218,10 +205,9 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             arg_opt, location, ..
         }) => match arg_opt.as_deref() {
             Some(arg) => validate_expr(arg, vx),
-            None => vx.logger.error(
-                location.clone(),
-                "maybe missed the argument of the unary operator?",
-            ),
+            None => vx
+                .logger
+                .error(location, "maybe missed the argument of the unary operator?"),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
             left,
@@ -235,7 +221,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                 Some(right) => validate_expr(right, vx),
                 None => vx
                     .logger
-                    .error(location.clone(), "maybe missed the right-hand side?"),
+                    .error(location, "maybe missed the right-hand side?"),
             }
         }
         PExpr::Block(PBlockExpr(block)) => {
@@ -267,18 +253,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 
             match body_opt {
                 Some(body) => validate_block(body, vx),
-                None => vx.logger.error(
-                    keyword.location().clone(),
-                    "maybe missed body of the if expression?",
-                ),
+                None => vx
+                    .logger
+                    .error(keyword, "maybe missed body of the if expression?"),
             }
 
             match (else_opt, alt_opt) {
                 (Some(_), Some(alt)) => validate_expr(alt, vx),
-                (Some(else_keyword), None) => vx.logger.error(
-                    else_keyword.location().clone(),
-                    "maybe missed the body of the else clause?",
-                ),
+                (Some(else_keyword), None) => vx
+                    .logger
+                    .error(else_keyword, "maybe missed the body of the else clause?"),
                 (None, Some(_)) => {
                     // unreachable
                 }
@@ -302,18 +286,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 
             match body_opt {
                 Some(body) => validate_block(body, vx),
-                None => vx.logger.error(
-                    keyword.location().clone(),
-                    "maybe missed the body of the while expression?",
-                ),
+                None => vx
+                    .logger
+                    .error(keyword, "maybe missed the body of the while expression?"),
             }
         }
         PExpr::Loop(PLoopExpr { keyword, body_opt }) => match body_opt {
             Some(body) => validate_block(body, vx),
-            None => vx.logger.error(
-                keyword.location().clone(),
-                "maybe missed body of the if expression?",
-            ),
+            None => vx
+                .logger
+                .error(keyword, "maybe missed body of the if expression?"),
         },
     }
 }
@@ -327,7 +309,7 @@ fn validate_expr_opt(expr_opt: Option<&PExpr>, vx: &Vx) {
 fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: bool) {
     match (decl, placement) {
         (PDecl::Expr { .. }, Placement::Global) | (PDecl::Let { .. }, Placement::Global) => {
-            vx.logger.error(decl.location().clone(), "not allowed");
+            vx.logger.error(decl, "not allowed");
         }
         _ => {}
     }
@@ -338,7 +320,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
 
             if semi_required && semi_opt.is_none() && !expr.ends_with_block() {
                 vx.logger
-                    .error(decl.location().behind(), "missed a semicolon?");
+                    .error(&decl.location().behind(), "missed a semicolon?");
             }
         }
         PDecl::Let(PLetDecl {
@@ -351,17 +333,14 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             ..
         }) => {
             if name_opt.is_none() {
-                vx.logger
-                    .error(keyword.location().clone(), "missed variable name?");
+                vx.logger.error(keyword, "missed variable name?");
             }
 
             validate_ty_opt(ty_opt.as_ref(), vx);
 
             match (equal_opt, init_opt) {
                 (Some(_), Some(init)) => validate_expr(init, vx),
-                (Some(equal), None) => vx
-                    .logger
-                    .error(equal.location().clone(), "missed an expression?"),
+                (Some(equal), None) => vx.logger.error(equal, "missed an expression?"),
                 (None, Some(_)) | (None, None) => {}
             }
 
@@ -372,7 +351,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .map_or(false, |init| init.ends_with_block())
             {
                 vx.logger
-                    .error(decl.location().behind(), "missed a semicolon?");
+                    .error(&decl.location().behind(), "missed a semicolon?");
             }
         }
         PDecl::Fn(PFnDecl {
@@ -384,24 +363,19 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             block_opt,
         }) => {
             if name_opt.is_none() {
-                vx.logger
-                    .error(keyword.location().clone(), "missed the function name?");
+                vx.logger.error(keyword, "missed the function name?");
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => vx
-                    .logger
-                    .error(keyword.location().clone(), "missed param list?"),
+                None => vx.logger.error(keyword, "missed param list?"),
             }
 
             validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
 
             match block_opt {
                 Some(block) => validate_block(block, vx),
-                None => vx
-                    .logger
-                    .error(keyword.location().clone(), "missed the body?"),
+                None => vx.logger.error(keyword, "missed the body?"),
             }
         }
         PDecl::ExternFn(PExternFnDecl {
@@ -419,20 +393,19 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                 .unite(&fn_keyword.location());
 
             if name_opt.is_none() {
-                vx.logger
-                    .error(location.clone(), "missed the function name?");
+                vx.logger.error(&location, "missed the function name?");
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => vx.logger.error(location.clone(), "missed param list?"),
+                None => vx.logger.error(&location, "missed param list?"),
             }
 
             validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
 
             if semi_required && semi_opt.is_none() {
                 vx.logger
-                    .error(decl.location().behind(), "missed a semicolon?");
+                    .error(&decl.location().behind(), "missed a semicolon?");
             }
         }
         PDecl::Struct(PStructDecl {
@@ -442,8 +415,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             semi_opt,
         }) => {
             if name_opt.is_none() {
-                vx.logger
-                    .error(keyword.location().clone(), "maybe missed a struct name?");
+                vx.logger.error(keyword, "maybe missed a struct name?");
             }
 
             match variant_opt {
@@ -457,14 +429,12 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
 
                     for (i, field) in fields.iter().enumerate() {
                         if field.colon_opt.is_none() {
-                            vx.logger.error(
-                                field.name.location().clone().behind(),
-                                "maybe missed a colon?",
-                            );
+                            vx.logger
+                                .error(&field.name.location().behind(), "maybe missed a colon?");
                         }
 
                         if field.ty_opt.is_none() {
-                            vx.logger.error(field.location(), "maybe missed a type?");
+                            vx.logger.error(field, "maybe missed a type?");
                         }
 
                         let comma_is_required = {
@@ -473,13 +443,12 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                         };
                         if comma_is_required && field.comma_opt.is_none() {
                             vx.logger
-                                .error(field.location().behind(), "maybe missed a comma?");
+                                .error(&field.location().behind(), "maybe missed a comma?");
                         }
                     }
 
                     if let Some(comma) = comma_opt {
-                        vx.logger
-                            .error(comma.location().clone(), "comma is not allowed here");
+                        vx.logger.error(comma, "comma is not allowed here");
                     }
                 }
                 None => {}
@@ -488,7 +457,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             let ends_with_block = || variant_opt.iter().all(|variant| variant.ends_with_block());
             if semi_required && semi_opt.is_none() && !ends_with_block() {
                 vx.logger
-                    .error(decl.location().behind(), "maybe missed a semicolon?");
+                    .error(&decl.location().behind(), "maybe missed a semicolon?");
             }
         }
     }

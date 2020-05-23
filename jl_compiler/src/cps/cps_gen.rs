@@ -215,11 +215,8 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
                 return def.ty.borrow().clone();
             }
 
-            // FIXME: location info
-            gx.logger.error(
-                Location::default(),
-                format!("undefined type name {:?}", name.text()),
-            );
+            gx.logger
+                .error(&name, format!("undefined type name {:?}", name.text()));
             KTy::Unresolved
         }
     }
@@ -262,8 +259,7 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     let ty = match param.ty_opt {
         Some(ty) => gen_ty(ty, gx),
         None => {
-            gx.logger
-                .error(param.name.location().clone(), "param type is mandatory");
+            gx.logger.error(&param.name, "param type is mandatory");
             KTy::Never
         }
     };

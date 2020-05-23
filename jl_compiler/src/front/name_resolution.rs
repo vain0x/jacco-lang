@@ -46,7 +46,7 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
                 return;
             }
 
-            nx.logger.error(name.location().clone(), "undefined type");
+            nx.logger.error(name, "undefined type");
         }
     }
 }
@@ -86,7 +86,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 name.name_id = *name_id;
             }
             None => {
-                nx.logger.error(name.location().clone(), "undefined");
+                nx.logger.error(name, "undefined");
             }
         },
         PExpr::Struct(PStructExpr { name, fields, .. }) => {

@@ -123,7 +123,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 
             if left_param_count != right_param_count {
                 // NOTE: unify types as possible even if param counts don't match.
-                tx.logger.error(location, "arity mismatch");
+                tx.logger.error(&location, "arity mismatch");
             }
         }
 
@@ -135,7 +135,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)
         | (KTy::Symbol { .. }, _) => {
-            tx.logger.error(location, "type mismatch");
+            tx.logger.error(&location, "type mismatch");
         }
     }
 }
@@ -196,8 +196,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 unify(ty.clone(), result.ty.clone(), location, tx);
                 if !ty.is_symbol() {
-                    tx.logger
-                        .error(result.location.clone(), "symbol type required");
+                    tx.logger.error(result, "symbol type required");
                 }
             }
             _ => unimplemented!(),
@@ -232,7 +231,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                             tx,
                         );
                     } else {
-                        tx.logger.error(location.clone(), "unknown field");
+                        tx.logger.error(location, "unknown field");
                     }
                 }
             }

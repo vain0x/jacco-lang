@@ -59,6 +59,5 @@ impl Px {
 }
 
 pub(crate) fn p_error(message: impl Into<String>, px: &mut Px) {
-    px.logger()
-        .error(px.nth_data(0).unwrap().location().clone(), message);
+    px.logger().error(px.nth_data(0).unwrap(), message);
 }
