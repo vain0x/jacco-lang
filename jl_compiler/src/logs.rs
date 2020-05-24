@@ -1,4 +1,7 @@
 //! エラーや警告などのログ
+//!
+//! 入力されたソースコードに起因するエラーを報告するのに使う。
+//! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::token::{HaveLocation, Location};
 use std::cell::RefCell;
