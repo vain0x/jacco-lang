@@ -26,7 +26,7 @@ struct Gx {
     current_commands: Vec<KCommand>,
     extern_fns: Vec<KExternFnData>,
     structs: Vec<KStruct>,
-    fns: Vec<KFn>,
+    fns: Vec<KFnData>,
     logger: Logger,
 }
 
@@ -627,7 +627,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let (node, labels) = fold_block(commands);
 
-            let k_fn = KFn {
+            let k_fn = KFnData {
                 name: fn_name,
                 params: vec![return_label],
                 body: node,

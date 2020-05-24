@@ -27,7 +27,7 @@ impl InitMetaTys {
         }
     }
 
-    fn on_fn(&mut self, k_fn: &mut KFn) {
+    fn on_fn(&mut self, k_fn: &mut KFnData) {
         self.on_symbol_def(&mut k_fn.name);
 
         for param in &mut k_fn.params {

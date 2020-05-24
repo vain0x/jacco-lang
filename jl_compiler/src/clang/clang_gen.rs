@@ -365,13 +365,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for KFn {
+    for KFnData {
         name, body, labels, ..
     } in root.fns
     {
         let stmts = cx.enter_block(|cx| {
             cx.labels.clear();
-            for KFn { name, params, .. } in &labels {
+            for KFnData { name, params, .. } in &labels {
                 let fn_name = unique_name(&name, cx);
                 let params = params
                     .into_iter()
@@ -390,7 +390,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             gen_node(body, cx);
 
-            for KFn { name, body, .. } in labels {
+            for KFnData { name, body, .. } in labels {
                 let label = unique_name(&name, cx);
                 cx.stmts.push(CStmt::Label { label });
                 gen_node(body, cx);
