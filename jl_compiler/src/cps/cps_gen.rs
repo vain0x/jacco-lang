@@ -52,7 +52,7 @@ impl Gx {
         let name = hint.to_string();
 
         KSymbol {
-            ty: KTy::default(),
+            ty: RefCell::default(),
             location,
             def: Rc::new(KVarData::new_with_ty(name, KTy::default())),
         }
@@ -248,7 +248,11 @@ fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
         }
     };
 
-    KSymbol { ty, location, def }
+    KSymbol {
+        ty: RefCell::new(ty),
+        location,
+        def,
+    }
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {

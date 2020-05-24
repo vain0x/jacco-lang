@@ -87,7 +87,7 @@ fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
 }
 
 fn gen_param(param: KSymbol, cx: &mut Cx) -> (String, CTy) {
-    (unique_name(&param, cx), gen_ty(param.ty, cx))
+    (unique_name(&param, cx), gen_ty(param.ty(), cx))
 }
 
 fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
@@ -241,7 +241,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         },
         KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
-                let struct_def = match result.ty.clone().resolve() {
+                let struct_def = match result.ty().resolve() {
                     KTy::Symbol { def } => def.clone(),
                     _ => unimplemented!(),
                 };
