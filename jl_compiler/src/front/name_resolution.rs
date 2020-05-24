@@ -60,7 +60,7 @@ impl Nx {
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) -> bool {
     match nx.env.get(name.text()) {
         Some(&name_id) => {
-            name.name_id = name_id;
+            name.name_id_opt = Some(name_id);
             true
         }
         None => false,
@@ -68,8 +68,9 @@ fn resolve_name_use(name: &mut PName, nx: &mut Nx) -> bool {
 }
 
 fn resolve_name_def(name: &mut PName, nx: &mut Nx) {
-    name.name_id = nx.fresh_id();
-    nx.env.insert(name.text().to_string(), name.name_id);
+    let name_id = nx.fresh_id();
+    name.name_id_opt = Some(name_id);
+    nx.env.insert(name.text().to_string(), name_id);
 }
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {

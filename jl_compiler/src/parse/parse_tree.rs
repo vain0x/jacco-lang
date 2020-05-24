@@ -14,8 +14,8 @@ pub(crate) type PNameId = usize;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PName {
-    pub(crate) name_id: PNameId,
     pub(crate) token: TokenData,
+    pub(crate) name_id_opt: Option<PNameId>,
 }
 
 impl PName {

@@ -1,14 +1,13 @@
 //! 式の構文解析ルール
 
 use super::*;
-use crate::NO_ID;
 
 pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
     let token = px.eat(TokenKind::Ident)?;
 
     Some(PName {
-        name_id: NO_ID,
         token,
+        name_id_opt: None,
     })
 }
 
