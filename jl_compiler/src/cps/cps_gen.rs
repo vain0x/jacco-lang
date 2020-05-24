@@ -14,7 +14,7 @@ struct FnConstruction {
     return_label: KSymbol,
 }
 
-struct LoopConstruction {
+struct KLoopData {
     break_label: KSymbol,
     continue_label: KSymbol,
 }
@@ -22,10 +22,10 @@ struct LoopConstruction {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
+    loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
     current_commands: Vec<KCommand>,
-    current_loop: Option<LoopConstruction>,
     current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
     structs: Vec<KStruct>,
@@ -61,12 +61,16 @@ impl Gx {
         }
     }
 
-    fn current_break_label(&self) -> Option<&KSymbol> {
-        self.current_loop.as_ref().map(|l| &l.break_label)
+    fn get_break_label(&self, loop_id_opt: Option<usize>) -> Option<&KSymbol> {
+        self.loop_map
+            .get(&loop_id_opt?)
+            .map(|data| &data.break_label)
     }
 
-    fn current_continue_label(&self) -> Option<&KSymbol> {
-        self.current_loop.as_ref().map(|l| &l.continue_label)
+    fn get_continue_label(&self, loop_id_opt: Option<usize>) -> Option<&KSymbol> {
+        self.loop_map
+            .get(&loop_id_opt?)
+            .map(|data| &data.continue_label)
     }
 
     fn current_return_label(&self) -> Option<&KSymbol> {
@@ -441,10 +445,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
         },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
-        PExpr::Break(PBreakExpr { keyword, arg_opt }) => {
+        PExpr::Break(PBreakExpr {
+            keyword,
+            arg_opt,
+            loop_id_opt,
+        }) => {
             let location = keyword.into_location();
 
-            let label = gx.current_break_label().expect("out of loop").clone();
+            let label = gx.get_break_label(loop_id_opt).unwrap().clone();
             let arg = match arg_opt {
                 Some(arg) => gen_expr(*arg, gx),
                 None => new_unit_term(location.clone()),
@@ -453,10 +461,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::Continue(PContinueExpr { keyword, .. }) => {
+        PExpr::Continue(PContinueExpr {
+            keyword,
+            loop_id_opt,
+        }) => {
             let location = keyword.into_location();
 
-            let label = gx.current_continue_label().expect("out of loop").clone();
+            let label = gx.get_continue_label(loop_id_opt).unwrap().clone();
             gx.push_jump_with_cont(label, vec![]);
 
             new_never_term(location)
@@ -497,6 +508,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             keyword,
             cond_opt,
             body_opt,
+            loop_id_opt,
             ..
         }) => {
             let location = keyword.into_location();
@@ -504,6 +516,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
             let unit_term = new_unit_term(location);
+
+            gx.loop_map.insert(
+                loop_id_opt.unwrap(),
+                KLoopData {
+                    break_label: next_label.clone(),
+                    continue_label: continue_label.clone(),
+                },
+            );
 
             gx.push_jump(continue_label.clone(), vec![]);
 
@@ -519,14 +539,6 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 cont_count: 2,
             });
 
-            let parent_loop = replace(
-                &mut gx.current_loop,
-                Some(LoopConstruction {
-                    break_label: next_label.clone(),
-                    continue_label: continue_label.clone(),
-                }),
-            );
-
             // body:
             gen_block(body_opt.unwrap(), gx);
 
@@ -535,37 +547,37 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             // alt:
             gx.push_jump(next_label.clone(), vec![unit_term.clone()]);
 
-            gx.current_loop = parent_loop;
-
             // next:
             gx.push_label(next_label, vec![result.clone()]);
 
             unit_term
         }
-        PExpr::Loop(PLoopExpr { keyword, body_opt }) => {
+        PExpr::Loop(PLoopExpr {
+            keyword,
+            body_opt,
+            loop_id_opt,
+        }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("loop_result", location.clone());
             let continue_label = gx.fresh_symbol("continue_", location.clone());
             let next_label = gx.fresh_symbol("next", location.clone());
 
+            gx.loop_map.insert(
+                loop_id_opt.unwrap(),
+                KLoopData {
+                    break_label: next_label.clone(),
+                    continue_label: continue_label.clone(),
+                },
+            );
+
             gx.push_jump(continue_label.clone(), vec![]);
 
             gx.push_label(continue_label.clone(), vec![]);
-
-            let parent_loop = replace(
-                &mut gx.current_loop,
-                Some(LoopConstruction {
-                    break_label: next_label.clone(),
-                    continue_label: continue_label.clone(),
-                }),
-            );
 
             // body:
             gen_block(body_opt.unwrap(), gx);
 
             gx.push_jump(continue_label.clone(), vec![]);
-
-            gx.current_loop = parent_loop;
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -603,7 +615,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let commands = {
                 let parent_fn = replace(&mut gx.current_fn, Some(fn_construction));
-                let parent_loop = take(&mut gx.current_loop);
                 let parent_commands = take(&mut gx.current_commands);
 
                 let k_result = gen_block(block_opt.unwrap(), gx);
@@ -611,7 +622,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 gx.push_jump(return_label.clone(), vec![k_result]);
 
                 gx.current_fn = parent_fn;
-                gx.current_loop = parent_loop;
                 replace(&mut gx.current_commands, parent_commands)
             };
 

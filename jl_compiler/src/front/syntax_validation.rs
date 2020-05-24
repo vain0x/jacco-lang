@@ -275,6 +275,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             cond_opt,
             right_paren_opt,
             body_opt,
+            ..
         }) => {
             validate_cond(
                 left_paren_opt.as_ref(),
@@ -291,7 +292,9 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                     .error(keyword, "maybe missed the body of the while expression?"),
             }
         }
-        PExpr::Loop(PLoopExpr { keyword, body_opt }) => match body_opt {
+        PExpr::Loop(PLoopExpr {
+            keyword, body_opt, ..
+        }) => match body_opt {
             Some(body) => validate_block(body, vx),
             None => vx
                 .logger

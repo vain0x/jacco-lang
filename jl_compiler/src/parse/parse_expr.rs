@@ -327,13 +327,20 @@ fn parse_break_expr(px: &mut Px) -> PBreakExpr {
     let keyword = px.expect(TokenKind::Break);
     let arg_opt = parse_expr(px).map(Box::new);
 
-    PBreakExpr { keyword, arg_opt }
+    PBreakExpr {
+        keyword,
+        arg_opt,
+        loop_id_opt: None,
+    }
 }
 
 fn parse_continue_expr(px: &mut Px) -> PContinueExpr {
     let keyword = px.expect(TokenKind::Continue);
 
-    PContinueExpr { keyword }
+    PContinueExpr {
+        keyword,
+        loop_id_opt: None,
+    }
 }
 
 fn parse_return_expr(px: &mut Px) -> PReturnExpr {
@@ -386,6 +393,7 @@ fn parse_while_expr(px: &mut Px) -> PWhileExpr {
         cond_opt,
         right_paren_opt,
         body_opt,
+        loop_id_opt: None,
     }
 }
 
@@ -394,7 +402,11 @@ fn parse_loop_expr(px: &mut Px) -> PLoopExpr {
 
     let body_opt = parse_block(px);
 
-    PLoopExpr { keyword, body_opt }
+    PLoopExpr {
+        keyword,
+        body_opt,
+        loop_id_opt: None,
+    }
 }
 
 pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {

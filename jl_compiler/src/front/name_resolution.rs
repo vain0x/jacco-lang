@@ -4,12 +4,14 @@ use super::*;
 use crate::id_provider::IdProvider;
 use crate::logs::Logger;
 use std::collections::HashMap;
+use std::mem::replace;
 
 /// Naming context.
 #[derive(Default)]
 struct Nx {
     ids: IdProvider,
     env: HashMap<String, PNameId>,
+    parent_loop: Option<usize>,
     logger: Logger,
 }
 
@@ -31,6 +33,15 @@ impl Nx {
         do_resolve(self);
 
         self.env = outer_env;
+    }
+
+    fn enter_loop(&mut self, do_resolve: impl FnOnce(&mut Nx, usize)) {
+        let loop_id = self.fresh_id();
+        let parent_loop = replace(&mut self.parent_loop, Some(loop_id));
+
+        do_resolve(self, loop_id);
+
+        self.parent_loop = parent_loop;
     }
 }
 
@@ -132,7 +143,28 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         PExpr::Block(PBlockExpr(block)) => {
             resolve_block(block, nx);
         }
-        PExpr::Break(PBreakExpr { arg_opt, .. }) | PExpr::Return(PReturnExpr { arg_opt, .. }) => {
+        PExpr::Break(PBreakExpr {
+            keyword,
+            arg_opt,
+            loop_id_opt,
+        }) => {
+            resolve_expr_opt(arg_opt.as_deref_mut(), nx);
+
+            *loop_id_opt = nx.parent_loop;
+            if loop_id_opt.is_none() {
+                nx.logger.error(keyword, "break out of loop");
+            }
+        }
+        PExpr::Continue(PContinueExpr {
+            keyword,
+            loop_id_opt,
+        }) => {
+            *loop_id_opt = nx.parent_loop;
+            if loop_id_opt.is_none() {
+                nx.logger.error(keyword, "continue out of loop");
+            }
+        }
+        PExpr::Return(PReturnExpr { arg_opt, .. }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }
         PExpr::If(PIfExpr {
@@ -146,15 +178,28 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             resolve_expr_opt(alt_opt.as_deref_mut(), nx);
         }
         PExpr::While(PWhileExpr {
-            cond_opt, body_opt, ..
+            cond_opt,
+            body_opt,
+            loop_id_opt,
+            ..
         }) => {
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
-            resolve_block_opt(body_opt.as_mut(), nx);
+
+            nx.enter_loop(|nx, loop_id| {
+                *loop_id_opt = Some(loop_id);
+                resolve_block_opt(body_opt.as_mut(), nx);
+            });
         }
-        PExpr::Loop(PLoopExpr { body_opt, .. }) => {
-            resolve_block_opt(body_opt.as_mut(), nx);
+        PExpr::Loop(PLoopExpr {
+            body_opt,
+            loop_id_opt,
+            ..
+        }) => {
+            nx.enter_loop(|nx, loop_id| {
+                *loop_id_opt = Some(loop_id);
+                resolve_block_opt(body_opt.as_mut(), nx);
+            });
         }
-        PExpr::Continue { .. } => {}
     }
 }
 

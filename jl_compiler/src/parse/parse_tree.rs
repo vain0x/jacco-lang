@@ -447,6 +447,7 @@ impl PNode for PBlockExpr {
 pub(crate) struct PBreakExpr {
     pub(crate) keyword: TokenData,
     pub(crate) arg_opt: Option<Box<PExpr>>,
+    pub(crate) loop_id_opt: Option<usize>,
 }
 
 impl PNode for PBreakExpr {
@@ -456,6 +457,7 @@ impl PNode for PBreakExpr {
 #[derive(Clone, Debug)]
 pub(crate) struct PContinueExpr {
     pub(crate) keyword: TokenData,
+    pub(crate) loop_id_opt: Option<usize>,
 }
 
 impl PNode for PContinueExpr {
@@ -502,6 +504,7 @@ pub(crate) struct PWhileExpr {
     pub(crate) cond_opt: Option<Box<PExpr>>,
     pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) body_opt: Option<PBlock>,
+    pub(crate) loop_id_opt: Option<usize>,
 }
 
 impl PNode for PWhileExpr {
@@ -512,6 +515,7 @@ impl PNode for PWhileExpr {
 pub(crate) struct PLoopExpr {
     pub(crate) keyword: TokenData,
     pub(crate) body_opt: Option<PBlock>,
+    pub(crate) loop_id_opt: Option<usize>,
 }
 
 impl PNode for PLoopExpr {
