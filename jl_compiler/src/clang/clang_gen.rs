@@ -78,8 +78,8 @@ fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, cx).into_ptr(),
         KTy::Symbol { def } => {
-            let raw_name = def.borrow().raw_name().to_string();
-            let id_opt = &def.borrow().id_opt;
+            let raw_name = def.raw_name().to_string();
+            let id_opt = &def.id_opt;
 
             CTy::Struct(do_unique_name(&raw_name, id_opt, cx))
         }
@@ -253,7 +253,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
                     init_opt: None,
                 });
 
-                for (arg, field) in args.iter_mut().zip(&struct_def.borrow().fields) {
+                for (arg, field) in args.iter_mut().zip(&struct_def.fields) {
                     let field_name = unique_name(&field.name, cx);
 
                     let left = CExpr::Name(name.clone()).into_dot(field_name);
@@ -350,11 +350,10 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
     for KStruct { def } in root.structs {
-        let raw_name = def.borrow().raw_name().to_string();
-        let id_opt = &def.borrow().id_opt;
+        let raw_name = def.raw_name().to_string();
+        let id_opt = &def.id_opt;
         let name = do_unique_name(&raw_name, id_opt, cx);
         let fields = def
-            .borrow()
             .fields
             .iter()
             .map(|field| gen_param(field.name.clone(), cx))

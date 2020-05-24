@@ -7,7 +7,7 @@ use std::{ops::Deref, rc::Rc};
 struct InitMetaTys;
 
 impl InitMetaTys {
-    fn on_symbol_def(&mut self, symbol: &mut KSymbol) {
+    fn on_symbol_def(&mut self, symbol: &KSymbol) {
         if matches!(symbol.ty.borrow().deref(), KTy::Unresolved) {
             let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
             *symbol.ty.borrow_mut() = KTy::Meta(meta);
@@ -47,7 +47,7 @@ impl InitMetaTys {
         }
 
         for extern_fn in &mut root.extern_fns {
-            self.on_symbol_def(&mut extern_fn.name);
+            self.on_symbol_def(&extern_fn.name);
 
             for param in &mut extern_fn.params {
                 self.on_symbol_def(param);
@@ -55,13 +55,13 @@ impl InitMetaTys {
         }
 
         for k_struct in &mut root.structs {
-            let mut def = k_struct.def.borrow_mut();
-            self.on_symbol_def(&mut def.symbol);
+            let def = &k_struct.def;
+            self.on_symbol_def(&def.symbol);
 
-            def.def_site_ty = def.symbol.ty();
+            *def.def_site_ty.borrow_mut() = def.symbol.ty();
 
-            for field in &mut def.fields {
-                self.on_symbol_def(&mut field.name);
+            for field in &def.fields {
+                self.on_symbol_def(&field.name);
             }
         }
     }
@@ -210,7 +210,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     _ => unimplemented!(),
                 };
 
-                for (arg, field_def) in node.args.iter_mut().zip(&struct_def.borrow().fields) {
+                for (arg, field_def) in node.args.iter_mut().zip(&struct_def.fields) {
                     let arg_ty = resolve_term(arg, tx);
                     unify(arg_ty, field_def.name.ty(), location.clone(), tx);
                 }
@@ -240,7 +240,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     _ => None,
                 } {
                     if let Some(field) = def
-                        .borrow()
                         .fields
                         .iter()
                         .find(|field| field.name.raw_name() == *field_name)
@@ -379,10 +378,10 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     for k_struct in &mut root.structs {
         let def = &k_struct.def;
         let ty = KTy::Symbol { def: def.clone() };
-        *def.borrow_mut().symbol.def_ty_slot().borrow_mut() = ty.clone();
-        *def.borrow_mut().symbol.ty.borrow_mut() = ty.clone();
+        *def.symbol.def_ty_slot().borrow_mut() = ty.clone();
+        *def.symbol.ty.borrow_mut() = ty.clone();
 
-        def.borrow_mut().def_site_ty = ty;
+        *def.def_site_ty.borrow_mut() = ty;
     }
 
     // 項の型を解決する。

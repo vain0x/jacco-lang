@@ -36,7 +36,7 @@ pub(crate) enum KTy {
         result_ty: Box<KTy>,
     },
     Symbol {
-        def: Rc<RefCell<KStructData>>,
+        def: Rc<KStructData>,
     },
 }
 
@@ -111,10 +111,7 @@ impl fmt::Debug for KTy {
                 write!(f, ") -> ")?;
                 fmt::Debug::fmt(result_ty, f)
             }
-            KTy::Symbol { def } => {
-                let def = def.borrow();
-                write!(f, "struct {}", def.raw_name())
-            }
+            KTy::Symbol { def } => write!(f, "struct {}", def.raw_name()),
         }
     }
 }
@@ -309,7 +306,7 @@ pub(crate) struct KExternFnData {
 #[derive(Clone, Debug)]
 pub(crate) struct KStructData {
     pub(crate) name: String,
-    pub(crate) def_site_ty: KTy,
+    pub(crate) def_site_ty: RefCell<KTy>,
     pub(crate) location: Location,
     pub(crate) fields: Vec<KFieldData>,
     pub(crate) symbol: KSymbol,
@@ -335,7 +332,7 @@ pub(crate) struct KFieldTag {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStruct {
-    pub(crate) def: Rc<RefCell<KStructData>>,
+    pub(crate) def: Rc<KStructData>,
 }
 
 #[derive(Clone, Debug)]

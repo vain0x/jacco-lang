@@ -20,7 +20,7 @@ struct KLoopData {
 struct Gx {
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<usize, Rc<KVarData>>,
-    struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
+    struct_map: HashMap<usize, Rc<KStructData>>,
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
@@ -686,14 +686,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => vec![],
             };
 
-            let def = Rc::new(RefCell::new(KStructData {
+            let def = Rc::new(KStructData {
                 name: name.clone(),
-                def_site_ty: KTy::default(),
+                def_site_ty: RefCell::default(),
                 location,
                 fields,
                 symbol: struct_symbol,
                 id_opt: RefCell::default(),
-            }));
+            });
             gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }
