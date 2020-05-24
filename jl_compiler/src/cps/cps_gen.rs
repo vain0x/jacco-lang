@@ -215,7 +215,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
             let name_id = name.name_id_opt.unwrap();
 
             if let Some(def) = gx.var_map.get(&name_id) {
-                assert!(def.ty.borrow().is_symbol());
+                assert!(def.ty.borrow().is_struct());
                 return def.ty.borrow().clone();
             }
 
@@ -306,7 +306,9 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
             let result = gx.fresh_symbol(name.0.text(), name.location());
             let ty = match gx.struct_map.get(&name.0.name_id_opt.unwrap()) {
-                Some(def) => KTy::Symbol { def: def.clone() },
+                Some(def) => KTy::Struct {
+                    struct_ref: def.clone().into(),
+                },
                 None => {
                     error!("struct {:?} should be found here", name.0.text());
                     return new_never_term(name.location());

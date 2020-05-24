@@ -35,14 +35,14 @@ pub(crate) enum KTy {
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
     },
-    Symbol {
-        def: Rc<KStructData>,
+    Struct {
+        struct_ref: KStruct,
     },
 }
 
 impl KTy {
-    pub(crate) fn is_symbol(&self) -> bool {
-        matches!(self, KTy::Symbol {.. })
+    pub(crate) fn is_struct(&self) -> bool {
+        matches!(self, KTy::Struct{..})
     }
 
     pub(crate) fn into_ptr(self) -> KTy {
@@ -111,7 +111,7 @@ impl fmt::Debug for KTy {
                 write!(f, ") -> ")?;
                 fmt::Debug::fmt(result_ty, f)
             }
-            KTy::Symbol { def } => write!(f, "struct {}", def.raw_name()),
+            KTy::Struct { struct_ref } => write!(f, "struct {}", struct_ref.raw_name()),
         }
     }
 }
@@ -333,6 +333,22 @@ pub(crate) struct KFieldTag {
 #[derive(Clone, Debug)]
 pub(crate) struct KStruct {
     pub(crate) def: Rc<KStructData>,
+}
+
+impl KStruct {
+    pub(crate) fn raw_name(&self) -> &str {
+        self.def.raw_name()
+    }
+
+    pub(crate) fn is_same(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.def, &other.def)
+    }
+}
+
+impl From<Rc<KStructData>> for KStruct {
+    fn from(data: Rc<KStructData>) -> Self {
+        KStruct { def: data }
+    }
 }
 
 #[derive(Clone, Debug)]

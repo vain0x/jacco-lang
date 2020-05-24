@@ -129,14 +129,14 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
             }
         }
 
-        (KTy::Symbol { def: left_def }, KTy::Symbol { def: right_def })
-            if Rc::ptr_eq(&left_def, &right_def) => {}
+        (KTy::Struct { struct_ref: left }, KTy::Struct { struct_ref: right })
+            if left.is_same(&right) => {}
 
         (KTy::Unit, _)
         | (KTy::I32, _)
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)
-        | (KTy::Symbol { .. }, _) => {
+        | (KTy::Struct { .. }, _) => {
             tx.logger.error(&location, "type mismatch");
         }
     }
@@ -206,7 +206,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
                 let struct_def = match ty {
-                    KTy::Symbol { def } => def.clone(),
+                    KTy::Struct { struct_ref } => struct_ref.def.clone(),
                     _ => unimplemented!(),
                 };
 
@@ -216,8 +216,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 }
 
                 unify(ty.clone(), result.ty(), location, tx);
-                if !ty.is_symbol() {
-                    tx.logger.error(result, "symbol type required");
+                if !ty.is_struct() {
+                    tx.logger.error(result, "struct type required");
                 }
             }
             _ => unimplemented!(),
@@ -232,14 +232,15 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ) => {
                 let left_ty = resolve_term(left, tx);
 
-                if let Some(def) = match left_ty.resolve() {
+                if let Some(struct_ref) = match left_ty.resolve() {
                     KTy::Ptr { ty } => match ty.resolve() {
-                        KTy::Symbol { def } => Some(def),
+                        KTy::Struct { struct_ref } => Some(struct_ref),
                         _ => None,
                     },
                     _ => None,
                 } {
-                    if let Some(field) = def
+                    if let Some(field) = struct_ref
+                        .def
                         .fields
                         .iter()
                         .find(|field| field.name.raw_name() == *field_name)
@@ -377,7 +378,9 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
     for k_struct in &mut root.structs {
         let def = &k_struct.def;
-        let ty = KTy::Symbol { def: def.clone() };
+        let ty = KTy::Struct {
+            struct_ref: k_struct.clone(),
+        };
         *def.symbol.def_ty_slot().borrow_mut() = ty.clone();
         *def.symbol.ty.borrow_mut() = ty.clone();
 
