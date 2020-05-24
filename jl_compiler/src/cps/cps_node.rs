@@ -309,6 +309,12 @@ pub(crate) struct KFieldData {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct KFieldTag {
+    pub(crate) name: String,
+    pub(crate) location: Location,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct KStruct {
     pub(crate) def: Rc<RefCell<KStructData>>,
 }

@@ -151,7 +151,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::Field { .. } => unreachable!(),
+        KTerm::FieldTag(_) => unreachable!(),
     }
 }
 
@@ -216,10 +216,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::GetField => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             (
-                [left, KTerm::Field {
-                    text: field_name,
+                [left, KTerm::FieldTag(KFieldTag {
+                    name: field_name,
                     location,
-                }],
+                })],
                 [result],
             ) => {
                 let left_ty = resolve_term(left, tx);

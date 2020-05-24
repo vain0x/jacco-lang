@@ -85,8 +85,8 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::Field { text, location } => {
-            error!("can't gen field term to c {} ({:?})", text, location);
+        KTerm::FieldTag(KFieldTag { name, location }) => {
+            error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("0".to_string())
         }
     }
@@ -259,9 +259,9 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
             conts.as_mut_slice(),
         ) {
             (
-                [left, KTerm::Field {
-                    text: field_name, ..
-                }],
+                [left, KTerm::FieldTag(KFieldTag {
+                    name: field_name, ..
+                })],
                 [result],
                 [cont],
             ) => {

@@ -281,11 +281,11 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
         }
         PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
             // x.foo は `&(&x)->foo` のような形にコンパイルする。
-            let (_, text, location) = name_opt.unwrap().decompose();
-            let result = gx.fresh_symbol(&format!("{}_ptr", text), location.clone());
+            let (_, name, location) = name_opt.unwrap().decompose();
+            let result = gx.fresh_symbol(&format!("{}_ptr", name), location.clone());
 
             let left = gen_expr_lval(*left, location.clone(), gx);
-            let field = KTerm::Field { text, location };
+            let field = KTerm::FieldTag(KFieldTag { name, location });
 
             gx.push_prim_1(KPrim::GetField, vec![left, field], result.clone());
 

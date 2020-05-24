@@ -7,7 +7,7 @@ pub(crate) enum KTerm {
     Unit { location: Location },
     Int(TokenData),
     Name(KSymbol),
-    Field { text: String, location: Location },
+    FieldTag(KFieldTag),
 }
 
 impl fmt::Debug for KTerm {
@@ -16,7 +16,7 @@ impl fmt::Debug for KTerm {
             KTerm::Unit { .. } => write!(f, "()"),
             KTerm::Int(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => fmt::Debug::fmt(symbol, f),
-            KTerm::Field { text, .. } => write!(f, "{}", text),
+            KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
         }
     }
 }
