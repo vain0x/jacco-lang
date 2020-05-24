@@ -34,6 +34,16 @@ impl Nx {
     }
 }
 
+fn resolve_name_use(name: &mut PName, nx: &mut Nx) -> bool {
+    match nx.env.get(name.text()) {
+        Some(&name_id) => {
+            name.name_id = name_id;
+            true
+        }
+        None => false,
+    }
+}
+
 fn resolve_name_def(name: &mut PName, nx: &mut Nx) {
     name.name_id = nx.fresh_id();
     nx.env.insert(name.text().to_string(), name.name_id);
@@ -46,12 +56,9 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
             // FIXME: これの型が i32 であることを記録する。
         }
         _ => {
-            if let Some(&name_id) = nx.env.get(name.text()) {
-                name.name_id = name_id;
-                return;
+            if !resolve_name_use(name, nx) {
+                nx.logger.error(name, "undefined type");
             }
-
-            nx.logger.error(name, "undefined type");
         }
     }
 }
@@ -85,14 +92,11 @@ fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
         PExpr::Int(_) | PExpr::Str(_) => {}
-        PExpr::Name(PNameExpr(name)) => match nx.env.get(name.text()) {
-            Some(name_id) => {
-                name.name_id = *name_id;
-            }
-            None => {
+        PExpr::Name(PNameExpr(name)) => {
+            if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined");
             }
-        },
+        }
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
             resolve_ty_name(name, nx);
 
