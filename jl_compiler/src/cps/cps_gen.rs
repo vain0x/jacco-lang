@@ -36,8 +36,9 @@ impl Gx {
             var_map: vec![(
                 0,
                 Rc::new(KVarData {
-                    id_opt: RefCell::new(Some(0)),
+                    name: "_0".to_string(),
                     ty: RefCell::new(KTy::Never),
+                    id_opt: RefCell::new(Some(0)),
                 }),
             )]
             .into_iter()
@@ -48,13 +49,12 @@ impl Gx {
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
-        let text = hint.to_string();
+        let name = hint.to_string();
 
         KSymbol {
-            text,
             ty: KTy::default(),
             location,
-            def: Rc::default(),
+            def: Rc::new(KVarData::new_with_ty(name, KTy::default())),
         }
     }
 
@@ -233,23 +233,19 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
 }
 
 fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
-    let def = match gx.var_map.get(&name.name_id) {
+    let name_id = name.name_id;
+    let (name, location) = name.decompose();
+
+    let def = match gx.var_map.get(&name_id) {
         Some(def) => def.clone(),
         None => {
-            let def = Rc::new(KVarData::new_with_ty(ty.clone()));
-            gx.var_map.insert(name.name_id, def.clone());
+            let def = Rc::new(KVarData::new_with_ty(name, ty.clone()));
+            gx.var_map.insert(name_id, def.clone());
             def
         }
     };
 
-    let (text, location) = name.decompose();
-
-    KSymbol {
-        text,
-        ty,
-        location,
-        def,
-    }
+    KSymbol { ty, location, def }
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {

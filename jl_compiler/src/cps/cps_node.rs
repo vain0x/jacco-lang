@@ -113,7 +113,7 @@ impl fmt::Debug for KTy {
             }
             KTy::Symbol { def } => {
                 let def = def.borrow();
-                write!(f, "struct {}", def.name.text)
+                write!(f, "struct {}", def.name.raw_name())
             }
         }
     }
@@ -160,13 +160,15 @@ impl fmt::Debug for KMetaTyData {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KVarData {
-    pub(crate) id_opt: RefCell<Option<usize>>,
+    pub(crate) name: String,
     pub(crate) ty: RefCell<KTy>,
+    pub(crate) id_opt: RefCell<Option<usize>>,
 }
 
 impl KVarData {
-    pub(crate) fn new_with_ty(ty: KTy) -> Self {
+    pub(crate) fn new_with_ty(name: String, ty: KTy) -> Self {
         KVarData {
+            name,
             ty: RefCell::new(ty),
             ..Default::default()
         }
@@ -175,13 +177,16 @@ impl KVarData {
 
 #[derive(Clone, Default)]
 pub(crate) struct KSymbol {
-    pub(crate) text: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
     pub(crate) def: Rc<KVarData>,
 }
 
 impl KSymbol {
+    pub(crate) fn raw_name(&self) -> &str {
+        &self.def.name
+    }
+
     pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
         &self.def.ty
     }
@@ -192,7 +197,7 @@ impl fmt::Debug for KSymbol {
         write!(
             f,
             "{}_{:X?}: {:?}",
-            self.text,
+            self.raw_name(),
             self.def.as_ref() as *const _,
             self.ty
         )

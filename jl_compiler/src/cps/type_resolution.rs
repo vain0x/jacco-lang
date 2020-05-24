@@ -235,7 +235,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         .borrow()
                         .fields
                         .iter()
-                        .find(|field| field.name.text == *field_name)
+                        .find(|field| field.name.raw_name() == *field_name)
                     {
                         unify(
                             field.name.ty.clone().into_ptr(),

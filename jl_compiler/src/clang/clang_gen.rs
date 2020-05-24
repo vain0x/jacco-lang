@@ -38,10 +38,10 @@ impl Cx {
 
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
     let id_opt = symbol.def.id_opt.borrow().as_ref().cloned();
-    let id = id_opt.unwrap_or_else(|| cx.ident_id(&symbol.text));
+    let id = id_opt.unwrap_or_else(|| cx.ident_id(&symbol.raw_name()));
     *symbol.def.id_opt.borrow_mut() = Some(id);
 
-    format!("{}_{:x}", symbol.text, id)
+    format!("{}_{:x}", symbol.raw_name(), id)
 }
 
 fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
@@ -156,11 +156,11 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
     match prim {
         KPrim::Stuck => unreachable!(),
         KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
-            ([KTerm::Name(label), arg], []) if label.text == "return" => {
+            ([KTerm::Name(label), arg], []) if label.raw_name() == "return" => {
                 let arg = gen_term(take(arg), cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
             }
-            ([KTerm::Name(label)], []) if label.text == "return" => {
+            ([KTerm::Name(label)], []) if label.raw_name() == "return" => {
                 cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Name(label), args @ ..], []) => {
@@ -359,7 +359,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .collect();
         let result_ty = gen_ty(result_ty, cx);
         cx.decls.push(CStmt::ExternFnDecl {
-            name: name.text,
+            name: name.raw_name().to_string(),
             params,
             result_ty,
         });
@@ -398,7 +398,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
 
         cx.decls.push(CStmt::FnDecl {
-            name: name.text,
+            name: name.raw_name().to_string(),
             params: vec![],
             result_ty: CTy::Int,
             body: CBlock { stmts },
