@@ -25,7 +25,7 @@ impl Nx {
         self.ids.next()
     }
 
-    fn enter_scope(&mut self, mut do_resolve: impl FnMut(&mut Nx)) {
+    fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
         let outer_env = self.env.clone();
 
         do_resolve(self);
