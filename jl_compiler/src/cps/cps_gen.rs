@@ -10,10 +10,6 @@ use std::iter::once;
 use std::mem::{replace, take};
 use std::rc::Rc;
 
-struct FnConstruction {
-    return_label: KSymbol,
-}
-
 struct KLoopData {
     break_label: KSymbol,
     continue_label: KSymbol,
@@ -25,8 +21,9 @@ struct Gx {
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, Rc<RefCell<KStructData>>>,
+    /// 関数からの return に対応するラベル
+    fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
-    current_fn: Option<FnConstruction>,
     extern_fns: Vec<KExternFn>,
     structs: Vec<KStruct>,
     fns: Vec<KFn>,
@@ -73,8 +70,8 @@ impl Gx {
             .map(|data| &data.continue_label)
     }
 
-    fn current_return_label(&self) -> Option<&KSymbol> {
-        self.current_fn.as_ref().map(|f| &f.return_label)
+    fn get_return_label(&self, fn_id_opt: Option<usize>) -> Option<&KSymbol> {
+        self.fn_return_map.get(&fn_id_opt.unwrap())
     }
 
     fn push(&mut self, command: KCommand) {
@@ -472,10 +469,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             new_never_term(location)
         }
-        PExpr::Return(PReturnExpr { keyword, arg_opt }) => {
+        PExpr::Return(PReturnExpr {
+            keyword,
+            arg_opt,
+            fn_id_opt,
+        }) => {
             let location = keyword.into_location();
 
-            let label = gx.current_return_label().expect("out of fn").clone();
+            let label = gx.get_return_label(fn_id_opt).unwrap().clone();
             let arg = match arg_opt {
                 Some(arg) => gen_expr(*arg, gx),
                 None => new_unit_term(location.clone()),
@@ -604,24 +605,23 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             keyword,
             name_opt,
             block_opt,
+            fn_id_opt,
             ..
         }) => {
             let location = keyword.into_location();
             let fn_name = gen_name(name_opt.unwrap(), gx);
             let return_label = gx.fresh_symbol("return", location.clone());
-            let fn_construction = FnConstruction {
-                return_label: return_label.clone(),
-            };
+
+            gx.fn_return_map
+                .insert(fn_id_opt.unwrap(), return_label.clone());
 
             let commands = {
-                let parent_fn = replace(&mut gx.current_fn, Some(fn_construction));
                 let parent_commands = take(&mut gx.current_commands);
 
                 let k_result = gen_block(block_opt.unwrap(), gx);
 
                 gx.push_jump(return_label.clone(), vec![k_result]);
 
-                gx.current_fn = parent_fn;
                 replace(&mut gx.current_commands, parent_commands)
             };
 

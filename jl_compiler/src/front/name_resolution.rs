@@ -4,7 +4,7 @@ use super::*;
 use crate::id_provider::IdProvider;
 use crate::logs::Logger;
 use std::collections::HashMap;
-use std::mem::replace;
+use std::mem::{replace, take};
 
 /// Naming context.
 #[derive(Default)]
@@ -12,6 +12,7 @@ struct Nx {
     ids: IdProvider,
     env: HashMap<String, PNameId>,
     parent_loop: Option<usize>,
+    parent_fn: Option<usize>,
     logger: Logger,
 }
 
@@ -42,6 +43,17 @@ impl Nx {
         do_resolve(self, loop_id);
 
         self.parent_loop = parent_loop;
+    }
+
+    fn enter_fn(&mut self, do_resolve: impl FnOnce(&mut Nx, usize)) {
+        let fn_id = self.fresh_id();
+        let parent_loop = take(&mut self.parent_loop);
+        let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
+
+        do_resolve(self, fn_id);
+
+        self.parent_loop = parent_loop;
+        self.parent_fn = parent_fn;
     }
 }
 
@@ -164,8 +176,17 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 nx.logger.error(keyword, "continue out of loop");
             }
         }
-        PExpr::Return(PReturnExpr { arg_opt, .. }) => {
+        PExpr::Return(PReturnExpr {
+            keyword,
+            arg_opt,
+            fn_id_opt,
+        }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
+
+            *fn_id_opt = nx.parent_fn;
+            if fn_id_opt.is_none() {
+                nx.logger.error(keyword, "return out of function");
+            }
         }
         PExpr::If(PIfExpr {
             cond_opt,
@@ -233,16 +254,22 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             param_list_opt,
             result_ty_opt,
             block_opt,
+            fn_id_opt,
             ..
         }) => {
-            if let Some(name) = name_opt.as_mut() {
-                resolve_name_def(name, nx);
-            }
+            nx.enter_fn(|nx, fn_id| {
+                *fn_id_opt = Some(fn_id);
 
-            nx.enter_scope(|nx| {
-                resolve_param_list_opt(param_list_opt.as_mut(), nx);
-                resolve_ty_opt(result_ty_opt.as_mut(), nx);
-                resolve_block_opt(block_opt.as_mut(), nx);
+                if let Some(name) = name_opt.as_mut() {
+                    resolve_name_def(name, nx);
+                }
+
+                nx.enter_scope(|nx| {
+                    resolve_param_list_opt(param_list_opt.as_mut(), nx);
+                    resolve_ty_opt(result_ty_opt.as_mut(), nx);
+
+                    resolve_block_opt(block_opt.as_mut(), nx);
+                });
             });
         }
         PDecl::ExternFn(PExternFnDecl {

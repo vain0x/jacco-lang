@@ -468,6 +468,7 @@ impl PNode for PContinueExpr {
 pub(crate) struct PReturnExpr {
     pub(crate) keyword: TokenData,
     pub(crate) arg_opt: Option<Box<PExpr>>,
+    pub(crate) fn_id_opt: Option<usize>,
 }
 
 impl PNode for PReturnExpr {
@@ -604,6 +605,7 @@ pub(crate) struct PFnDecl {
     pub(crate) arrow_opt: Option<TokenData>,
     pub(crate) result_ty_opt: Option<PTy>,
     pub(crate) block_opt: Option<PBlock>,
+    pub(crate) fn_id_opt: Option<usize>,
 }
 
 impl PNode for PFnDecl {

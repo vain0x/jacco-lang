@@ -94,6 +94,7 @@ fn parse_fn_decl(px: &mut Px) -> PFnDecl {
         arrow_opt,
         result_ty_opt,
         block_opt,
+        fn_id_opt: None,
     }
 }
 

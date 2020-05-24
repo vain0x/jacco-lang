@@ -347,7 +347,11 @@ fn parse_return_expr(px: &mut Px) -> PReturnExpr {
     let keyword = px.expect(TokenKind::Return);
     let arg_opt = parse_expr(px).map(Box::new);
 
-    PReturnExpr { keyword, arg_opt }
+    PReturnExpr {
+        keyword,
+        arg_opt,
+        fn_id_opt: None,
+    }
 }
 
 fn parse_if_expr(px: &mut Px) -> PIfExpr {

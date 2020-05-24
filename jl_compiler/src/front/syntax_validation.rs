@@ -364,6 +364,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             arrow_opt,
             result_ty_opt,
             block_opt,
+            ..
         }) => {
             if name_opt.is_none() {
                 vx.logger.error(keyword, "missed the function name?");
