@@ -190,7 +190,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     result_ty: Box::new(result.ty.clone()),
                 };
 
-                error!("{:?} = {:?}", def_fn_ty, use_fn_ty);
                 unify(def_fn_ty, use_fn_ty, location, tx);
             }
             _ => unimplemented!(),
