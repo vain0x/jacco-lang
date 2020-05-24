@@ -34,6 +34,11 @@ impl Nx {
     }
 }
 
+fn resolve_name_def(name: &mut PName, nx: &mut Nx) {
+    name.name_id = nx.fresh_id();
+    nx.env.insert(name.text().to_string(), name.name_id);
+}
+
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
     let name = &mut ty_name.0;
     match name.text() {
@@ -68,8 +73,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 }
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
-    name.name_id = nx.fresh_id();
-    nx.env.insert(name.text().to_string(), name.name_id);
+    resolve_name_def(name, nx);
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
@@ -176,42 +180,55 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_pat_opt(name_opt.as_mut(), nx)
         }
         PDecl::Fn(PFnDecl {
+            name_opt,
             param_list_opt,
             result_ty_opt,
             block_opt,
             ..
         }) => {
-            resolve_param_list_opt(param_list_opt.as_mut(), nx);
-            resolve_ty_opt(result_ty_opt.as_mut(), nx);
-            resolve_block_opt(block_opt.as_mut(), nx);
+            if let Some(name) = name_opt.as_mut() {
+                resolve_name_def(name, nx);
+            }
+
+            nx.enter_scope(|nx| {
+                resolve_param_list_opt(param_list_opt.as_mut(), nx);
+                resolve_ty_opt(result_ty_opt.as_mut(), nx);
+                resolve_block_opt(block_opt.as_mut(), nx);
+            });
         }
         PDecl::ExternFn(PExternFnDecl {
+            name_opt,
             param_list_opt,
             result_ty_opt,
             ..
         }) => {
-            resolve_ty_opt(result_ty_opt.as_mut(), nx);
-            resolve_param_list_opt(param_list_opt.as_mut(), nx)
+            if let Some(name) = name_opt.as_mut() {
+                resolve_name_def(name, nx);
+            }
+
+            nx.enter_scope(|nx| {
+                resolve_param_list_opt(param_list_opt.as_mut(), nx);
+                resolve_ty_opt(result_ty_opt.as_mut(), nx);
+            });
         }
         PDecl::Struct(PStructDecl {
             name_opt,
             variant_opt,
             ..
         }) => {
-            if let Some(name) = name_opt {
-                name.name_id = nx.fresh_id();
-                nx.env.insert(name.text().to_string(), name.name_id);
+            if let Some(name) = name_opt.as_mut() {
+                resolve_name_def(name, nx);
             }
 
-            match variant_opt {
+            nx.enter_scope(|nx| match variant_opt {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
                     for field in fields {
-                        field.name.name_id = nx.fresh_id();
+                        resolve_name_def(&mut field.name, nx);
                         resolve_ty_opt(field.ty_opt.as_mut(), nx);
                     }
                 }
                 None => {}
-            }
+            });
         }
     }
 }
@@ -231,7 +248,7 @@ fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
         if let Some(last) = &mut block.last_opt {
             resolve_expr(last, nx);
         }
-    })
+    });
 }
 
 fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {

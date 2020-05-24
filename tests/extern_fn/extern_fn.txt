@@ -3,3 +3,8 @@ void gets();
 void puts();
 
 int i32_add(int left_1, int right_1);
+
+int main() {
+    /* free */ void call_result_1 = gets_1();
+    return 0;
+}
