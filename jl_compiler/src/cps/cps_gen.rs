@@ -24,7 +24,7 @@ struct Gx {
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
-    extern_fns: Vec<KExternFn>,
+    extern_fns: Vec<KExternFnData>,
     structs: Vec<KStruct>,
     fns: Vec<KFn>,
     logger: Logger,
@@ -654,7 +654,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => KTy::Unit,
             };
 
-            let extern_fn = KExternFn {
+            let extern_fn = KExternFnData {
                 name,
                 params,
                 result_ty,

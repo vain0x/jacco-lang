@@ -291,7 +291,7 @@ pub(crate) struct KFn {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KExternFn {
+pub(crate) struct KExternFnData {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) result_ty: KTy,
@@ -315,7 +315,7 @@ pub(crate) struct KStruct {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KRoot {
-    pub(crate) extern_fns: Vec<KExternFn>,
+    pub(crate) extern_fns: Vec<KExternFnData>,
     pub(crate) fns: Vec<KFn>,
     pub(crate) structs: Vec<KStruct>,
 }

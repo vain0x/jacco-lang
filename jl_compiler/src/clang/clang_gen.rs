@@ -347,7 +347,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.decls.push(CStmt::StructDecl { name, fields });
     }
 
-    for KExternFn {
+    for KExternFnData {
         name,
         params,
         result_ty,
