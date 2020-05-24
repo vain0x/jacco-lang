@@ -177,11 +177,24 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::CallDirect => {
-            for arg in &mut node.args {
-                resolve_term(arg, tx);
+        KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([KTerm::Name(callee), args @ ..], [result]) => {
+                let def_fn_ty = resolve_symbol_use(callee, tx);
+
+                let arg_tys = args
+                    .iter_mut()
+                    .map(|arg| resolve_term(arg, tx))
+                    .collect::<Vec<_>>();
+                let use_fn_ty = KTy::Fn {
+                    param_tys: arg_tys,
+                    result_ty: Box::new(result.ty.clone()),
+                };
+
+                error!("{:?} = {:?}", def_fn_ty, use_fn_ty);
+                unify(def_fn_ty, use_fn_ty, location, tx);
             }
-        }
+            _ => unimplemented!(),
+        },
         KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
                 let struct_def = match ty {
@@ -325,10 +338,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
-fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], tx: &mut Tx) {
+fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy, tx: &mut Tx) {
     let fn_ty = KTy::Fn {
         param_tys: params.iter().map(|param| param.ty.clone()).collect(),
-        result_ty: Box::new(KTy::Never),
+        result_ty: Box::new(result_ty),
     };
 
     let location = fn_symbol.location.clone();
@@ -339,15 +352,20 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     InitMetaTys::default().execute(root, tx);
 
     for k_fn in &mut root.fns {
-        resolve_fn_sig(&mut k_fn.name, &k_fn.params, tx);
+        resolve_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never, tx);
 
         for label in &mut k_fn.labels {
-            resolve_fn_sig(&mut label.name, &label.params, tx);
+            resolve_fn_sig(&mut label.name, &label.params, KTy::Never, tx);
         }
     }
 
     for extern_fn in &mut root.extern_fns {
-        resolve_fn_sig(&mut extern_fn.name, &extern_fn.params, tx);
+        resolve_fn_sig(
+            &mut extern_fn.name,
+            &extern_fn.params,
+            extern_fn.result_ty.clone(),
+            tx,
+        );
     }
 
     for k_struct in &mut root.structs {
