@@ -56,7 +56,9 @@ impl InitMetaTys {
 
         for k_struct in &mut root.structs {
             let mut def = k_struct.def.borrow_mut();
-            self.on_symbol_def(&mut def.name);
+            self.on_symbol_def(&mut def.symbol);
+
+            def.def_site_ty = def.symbol.ty.clone();
 
             for field in &mut def.fields {
                 self.on_symbol_def(&mut field.name);
@@ -142,6 +144,13 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
     let current_ty = symbol.def_ty_slot().borrow().clone();
+    if let KTy::Unresolved = current_ty {
+        error!(
+            "def_ty is unresolved. symbol is undefined? {:?}",
+            symbol.location
+        );
+    }
+
     symbol.ty = current_ty.clone();
     current_ty
 }
@@ -350,6 +359,8 @@ fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy, t
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     InitMetaTys::default().execute(root, tx);
 
+    error!("k_root (meta ty initialized) = {:?}", root);
+
     for k_fn in &mut root.fns {
         resolve_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never, tx);
 
@@ -370,8 +381,10 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     for k_struct in &mut root.structs {
         let def = &k_struct.def;
         let ty = KTy::Symbol { def: def.clone() };
-        *def.borrow_mut().name.def_ty_slot().borrow_mut() = ty.clone();
-        def.borrow_mut().name.ty = ty;
+        *def.borrow_mut().symbol.def_ty_slot().borrow_mut() = ty.clone();
+        def.borrow_mut().symbol.ty = ty.clone();
+
+        def.borrow_mut().def_site_ty = ty;
     }
 
     // 項の型を解決する。

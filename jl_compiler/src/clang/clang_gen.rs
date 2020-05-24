@@ -1,6 +1,7 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::{replace, take};
 
@@ -36,12 +37,19 @@ impl Cx {
     }
 }
 
-fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
-    let id_opt = symbol.def.id_opt.borrow().as_ref().cloned();
-    let id = id_opt.unwrap_or_else(|| cx.ident_id(&symbol.raw_name()));
-    *symbol.def.id_opt.borrow_mut() = Some(id);
+fn do_unique_name(raw_name: &str, id_opt: &RefCell<Option<usize>>, cx: &mut Cx) -> String {
+    let id = id_opt
+        .borrow()
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| cx.ident_id(raw_name));
+    *id_opt.borrow_mut() = Some(id);
 
-    format!("{}_{:x}", symbol.raw_name(), id)
+    format!("{}_{:x}", raw_name, id)
+}
+
+fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
+    do_unique_name(symbol.raw_name(), &symbol.def.id_opt, cx)
 }
 
 fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
@@ -69,7 +77,12 @@ fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, cx).into_ptr(),
-        KTy::Symbol { def } => CTy::Struct(unique_name(&def.borrow().name, cx)),
+        KTy::Symbol { def } => {
+            let raw_name = def.borrow().raw_name().to_string();
+            let id_opt = &def.borrow().id_opt;
+
+            CTy::Struct(do_unique_name(&raw_name, id_opt, cx))
+        }
     }
 }
 
@@ -337,7 +350,9 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
     for KStruct { def } in root.structs {
-        let name = unique_name(&def.borrow().name, cx);
+        let raw_name = def.borrow().raw_name().to_string();
+        let id_opt = &def.borrow().id_opt;
+        let name = do_unique_name(&raw_name, id_opt, cx);
         let fields = def
             .borrow()
             .fields

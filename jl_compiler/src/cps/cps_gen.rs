@@ -667,7 +667,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         }) => {
             let name = name_opt.unwrap();
             let name_id = name.name_id_opt.unwrap();
-            let name = gen_name(name, gx);
+            let struct_symbol = gen_name(name, gx);
+            let name = struct_symbol.def.name.to_string();
+            let location = struct_symbol.location.clone();
 
             let fields = match variant_opt {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
@@ -680,7 +682,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => vec![],
             };
 
-            let def = Rc::new(RefCell::new(KStructData { name, fields }));
+            let def = Rc::new(RefCell::new(KStructData {
+                name: name.clone(),
+                def_site_ty: KTy::default(),
+                location,
+                fields,
+                symbol: struct_symbol,
+                id_opt: RefCell::default(),
+            }));
             gx.struct_map.insert(name_id, def.clone());
             gx.structs.push(KStruct { def });
         }

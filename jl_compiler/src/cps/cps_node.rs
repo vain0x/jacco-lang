@@ -113,7 +113,7 @@ impl fmt::Debug for KTy {
             }
             KTy::Symbol { def } => {
                 let def = def.borrow();
-                write!(f, "struct {}", def.name.raw_name())
+                write!(f, "struct {}", def.raw_name())
             }
         }
     }
@@ -304,8 +304,18 @@ pub(crate) struct KExternFnData {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStructData {
-    pub(crate) name: KSymbol,
+    pub(crate) name: String,
+    pub(crate) def_site_ty: KTy,
+    pub(crate) location: Location,
     pub(crate) fields: Vec<KFieldData>,
+    pub(crate) symbol: KSymbol,
+    pub(crate) id_opt: RefCell<Option<usize>>,
+}
+
+impl KStructData {
+    pub(crate) fn raw_name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Clone, Debug)]
