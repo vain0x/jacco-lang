@@ -41,8 +41,18 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
+    pub(crate) fn is_unresolved(&self) -> bool {
+        match self {
+            KTy::Unresolved => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn is_struct(&self) -> bool {
-        matches!(self, KTy::Struct{..})
+        match self {
+            KTy::Struct { .. } => true,
+            _ => false,
+        }
     }
 
     pub(crate) fn into_ptr(self) -> KTy {
@@ -130,41 +140,46 @@ pub(crate) type KMetaTy = Rc<KMetaTyData>;
 
 #[derive(Clone)]
 pub(crate) struct KMetaTyData {
-    ty_opt: RefCell<Option<KTy>>,
+    ty: RefCell<KTy>,
     location: Location,
 }
 
 impl KMetaTyData {
     pub(crate) fn new(location: Location) -> Self {
         KMetaTyData {
-            ty_opt: RefCell::default(),
+            ty: RefCell::default(),
             location,
         }
     }
 
     pub(crate) fn try_resolve(&self) -> Option<KTy> {
-        if let Some(ty) = &mut *self.ty_opt.borrow_mut() {
+        {
+            let ty = &mut *self.ty.borrow_mut();
             ty.make_resolved();
+            if ty.is_unresolved() {
+                return None;
+            }
         }
 
-        let slot = self.ty_opt.borrow();
-        let ty = slot.as_ref()?;
-        Some(ty.clone())
+        Some(self.ty.borrow().clone())
     }
 
     pub(crate) fn bind(&self, ty: KTy) {
+        debug_assert!(!ty.is_unresolved());
+
         let ty = ty.resolve();
-        let old = replace(&mut *self.ty_opt.borrow_mut(), Some(ty));
-        debug_assert!(old.is_none());
+        let old = replace(&mut *self.ty.borrow_mut(), ty);
+
+        debug_assert!(old.is_unresolved());
     }
 }
 
 impl fmt::Debug for KMetaTyData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let p = self.ty_opt.as_ptr() as usize;
-        match self.ty_opt.borrow().as_ref() {
-            None => write!(f, "?<{}>", p),
-            Some(ty) => fmt::Debug::fmt(ty, f),
+        let p = self.ty.as_ptr() as usize;
+        match &*self.ty.borrow() {
+            KTy::Unresolved => write!(f, "?<{}>", p),
+            ty => fmt::Debug::fmt(ty, f),
         }
     }
 }
