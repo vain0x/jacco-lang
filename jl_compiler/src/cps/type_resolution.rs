@@ -170,8 +170,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
-            [KTerm::Name(label), args @ ..] => {
-                let def_fn_ty = resolve_symbol_use(label, tx);
+            [label, args @ ..] => {
+                let def_fn_ty = resolve_term(label, tx);
 
                 let arg_tys = args
                     .iter_mut()
@@ -187,8 +187,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             _ => unimplemented!(),
         },
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            ([KTerm::Name(callee), args @ ..], [result]) => {
-                let def_fn_ty = resolve_symbol_use(callee, tx);
+            ([callee, args @ ..], [result]) => {
+                let def_fn_ty = resolve_term(callee, tx);
 
                 let arg_tys = args
                     .iter_mut()
