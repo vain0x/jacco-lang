@@ -232,8 +232,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ) => {
                 let left_ty = resolve_term(left, tx);
 
-                if let Some(struct_ref) = match left_ty.resolve() {
-                    KTy::Ptr { ty } => match ty.resolve() {
+                if let Some(struct_ref) = match &left_ty.resolve() {
+                    KTy::Ptr { ty } => match ty.as_ref() {
                         KTy::Struct { struct_ref } => Some(struct_ref),
                         _ => None,
                     },

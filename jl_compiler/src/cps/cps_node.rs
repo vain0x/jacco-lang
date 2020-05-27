@@ -50,6 +50,11 @@ impl KTy {
     }
 
     pub(crate) fn resolve(mut self) -> KTy {
+        self.make_resolved();
+        self
+    }
+
+    fn make_resolved(&mut self) {
         fn detect_infinite_loop(hint: &str) {
             let tick = {
                 static mut TICK: usize = 0;
@@ -60,18 +65,23 @@ impl KTy {
             };
             assert!(tick < 10_000_000, "Infinite loop? ({})", hint);
         }
+        detect_infinite_loop("ty resolve");
 
-        loop {
-            match self {
-                KTy::Meta(ref meta) => match meta.try_resolve() {
-                    None => return self,
-                    Some(ty) => {
-                        detect_infinite_loop("resolve meta ty");
-                        self = ty;
-                        continue;
-                    }
-                },
-                ty => return ty,
+        match self {
+            KTy::Unresolved | KTy::Never | KTy::Unit | KTy::I32 | KTy::Struct { .. } => {}
+            KTy::Meta(ref meta) => match meta.try_resolve() {
+                None => {}
+                Some(ty) => *self = ty,
+            },
+            KTy::Ptr { ty } => ty.make_resolved(),
+            KTy::Fn {
+                param_tys,
+                result_ty,
+            } => {
+                for param_ty in param_tys {
+                    param_ty.make_resolved();
+                }
+                result_ty.make_resolved();
             }
         }
     }
@@ -133,6 +143,10 @@ impl KMetaTyData {
     }
 
     pub(crate) fn try_resolve(&self) -> Option<KTy> {
+        if let Some(ty) = &mut *self.ty_opt.borrow_mut() {
+            ty.make_resolved();
+        }
+
         let slot = self.ty_opt.borrow();
         let ty = slot.as_ref()?;
         Some(ty.clone())
