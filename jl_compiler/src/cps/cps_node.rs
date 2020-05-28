@@ -55,8 +55,22 @@ impl KTy {
         }
     }
 
+    pub(crate) fn as_ptr(self) -> Option<KTy> {
+        match self {
+            KTy::Ptr { ty } => Some(*ty),
+            _ => None,
+        }
+    }
+
     pub(crate) fn into_ptr(self) -> KTy {
         KTy::Ptr { ty: Box::new(self) }
+    }
+
+    pub(crate) fn as_struct(self) -> Option<KStruct> {
+        match self {
+            KTy::Struct { struct_ref } => Some(struct_ref),
+            _ => None,
+        }
     }
 
     pub(crate) fn resolve(mut self) -> KTy {

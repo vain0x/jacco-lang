@@ -82,10 +82,23 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     do_unify(&left, &right, &location, tx);
 }
 
-fn pre_resolve_symbol_def(symbol: &KSymbol) {
+fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
     if symbol.def.ty.borrow().is_unresolved() {
-        let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
-        *symbol.def.ty.borrow_mut() = KTy::Meta(meta);
+        let expected_ty = match expected_ty_opt {
+            None => {
+                let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
+                KTy::Meta(meta)
+            }
+            Some(ty) => ty.clone(),
+        };
+
+        *symbol.def.ty.borrow_mut() = expected_ty;
+        return;
+    }
+
+    if let Some(expected_ty) = expected_ty_opt {
+        let symbol_ty = symbol.def.ty.borrow();
+        do_unify(&symbol_ty, expected_ty, &symbol.location, tx);
     }
 }
 
@@ -113,10 +126,6 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
 fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     let location = Location::default(); // FIXME: node needs location?
 
-    for result in &node.results {
-        pre_resolve_symbol_def(result);
-    }
-
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
@@ -139,6 +148,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([callee, args @ ..], [result]) => {
                 let def_fn_ty = resolve_term(callee, tx);
+                resolve_symbol_def(result, None, tx);
 
                 let arg_tys = args
                     .iter_mut()
@@ -165,7 +175,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify(arg_ty, field_def.name.ty(), location.clone(), tx);
                 }
 
-                unify(ty.clone(), result.ty(), location, tx);
+                resolve_symbol_def(result, Some(ty), tx);
+
                 if !ty.is_struct() {
                     tx.logger.error(result, "struct type required");
                 }
@@ -182,29 +193,21 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ) => {
                 let left_ty = resolve_term(left, tx);
 
-                if let Some(struct_ref) = match &left_ty.resolve() {
-                    KTy::Ptr { ty } => match ty.as_ref() {
-                        KTy::Struct { struct_ref } => Some(struct_ref),
-                        _ => None,
-                    },
-                    _ => None,
-                } {
-                    if let Some(field) = struct_ref
+                let result_ty = (|| {
+                    let k_struct = left_ty.resolve().as_ptr()?.as_struct()?;
+                    let field = k_struct
                         .def
                         .fields
                         .iter()
-                        .find(|field| field.name.raw_name() == *field_name)
-                    {
-                        unify(
-                            field.name.ty().into_ptr(),
-                            result.ty(),
-                            location.clone(),
-                            tx,
-                        );
-                    } else {
-                        tx.logger.error(location, "unknown field");
-                    }
-                }
+                        .find(|field| field.name.raw_name() == *field_name)?;
+                    Some(field.name.ty().into_ptr())
+                })()
+                .unwrap_or_else(|| {
+                    tx.logger.error(location, "bad type");
+                    KTy::Never
+                });
+
+                resolve_symbol_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -218,37 +221,42 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Let => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([init], [result]) => {
                 let init_ty = resolve_term(init, tx);
-                unify(init_ty, result.ty(), location, tx);
+                resolve_symbol_def(result, Some(&init_ty), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Deref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                unify(arg_ty, result.ty().into_ptr(), location, tx);
+
+                let result_ty_opt = arg_ty.as_ptr();
+                if result_ty_opt.is_none() {
+                    tx.logger.error(&result.location, "expected a reference");
+                }
+                resolve_symbol_def(result, result_ty_opt.as_ref(), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Ref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                unify(arg_ty.into_ptr(), result.ty(), location, tx);
+                resolve_symbol_def(result, Some(&arg_ty.into_ptr()), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Minus => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                unify(arg_ty, result.ty(), location, tx);
                 // FIXME: bool or iNN
+                resolve_symbol_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Not => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                unify(arg_ty, result.ty(), location, tx);
                 // FIXME: bool or iNN or uNN
+                resolve_symbol_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -265,8 +273,11 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([left, right], [result]) => {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
+                // FIXME: iNN or uNN
                 unify(left_ty, right_ty, location.clone(), tx);
-                unify(result.ty(), KTy::I32, location, tx);
+
+                // FIXME: left_ty?
+                resolve_symbol_def(result, Some(&KTy::I32), tx);
             }
             _ => unimplemented!(),
         },
@@ -275,14 +286,17 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 ([left, right], [result]) => {
                     let left_ty = resolve_term(left, tx);
                     let right_ty = resolve_term(right, tx);
+                    // FIXME: Eq/Ord only
                     unify(left_ty, right_ty, location.clone(), tx);
-                    unify(result.ty(), KTy::I32, location, tx); // FIXME: bool
+
+                    // FIXME: bool
+                    resolve_symbol_def(result, Some(&KTy::I32), tx);
                 }
                 _ => unimplemented!(),
             }
         }
-        KPrim::Assign => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            ([left, right], []) => {
+        KPrim::Assign => match node.args.as_mut_slice() {
+            [left, right] => {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 unify(left_ty, right_ty.into_ptr(), location.clone(), tx);
@@ -305,21 +319,21 @@ fn prepare_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
     *fn_symbol.def.ty.borrow_mut() = fn_ty;
 }
 
-fn prepare_fn(k_fn: &mut KFnData) {
+fn prepare_fn(k_fn: &mut KFnData, tx: &mut Tx) {
     for param in &mut k_fn.params {
-        pre_resolve_symbol_def(param);
+        resolve_symbol_def(param, None, tx);
     }
 
     prepare_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never);
 
     for label in &mut k_fn.labels {
-        prepare_fn(label);
+        prepare_fn(label, tx);
     }
 }
 
-fn prepare_extern_fn(extern_fn: &mut KExternFnData) {
+fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
     for param in &mut extern_fn.params {
-        pre_resolve_symbol_def(param);
+        resolve_symbol_def(param, None, tx);
     }
 
     prepare_fn_sig(
@@ -329,7 +343,7 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData) {
     );
 }
 
-fn prepare_struct(k_struct: &KStruct) {
+fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
     let struct_ty = KTy::Struct {
         struct_ref: k_struct.clone(),
     };
@@ -340,21 +354,21 @@ fn prepare_struct(k_struct: &KStruct) {
     *struct_data.def_site_ty.borrow_mut() = struct_ty;
 
     for field in &struct_data.fields {
-        pre_resolve_symbol_def(&field.name);
+        resolve_symbol_def(&field.name, None, tx);
     }
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     for k_struct in &root.structs {
-        prepare_struct(&k_struct);
+        prepare_struct(&k_struct, tx);
     }
 
     for extern_fn in &mut root.extern_fns {
-        prepare_extern_fn(extern_fn);
+        prepare_extern_fn(extern_fn, tx);
     }
 
     for k_fn in &mut root.fns {
-        prepare_fn(k_fn);
+        prepare_fn(k_fn, tx);
     }
 
     // 項の型を解決する。
