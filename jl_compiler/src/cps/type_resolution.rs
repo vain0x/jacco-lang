@@ -14,6 +14,11 @@ impl Tx {
     }
 }
 
+fn fresh_meta_ty(location: Location) -> KTy {
+    let meta = KMetaTy::new(KMetaTyData::new(location));
+    KTy::Meta(meta)
+}
+
 fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
@@ -85,10 +90,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
     if symbol.def.ty.borrow().is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => {
-                let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
-                KTy::Meta(meta)
-            }
+            None => fresh_meta_ty(symbol.location()),
             Some(ty) => ty.clone(),
         };
 
@@ -172,7 +174,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 for (arg, field_def) in node.args.iter_mut().zip(&struct_def.fields) {
                     let arg_ty = resolve_term(arg, tx);
-                    unify(arg_ty, field_def.name.ty(), location.clone(), tx);
+                    unify(
+                        arg_ty,
+                        field_def.def_site_ty.borrow().clone(),
+                        location.clone(),
+                        tx,
+                    );
                 }
 
                 resolve_symbol_def(result, Some(ty), tx);
@@ -195,12 +202,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty = (|| {
                     let k_struct = left_ty.resolve().as_ptr()?.as_struct()?;
-                    let field = k_struct
+                    k_struct
                         .def
                         .fields
                         .iter()
-                        .find(|field| field.name.raw_name() == *field_name)?;
-                    Some(field.name.ty().into_ptr())
+                        .find(|field| field.name == *field_name)
+                        .map(|field| field.def_site_ty.borrow().clone().into_ptr())
                 })()
                 .unwrap_or_else(|| {
                     tx.logger.error(location, "bad type");
@@ -343,7 +350,7 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
     );
 }
 
-fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
+fn prepare_struct(k_struct: &KStruct, _tx: &mut Tx) {
     let struct_ty = KTy::Struct {
         struct_ref: k_struct.clone(),
     };
@@ -354,7 +361,10 @@ fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
     *struct_data.def_site_ty.borrow_mut() = struct_ty;
 
     for field in &struct_data.fields {
-        resolve_symbol_def(&field.name, None, tx);
+        if field.def_site_ty.borrow().is_unresolved() {
+            // FIXME: error
+            *field.def_site_ty.borrow_mut() = fresh_meta_ty(field.location.clone());
+        }
     }
 }
 

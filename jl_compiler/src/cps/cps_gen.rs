@@ -20,7 +20,7 @@ struct KLoopData {
 struct Gx {
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<usize, Rc<KVarData>>,
-    struct_map: HashMap<usize, Rc<KStructData>>,
+    struct_map: HashMap<usize, KStruct>,
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
@@ -213,9 +213,10 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
         _ => {
             let name_id = name.name_id_opt.unwrap();
 
-            if let Some(def) = gx.var_map.get(&name_id) {
-                assert!(def.ty.borrow().is_struct());
-                return def.ty.borrow().clone();
+            if let Some(struct_ref) = gx.struct_map.get(&name_id) {
+                return KTy::Struct {
+                    struct_ref: struct_ref.clone(),
+                };
             }
 
             gx.logger
@@ -676,8 +677,16 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
                     .into_iter()
                     .map(|field| {
-                        let name = gen_name(field.name, gx);
-                        KFieldData { name }
+                        // NOTE: フィールド名は型推論中に解決されるので、name_id は使わない。(sizeof(K::foo) のようにフィールドを直接指す構文があれば必要になる。)
+                        let (text, location) = field.name.decompose();
+                        let def_site_ty =
+                            RefCell::new(field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx)));
+
+                        KFieldData {
+                            name: text,
+                            location,
+                            def_site_ty,
+                        }
                     })
                     .collect(),
                 None => vec![],
@@ -691,8 +700,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 symbol: struct_symbol,
                 id_opt: RefCell::default(),
             });
-            gx.struct_map.insert(name_id, def.clone());
-            gx.structs.push(KStruct { def });
+            let k_struct = KStruct { def };
+            gx.struct_map.insert(name_id, k_struct.clone());
+            gx.structs.push(k_struct);
         }
     }
 }

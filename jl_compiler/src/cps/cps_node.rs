@@ -359,7 +359,9 @@ impl KStructData {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldData {
-    pub(crate) name: KSymbol,
+    pub(crate) name: String,
+    pub(crate) def_site_ty: RefCell<KTy>,
+    pub(crate) location: Location,
 }
 
 #[derive(Clone, Debug)]

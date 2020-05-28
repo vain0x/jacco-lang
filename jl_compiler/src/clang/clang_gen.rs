@@ -254,9 +254,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
                 });
 
                 for (arg, field) in args.iter_mut().zip(&struct_def.fields) {
-                    let field_name = unique_name(&field.name, cx);
-
-                    let left = CExpr::Name(name.clone()).into_dot(field_name);
+                    let left = CExpr::Name(name.clone()).into_dot(&field.name);
                     let right = gen_term(take(arg), cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
@@ -356,7 +354,12 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         let fields = def
             .fields
             .iter()
-            .map(|field| gen_param(field.name.clone(), cx))
+            .map(|field| {
+                (
+                    field.name.to_string(),
+                    gen_ty(field.def_site_ty.borrow().clone(), cx),
+                )
+            })
             .collect();
         cx.decls.push(CStmt::StructDecl { name, fields });
     }
