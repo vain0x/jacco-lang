@@ -113,6 +113,10 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
 fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     let location = Location::default(); // FIXME: node needs location?
 
+    for result in &node.results {
+        pre_resolve_symbol_def(result);
+    }
+
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
@@ -292,24 +296,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
-fn pre_resolve_node(node: &KNode) {
-    for result in &node.results {
-        pre_resolve_symbol_def(result);
-    }
-
-    for cont in &node.conts {
-        pre_resolve_node(cont);
-    }
-}
-
 fn pre_resolve_fn(k_fn: &mut KFnData) {
     pre_resolve_symbol_def(&mut k_fn.name);
 
     for param in &mut k_fn.params {
         pre_resolve_symbol_def(param);
     }
-
-    pre_resolve_node(&mut k_fn.body);
 
     for label in &mut k_fn.labels {
         pre_resolve_fn(label);
