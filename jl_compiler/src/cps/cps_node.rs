@@ -203,7 +203,6 @@ impl KVarData {
 
 #[derive(Clone, Default)]
 pub(crate) struct KSymbol {
-    pub(crate) ty: RefCell<KTy>,
     pub(crate) location: Location,
     pub(crate) def: Rc<KVarData>,
 }
@@ -214,7 +213,7 @@ impl KSymbol {
     }
 
     pub(crate) fn ty(&self) -> KTy {
-        self.ty.borrow().clone()
+        self.def.ty.borrow().clone()
     }
 
     pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
@@ -229,7 +228,7 @@ impl fmt::Debug for KSymbol {
             "{}_{:X?}: {:?}",
             self.raw_name(),
             self.def.as_ref() as *const _,
-            self.ty
+            self.ty()
         )
     }
 }

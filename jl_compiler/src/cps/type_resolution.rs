@@ -1,20 +1,17 @@
 //! 型推論・型検査
 
 use super::*;
-use std::{ops::Deref, rc::Rc};
+use std::rc::Rc;
 
 #[derive(Default)]
 struct InitMetaTys;
 
 impl InitMetaTys {
     fn on_symbol_def(&mut self, symbol: &KSymbol) {
-        if matches!(symbol.ty.borrow().deref(), KTy::Unresolved) {
+        if symbol.def.ty.borrow().is_unresolved() {
             let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
-            *symbol.ty.borrow_mut() = KTy::Meta(meta);
+            *symbol.def.ty.borrow_mut() = KTy::Meta(meta);
         }
-
-        let mut def_ty_slot = symbol.def_ty_slot().borrow_mut();
-        *def_ty_slot = symbol.ty();
     }
 
     fn on_node(&mut self, node: &mut KNode) {
@@ -148,14 +145,13 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
     let current_ty = symbol.def_ty_slot().borrow().clone();
-    if let KTy::Unresolved = current_ty {
+    if current_ty.is_unresolved() {
         error!(
             "def_ty is unresolved. symbol is undefined? {:?}",
             symbol.location
         );
     }
 
-    *symbol.ty.borrow_mut() = current_ty.clone();
     current_ty
 }
 
@@ -386,7 +382,6 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             struct_ref: k_struct.clone(),
         };
         *def.symbol.def_ty_slot().borrow_mut() = ty.clone();
-        *def.symbol.ty.borrow_mut() = ty.clone();
 
         *def.def_site_ty.borrow_mut() = ty;
     }
