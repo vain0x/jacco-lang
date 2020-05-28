@@ -103,7 +103,7 @@ fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut 
 }
 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
-    let current_ty = symbol.def_ty_slot().borrow().clone();
+    let current_ty = symbol.ty();
     if current_ty.is_unresolved() {
         error!(
             "def_ty is unresolved. symbol is undefined? {:?}",

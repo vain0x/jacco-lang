@@ -229,10 +229,6 @@ impl KSymbol {
     pub(crate) fn ty(&self) -> KTy {
         self.def.ty.borrow().clone()
     }
-
-    pub(crate) fn def_ty_slot(&self) -> &RefCell<KTy> {
-        &self.def.ty
-    }
 }
 
 impl fmt::Debug for KSymbol {
