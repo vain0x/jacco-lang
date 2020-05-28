@@ -123,6 +123,13 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
     }
 }
 
+fn resolve_terms(terms: &mut [KTerm], tx: &mut Tx) -> Vec<KTy> {
+    terms
+        .iter_mut()
+        .map(|term| resolve_term(term, tx))
+        .collect()
+}
+
 fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     let location = Location::default(); // FIXME: node needs location?
 
@@ -131,11 +138,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Jump => match node.args.as_mut_slice() {
             [label, args @ ..] => {
                 let def_fn_ty = resolve_term(label, tx);
-
-                let arg_tys = args
-                    .iter_mut()
-                    .map(|arg| resolve_term(arg, tx))
-                    .collect::<Vec<_>>();
+                let arg_tys = resolve_terms(args, tx);
                 let use_fn_ty = KTy::Fn {
                     param_tys: arg_tys,
                     result_ty: Box::new(KTy::Never),
@@ -147,13 +150,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([callee, args @ ..], [result]) => {
-                let def_fn_ty = resolve_term(callee, tx);
                 resolve_symbol_def(result, None, tx);
 
-                let arg_tys = args
-                    .iter_mut()
-                    .map(|arg| resolve_term(arg, tx))
-                    .collect::<Vec<_>>();
+                let def_fn_ty = resolve_term(callee, tx);
+                let arg_tys = resolve_terms(args, tx);
                 let use_fn_ty = KTy::Fn {
                     param_tys: arg_tys,
                     result_ty: Box::new(result.ty()),
