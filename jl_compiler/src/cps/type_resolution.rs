@@ -78,22 +78,22 @@ impl Tx {
     }
 }
 
-fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
+fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
         (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
             unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
         }
-        (KTy::Meta(left), KTy::Meta(right)) if Rc::ptr_eq(&left, &right) => {}
+        (KTy::Meta(left), KTy::Meta(right)) if Rc::ptr_eq(left, right) => {}
         (KTy::Meta(meta), other) | (other, KTy::Meta(meta)) => {
             match meta.try_resolve() {
                 Some(ty) => {
-                    unify(ty, other, location, tx);
+                    do_unify(&ty, other, location, tx);
                 }
                 None => {
                     // FIXME: occurrence check
-                    meta.bind(other);
+                    meta.bind(other.clone());
                 }
             }
         }
@@ -101,7 +101,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
         (KTy::Unit, KTy::Unit) | (KTy::I32, KTy::I32) => {}
 
         (KTy::Ptr { ty: left }, KTy::Ptr { ty: right }) => {
-            unify(*left, *right, location, tx);
+            do_unify(left, right, location, tx);
         }
 
         (
@@ -114,32 +114,36 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
                 result_ty: right_result_ty,
             },
         ) => {
-            unify(*left_result_ty, *right_result_ty, location.clone(), tx);
+            do_unify(left_result_ty, right_result_ty, location, tx);
 
             let left_param_count = left_param_tys.len();
             let right_param_count = right_param_tys.len();
 
             for (left, right) in left_param_tys.into_iter().zip(right_param_tys) {
-                unify(left, right, location.clone(), tx);
+                do_unify(left, right, location, tx);
             }
 
             if left_param_count != right_param_count {
                 // NOTE: unify types as possible even if param counts don't match.
-                tx.logger.error(&location, "arity mismatch");
+                tx.logger.error(location, "arity mismatch");
             }
         }
 
         (KTy::Struct { struct_ref: left }, KTy::Struct { struct_ref: right })
-            if left.is_same(&right) => {}
+            if left.is_same(right) => {}
 
         (KTy::Unit, _)
         | (KTy::I32, _)
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)
         | (KTy::Struct { .. }, _) => {
-            tx.logger.error(&location, "type mismatch");
+            tx.logger.error(location, "type mismatch");
         }
     }
+}
+
+fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
+    do_unify(&left, &right, &location, tx);
 }
 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
