@@ -296,20 +296,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
-fn pre_resolve_root(k_root: &mut KRoot) {
-    for k_struct in &mut k_root.structs {
-        let data = &k_struct.def;
-
-        pre_resolve_symbol_def(&data.symbol);
-
-        *data.def_site_ty.borrow_mut() = data.symbol.ty();
-
-        for field in &data.fields {
-            pre_resolve_symbol_def(&field.name);
-        }
-    }
-}
-
 fn prepare_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
     let fn_ty = KTy::Fn {
         param_tys: params.iter().map(|param| param.ty()).collect(),
@@ -343,8 +329,25 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData) {
     );
 }
 
+fn prepare_struct(k_struct: &KStruct) {
+    let struct_ty = KTy::Struct {
+        struct_ref: k_struct.clone(),
+    };
+
+    let struct_data = &k_struct.def;
+
+    *struct_data.symbol.def.ty.borrow_mut() = struct_ty.clone();
+    *struct_data.def_site_ty.borrow_mut() = struct_ty;
+
+    for field in &struct_data.fields {
+        pre_resolve_symbol_def(&field.name);
+    }
+}
+
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
-    pre_resolve_root(root);
+    for k_struct in &root.structs {
+        prepare_struct(&k_struct);
+    }
 
     for extern_fn in &mut root.extern_fns {
         prepare_extern_fn(extern_fn);
@@ -352,16 +355,6 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
     for k_fn in &mut root.fns {
         prepare_fn(k_fn);
-    }
-
-    for k_struct in &mut root.structs {
-        let def = &k_struct.def;
-        let ty = KTy::Struct {
-            struct_ref: k_struct.clone(),
-        };
-        *def.symbol.def_ty_slot().borrow_mut() = ty.clone();
-
-        *def.def_site_ty.borrow_mut() = ty;
     }
 
     // 項の型を解決する。
