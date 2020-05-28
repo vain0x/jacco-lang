@@ -3,67 +3,6 @@
 use super::*;
 use std::rc::Rc;
 
-#[derive(Default)]
-struct InitMetaTys;
-
-impl InitMetaTys {
-    fn on_symbol_def(&mut self, symbol: &KSymbol) {
-        if symbol.def.ty.borrow().is_unresolved() {
-            let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
-            *symbol.def.ty.borrow_mut() = KTy::Meta(meta);
-        }
-    }
-
-    fn on_node(&mut self, node: &mut KNode) {
-        for result in &mut node.results {
-            self.on_symbol_def(result);
-        }
-
-        for cont in &mut node.conts {
-            self.on_node(cont);
-        }
-    }
-
-    fn on_fn(&mut self, k_fn: &mut KFnData) {
-        self.on_symbol_def(&mut k_fn.name);
-
-        for param in &mut k_fn.params {
-            self.on_symbol_def(param);
-        }
-
-        self.on_node(&mut k_fn.body);
-
-        for label in &mut k_fn.labels {
-            self.on_fn(label);
-        }
-    }
-
-    fn execute(mut self, root: &mut KRoot, _tx: &mut Tx) {
-        for k_fn in &mut root.fns {
-            self.on_fn(k_fn);
-        }
-
-        for extern_fn in &mut root.extern_fns {
-            self.on_symbol_def(&extern_fn.name);
-
-            for param in &mut extern_fn.params {
-                self.on_symbol_def(param);
-            }
-        }
-
-        for k_struct in &mut root.structs {
-            let def = &k_struct.def;
-            self.on_symbol_def(&def.symbol);
-
-            *def.def_site_ty.borrow_mut() = def.symbol.ty();
-
-            for field in &def.fields {
-                self.on_symbol_def(&field.name);
-            }
-        }
-    }
-}
-
 /// Typing context.
 struct Tx {
     logger: Logger,
@@ -141,6 +80,13 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
 
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     do_unify(&left, &right, &location, tx);
+}
+
+fn pre_resolve_symbol_def(symbol: &KSymbol) {
+    if symbol.def.ty.borrow().is_unresolved() {
+        let meta = KMetaTy::new(KMetaTyData::new(symbol.location.clone()));
+        *symbol.def.ty.borrow_mut() = KTy::Meta(meta);
+    }
 }
 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
@@ -346,6 +292,56 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
+fn pre_resolve_node(node: &KNode) {
+    for result in &node.results {
+        pre_resolve_symbol_def(result);
+    }
+
+    for cont in &node.conts {
+        pre_resolve_node(cont);
+    }
+}
+
+fn pre_resolve_fn(k_fn: &mut KFnData) {
+    pre_resolve_symbol_def(&mut k_fn.name);
+
+    for param in &mut k_fn.params {
+        pre_resolve_symbol_def(param);
+    }
+
+    pre_resolve_node(&mut k_fn.body);
+
+    for label in &mut k_fn.labels {
+        pre_resolve_fn(label);
+    }
+}
+
+fn pre_resolve_root(k_root: &mut KRoot) {
+    for k_fn in &mut k_root.fns {
+        pre_resolve_fn(k_fn);
+    }
+
+    for extern_fn in &mut k_root.extern_fns {
+        pre_resolve_symbol_def(&extern_fn.name);
+
+        for param in &mut extern_fn.params {
+            pre_resolve_symbol_def(param);
+        }
+    }
+
+    for k_struct in &mut k_root.structs {
+        let data = &k_struct.def;
+
+        pre_resolve_symbol_def(&data.symbol);
+
+        *data.def_site_ty.borrow_mut() = data.symbol.ty();
+
+        for field in &data.fields {
+            pre_resolve_symbol_def(&field.name);
+        }
+    }
+}
+
 fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy, tx: &mut Tx) {
     let fn_ty = KTy::Fn {
         param_tys: params.iter().map(|param| param.ty()).collect(),
@@ -357,7 +353,7 @@ fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy, t
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
-    InitMetaTys::default().execute(root, tx);
+    pre_resolve_root(root);
 
     for k_fn in &mut root.fns {
         resolve_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never, tx);
