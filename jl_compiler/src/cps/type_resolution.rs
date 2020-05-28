@@ -342,24 +342,23 @@ fn pre_resolve_root(k_root: &mut KRoot) {
     }
 }
 
-fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy, tx: &mut Tx) {
+fn resolve_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
     let fn_ty = KTy::Fn {
         param_tys: params.iter().map(|param| param.ty()).collect(),
         result_ty: Box::new(result_ty),
     };
 
-    let location = fn_symbol.location.clone();
-    unify(fn_symbol.ty(), fn_ty, location, tx)
+    *fn_symbol.def.ty.borrow_mut() = fn_ty;
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     pre_resolve_root(root);
 
     for k_fn in &mut root.fns {
-        resolve_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never, tx);
+        resolve_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never);
 
         for label in &mut k_fn.labels {
-            resolve_fn_sig(&mut label.name, &label.params, KTy::Never, tx);
+            resolve_fn_sig(&mut label.name, &label.params, KTy::Never);
         }
     }
 
@@ -368,7 +367,6 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             &mut extern_fn.name,
             &extern_fn.params,
             extern_fn.result_ty.clone(),
-            tx,
         );
     }
 
