@@ -2,9 +2,11 @@ struct A_1 {
 };
 
 int main() {
+    struct A_1 A_2;
     struct A_1 a_1 = A_2;
     struct A_1* ref_1 = &a_1;
     struct A_1* p_1 = ref_1;
-    *p_1 = A_2;
+    struct A_1 A_3;
+    *p_1 = A_3;
     return 0;
 }

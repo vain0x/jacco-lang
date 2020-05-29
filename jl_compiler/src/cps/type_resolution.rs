@@ -71,7 +71,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
             }
         }
 
-        (KTy::Struct(left), KTy::Struct(right)) if left.is_same(right) => {}
+        (KTy::Struct(left), KTy::Struct(right)) if left == right => {}
 
         (KTy::Unit, _)
         | (KTy::I32, _)
@@ -167,12 +167,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let struct_def = match ty {
-                    KTy::Struct(k_struct) => k_struct.def.clone(),
-                    _ => unimplemented!(),
-                };
+                let k_struct = ty.clone().as_struct().unwrap();
+                let outlines = tx.outlines.clone();
 
-                for (arg, field) in node.args.iter_mut().zip(&struct_def.fields) {
+                for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines)) {
                     let arg_ty = resolve_term(arg, tx);
                     unify(arg_ty, field.ty(&tx.outlines).clone(), location.clone(), tx);
                 }
@@ -198,8 +196,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let result_ty = (|| {
                     let k_struct = left_ty.resolve().as_ptr()?.as_struct()?;
                     k_struct
-                        .def
-                        .fields
+                        .fields(&tx.outlines)
                         .iter()
                         .find(|field| field.name(&tx.outlines) == *field_name)
                         .map(|field| field.ty(&tx.outlines).clone().into_ptr())
@@ -345,15 +342,8 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
     );
 }
 
-fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
-    let struct_ty = KTy::Struct(k_struct.clone());
-
-    let struct_data = &k_struct.def;
-
-    *struct_data.symbol.def.ty.borrow_mut() = struct_ty.clone();
-    *struct_data.def_site_ty.borrow_mut() = struct_ty;
-
-    for field in &struct_data.fields {
+fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
+    for field in k_struct.fields(&tx.outlines) {
         if field.ty(&tx.outlines).is_unresolved() {
             // FIXME: handle correctly. unresolved type crashes on unification for now
             tx.logger
@@ -363,8 +353,8 @@ fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
-    for k_struct in &root.structs {
-        prepare_struct(&k_struct, tx);
+    for k_struct in tx.outlines.structs_iter() {
+        prepare_struct(k_struct, tx);
     }
 
     for extern_fn in &mut root.extern_fns {

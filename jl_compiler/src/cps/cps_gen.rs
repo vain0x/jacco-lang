@@ -684,15 +684,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => vec![],
             };
 
-            let def = Rc::new(KStructData {
+            let k_struct = gx.outlines.struct_new(KStructOutline {
                 name: name.clone(),
-                def_site_ty: RefCell::default(),
-                location,
                 fields,
-                symbol: struct_symbol,
-                id_opt: RefCell::default(),
+                location,
             });
-            let k_struct = KStruct { def };
             gx.struct_map.insert(name_id, k_struct.clone());
             gx.structs.push(k_struct);
         }
@@ -727,7 +723,6 @@ pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutli
             KRoot {
                 extern_fns: gx.extern_fns,
                 fns: gx.fns,
-                structs: gx.structs,
             },
             Rc::new(gx.outlines),
         )

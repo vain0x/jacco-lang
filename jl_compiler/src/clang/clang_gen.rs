@@ -11,6 +11,7 @@ use std::{
 /// C code generation context.
 struct Cx {
     outlines: Rc<KOutlines>,
+    struct_id_map: HashMap<usize, usize>,
     name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
     stmts: Vec<CStmt>,
@@ -20,7 +21,8 @@ struct Cx {
 impl Cx {
     fn new(outlines: Rc<KOutlines>) -> Self {
         Self {
-            outlines: outlines,
+            outlines,
+            struct_id_map: Default::default(),
             name_map: Default::default(),
             labels: Default::default(),
             stmts: Default::default(),
@@ -41,6 +43,18 @@ impl Cx {
         ids.next()
     }
 
+    fn struct_ident_id(&mut self, k_struct: KStruct) -> usize {
+        if let Some(&ident_id) = self.struct_id_map.get(&k_struct.id()) {
+            return ident_id;
+        }
+
+        let outlines = self.outlines.clone();
+        let name = k_struct.name(&outlines);
+        let ident_id = self.ident_id(name);
+        self.struct_id_map.insert(k_struct.id(), ident_id);
+        ident_id
+    }
+
     fn enter_block(&mut self, gen_fn: impl FnOnce(&mut Self)) -> Vec<CStmt> {
         let stmts = take(&mut self.stmts);
 
@@ -48,6 +62,10 @@ impl Cx {
 
         replace(&mut self.stmts, stmts)
     }
+}
+
+fn format_unique_name(raw_name: &str, ident_id: usize) -> String {
+    format!("{}_{:x}", raw_name, ident_id)
 }
 
 fn do_unique_name(raw_name: &str, id_opt: &RefCell<Option<usize>>, cx: &mut Cx) -> String {
@@ -58,7 +76,7 @@ fn do_unique_name(raw_name: &str, id_opt: &RefCell<Option<usize>>, cx: &mut Cx) 
         .unwrap_or_else(|| cx.ident_id(raw_name));
     *id_opt.borrow_mut() = Some(id);
 
-    format!("{}_{:x}", raw_name, id)
+    format_unique_name(raw_name, id)
 }
 
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
@@ -91,10 +109,10 @@ fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, cx).into_ptr(),
         KTy::Struct(k_struct) => {
-            let raw_name = k_struct.raw_name().to_string();
-            let id_opt = &k_struct.def.id_opt;
-
-            CTy::Struct(do_unique_name(&raw_name, id_opt, cx))
+            let outlines = cx.outlines.clone();
+            let raw_name = k_struct.name(&outlines);
+            let ident_id = cx.struct_ident_id(k_struct);
+            CTy::Struct(format_unique_name(&raw_name, ident_id))
         }
     }
 }
@@ -254,8 +272,8 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         },
         KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
-                let struct_def = match result.ty().resolve() {
-                    KTy::Struct(k_struct) => k_struct.def.clone(),
+                let k_struct = match result.ty().resolve() {
+                    KTy::Struct(k_struct) => k_struct,
                     _ => unimplemented!(),
                 };
 
@@ -266,8 +284,9 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
                     init_opt: None,
                 });
 
-                for (arg, field) in args.iter_mut().zip(&struct_def.fields) {
-                    let left = CExpr::Name(name.clone()).into_dot(field.name(&cx.outlines));
+                let outlines = cx.outlines.clone();
+                for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines)) {
+                    let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines));
                     let right = gen_term(take(arg), cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
@@ -360,12 +379,13 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
-    for KStruct { def } in root.structs {
-        let raw_name = def.raw_name().to_string();
-        let id_opt = &def.id_opt;
-        let name = do_unique_name(&raw_name, id_opt, cx);
-        let fields = def
-            .fields
+    for k_struct in cx.outlines.structs_iter() {
+        let outlines = cx.outlines.clone();
+        let raw_name = k_struct.name(&outlines);
+        let ident_id = cx.struct_ident_id(k_struct);
+        let name = format_unique_name(&raw_name, ident_id);
+        let fields = k_struct
+            .fields(&outlines)
             .iter()
             .map(|field| {
                 (

@@ -143,7 +143,10 @@ impl fmt::Debug for KTy {
                 write!(f, ") -> ")?;
                 fmt::Debug::fmt(result_ty, f)
             }
-            KTy::Struct(k_struct) => write!(f, "struct {}", k_struct.raw_name()),
+            KTy::Struct(k_struct) => {
+                // FIXME: print name
+                write!(f, "struct {}", k_struct.id())
+            }
         }
     }
 }
@@ -340,51 +343,13 @@ pub(crate) struct KExternFnData {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KStructData {
-    pub(crate) name: String,
-    pub(crate) def_site_ty: RefCell<KTy>,
-    pub(crate) location: Location,
-    pub(crate) fields: Vec<KField>,
-    pub(crate) symbol: KSymbol,
-    pub(crate) id_opt: RefCell<Option<usize>>,
-}
-
-impl KStructData {
-    pub(crate) fn raw_name(&self) -> &str {
-        &self.name
-    }
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
     pub(crate) location: Location,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KStruct {
-    pub(crate) def: Rc<KStructData>,
-}
-
-impl KStruct {
-    pub(crate) fn raw_name(&self) -> &str {
-        self.def.raw_name()
-    }
-
-    pub(crate) fn is_same(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.def, &other.def)
-    }
-}
-
-impl From<Rc<KStructData>> for KStruct {
-    fn from(data: Rc<KStructData>) -> Self {
-        KStruct { def: data }
-    }
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct KRoot {
     pub(crate) extern_fns: Vec<KExternFnData>,
     pub(crate) fns: Vec<KFnData>,
-    pub(crate) structs: Vec<KStruct>,
 }
