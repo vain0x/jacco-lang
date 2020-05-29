@@ -344,7 +344,7 @@ pub(crate) struct KStructData {
     pub(crate) name: String,
     pub(crate) def_site_ty: RefCell<KTy>,
     pub(crate) location: Location,
-    pub(crate) fields: Vec<KFieldData>,
+    pub(crate) fields: Vec<KField>,
     pub(crate) symbol: KSymbol,
     pub(crate) id_opt: RefCell<Option<usize>>,
 }
@@ -353,13 +353,6 @@ impl KStructData {
     pub(crate) fn raw_name(&self) -> &str {
         &self.name
     }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct KFieldData {
-    pub(crate) name: String,
-    pub(crate) def_site_ty: RefCell<KTy>,
-    pub(crate) location: Location,
 }
 
 #[derive(Clone, Debug)]

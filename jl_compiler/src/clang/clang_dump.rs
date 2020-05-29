@@ -1,7 +1,10 @@
 //! C言語の構文木を文字列に変換する処理
 
 use super::*;
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    rc::Rc,
+};
 
 impl CUnaryOp {
     fn as_str(&self) -> &'static str {
@@ -229,8 +232,8 @@ fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
     Ok(())
 }
 
-pub(crate) fn clang_dump(k_root: KRoot) -> String {
-    let c_root = clang_gen::gen(k_root);
+pub(crate) fn clang_dump(k_root: KRoot, outlines: Rc<KOutlines>) -> String {
+    let c_root = clang_gen::gen(k_root, outlines);
 
     let text = {
         let mut out = vec![];

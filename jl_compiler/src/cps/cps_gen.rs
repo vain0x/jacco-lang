@@ -18,6 +18,7 @@ struct KLoopData {
 /// Code generation context.
 #[derive(Default)]
 struct Gx {
+    outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<usize, Rc<KVarData>>,
     struct_map: HashMap<usize, KStruct>,
@@ -675,14 +676,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     .map(|field| {
                         // NOTE: フィールド名は型推論中に解決されるので、name_id は使わない。(sizeof(K::foo) のようにフィールドを直接指す構文があれば必要になる。)
                         let (text, location) = field.name.decompose();
-                        let def_site_ty =
-                            RefCell::new(field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx)));
-
-                        KFieldData {
-                            name: text,
-                            location,
-                            def_site_ty,
-                        }
+                        let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
+                        gx.outlines
+                            .field_new(KFieldOutline::new(text, field_ty, location))
                     })
                     .collect(),
                 None => vec![],
@@ -723,20 +719,23 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
     }
 }
 
-pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> KRoot {
-    let mut k_root = {
+pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutlines>) {
+    let (mut k_root, outlines) = {
         let mut gx = Gx::new(logger.clone());
         gen_root(p_root, &mut gx);
-        KRoot {
-            extern_fns: gx.extern_fns,
-            fns: gx.fns,
-            structs: gx.structs,
-        }
+        (
+            KRoot {
+                extern_fns: gx.extern_fns,
+                fns: gx.fns,
+                structs: gx.structs,
+            },
+            Rc::new(gx.outlines),
+        )
     };
 
     trace!("k_root (untyped) = {:#?}\n", k_root);
 
-    type_resolution::resolve_types(&mut k_root, logger.clone());
+    type_resolution::resolve_types(&mut k_root, outlines.clone(), logger.clone());
 
-    k_root
+    (k_root, outlines)
 }

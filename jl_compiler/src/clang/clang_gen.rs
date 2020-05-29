@@ -3,11 +3,14 @@
 use super::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::mem::{replace, take};
+use std::{
+    mem::{replace, take},
+    rc::Rc,
+};
 
 /// C code generation context.
-#[derive(Default)]
 struct Cx {
+    outlines: Rc<KOutlines>,
     name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
     stmts: Vec<CStmt>,
@@ -15,6 +18,16 @@ struct Cx {
 }
 
 impl Cx {
+    fn new(outlines: Rc<KOutlines>) -> Self {
+        Self {
+            outlines: outlines,
+            name_map: Default::default(),
+            labels: Default::default(),
+            stmts: Default::default(),
+            decls: Default::default(),
+        }
+    }
+
     fn ident_id(&mut self, name: &str) -> usize {
         let ids = match self.name_map.get_mut(name) {
             Some(ids) => ids,
@@ -254,7 +267,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
                 });
 
                 for (arg, field) in args.iter_mut().zip(&struct_def.fields) {
-                    let left = CExpr::Name(name.clone()).into_dot(&field.name);
+                    let left = CExpr::Name(name.clone()).into_dot(field.name(&cx.outlines));
                     let right = gen_term(take(arg), cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
@@ -356,8 +369,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .iter()
             .map(|field| {
                 (
-                    field.name.to_string(),
-                    gen_ty(field.def_site_ty.borrow().clone(), cx),
+                    field.name(&cx.outlines).to_string(),
+                    gen_ty(field.ty(&cx.outlines).clone(), cx),
                 )
             })
             .collect();
@@ -423,8 +436,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(k_root: KRoot) -> CRoot {
-    let mut cx = Cx::default();
+pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>) -> CRoot {
+    let mut cx = Cx::new(outlines);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }

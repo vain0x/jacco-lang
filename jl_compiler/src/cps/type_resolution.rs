@@ -5,12 +5,13 @@ use std::rc::Rc;
 
 /// Typing context.
 struct Tx {
+    outlines: Rc<KOutlines>,
     logger: Logger,
 }
 
 impl Tx {
-    fn new(logger: Logger) -> Self {
-        Tx { logger }
+    fn new(outlines: Rc<KOutlines>, logger: Logger) -> Self {
+        Self { outlines, logger }
     }
 }
 
@@ -171,14 +172,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     _ => unimplemented!(),
                 };
 
-                for (arg, field_def) in node.args.iter_mut().zip(&struct_def.fields) {
+                for (arg, field) in node.args.iter_mut().zip(&struct_def.fields) {
                     let arg_ty = resolve_term(arg, tx);
-                    unify(
-                        arg_ty,
-                        field_def.def_site_ty.borrow().clone(),
-                        location.clone(),
-                        tx,
-                    );
+                    unify(arg_ty, field.ty(&tx.outlines).clone(), location.clone(), tx);
                 }
 
                 resolve_symbol_def(result, Some(ty), tx);
@@ -205,8 +201,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         .def
                         .fields
                         .iter()
-                        .find(|field| field.name == *field_name)
-                        .map(|field| field.def_site_ty.borrow().clone().into_ptr())
+                        .find(|field| field.name(&tx.outlines) == *field_name)
+                        .map(|field| field.ty(&tx.outlines).clone().into_ptr())
                 })()
                 .unwrap_or_else(|| {
                     tx.logger.error(location, "bad type");
@@ -349,7 +345,7 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
     );
 }
 
-fn prepare_struct(k_struct: &KStruct, _tx: &mut Tx) {
+fn prepare_struct(k_struct: &KStruct, tx: &mut Tx) {
     let struct_ty = KTy::Struct(k_struct.clone());
 
     let struct_data = &k_struct.def;
@@ -358,9 +354,10 @@ fn prepare_struct(k_struct: &KStruct, _tx: &mut Tx) {
     *struct_data.def_site_ty.borrow_mut() = struct_ty;
 
     for field in &struct_data.fields {
-        if field.def_site_ty.borrow().is_unresolved() {
-            // FIXME: error
-            *field.def_site_ty.borrow_mut() = fresh_meta_ty(field.location.clone());
+        if field.ty(&tx.outlines).is_unresolved() {
+            // FIXME: handle correctly. unresolved type crashes on unification for now
+            tx.logger
+                .error(&field.location(&tx.outlines), "unresolved field type");
         }
     }
 }
@@ -388,7 +385,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(k_root: &mut KRoot, logger: Logger) {
-    let mut tx = Tx::new(logger);
+pub(crate) fn resolve_types(k_root: &mut KRoot, outlines: Rc<KOutlines>, logger: Logger) {
+    let mut tx = Tx::new(outlines, logger);
     resolve_root(k_root, &mut tx);
 }
