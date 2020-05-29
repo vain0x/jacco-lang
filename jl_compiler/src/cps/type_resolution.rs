@@ -70,8 +70,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
             }
         }
 
-        (KTy::Struct { struct_ref: left }, KTy::Struct { struct_ref: right })
-            if left.is_same(right) => {}
+        (KTy::Struct(left), KTy::Struct(right)) if left.is_same(right) => {}
 
         (KTy::Unit, _)
         | (KTy::I32, _)
@@ -168,7 +167,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Struct => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
                 let struct_def = match ty {
-                    KTy::Struct { struct_ref } => struct_ref.def.clone(),
+                    KTy::Struct(k_struct) => k_struct.def.clone(),
                     _ => unimplemented!(),
                 };
 
@@ -351,9 +350,7 @@ fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
 }
 
 fn prepare_struct(k_struct: &KStruct, _tx: &mut Tx) {
-    let struct_ty = KTy::Struct {
-        struct_ref: k_struct.clone(),
-    };
+    let struct_ty = KTy::Struct(k_struct.clone());
 
     let struct_data = &k_struct.def;
 

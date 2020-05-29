@@ -35,9 +35,7 @@ pub(crate) enum KTy {
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
     },
-    Struct {
-        struct_ref: KStruct,
-    },
+    Struct(KStruct),
 }
 
 impl KTy {
@@ -68,7 +66,7 @@ impl KTy {
 
     pub(crate) fn as_struct(self) -> Option<KStruct> {
         match self {
-            KTy::Struct { struct_ref } => Some(struct_ref),
+            KTy::Struct(k_struct) => Some(k_struct),
             _ => None,
         }
     }
@@ -145,7 +143,7 @@ impl fmt::Debug for KTy {
                 write!(f, ") -> ")?;
                 fmt::Debug::fmt(result_ty, f)
             }
-            KTy::Struct { struct_ref } => write!(f, "struct {}", struct_ref.raw_name()),
+            KTy::Struct(k_struct) => write!(f, "struct {}", k_struct.raw_name()),
         }
     }
 }

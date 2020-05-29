@@ -213,10 +213,8 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
         _ => {
             let name_id = name.name_id_opt.unwrap();
 
-            if let Some(struct_ref) = gx.struct_map.get(&name_id) {
-                return KTy::Struct {
-                    struct_ref: struct_ref.clone(),
-                };
+            if let Some(k_struct) = gx.struct_map.get(&name_id) {
+                return KTy::Struct(k_struct.clone());
             }
 
             gx.logger
@@ -302,9 +300,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
             let result = gx.fresh_symbol(name.0.text(), name.location());
             let ty = match gx.struct_map.get(&name.0.name_id_opt.unwrap()) {
-                Some(def) => KTy::Struct {
-                    struct_ref: def.clone().into(),
-                },
+                Some(def) => KTy::Struct(def.clone().into()),
                 None => {
                     error!("struct {:?} should be found here", name.0.text());
                     return new_never_term(name.location());

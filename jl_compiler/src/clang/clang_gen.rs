@@ -77,9 +77,9 @@ fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, cx).into_ptr(),
-        KTy::Struct { struct_ref } => {
-            let raw_name = struct_ref.raw_name().to_string();
-            let id_opt = &struct_ref.def.id_opt;
+        KTy::Struct(k_struct) => {
+            let raw_name = k_struct.raw_name().to_string();
+            let id_opt = &k_struct.def.id_opt;
 
             CTy::Struct(do_unique_name(&raw_name, id_opt, cx))
         }
@@ -242,7 +242,7 @@ fn gen_node(mut node: KNode, cx: &mut Cx) {
         KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
                 let struct_def = match result.ty().resolve() {
-                    KTy::Struct { struct_ref } => struct_ref.def.clone(),
+                    KTy::Struct(k_struct) => k_struct.def.clone(),
                     _ => unimplemented!(),
                 };
 
