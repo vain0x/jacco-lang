@@ -331,15 +331,22 @@ impl fmt::Debug for KNode {
 pub(crate) struct KFnData {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
+    pub(crate) return_label: KSymbol,
     pub(crate) body: KNode,
-    pub(crate) labels: Vec<KFnData>,
+    pub(crate) labels: Vec<KLabelData>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct KLabelData {
+    pub(crate) name: KSymbol,
+    pub(crate) params: Vec<KSymbol>,
+    pub(crate) body: KNode,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct KExternFnData {
     pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
-    pub(crate) result_ty: KTy,
 }
 
 #[derive(Clone, Debug)]
@@ -350,6 +357,6 @@ pub(crate) struct KFieldTag {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KRoot {
-    pub(crate) extern_fns: Vec<KExternFnData>,
     pub(crate) fns: Vec<KFnData>,
+    pub(crate) extern_fns: Vec<KExternFnData>,
 }

@@ -379,8 +379,9 @@ fn gen_node_as_block(node: KNode, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
-    for k_struct in cx.outlines.structs_iter() {
-        let outlines = cx.outlines.clone();
+    let outlines = cx.outlines.clone();
+
+    for k_struct in outlines.structs_iter() {
         let raw_name = k_struct.name(&outlines);
         let ident_id = cx.struct_ident_id(k_struct);
         let name = format_unique_name(&raw_name, ident_id);
@@ -397,17 +398,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.decls.push(CStmt::StructDecl { name, fields });
     }
 
-    for KExternFnData {
-        name,
-        params,
-        result_ty,
-    } in root.extern_fns
-    {
+    for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
+        let KExternFnData { name, params } = extern_fn_data;
         let params = params
             .into_iter()
             .map(|param| gen_param(param, cx))
             .collect();
-        let result_ty = gen_ty(result_ty, cx);
+        let result_ty = gen_ty(extern_fn.result_ty(&outlines).clone(), cx);
         cx.decls.push(CStmt::ExternFnDecl {
             name: name.raw_name().to_string(),
             params,
@@ -415,13 +412,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for KFnData {
-        name, body, labels, ..
-    } in root.fns
-    {
+    for (_, fn_data) in outlines.fns_iter().zip(root.fns) {
+        let KFnData {
+            name, body, labels, ..
+        } = fn_data;
         let stmts = cx.enter_block(|cx| {
             cx.labels.clear();
-            for KFnData { name, params, .. } in &labels {
+            for KLabelData { name, params, .. } in &labels {
                 let fn_name = unique_name(&name, cx);
                 let params = params
                     .into_iter()
@@ -440,7 +437,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
             gen_node(body, cx);
 
-            for KFnData { name, body, .. } in labels {
+            for KLabelData { name, body, .. } in labels {
                 let label = unique_name(&name, cx);
                 cx.stmts.push(CStmt::Label { label });
                 gen_node(body, cx);

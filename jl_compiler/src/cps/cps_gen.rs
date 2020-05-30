@@ -625,39 +625,59 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let (node, labels) = fold_block(commands);
 
-            let k_fn = KFnData {
-                name: fn_name,
-                params: vec![return_label],
-                body: node,
-                labels,
-            };
+            // FIXME: generate params
+            let k_fn = gx.outlines.fn_new(KFnOutline {
+                name: fn_name.raw_name().to_string(),
+                param_tys: vec![],
+                result_ty: KTy::Never,
+                location,
+            });
 
-            gx.fns.push(k_fn);
+            gx.fns.insert(
+                k_fn.id(),
+                KFnData {
+                    name: fn_name,
+                    params: vec![],
+                    return_label,
+                    body: node,
+                    labels,
+                },
+            );
         }
         PDecl::ExternFn(PExternFnDecl {
+            extern_keyword,
+            fn_keyword,
             name_opt,
             param_list_opt,
             result_ty_opt,
             ..
         }) => {
-            let name = gen_name(name_opt.unwrap(), gx);
+            let location = extern_keyword.location().unite(&fn_keyword.location());
+            let fn_name = gen_name(name_opt.unwrap(), gx);
             let params = param_list_opt
                 .unwrap()
                 .params
                 .into_iter()
                 .map(|param| gen_param(param, gx))
-                .collect();
+                .collect::<Vec<_>>();
             let result_ty = match result_ty_opt {
                 Some(ty) => gen_ty(ty, gx),
                 None => KTy::Unit,
             };
 
-            let extern_fn = KExternFnData {
-                name,
-                params,
+            let extern_fn = gx.outlines.extern_fn_new(KExternFnOutline {
+                name: fn_name.raw_name().to_string(),
+                param_tys: params.iter().map(|param| param.ty()).collect(),
                 result_ty,
-            };
-            gx.extern_fns.push(extern_fn);
+                location,
+            });
+            gx.extern_fns.insert(
+                extern_fn.id(),
+                KExternFnData {
+                    name: fn_name,
+                    params,
+                },
+            );
         }
         PDecl::Struct(PStructDecl {
             name_opt,

@@ -107,10 +107,7 @@ fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut 
 fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
     let current_ty = symbol.ty();
     if current_ty.is_unresolved() {
-        error!(
-            "def_ty is unresolved. symbol is undefined? {:?}",
-            symbol.location
-        );
+        error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
     }
 
     current_ty
@@ -318,27 +315,46 @@ fn prepare_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
     *fn_symbol.def.ty.borrow_mut() = fn_ty;
 }
 
-fn prepare_fn(k_fn: &mut KFnData, tx: &mut Tx) {
-    for param in &mut k_fn.params {
-        resolve_symbol_def(param, None, tx);
-    }
+fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
+    let outlines = tx.outlines.clone();
 
-    prepare_fn_sig(&mut k_fn.name, &k_fn.params, KTy::Never);
-
-    for label in &mut k_fn.labels {
-        prepare_fn(label, tx);
-    }
-}
-
-fn prepare_extern_fn(extern_fn: &mut KExternFnData, tx: &mut Tx) {
-    for param in &mut extern_fn.params {
-        resolve_symbol_def(param, None, tx);
+    for i in 0..fn_data.params.len() {
+        let param = &mut fn_data.params[i];
+        let param_ty = &k_fn.param_tys(&outlines)[i];
+        resolve_symbol_def(param, Some(param_ty), tx);
     }
 
     prepare_fn_sig(
-        &mut extern_fn.name,
-        &extern_fn.params,
-        extern_fn.result_ty.clone(),
+        &mut fn_data.name,
+        &fn_data.params,
+        k_fn.result_ty(&tx.outlines).clone(),
+    );
+
+    // FIXME: return : fn(result) -> never
+    resolve_symbol_def(&mut fn_data.return_label, None, tx);
+
+    for label in &mut fn_data.labels {
+        for param in &mut label.params {
+            resolve_symbol_def(param, None, tx);
+        }
+
+        prepare_fn_sig(&mut label.name, &label.params, KTy::Never);
+    }
+}
+
+fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
+    let outlines = tx.outlines.clone();
+
+    for i in 0..data.params.len() {
+        let param = &mut data.params[i];
+        let param_ty = &extern_fn.param_tys(&outlines)[i];
+        resolve_symbol_def(param, Some(param_ty), tx);
+    }
+
+    prepare_fn_sig(
+        &mut data.name,
+        &data.params,
+        extern_fn.result_ty(&tx.outlines).clone(),
     );
 }
 
@@ -353,16 +369,20 @@ fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
 }
 
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
-    for k_struct in tx.outlines.structs_iter() {
+    let outlines = tx.outlines.clone();
+
+    for k_struct in outlines.structs_iter() {
         prepare_struct(k_struct, tx);
     }
 
-    for extern_fn in &mut root.extern_fns {
-        prepare_extern_fn(extern_fn, tx);
+    for extern_fn in outlines.extern_fns_iter() {
+        let extern_fn_data = &mut root.extern_fns[extern_fn.id()];
+        prepare_extern_fn(extern_fn, extern_fn_data, tx);
     }
 
-    for k_fn in &mut root.fns {
-        prepare_fn(k_fn, tx);
+    for k_fn in outlines.fns_iter() {
+        let fn_data = &mut root.fns[k_fn.id()];
+        prepare_fn(k_fn, fn_data, tx);
     }
 
     // 項の型を解決する。
