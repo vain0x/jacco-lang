@@ -37,6 +37,10 @@ impl PNameInfo {
     pub(crate) fn id(&self) -> PNameId {
         self.id
     }
+
+    pub(crate) fn kind(&self) -> PNameKind {
+        self.kind
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

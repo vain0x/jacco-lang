@@ -208,20 +208,16 @@ fn emit_if(
 
 fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
     let name = ty_name.0;
+    let name_info = name.info_opt.as_ref().unwrap();
+    let (name_id, kind) = (name_info.id(), name_info.kind());
 
-    match name.text() {
-        "i32" => KTy::I32,
-        _ => {
-            let name_id = name.info_opt.as_ref().unwrap().id();
-
-            if let Some(k_struct) = gx.struct_map.get(&name_id) {
-                return KTy::Struct(k_struct.clone());
-            }
-
-            gx.logger
-                .error(&name, format!("undefined type name {:?}", name.text()));
-            KTy::Unresolved
+    match kind {
+        PNameKind::I32 => KTy::I32,
+        PNameKind::Struct => {
+            let k_struct = gx.struct_map.get(&name_id).unwrap();
+            KTy::Struct(k_struct.clone())
         }
+        _ => unreachable!("expected type name but {:?}", name),
     }
 }
 
