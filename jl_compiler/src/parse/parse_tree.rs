@@ -13,9 +13,51 @@ use super::*;
 pub(crate) type PNameId = usize;
 
 #[derive(Clone, Debug)]
+pub(crate) struct PNameInfo {
+    id: PNameId,
+    kind: PNameKind,
+}
+
+impl PNameInfo {
+    pub(crate) const UNRESOLVED: Self = Self {
+        id: usize::MAX,
+        kind: PNameKind::Unresolved,
+    };
+
+    // FIXME: 組み込みのシンボルには特定の ID を割り当てる？
+    pub(crate) const I32: Self = Self {
+        id: usize::MAX,
+        kind: PNameKind::I32,
+    };
+
+    pub(crate) fn new(id: PNameId, kind: PNameKind) -> Self {
+        Self { id, kind }
+    }
+
+    pub(crate) fn id(&self) -> PNameId {
+        self.id
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum PNameKind {
+    Unresolved,
+    I32,
+    Fn,
+    ExternFn,
+    /// Local variable or parameter.
+    Local,
+    Struct,
+    Field,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PName {
     pub(crate) token: TokenData,
-    pub(crate) name_id_opt: Option<PNameId>,
+
+    /// 名前解決の結果
+    /// FIXME: 構文ノードを id か何かで特定できるようにして、このような情報は外部のマップに持つ？
+    pub(crate) info_opt: Option<PNameInfo>,
 }
 
 impl PName {

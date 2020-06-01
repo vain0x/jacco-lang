@@ -7,7 +7,7 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
 
     Some(PName {
         token,
-        name_id_opt: None,
+        info_opt: None,
     })
 }
 

@@ -212,7 +212,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
     match name.text() {
         "i32" => KTy::I32,
         _ => {
-            let name_id = name.name_id_opt.unwrap();
+            let name_id = name.info_opt.as_ref().unwrap().id();
 
             if let Some(k_struct) = gx.struct_map.get(&name_id) {
                 return KTy::Struct(k_struct.clone());
@@ -235,7 +235,7 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
 }
 
 fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
-    let name_id = name.name_id_opt.unwrap();
+    let name_id = name.info_opt.as_ref().unwrap().id();
     let (name, location) = name.decompose();
 
     let def = match gx.var_map.get(&name_id) {
@@ -300,7 +300,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
             let result = gx.fresh_symbol(name.0.text(), name.location());
-            let ty = match gx.struct_map.get(&name.0.name_id_opt.unwrap()) {
+            let ty = match gx.struct_map.get(&name.0.info_opt.as_ref().unwrap().id()) {
                 Some(def) => KTy::Struct(def.clone().into()),
                 None => {
                     error!("struct {:?} should be found here", name.0.text());
@@ -685,7 +685,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let name = name_opt.unwrap();
-            let name_id = name.name_id_opt.unwrap();
+            let name_id = name.info_opt.as_ref().unwrap().id();
             let struct_symbol = gen_name(name, gx);
             let name = struct_symbol.def.name.to_string();
             let location = struct_symbol.location.clone();

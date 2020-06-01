@@ -10,7 +10,7 @@ use std::mem::{replace, take};
 #[derive(Default)]
 struct Nx {
     ids: IdProvider,
-    env: HashMap<String, PNameId>,
+    env: HashMap<String, PNameInfo>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     logger: Logger,
@@ -59,32 +59,36 @@ impl Nx {
 
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) -> bool {
     match nx.env.get(name.text()) {
-        Some(&name_id) => {
-            name.name_id_opt = Some(name_id);
+        Some(info) => {
+            name.info_opt = Some(info.clone());
             true
         }
         None => false,
     }
 }
 
-fn resolve_name_def(name: &mut PName, nx: &mut Nx) {
-    let name_id = nx.fresh_id();
-    name.name_id_opt = Some(name_id);
-    nx.env.insert(name.text().to_string(), name_id);
+fn resolve_name_def(name: &mut PName, kind: PNameKind, nx: &mut Nx) {
+    let id = nx.fresh_id();
+    let info = PNameInfo::new(id, kind);
+    name.info_opt = Some(info.clone());
+    nx.env.insert(name.text().to_string(), info);
 }
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
     let name = &mut ty_name.0;
     match name.text() {
         "i32" => {
-            // FIXME: これの型が i32 であることを記録する。
+            name.info_opt = Some(PNameInfo::I32);
         }
         _ => {
             if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined type");
+                name.info_opt = Some(PNameInfo::UNRESOLVED);
             }
         }
     }
+
+    assert!(name.info_opt.is_some());
 }
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
@@ -104,7 +108,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 }
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
-    resolve_name_def(name, nx);
+    resolve_name_def(name, PNameKind::Local, nx);
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
@@ -119,6 +123,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         PExpr::Name(PNameExpr(name)) => {
             if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined");
+                name.info_opt = Some(PNameInfo::UNRESOLVED);
             }
         }
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
@@ -262,7 +267,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 *fn_id_opt = Some(fn_id);
 
                 if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, nx);
+                    resolve_name_def(name, PNameKind::Fn, nx);
                 }
 
                 nx.enter_scope(|nx| {
@@ -280,7 +285,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             ..
         }) => {
             if let Some(name) = name_opt.as_mut() {
-                resolve_name_def(name, nx);
+                resolve_name_def(name, PNameKind::ExternFn, nx);
             }
 
             nx.enter_scope(|nx| {
@@ -294,13 +299,13 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             ..
         }) => {
             if let Some(name) = name_opt.as_mut() {
-                resolve_name_def(name, nx);
+                resolve_name_def(name, PNameKind::Struct, nx);
             }
 
             nx.enter_scope(|nx| match variant_opt {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
                     for field in fields {
-                        resolve_name_def(&mut field.name, nx);
+                        resolve_name_def(&mut field.name, PNameKind::Field, nx);
                         resolve_ty_opt(field.ty_opt.as_mut(), nx);
                     }
                 }
