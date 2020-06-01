@@ -37,7 +37,7 @@ cargo build
 
 ## 内部実装
 
-#### 略語
+#### 略語など
 
 | 略語   | 原語           | 意味 |
 |:------|:--------------|:--|
@@ -61,15 +61,15 @@ cargo build
 | semi  | semicolon     | セミコロン |
 | ty    | type          | 型 |
 
-#### 頭字語
-
+- Gx, Tx など
+    - 何らかの処理で使うデータを入れた構造体。なんとか context の略。
 - continuation passing style (CPS): 継続渡し形式
 
 ### 内部: ステージ
 
-- 字句(token)
+- 字句 (token)
     - 字句解析
-- 構文木(parse)
+- 構文木 (parse)
     - 構文解析
     - 名前解決 (name_resolution)
 - CPS 中間表現 (cps)
