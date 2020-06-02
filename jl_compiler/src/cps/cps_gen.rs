@@ -689,7 +689,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             // FIXME: generate params
             let k_fn = gx.outlines.fn_new(KFnOutline {
-                name: fn_name.clone(),
+                name: fn_name,
                 param_tys: vec![],
                 result_ty: KTy::Never,
                 location,
@@ -698,7 +698,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gx.fns.insert(
                 k_fn.id(),
                 KFnData {
-                    name: fn_name,
                     params: vec![],
                     return_label,
                     body: node,

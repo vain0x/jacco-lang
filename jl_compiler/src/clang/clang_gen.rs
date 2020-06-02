@@ -453,10 +453,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for (_, fn_data) in outlines.fns_iter().zip(root.fns) {
-        let KFnData {
-            name, body, labels, ..
-        } = fn_data;
+    for (k_fn, fn_data) in outlines.fns_iter().zip(root.fns) {
+        let KFnData { body, labels, .. } = fn_data;
         let stmts = cx.enter_block(|cx| {
             cx.labels.clear();
             for KLabelData { name, params, .. } in &labels {
@@ -485,8 +483,9 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             }
         });
 
+        let fn_name = k_fn.name(&cx.outlines).to_string();
         cx.decls.push(CStmt::FnDecl {
-            name,
+            name: fn_name,
             params: vec![],
             result_ty: CTy::Int,
             body: CBlock { stmts },

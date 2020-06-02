@@ -366,7 +366,6 @@ impl fmt::Debug for KNode {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KFnData {
-    pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) return_label: KSymbol,
     pub(crate) body: KNode,
