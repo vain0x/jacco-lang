@@ -1,7 +1,6 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::{
     mem::{replace, take},
@@ -11,6 +10,8 @@ use std::{
 /// C code generation context.
 struct Cx {
     outlines: Rc<KOutlines>,
+    locals: Rc<Vec<KLocalData>>,
+    local_ident_id_map: HashMap<KLocal, usize>,
     fn_ident_id_map: HashMap<KFn, usize>,
     extern_fn_ident_id_map: HashMap<KExternFn, usize>,
     struct_id_map: HashMap<usize, usize>,
@@ -21,9 +22,11 @@ struct Cx {
 }
 
 impl Cx {
-    fn new(outlines: Rc<KOutlines>) -> Self {
+    fn new(outlines: Rc<KOutlines>, locals: Rc<Vec<KLocalData>>) -> Self {
         Self {
             outlines,
+            locals,
+            local_ident_id_map: Default::default(),
             fn_ident_id_map: Default::default(),
             extern_fn_ident_id_map: Default::default(),
             struct_id_map: Default::default(),
@@ -72,21 +75,26 @@ fn format_unique_name(raw_name: &str, ident_id: usize) -> String {
     format!("{}_{:x}", raw_name, ident_id)
 }
 
-fn do_unique_name(raw_name: &str, id_opt: &RefCell<Option<usize>>, cx: &mut Cx) -> String {
-    let id = id_opt
-        .borrow()
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| cx.ident_id(raw_name));
-    *id_opt.borrow_mut() = Some(id);
-
-    format_unique_name(raw_name, id)
-}
-
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
-    do_unique_name(symbol.raw_name(), &symbol.def.id_opt, cx)
+    unique_local_name(symbol.def.local, cx)
 }
 
+fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
+    let ident_id = match cx.local_ident_id_map.get(&local) {
+        Some(&id) => id,
+        None => {
+            let name = cx.locals[local.id()].name.to_string();
+            let ident_id = cx.ident_id(&name);
+            cx.local_ident_id_map.insert(local, ident_id);
+            ident_id
+        }
+    };
+
+    let name = &cx.locals[local.id()].name;
+    format_unique_name(name, ident_id)
+}
+
+// FIXME: deduplicate
 fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     let ident_id = match cx.fn_ident_id_map.get(&k_fn) {
         Some(&id) => id,
@@ -486,8 +494,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>) -> CRoot {
-    let mut cx = Cx::new(outlines);
+pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>, locals: Rc<Vec<KLocalData>>) -> CRoot {
+    let mut cx = Cx::new(outlines, locals);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }

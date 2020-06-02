@@ -21,12 +21,14 @@ struct Gx {
     outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<PNameId, Rc<KVarData>>,
+    local_map: HashMap<PNameId, KLocal>,
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
+    locals: Vec<KLocalData>,
     extern_fns: Vec<KExternFnData>,
     structs: Vec<KStruct>,
     fns: Vec<KFnData>,
@@ -39,9 +41,9 @@ impl Gx {
             var_map: vec![(
                 0,
                 Rc::new(KVarData {
+                    local: KLocal::new(usize::MAX),
                     name: "_0".to_string(),
                     ty: RefCell::new(KTy::Never),
-                    id_opt: RefCell::new(Some(0)),
                 }),
             )]
             .into_iter()
@@ -53,10 +55,17 @@ impl Gx {
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
         let name = hint.to_string();
+        let ty = KTy::default();
+
+        let local = KLocal::new(self.locals.len());
+        self.locals.push(KLocalData {
+            name: name.clone(),
+            ty: ty.clone(),
+        });
 
         KSymbol {
             location,
-            def: Rc::new(KVarData::new_with_ty(name, KTy::default())),
+            def: Rc::new(KVarData::new_with_ty(local, name, ty)),
         }
     }
 
@@ -245,10 +254,23 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
             None => unimplemented!("maybe recursive extern fn reference?"),
         },
         PNameKind::Local => {
+            let local = match gx.local_map.get(&name_info.id()) {
+                Some(&local) => local,
+                None => {
+                    let local = KLocal::new(gx.locals.len());
+                    gx.locals.push(KLocalData {
+                        name: name.clone(),
+                        ty: ty.clone(),
+                    });
+                    gx.local_map.insert(name_info.id(), local);
+                    local
+                }
+            };
+
             let def = match gx.var_map.get(&name_info.id()) {
                 Some(def) => def.clone(),
                 None => {
-                    let def = Rc::new(KVarData::new_with_ty(name, ty.clone()));
+                    let def = Rc::new(KVarData::new_with_ty(local, name, ty));
                     gx.var_map.insert(name_info.id(), def.clone());
                     def
                 }
@@ -777,8 +799,12 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
     }
 }
 
-pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutlines>) {
-    let (mut k_root, outlines) = {
+// FIXME: 結果を構造体に入れる
+pub(crate) fn cps_conversion(
+    p_root: PRoot,
+    logger: Logger,
+) -> (KRoot, Rc<KOutlines>, Rc<Vec<KLocalData>>) {
+    let (mut k_root, outlines, locals) = {
         let mut gx = Gx::new(logger.clone());
         gen_root(p_root, &mut gx);
         (
@@ -787,6 +813,7 @@ pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutli
                 fns: gx.fns,
             },
             Rc::new(gx.outlines),
+            Rc::new(gx.locals),
         )
     };
 
@@ -794,5 +821,5 @@ pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutli
 
     type_resolution::resolve_types(&mut k_root, outlines.clone(), logger.clone());
 
-    (k_root, outlines)
+    (k_root, outlines, locals)
 }

@@ -199,19 +199,40 @@ impl fmt::Debug for KMetaTyData {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub(crate) struct KLocal {
+    id: usize,
+}
+
+impl KLocal {
+    pub(crate) fn new(id: usize) -> Self {
+        Self { id }
+    }
+
+    pub(crate) fn id(self) -> usize {
+        self.id
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct KLocalData {
+    pub(crate) name: String,
+    pub(crate) ty: KTy,
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KVarData {
+    pub(crate) local: KLocal,
     pub(crate) name: String,
     pub(crate) ty: RefCell<KTy>,
-    pub(crate) id_opt: RefCell<Option<usize>>,
 }
 
 impl KVarData {
-    pub(crate) fn new_with_ty(name: String, ty: KTy) -> Self {
+    pub(crate) fn new_with_ty(local: KLocal, name: String, ty: KTy) -> Self {
         KVarData {
+            local,
             name,
             ty: RefCell::new(ty),
-            ..Default::default()
         }
     }
 }
