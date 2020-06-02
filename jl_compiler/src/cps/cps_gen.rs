@@ -20,8 +20,9 @@ struct KLoopData {
 struct Gx {
     outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
-    var_map: HashMap<usize, Rc<KVarData>>,
-    struct_map: HashMap<usize, KStruct>,
+    var_map: HashMap<PNameId, Rc<KVarData>>,
+    fn_map: HashMap<PNameId, KFn>,
+    struct_map: HashMap<PNameId, KStruct>,
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
     current_commands: Vec<KCommand>,
@@ -229,12 +230,16 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
+fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
     let name_info = take(&mut name.info_opt).unwrap();
     let (name, location) = name.decompose();
 
     match name_info.kind() {
-        PNameKind::Fn | PNameKind::ExternFn | PNameKind::Local => {
+        PNameKind::Fn => match gx.fn_map.get(&name_info.id()) {
+            Some(&k_fn) => KSymbolExt::Fn(k_fn),
+            None => unimplemented!("recursive fn reference?"),
+        },
+        PNameKind::ExternFn | PNameKind::Local => {
             let def = match gx.var_map.get(&name_info.id()) {
                 Some(def) => def.clone(),
                 None => {
@@ -243,13 +248,13 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
                     def
                 }
             };
-            KSymbol { location, def }
+            KSymbolExt::Symbol(KSymbol { location, def })
         }
         PNameKind::I32 | PNameKind::Struct => {
             // FIXME: Unit-like 構造体なら OK
             gx.logger.error(&location, "型の名前です。");
             // FIXME: 適切にハンドル？
-            gx.fresh_symbol(&name, location)
+            KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
         }
         PNameKind::Unresolved | PNameKind::Field => {
             // Unresolved ならエラーなのでコード生成には来ないはず。
@@ -259,7 +264,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
     }
 }
 
-fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {
+fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
     gen_name_with_ty(name, KTy::default(), gx)
 }
 
@@ -272,7 +277,7 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
         }
     };
 
-    gen_name_with_ty(param.name, ty, gx)
+    gen_name_with_ty(param.name, ty, gx).expect_symbol()
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
@@ -306,7 +311,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
-        PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
+        PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
+            KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
+            KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
+        },
         PExpr::Struct(PStructExpr {
             mut name, fields, ..
         }) => {
@@ -610,7 +618,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::Let(PLetDecl {
             name_opt, init_opt, ..
         }) => {
-            let result = gen_name(name_opt.unwrap(), gx);
+            let result = gen_name(name_opt.unwrap(), gx).expect_symbol();
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
@@ -623,7 +631,17 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let location = keyword.into_location();
-            let fn_name = gen_name(name_opt.unwrap(), gx);
+
+            // FIXME: fn の本体を見る前に fn name id -> k_fn の対応をつくっておかないといけない？
+            let (fn_name, fn_name_id) = {
+                let mut fn_name = name_opt.unwrap();
+                let fn_name_info = take(&mut fn_name.info_opt).unwrap();
+                let (fn_name, _) = fn_name.decompose();
+
+                assert_eq!(fn_name_info.kind(), PNameKind::Fn);
+                (fn_name, fn_name_info.id())
+            };
+
             let return_label = gx.fresh_symbol("return", location.clone());
 
             gx.fn_return_map
@@ -643,7 +661,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             // FIXME: generate params
             let k_fn = gx.outlines.fn_new(KFnOutline {
-                name: fn_name.raw_name().to_string(),
+                name: fn_name.clone(),
                 param_tys: vec![],
                 result_ty: KTy::Never,
                 location,
@@ -659,6 +677,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     labels,
                 },
             );
+            gx.fn_map.insert(fn_name_id, k_fn);
         }
         PDecl::ExternFn(PExternFnDecl {
             extern_keyword,
@@ -669,7 +688,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let location = extern_keyword.location().unite(&fn_keyword.location());
-            let fn_name = gen_name(name_opt.unwrap(), gx);
+            let fn_name = gen_name(name_opt.unwrap(), gx).expect_symbol();
             let params = param_list_opt
                 .unwrap()
                 .params

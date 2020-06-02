@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KFn {
     id: usize,
 }
@@ -18,12 +18,23 @@ impl KFn {
         self.id
     }
 
+    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
+        &outlines.fn_get(self).name
+    }
+
     pub(crate) fn param_tys(self, outlines: &KOutlines) -> &[KTy] {
         &outlines.fn_get(self).param_tys
     }
 
     pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
         &outlines.fn_get(self).result_ty
+    }
+
+    pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
+        KTy::Fn {
+            param_tys: self.param_tys(outlines).to_owned(),
+            result_ty: Box::new(self.result_ty(outlines).clone()),
+        }
     }
 }
 

@@ -117,6 +117,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
     match term {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
+        KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::FieldTag(_) => unreachable!(),
     }
@@ -323,12 +324,6 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
         let param_ty = &k_fn.param_tys(&outlines)[i];
         resolve_symbol_def(param, Some(param_ty), tx);
     }
-
-    prepare_fn_sig(
-        &mut fn_data.name,
-        &fn_data.params,
-        k_fn.result_ty(&tx.outlines).clone(),
-    );
 
     // FIXME: return : fn(result) -> never
     resolve_symbol_def(&mut fn_data.return_label, None, tx);

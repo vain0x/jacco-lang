@@ -11,6 +11,7 @@ use std::{
 /// C code generation context.
 struct Cx {
     outlines: Rc<KOutlines>,
+    fn_ident_id_map: HashMap<KFn, usize>,
     struct_id_map: HashMap<usize, usize>,
     name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
@@ -22,6 +23,7 @@ impl Cx {
     fn new(outlines: Rc<KOutlines>) -> Self {
         Self {
             outlines,
+            fn_ident_id_map: Default::default(),
             struct_id_map: Default::default(),
             name_map: Default::default(),
             labels: Default::default(),
@@ -83,6 +85,19 @@ fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
     do_unique_name(symbol.raw_name(), &symbol.def.id_opt, cx)
 }
 
+fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
+    let ident_id = match cx.fn_ident_id_map.get(&k_fn) {
+        Some(&id) => id,
+        None => {
+            let outlines = cx.outlines.clone();
+            let ident_id = cx.ident_id(k_fn.name(&outlines));
+            cx.fn_ident_id_map.insert(k_fn, ident_id);
+            ident_id
+        }
+    };
+    format_unique_name(k_fn.name(&cx.outlines), ident_id)
+}
+
 fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
     match ty {
         KTy::Unresolved => {
@@ -128,6 +143,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             CExpr::IntLit("(void)0".to_string())
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
+        KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
@@ -445,7 +461,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
 
         cx.decls.push(CStmt::FnDecl {
-            name: name.raw_name().to_string(),
+            name,
             params: vec![],
             result_ty: CTy::Int,
             body: CBlock { stmts },
