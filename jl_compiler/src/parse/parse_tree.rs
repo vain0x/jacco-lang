@@ -43,7 +43,7 @@ impl PNameInfo {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PNameKind {
     Unresolved,
     I32,

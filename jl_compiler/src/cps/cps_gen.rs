@@ -207,15 +207,14 @@ fn emit_if(
 }
 
 fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
-    let name = ty_name.0;
-    let name_info = name.info_opt.as_ref().unwrap();
-    let (name_id, kind) = (name_info.id(), name_info.kind());
+    let mut name = ty_name.0;
+    let name_info = take(&mut name.info_opt).unwrap();
 
-    match kind {
+    match name_info.kind() {
         PNameKind::I32 => KTy::I32,
         PNameKind::Struct => {
-            let k_struct = gx.struct_map.get(&name_id).unwrap();
-            KTy::Struct(k_struct.clone())
+            let k_struct = *gx.struct_map.get(&name_info.id()).unwrap();
+            KTy::Struct(k_struct)
         }
         _ => unreachable!("expected type name but {:?}", name),
     }
@@ -230,20 +229,34 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_name_with_ty(name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
-    let name_id = name.info_opt.as_ref().unwrap().id();
+fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbol {
+    let name_info = take(&mut name.info_opt).unwrap();
     let (name, location) = name.decompose();
 
-    let def = match gx.var_map.get(&name_id) {
-        Some(def) => def.clone(),
-        None => {
-            let def = Rc::new(KVarData::new_with_ty(name, ty.clone()));
-            gx.var_map.insert(name_id, def.clone());
-            def
+    match name_info.kind() {
+        PNameKind::Fn | PNameKind::ExternFn | PNameKind::Local => {
+            let def = match gx.var_map.get(&name_info.id()) {
+                Some(def) => def.clone(),
+                None => {
+                    let def = Rc::new(KVarData::new_with_ty(name, ty.clone()));
+                    gx.var_map.insert(name_info.id(), def.clone());
+                    def
+                }
+            };
+            KSymbol { location, def }
         }
-    };
-
-    KSymbol { location, def }
+        PNameKind::I32 | PNameKind::Struct => {
+            // FIXME: Unit-like 構造体なら OK
+            gx.logger.error(&location, "型の名前です。");
+            // FIXME: 適切にハンドル？
+            gx.fresh_symbol(&name, location)
+        }
+        PNameKind::Unresolved | PNameKind::Field => {
+            // Unresolved ならエラーなのでコード生成には来ないはず。
+            // フィールド名は環境に導入されないはず。
+            unreachable!("{:?}", (&name, &location, name_info))
+        }
+    }
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbol {
@@ -294,13 +307,20 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(PNameExpr(name)) => KTerm::Name(gen_name(name, gx)),
-        PExpr::Struct(PStructExpr { name, fields, .. }) => {
-            let result = gx.fresh_symbol(name.0.text(), name.location());
-            let ty = match gx.struct_map.get(&name.0.info_opt.as_ref().unwrap().id()) {
+        PExpr::Struct(PStructExpr {
+            mut name, fields, ..
+        }) => {
+            let name_info = take(&mut name.0.info_opt).unwrap();
+            assert_eq!(name_info.kind(), PNameKind::Struct);
+
+            let (name, location) = name.0.decompose();
+            let result = gx.fresh_symbol(&name, location.clone());
+
+            let ty = match gx.struct_map.get(&name_info.id()) {
                 Some(def) => KTy::Struct(def.clone().into()),
                 None => {
-                    error!("struct {:?} should be found here", name.0.text());
-                    return new_never_term(name.location());
+                    error!("struct {:?} should be found here", name);
+                    return new_never_term(location);
                 }
             };
 
@@ -680,17 +700,16 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             variant_opt,
             ..
         }) => {
-            let name = name_opt.unwrap();
-            let name_id = name.info_opt.as_ref().unwrap().id();
-            let struct_symbol = gen_name(name, gx);
-            let name = struct_symbol.def.name.to_string();
-            let location = struct_symbol.location.clone();
+            let mut name = name_opt.unwrap();
+            let name_info = take(&mut name.info_opt).unwrap();
+            assert_eq!(name_info.kind(), PNameKind::Struct);
+            let (name, location) = name.decompose();
 
             let fields = match variant_opt {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
                     .into_iter()
                     .map(|field| {
-                        // NOTE: フィールド名は型推論中に解決されるので、name_id は使わない。(sizeof(K::foo) のようにフィールドを直接指す構文があれば必要になる。)
+                        // NOTE: フィールド名は型推論中に解決されるので、PName::info_opt は使わない。(sizeof(K::foo) のようにフィールドを直接指す構文があれば必要になる。)
                         let (text, location) = field.name.decompose();
                         let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
                         gx.outlines
@@ -701,11 +720,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
 
             let k_struct = gx.outlines.struct_new(KStructOutline {
-                name: name.clone(),
+                name,
                 fields,
                 location,
             });
-            gx.struct_map.insert(name_id, k_struct.clone());
+            gx.struct_map.insert(name_info.id(), k_struct.clone());
             gx.structs.push(k_struct);
         }
     }
