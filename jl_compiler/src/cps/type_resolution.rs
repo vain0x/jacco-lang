@@ -118,6 +118,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
+        KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::FieldTag(_) => unreachable!(),
     }
@@ -345,12 +346,6 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
         let param_ty = &extern_fn.param_tys(&outlines)[i];
         resolve_symbol_def(param, Some(param_ty), tx);
     }
-
-    prepare_fn_sig(
-        &mut data.name,
-        &data.params,
-        extern_fn.result_ty(&tx.outlines).clone(),
-    );
 }
 
 fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {

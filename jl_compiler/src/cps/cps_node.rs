@@ -254,6 +254,7 @@ impl HaveLocation for KSymbol {
 pub(crate) enum KSymbolExt {
     Symbol(KSymbol),
     Fn(KFn),
+    ExternFn(KExternFn),
 }
 
 impl KSymbolExt {
@@ -360,7 +361,6 @@ pub(crate) struct KLabelData {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KExternFnData {
-    pub(crate) name: KSymbol,
     pub(crate) params: Vec<KSymbol>,
 }
 

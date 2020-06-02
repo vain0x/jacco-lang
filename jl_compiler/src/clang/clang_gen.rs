@@ -12,6 +12,7 @@ use std::{
 struct Cx {
     outlines: Rc<KOutlines>,
     fn_ident_id_map: HashMap<KFn, usize>,
+    extern_fn_ident_id_map: HashMap<KExternFn, usize>,
     struct_id_map: HashMap<usize, usize>,
     name_map: HashMap<String, IdProvider>,
     labels: HashMap<String, Vec<String>>,
@@ -24,6 +25,7 @@ impl Cx {
         Self {
             outlines,
             fn_ident_id_map: Default::default(),
+            extern_fn_ident_id_map: Default::default(),
             struct_id_map: Default::default(),
             name_map: Default::default(),
             labels: Default::default(),
@@ -98,6 +100,20 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     format_unique_name(k_fn.name(&cx.outlines), ident_id)
 }
 
+// FIXME: deduplicate
+fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
+    let ident_id = match cx.extern_fn_ident_id_map.get(&extern_fn) {
+        Some(&id) => id,
+        None => {
+            let outlines = cx.outlines.clone();
+            let ident_id = cx.ident_id(extern_fn.name(&outlines));
+            cx.extern_fn_ident_id_map.insert(extern_fn, ident_id);
+            ident_id
+        }
+    };
+    format_unique_name(extern_fn.name(&cx.outlines), ident_id)
+}
+
 fn gen_ty(ty: KTy, cx: &mut Cx) -> CTy {
     match ty {
         KTy::Unresolved => {
@@ -144,6 +160,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
+        KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
@@ -415,14 +432,14 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 
     for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
-        let KExternFnData { name, params } = extern_fn_data;
+        let KExternFnData { params } = extern_fn_data;
         let params = params
             .into_iter()
             .map(|param| gen_param(param, cx))
             .collect();
         let result_ty = gen_ty(extern_fn.result_ty(&outlines).clone(), cx);
         cx.decls.push(CStmt::ExternFnDecl {
-            name: name.raw_name().to_string(),
+            name: extern_fn.name(&outlines).to_string(),
             params,
             result_ty,
         });

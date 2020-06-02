@@ -22,6 +22,7 @@ struct Gx {
     loop_map: HashMap<usize, KLoopData>,
     var_map: HashMap<PNameId, Rc<KVarData>>,
     fn_map: HashMap<PNameId, KFn>,
+    extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
     /// 関数からの return に対応するラベル
     fn_return_map: HashMap<usize, KSymbol>,
@@ -237,9 +238,13 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
     match name_info.kind() {
         PNameKind::Fn => match gx.fn_map.get(&name_info.id()) {
             Some(&k_fn) => KSymbolExt::Fn(k_fn),
-            None => unimplemented!("recursive fn reference?"),
+            None => unimplemented!("maybe recursive fn reference?"),
         },
-        PNameKind::ExternFn | PNameKind::Local => {
+        PNameKind::ExternFn => match gx.extern_fn_map.get(&name_info.id()) {
+            Some(&extern_fn) => KSymbolExt::ExternFn(extern_fn),
+            None => unimplemented!("maybe recursive extern fn reference?"),
+        },
+        PNameKind::Local => {
             let def = match gx.var_map.get(&name_info.id()) {
                 Some(def) => def.clone(),
                 None => {
@@ -314,6 +319,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
+            KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
         },
         PExpr::Struct(PStructExpr {
             mut name, fields, ..
@@ -688,7 +694,13 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let location = extern_keyword.location().unite(&fn_keyword.location());
-            let fn_name = gen_name(name_opt.unwrap(), gx).expect_symbol();
+            let (fn_name, fn_name_id) = {
+                let mut name = name_opt.unwrap();
+                let name_info = take(&mut name.info_opt).unwrap();
+                assert_eq!(name_info.kind(), PNameKind::ExternFn);
+                let (name, _) = name.decompose();
+                (name, name_info.id())
+            };
             let params = param_list_opt
                 .unwrap()
                 .params
@@ -701,18 +713,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
 
             let extern_fn = gx.outlines.extern_fn_new(KExternFnOutline {
-                name: fn_name.raw_name().to_string(),
+                name: fn_name,
                 param_tys: params.iter().map(|param| param.ty()).collect(),
                 result_ty,
                 location,
             });
-            gx.extern_fns.insert(
-                extern_fn.id(),
-                KExternFnData {
-                    name: fn_name,
-                    params,
-                },
-            );
+            gx.extern_fns
+                .insert(extern_fn.id(), KExternFnData { params });
+            gx.extern_fn_map.insert(fn_name_id, extern_fn);
         }
         PDecl::Struct(PStructDecl {
             name_opt,
