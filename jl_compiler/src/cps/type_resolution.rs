@@ -1,41 +1,49 @@
 //! 型推論・型検査
 
 use super::*;
-use std::rc::Rc;
+use std::{
+    mem::{swap, take},
+    rc::Rc,
+};
 
 /// Typing context.
 struct Tx {
+    ty_env: KTyEnv,
     outlines: Rc<KOutlines>,
     logger: Logger,
 }
 
 impl Tx {
     fn new(outlines: Rc<KOutlines>, logger: Logger) -> Self {
-        Self { outlines, logger }
+        Self {
+            ty_env: KTyEnv::default(),
+            outlines,
+            logger,
+        }
+    }
+
+    fn fresh_meta_ty(&mut self, location: Location) -> KTy {
+        let meta_ty = self.ty_env.meta_ty_new(location);
+        KTy::Meta(meta_ty)
     }
 }
 
-fn fresh_meta_ty(location: Location) -> KTy {
-    let meta = KMetaTy::new(KMetaTyData::new(location));
-    KTy::Meta(meta)
-}
-
-fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &mut Tx) {
+fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
         (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
             unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
         }
-        (KTy::Meta(left), KTy::Meta(right)) if Rc::ptr_eq(left, right) => {}
-        (KTy::Meta(meta), other) | (other, KTy::Meta(meta)) => {
-            match meta.try_resolve() {
+        (KTy::Meta(left), KTy::Meta(right)) if left == right => {}
+        (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {
+            match meta.try_unwrap(&tx.ty_env) {
                 Some(ty) => {
-                    do_unify(&ty, other, location, tx);
+                    do_unify(&*ty.borrow(), other, location, tx);
                 }
                 None => {
                     // FIXME: occurrence check
-                    meta.bind(other.clone());
+                    meta.bind(other.clone(), &tx.ty_env);
                 }
             }
         }
@@ -90,7 +98,7 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
 fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
     if symbol.def.ty.borrow().is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(symbol.location()),
+            None => tx.fresh_meta_ty(symbol.location()),
             Some(ty) => ty.clone(),
         };
 
@@ -193,7 +201,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
 
                 let result_ty = (|| {
-                    let k_struct = left_ty.resolve().as_ptr()?.as_struct()?;
+                    let k_struct = left_ty.as_ptr()?.as_struct()?;
                     k_struct
                         .fields(&tx.outlines)
                         .iter()
@@ -336,6 +344,8 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
         prepare_fn_sig(&mut label.name, &label.params, KTy::Never);
     }
+
+    fn_data.ty_env = take(&mut tx.ty_env);
 }
 
 fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
@@ -377,11 +387,15 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
     // 項の型を解決する。
     for k_fn in &mut root.fns {
+        swap(&mut tx.ty_env, &mut k_fn.ty_env);
+
         resolve_node(&mut k_fn.body, tx);
 
         for label in &mut k_fn.labels {
             resolve_node(&mut label.body, tx);
         }
+
+        swap(&mut tx.ty_env, &mut k_fn.ty_env);
     }
 }
 

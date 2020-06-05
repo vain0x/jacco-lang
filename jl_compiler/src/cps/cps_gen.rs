@@ -702,6 +702,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     return_label,
                     body: node,
                     labels,
+                    ty_env: Default::default(),
                 },
             );
             gx.fn_map.insert(fn_name_id, k_fn);

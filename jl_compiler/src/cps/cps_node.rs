@@ -70,43 +70,6 @@ impl KTy {
             _ => None,
         }
     }
-
-    pub(crate) fn resolve(mut self) -> KTy {
-        self.make_resolved();
-        self
-    }
-
-    fn make_resolved(&mut self) {
-        fn detect_infinite_loop(hint: &str) {
-            let tick = {
-                static mut TICK: usize = 0;
-                unsafe {
-                    TICK += 1;
-                    TICK
-                }
-            };
-            assert!(tick < 10_000_000, "Infinite loop? ({})", hint);
-        }
-        detect_infinite_loop("ty resolve");
-
-        match self {
-            KTy::Unresolved | KTy::Never | KTy::Unit | KTy::I32 | KTy::Struct { .. } => {}
-            KTy::Meta(ref meta) => match meta.try_resolve() {
-                None => {}
-                Some(ty) => *self = ty,
-            },
-            KTy::Ptr { ty } => ty.make_resolved(),
-            KTy::Fn {
-                param_tys,
-                result_ty,
-            } => {
-                for param_ty in param_tys {
-                    param_ty.make_resolved();
-                }
-                result_ty.make_resolved();
-            }
-        }
-    }
 }
 
 impl Default for KTy {
@@ -151,7 +114,50 @@ impl fmt::Debug for KTy {
     }
 }
 
-pub(crate) type KMetaTy = Rc<KMetaTyData>;
+#[derive(Clone, Debug, Default)]
+pub(crate) struct KTyEnv {
+    meta_tys: Vec<KMetaTyData>,
+}
+
+impl KTyEnv {
+    pub(crate) fn meta_ty_new(&mut self, location: Location) -> KMetaTy {
+        let id = self.meta_tys.len();
+        self.meta_tys.push(KMetaTyData {
+            ty: RefCell::default(),
+            location,
+        });
+        KMetaTy { id }
+    }
+
+    pub(crate) fn meta_ty_get(&self, meta_ty: KMetaTy) -> &KMetaTyData {
+        &self.meta_tys[meta_ty.id]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct KMetaTy {
+    id: usize,
+}
+
+impl KMetaTy {
+    pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy>> {
+        if ty_env.meta_ty_get(self).ty.borrow().is_unresolved() {
+            return None;
+        }
+
+        Some(&ty_env.meta_ty_get(self).ty)
+    }
+
+    pub(crate) fn bind(&mut self, new_ty: KTy, ty_env: &KTyEnv) {
+        debug_assert!(self.try_unwrap(ty_env).is_none());
+        debug_assert!(!new_ty.is_unresolved());
+
+        let data = ty_env.meta_ty_get(*self);
+        let old = replace(&mut *data.ty.borrow_mut(), new_ty);
+
+        debug_assert!(old.is_unresolved());
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct KMetaTyData {
@@ -159,43 +165,15 @@ pub(crate) struct KMetaTyData {
     location: Location,
 }
 
-impl KMetaTyData {
-    pub(crate) fn new(location: Location) -> Self {
-        KMetaTyData {
-            ty: RefCell::default(),
-            location,
-        }
-    }
-
-    pub(crate) fn try_resolve(&self) -> Option<KTy> {
-        {
-            let ty = &mut *self.ty.borrow_mut();
-            ty.make_resolved();
-            if ty.is_unresolved() {
-                return None;
-            }
-        }
-
-        Some(self.ty.borrow().clone())
-    }
-
-    pub(crate) fn bind(&self, ty: KTy) {
-        debug_assert!(!ty.is_unresolved());
-
-        let ty = ty.resolve();
-        let old = replace(&mut *self.ty.borrow_mut(), ty);
-
-        debug_assert!(old.is_unresolved());
-    }
-}
-
 impl fmt::Debug for KMetaTyData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let p = self.ty.as_ptr() as usize;
-        match &*self.ty.borrow() {
-            KTy::Unresolved => write!(f, "?<{}>", p),
-            ty => fmt::Debug::fmt(ty, f),
-        }
+        // let p = self.ty.as_ptr() as usize;
+        // match &*self.ty.borrow() {
+        //     KTy::Unresolved => write!(f, "?<{}>", p),
+        //     ty => fmt::Debug::fmt(ty, f),
+        // }
+        // FIXME: need env
+        fmt::Debug::fmt(&self.ty, f)
     }
 }
 
@@ -370,6 +348,7 @@ pub(crate) struct KFnData {
     pub(crate) return_label: KSymbol,
     pub(crate) body: KNode,
     pub(crate) labels: Vec<KLabelData>,
+    pub(crate) ty_env: KTyEnv,
 }
 
 #[derive(Clone, Debug)]
