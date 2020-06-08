@@ -8,6 +8,7 @@ pub(crate) enum KTerm {
     Int(TokenData),
     Name(KSymbol),
     Fn(KFn),
+    Return(KFn),
     ExternFn(KExternFn),
     FieldTag(KFieldTag),
 }
@@ -21,6 +22,10 @@ impl fmt::Debug for KTerm {
             KTerm::Fn(k_fn) => {
                 // FIXME: name
                 write!(f, "fn#{}", k_fn.id())
+            }
+            KTerm::Return(k_fn) => {
+                // FIXME: name
+                write!(f, "return#{}", k_fn.id())
             }
             KTerm::ExternFn(extern_fn) => {
                 // FIXME: name

@@ -5,7 +5,7 @@ pub(crate) struct KFn {
     id: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
@@ -28,6 +28,14 @@ impl KFn {
 
     pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
         &outlines.fn_get(self).result_ty
+    }
+
+    pub(crate) fn return_ty(self, outlines: &KOutlines) -> KTy {
+        let result_ty = self.result_ty(outlines).clone();
+        KTy::Fn {
+            param_tys: vec![result_ty],
+            result_ty: Box::new(KTy::Never),
+        }
     }
 
     pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
@@ -154,6 +162,10 @@ impl KOutlines {
 
     pub(crate) fn fn_get(&self, k_fn: KFn) -> &KFnOutline {
         &self.fns[k_fn.id]
+    }
+
+    pub(crate) fn fn_get_mut(&mut self, k_fn: KFn) -> &mut KFnOutline {
+        &mut self.fns[k_fn.id]
     }
 
     pub(crate) fn extern_fn_new(&mut self, extern_fn_outline: KExternFnOutline) -> KExternFn {

@@ -171,11 +171,15 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
+        KTerm::Return(k_fn) => {
+            error!("can't gen return term to c {}", unique_fn_name(k_fn, cx));
+            CExpr::IntLit("/* error */ 0".to_string())
+        }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
-            CExpr::IntLit("0".to_string())
+            CExpr::IntLit("/* error */ 0".to_string())
         }
     }
 }
@@ -246,11 +250,11 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     match prim {
         KPrim::Stuck => unreachable!(),
         KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
-            ([KTerm::Name(label), arg], []) if label.raw_name() == "return" => {
+            ([KTerm::Return(_), arg], []) => {
                 let arg = gen_term(take(arg), cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
             }
-            ([KTerm::Name(label)], []) if label.raw_name() == "return" => {
+            ([KTerm::Return(_)], []) => {
                 cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Name(label), args @ ..], []) => {

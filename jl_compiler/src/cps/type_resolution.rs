@@ -13,6 +13,8 @@ struct Tx {
     // 現在の関数に含まれるラベルのシグネチャ情報
     #[allow(unused)]
     label_sigs: Vec<KLabelSig>,
+    // 現在の関数の return ラベルの型
+    return_ty_opt: Option<KTy>,
     outlines: Rc<KOutlines>,
     logger: Logger,
 }
@@ -22,6 +24,7 @@ impl Tx {
         Self {
             ty_env: KTyEnv::default(),
             label_sigs: Default::default(),
+            return_ty_opt: None,
             outlines,
             logger,
         }
@@ -131,6 +134,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
+        KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::FieldTag(_) => unreachable!(),
@@ -339,9 +343,6 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
         resolve_symbol_def(param, Some(param_ty), tx);
     }
 
-    // FIXME: return : fn(result) -> never
-    resolve_symbol_def(&mut fn_data.return_label, None, tx);
-
     // いまから生成するところなので空のはず。
     assert!(fn_data.label_sigs.is_empty());
 
@@ -403,16 +404,20 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     }
 
     // 項の型を解決する。
-    for k_fn in &mut root.fns {
-        swap(&mut tx.ty_env, &mut k_fn.ty_env);
+    for k_fn in outlines.fns_iter() {
+        let fn_data = &mut root.fns[k_fn.id()];
 
-        resolve_node(&mut k_fn.body, tx);
+        tx.return_ty_opt = Some(k_fn.return_ty(&outlines));
+        swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
-        for label in &mut k_fn.labels {
+        resolve_node(&mut fn_data.body, tx);
+
+        for label in &mut fn_data.labels {
             resolve_node(&mut label.body, tx);
         }
 
-        swap(&mut tx.ty_env, &mut k_fn.ty_env);
+        swap(&mut tx.ty_env, &mut fn_data.ty_env);
+        tx.return_ty_opt.take();
     }
 }
 
