@@ -134,6 +134,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
+        KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
@@ -325,15 +326,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     }
 }
 
-fn prepare_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
-    let fn_ty = KTy::Fn {
-        param_tys: params.iter().map(|param| param.ty()).collect(),
-        result_ty: Box::new(result_ty),
-    };
-
-    *fn_symbol.def.ty.borrow_mut() = fn_ty;
-}
-
 fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     let outlines = tx.outlines.clone();
 
@@ -349,16 +341,14 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     // いまから生成するところなので空のはず。
     assert!(fn_data.label_sigs.is_empty());
 
-    for label in &mut fn_data.labels {
-        for param in &mut label.params {
+    for label_data in &mut fn_data.labels {
+        for param in &mut label_data.params {
             resolve_symbol_def(param, None, tx);
         }
 
-        prepare_fn_sig(&mut label.name, &label.params, KTy::Never);
-
         let label_sig = {
-            let name = label.name.raw_name().to_string();
-            let param_tys = label.params.iter().map(|param| param.ty()).collect();
+            let name = label_data.name.to_string();
+            let param_tys = label_data.params.iter().map(|param| param.ty()).collect();
             KLabelSig::new(name, param_tys)
         };
         fn_data.label_sigs.push(label_sig);
@@ -411,6 +401,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
         let fn_data = &mut root.fns[k_fn.id()];
 
         tx.return_ty_opt = Some(k_fn.return_ty(&outlines));
+        swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
         resolve_node(&mut fn_data.body, tx);
@@ -419,6 +410,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             resolve_node(&mut label.body, tx);
         }
 
+        swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
         tx.return_ty_opt.take();
     }

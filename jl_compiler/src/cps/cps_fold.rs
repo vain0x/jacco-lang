@@ -35,11 +35,9 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
             KCommand::Label { label, params } => {
                 let body = do_fold(commands, fx);
 
-                fx.labels.push(KLabelData {
-                    name: label,
-                    params: params.into_iter().collect(),
-                    body,
-                });
+                let mut label_data = &mut fx.labels[label.id()];
+                label_data.params = params;
+                label_data.body = body;
             }
         }
     }
@@ -47,8 +45,12 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
     KNode::default()
 }
 
-pub(crate) fn fold_block(mut commands: Vec<KCommand>) -> (KNode, Vec<KLabelData>) {
+pub(crate) fn fold_block(
+    mut commands: Vec<KCommand>,
+    labels: Vec<KLabelData>,
+) -> (KNode, Vec<KLabelData>) {
     let mut fx = Fx::default();
+    fx.labels = labels;
 
     trace!("block: {:#?}", commands);
     commands.reverse();

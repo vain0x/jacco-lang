@@ -11,8 +11,8 @@ use std::mem::{replace, take};
 use std::rc::Rc;
 
 struct KLoopData {
-    break_label: KSymbol,
-    continue_label: KSymbol,
+    break_label: KLabel,
+    continue_label: KLabel,
 }
 
 /// Code generation context.
@@ -28,6 +28,7 @@ struct Gx {
     /// 名前解決時の関数ID → 関数ID
     fn_resolution: HashMap<usize, KFn>,
     current_commands: Vec<KCommand>,
+    current_labels: Vec<KLabelData>,
     locals: Vec<KLocalData>,
     extern_fns: Vec<KExternFnData>,
     structs: Vec<KStruct>,
@@ -69,23 +70,36 @@ impl Gx {
         }
     }
 
-    fn get_break_label(&self, loop_id_opt: Option<usize>) -> Option<&KSymbol> {
-        self.loop_map
-            .get(&loop_id_opt?)
-            .map(|data| &data.break_label)
+    fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
+        let name = hint.to_string();
+
+        let id = self.current_labels.len();
+        let label = KLabel::new(id);
+        self.current_labels.push(KLabelData {
+            name,
+            params: vec![],
+            body: KNode::default(),
+        });
+        label
     }
 
-    fn get_continue_label(&self, loop_id_opt: Option<usize>) -> Option<&KSymbol> {
+    fn get_break_label(&self, loop_id_opt: Option<usize>) -> Option<KLabel> {
         self.loop_map
             .get(&loop_id_opt?)
-            .map(|data| &data.continue_label)
+            .map(|data| data.break_label)
+    }
+
+    fn get_continue_label(&self, loop_id_opt: Option<usize>) -> Option<KLabel> {
+        self.loop_map
+            .get(&loop_id_opt?)
+            .map(|data| data.continue_label)
     }
 
     fn push(&mut self, command: KCommand) {
         self.current_commands.push(command);
     }
 
-    fn push_label(&mut self, label: KSymbol, params: Vec<KSymbol>) {
+    fn push_label(&mut self, label: KLabel, params: Vec<KSymbol>) {
         self.push(KCommand::Label { label, params })
     }
 
@@ -102,24 +116,24 @@ impl Gx {
 
     fn do_push_jump(
         &mut self,
-        label: KSymbol,
+        label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
     ) {
         self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
-            args: once(KTerm::Name(label)).chain(args).collect(),
+            args: once(KTerm::Label(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
         });
     }
 
-    fn push_jump(&mut self, label: KSymbol, args: impl IntoIterator<Item = KTerm>) {
+    fn push_jump(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>) {
         self.do_push_jump(label, args, 0);
     }
 
-    fn push_jump_with_cont(&mut self, label: KSymbol, args: impl IntoIterator<Item = KTerm>) {
+    fn push_jump_with_cont(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>) {
         self.do_push_jump(label, args, 1);
     }
 }
@@ -196,7 +210,7 @@ fn emit_if(
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol("if_result", location.clone());
-    let next_label = gx.fresh_symbol("next", location.clone());
+    let next_label = gx.fresh_label("next", location.clone());
 
     let k_cond = gen_expr(cond, gx);
 
@@ -211,13 +225,13 @@ fn emit_if(
     // body
     {
         let body = gen_body(gx);
-        gx.push_jump(next_label.clone(), vec![body]);
+        gx.push_jump(next_label, vec![body]);
     }
 
     // alt
     {
         let alt = gen_alt(gx);
-        gx.push_jump(next_label.clone(), vec![alt]);
+        gx.push_jump(next_label, vec![alt]);
     }
 
     gx.push_label(next_label, vec![result.clone()]);
@@ -582,21 +596,21 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("while_result", location.clone());
-            let continue_label = gx.fresh_symbol("continue_", location.clone());
-            let next_label = gx.fresh_symbol("next", location.clone());
+            let continue_label = gx.fresh_label("continue_", location.clone());
+            let next_label = gx.fresh_label("next", location.clone());
             let unit_term = new_unit_term(location);
 
             gx.loop_map.insert(
                 loop_id_opt.unwrap(),
                 KLoopData {
-                    break_label: next_label.clone(),
-                    continue_label: continue_label.clone(),
+                    break_label: next_label,
+                    continue_label,
                 },
             );
 
-            gx.push_jump(continue_label.clone(), vec![]);
+            gx.push_jump(continue_label, vec![]);
 
-            gx.push_label(continue_label.clone(), vec![]);
+            gx.push_label(continue_label, vec![]);
 
             let k_cond = gen_expr(*cond_opt.unwrap(), gx);
 
@@ -611,10 +625,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             // body:
             gen_block(body_opt.unwrap(), gx);
 
-            gx.push_jump(continue_label.clone(), vec![]);
+            gx.push_jump(continue_label, vec![]);
 
             // alt:
-            gx.push_jump(next_label.clone(), vec![unit_term.clone()]);
+            gx.push_jump(next_label, vec![unit_term.clone()]);
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -628,14 +642,14 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("loop_result", location.clone());
-            let continue_label = gx.fresh_symbol("continue_", location.clone());
-            let next_label = gx.fresh_symbol("next", location.clone());
+            let continue_label = gx.fresh_label("continue_", location.clone());
+            let next_label = gx.fresh_label("next", location.clone());
 
             gx.loop_map.insert(
                 loop_id_opt.unwrap(),
                 KLoopData {
-                    break_label: next_label.clone(),
-                    continue_label: continue_label.clone(),
+                    break_label: next_label,
+                    continue_label,
                 },
             );
 
@@ -691,8 +705,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 name
             };
 
-            let commands = {
+            let (commands, labels) = {
                 let parent_commands = take(&mut gx.current_commands);
+                let parent_labels = take(&mut gx.current_labels);
 
                 let result = gen_block(block_opt.unwrap(), gx);
                 gx.push(KCommand::Node {
@@ -703,10 +718,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     cont_count: 1,
                 });
 
-                replace(&mut gx.current_commands, parent_commands)
+                let commands = replace(&mut gx.current_commands, parent_commands);
+                let labels = replace(&mut gx.current_labels, parent_labels);
+                (commands, labels)
             };
 
-            let (node, labels) = fold_block(commands);
+            let (node, labels) = fold_block(commands, labels);
 
             // FIXME: generate params
             *gx.outlines.fn_get_mut(k_fn) = KFnOutline {

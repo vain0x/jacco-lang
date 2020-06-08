@@ -16,7 +16,8 @@ struct Cx {
     extern_fn_ident_id_map: HashMap<KExternFn, usize>,
     struct_id_map: HashMap<usize, usize>,
     name_map: HashMap<String, IdProvider>,
-    labels: HashMap<String, Vec<String>>,
+    labels: Vec<KLabelData>,
+    label_ident_id_map: HashMap<KLabel, usize>,
     stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
 }
@@ -32,6 +33,7 @@ impl Cx {
             struct_id_map: Default::default(),
             name_map: Default::default(),
             labels: Default::default(),
+            label_ident_id_map: Default::default(),
             stmts: Default::default(),
             decls: Default::default(),
         }
@@ -108,6 +110,20 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     format_unique_name(k_fn.name(&cx.outlines), ident_id)
 }
 
+fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
+    let ident_id = match cx.label_ident_id_map.get(&label) {
+        Some(&id) => id,
+        None => {
+            let name = cx.labels[label.id()].name.to_string();
+            let ident_id = cx.ident_id(&name);
+            cx.label_ident_id_map.insert(label, ident_id);
+            ident_id
+        }
+    };
+
+    format_unique_name(&cx.labels[label.id()].name, ident_id)
+}
+
 // FIXME: deduplicate
 fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     let ident_id = match cx.extern_fn_ident_id_map.get(&extern_fn) {
@@ -171,6 +187,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
+        KTerm::Label(label) => CExpr::Name(unique_label_name(label, cx)),
         KTerm::Return(k_fn) => {
             error!("can't gen return term to c {}", unique_fn_name(k_fn, cx));
             CExpr::IntLit("/* error */ 0".to_string())
@@ -257,21 +274,16 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ([KTerm::Return(_)], []) => {
                 cx.stmts.push(CStmt::Return(None));
             }
-            ([KTerm::Name(label), args @ ..], []) => {
-                let name = unique_name(&label, cx);
-                let params = cx
-                    .labels
-                    .get(&name)
-                    .into_iter()
-                    .flatten()
-                    .cloned()
-                    .collect::<Vec<_>>();
+            ([KTerm::Label(label), args @ ..], []) => {
+                let name = unique_label_name(*label, cx);
+                let params = cx.labels[label.id()].params.to_owned();
 
                 for (param, arg) in params.into_iter().zip(args) {
+                    let name = unique_name(&param, cx);
                     let arg = gen_term(take(arg), cx);
 
                     cx.stmts.push(
-                        CExpr::Name(param)
+                        CExpr::Name(name)
                             .into_binary_op(CBinaryOp::Assign, arg)
                             .into_stmt(),
                     );
@@ -468,16 +480,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             ..
         } = fn_data;
         let stmts = cx.enter_block(|cx| {
-            cx.labels.clear();
-            for KLabelData { name, params, .. } in &labels {
-                let fn_name = unique_name(&name, cx);
-                let params = params
-                    .into_iter()
-                    .map(|param| unique_name(&param, cx))
-                    .collect::<Vec<_>>();
-                cx.labels.insert(fn_name, params.clone());
-
-                for name in params {
+            for id in 0..labels.len() {
+                let label = KLabel::new(id);
+                for i in 0..labels[label.id()].params.len() {
+                    let param = &labels[label.id()].params[i];
+                    let name = unique_name(&param, cx);
                     cx.stmts.push(CStmt::VarDecl {
                         name,
                         ty: CTy::Int,
@@ -486,11 +493,14 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
                 }
             }
 
+            cx.labels = labels;
             gen_node(body, &ty_env, cx);
 
-            for KLabelData { name, body, .. } in labels {
-                let label = unique_name(&name, cx);
-                cx.stmts.push(CStmt::Label { label });
+            for id in 0..cx.labels.len() {
+                let label = KLabel::new(id);
+                let name = unique_label_name(label, cx);
+                let body = take(&mut cx.labels[label.id()].body);
+                cx.stmts.push(CStmt::Label { label: name });
                 gen_node(body, &ty_env, cx);
             }
         });

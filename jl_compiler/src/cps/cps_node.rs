@@ -16,7 +16,7 @@ pub(crate) enum KCommand {
         cont_count: usize,
     },
     Label {
-        label: KSymbol,
+        label: KLabel,
         params: Vec<KSymbol>,
     },
 }
@@ -361,12 +361,10 @@ pub(crate) struct KLabel {
 }
 
 impl KLabel {
-    #[allow(dead_code)]
     pub(crate) fn new(id: usize) -> Self {
         Self { id }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn id(self) -> usize {
         self.id
     }
@@ -383,7 +381,6 @@ impl KLabelSig {
         Self { name, param_tys }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn ty(&self) -> KTy {
         let param_tys = self.param_tys.iter().cloned().collect();
         KTy::Fn {
@@ -395,7 +392,7 @@ impl KLabelSig {
 
 #[derive(Clone, Debug)]
 pub(crate) struct KLabelData {
-    pub(crate) name: KSymbol,
+    pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
 }

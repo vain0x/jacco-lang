@@ -17,25 +17,25 @@ next_1:;
 
 int break_from_loop() {
     int loop_result_1;
-    goto continue__2;
+    goto continue__1;
 
-continue__2:;
+continue__1:;
     loop_result_1 = (void)0;
-    goto next_2;
+    goto next_1;
 
-next_2:;
+next_1:;
     return loop_result_1;
 }
 
 int break_with_arg() {
     int loop_result_2;
-    goto continue__3;
+    goto continue__1;
 
-continue__3:;
+continue__1:;
     loop_result_2 = 2;
-    goto next_3;
+    goto next_1;
 
-next_3:;
+next_1:;
     return loop_result_2;
 }
 

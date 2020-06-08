@@ -16,41 +16,41 @@ next_1:;
 
 int continue_in_loop() {
     int loop_result_1;
-    goto continue__2;
+    goto continue__1;
 
-continue__2:;
-    goto continue__2;
+continue__1:;
+    goto continue__1;
 
-next_2:;
+next_1:;
     return loop_result_1;
 }
 
 int nested_continue() {
     int while_result_2;
     int while_result_3;
-    goto continue__4;
+    goto continue__1;
 
-continue__3:;
+continue__1:;
     if (0) {
-        goto continue__3;
+        goto continue__2;
     } else {
         while_result_2 = (void)0;
-        goto next_3;
+        goto next_1;
     }
 
-next_3:;
-    goto continue__4;
+next_1:;
+    return (void)0;
 
-continue__4:;
+continue__2:;
     if (0) {
-        goto continue__3;
+        goto continue__2;
     } else {
         while_result_3 = (void)0;
-        goto next_4;
+        goto next_2;
     }
 
-next_4:;
-    return (void)0;
+next_2:;
+    goto continue__1;
 }
 
 int main() {
