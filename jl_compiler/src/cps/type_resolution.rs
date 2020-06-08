@@ -8,7 +8,11 @@ use std::{
 
 /// Typing context.
 struct Tx {
+    // 現在の関数の型環境
     ty_env: KTyEnv,
+    // 現在の関数に含まれるラベルのシグネチャ情報
+    #[allow(unused)]
+    label_sigs: Vec<KLabelSig>,
     outlines: Rc<KOutlines>,
     logger: Logger,
 }
@@ -17,6 +21,7 @@ impl Tx {
     fn new(outlines: Rc<KOutlines>, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
+            label_sigs: Default::default(),
             outlines,
             logger,
         }
@@ -337,13 +342,25 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     // FIXME: return : fn(result) -> never
     resolve_symbol_def(&mut fn_data.return_label, None, tx);
 
+    // いまから生成するところなので空のはず。
+    assert!(fn_data.label_sigs.is_empty());
+
     for label in &mut fn_data.labels {
         for param in &mut label.params {
             resolve_symbol_def(param, None, tx);
         }
 
         prepare_fn_sig(&mut label.name, &label.params, KTy::Never);
+
+        let label_sig = {
+            let name = label.name.raw_name().to_string();
+            let param_tys = label.params.iter().map(|param| param.ty()).collect();
+            KLabelSig::new(name, param_tys)
+        };
+        fn_data.label_sigs.push(label_sig);
     }
+
+    assert_eq!(fn_data.label_sigs.len(), fn_data.labels.len());
 
     fn_data.ty_env = take(&mut tx.ty_env);
 }

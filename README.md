@@ -59,6 +59,7 @@ cargo build
 | param | parameter     | 仮引数 |
 | prim  | primitive     | プリミティブ |
 | semi  | semicolon     | セミコロン |
+| sig   | signature     | シグネチャ |
 | ty    | type          | 型 |
 
 - Gx, Tx など

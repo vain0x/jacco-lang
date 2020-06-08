@@ -348,6 +348,7 @@ pub(crate) struct KFnData {
     pub(crate) return_label: KSymbol,
     pub(crate) body: KNode,
     pub(crate) labels: Vec<KLabelData>,
+    pub(crate) label_sigs: Vec<KLabelSig>,
     pub(crate) ty_env: KTyEnv,
 }
 
@@ -365,6 +366,27 @@ impl KLabel {
     #[allow(dead_code)]
     pub(crate) fn id(self) -> usize {
         self.id
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct KLabelSig {
+    name: String,
+    param_tys: Vec<KTy>,
+}
+
+impl KLabelSig {
+    pub(crate) fn new(name: String, param_tys: Vec<KTy>) -> Self {
+        Self { name, param_tys }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn ty(&self) -> KTy {
+        let param_tys = self.param_tys.iter().cloned().collect();
+        KTy::Fn {
+            param_tys,
+            result_ty: Box::new(KTy::Never),
+        }
     }
 }
 

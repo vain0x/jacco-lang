@@ -701,6 +701,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     params: vec![],
                     return_label,
                     body: node,
+                    label_sigs: vec![],
                     labels,
                     ty_env: Default::default(),
                 },
