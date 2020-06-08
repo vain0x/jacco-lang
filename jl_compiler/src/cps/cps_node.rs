@@ -351,6 +351,23 @@ pub(crate) struct KFnData {
     pub(crate) ty_env: KTyEnv,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct KLabel {
+    id: usize,
+}
+
+impl KLabel {
+    #[allow(dead_code)]
+    pub(crate) fn new(id: usize) -> Self {
+        Self { id }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn id(self) -> usize {
+        self.id
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct KLabelData {
     pub(crate) name: KSymbol,
