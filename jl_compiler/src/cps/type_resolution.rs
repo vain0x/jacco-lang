@@ -337,6 +337,9 @@ fn prepare_fn_sig(fn_symbol: &mut KSymbol, params: &[KSymbol], result_ty: KTy) {
 fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     let outlines = tx.outlines.clone();
 
+    assert!(tx.ty_env.is_empty());
+    assert!(fn_data.ty_env.is_empty());
+
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
         let param_ty = &k_fn.param_tys(&outlines)[i];

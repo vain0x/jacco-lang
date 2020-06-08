@@ -120,6 +120,10 @@ pub(crate) struct KTyEnv {
 }
 
 impl KTyEnv {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.meta_tys.is_empty()
+    }
+
     pub(crate) fn meta_ty_new(&mut self, location: Location) -> KMetaTy {
         let id = self.meta_tys.len();
         self.meta_tys.push(KMetaTyData {
