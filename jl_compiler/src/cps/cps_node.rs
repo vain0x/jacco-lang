@@ -352,6 +352,7 @@ pub(crate) struct KFnData {
     pub(crate) body: KNode,
     pub(crate) labels: Vec<KLabelData>,
     pub(crate) label_sigs: Vec<KLabelSig>,
+    pub(crate) locals: Vec<KLocalData>,
     pub(crate) ty_env: KTyEnv,
 }
 
@@ -400,6 +401,7 @@ pub(crate) struct KLabelData {
 #[derive(Clone, Debug)]
 pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
+    pub(crate) locals: Vec<KLocalData>,
 }
 
 #[derive(Clone, Debug)]

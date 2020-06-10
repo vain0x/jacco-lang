@@ -28,8 +28,8 @@ struct Gx {
     /// 名前解決時の関数ID → 関数ID
     fn_resolution: HashMap<usize, KFn>,
     current_commands: Vec<KCommand>,
+    current_locals: Vec<KLocalData>,
     current_labels: Vec<KLabelData>,
-    locals: Vec<KLocalData>,
     extern_fns: Vec<KExternFnData>,
     structs: Vec<KStruct>,
     fns: Vec<KFnData>,
@@ -58,8 +58,8 @@ impl Gx {
         let name = hint.to_string();
         let ty = KTy::default();
 
-        let local = KLocal::new(self.locals.len());
-        self.locals.push(KLocalData {
+        let local = KLocal::new(self.current_locals.len());
+        self.current_locals.push(KLocalData {
             name: name.clone(),
             ty: ty.clone(),
         });
@@ -279,8 +279,8 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
             let local = match gx.local_map.get(&name_info.id()) {
                 Some(&local) => local,
                 None => {
-                    let local = KLocal::new(gx.locals.len());
-                    gx.locals.push(KLocalData {
+                    let local = KLocal::new(gx.current_locals.len());
+                    gx.current_locals.push(KLocalData {
                         name: name.clone(),
                         ty: ty.clone(),
                     });
@@ -693,6 +693,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let location = keyword.into_location();
             let k_fn = resolve_fn(fn_id_opt.unwrap(), gx);
 
+            let parent_locals = take(&mut gx.current_locals);
+
             // FIXME: これだと fn の本体より前に fn_name_id が出てきたら落ちてしまう (fn_id の解決時に関数IDを生成していて、それは関数の本体を見るタイミングなので、事前に fn_name_id に関数IDを割り振っておくということはできない。おそらく名前解決の段階で fn_id と fn_name_id の対応を作っておく必要がある？)
             let name = {
                 let mut name = name_opt.unwrap();
@@ -725,6 +727,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let (node, labels) = fold_block(commands, labels);
 
+            let locals = replace(&mut gx.current_locals, parent_locals);
+
             // FIXME: generate params
             *gx.outlines.fn_get_mut(k_fn) = KFnOutline {
                 name,
@@ -735,8 +739,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gx.fns[k_fn.id()] = KFnData {
                 params: vec![],
                 body: node,
-                label_sigs: vec![],
+                locals,
                 labels,
+                label_sigs: vec![],
                 ty_env: Default::default(),
             };
         }
@@ -748,6 +753,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             result_ty_opt,
             ..
         }) => {
+            let parent_locals = take(&mut gx.current_locals);
+
             let location = extern_keyword.location().unite(&fn_keyword.location());
             let (fn_name, fn_name_id) = {
                 let mut name = name_opt.unwrap();
@@ -762,19 +769,22 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 .into_iter()
                 .map(|param| gen_param(param, gx))
                 .collect::<Vec<_>>();
+            let param_tys = params.iter().map(|param| param.ty()).collect();
             let result_ty = match result_ty_opt {
                 Some(ty) => gen_ty(ty, gx),
                 None => KTy::Unit,
             };
 
+            let locals = replace(&mut gx.current_locals, parent_locals);
+
             let extern_fn = gx.outlines.extern_fn_new(KExternFnOutline {
                 name: fn_name,
-                param_tys: params.iter().map(|param| param.ty()).collect(),
+                param_tys,
                 result_ty,
                 location,
             });
             gx.extern_fns
-                .insert(extern_fn.id(), KExternFnData { params });
+                .insert(extern_fn.id(), KExternFnData { params, locals });
             gx.extern_fn_map.insert(fn_name_id, extern_fn);
         }
         PDecl::Struct(PStructDecl {
@@ -833,11 +843,8 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
 }
 
 // FIXME: 結果を構造体に入れる
-pub(crate) fn cps_conversion(
-    p_root: PRoot,
-    logger: Logger,
-) -> (KRoot, Rc<KOutlines>, Rc<Vec<KLocalData>>) {
-    let (mut k_root, outlines, locals) = {
+pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutlines>) {
+    let (mut k_root, outlines) = {
         let mut gx = Gx::new(logger.clone());
         gen_root(p_root, &mut gx);
         (
@@ -846,7 +853,6 @@ pub(crate) fn cps_conversion(
                 fns: gx.fns,
             },
             Rc::new(gx.outlines),
-            Rc::new(gx.locals),
         )
     };
 
@@ -854,5 +860,5 @@ pub(crate) fn cps_conversion(
 
     type_resolution::resolve_types(&mut k_root, outlines.clone(), logger.clone());
 
-    (k_root, outlines, locals)
+    (k_root, outlines)
 }

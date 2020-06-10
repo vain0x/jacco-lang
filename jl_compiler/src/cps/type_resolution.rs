@@ -10,8 +10,9 @@ use std::{
 struct Tx {
     // 現在の関数の型環境
     ty_env: KTyEnv,
+    // 現在の関数に含まれるローカル変数の情報
+    locals: Vec<KLocalData>,
     // 現在の関数に含まれるラベルのシグネチャ情報
-    #[allow(unused)]
     label_sigs: Vec<KLabelSig>,
     // 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
@@ -23,6 +24,7 @@ impl Tx {
     fn new(outlines: Rc<KOutlines>, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
+            locals: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
             outlines,
@@ -401,6 +403,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
         let fn_data = &mut root.fns[k_fn.id()];
 
         tx.return_ty_opt = Some(k_fn.return_ty(&outlines));
+        swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
@@ -410,6 +413,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             resolve_node(&mut label.body, tx);
         }
 
+        swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
         tx.return_ty_opt.take();

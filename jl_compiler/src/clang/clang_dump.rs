@@ -232,12 +232,8 @@ fn write_root(root: &CRoot, indent: usize, out: &mut Vec<u8>) -> io::Result<()> 
     Ok(())
 }
 
-pub(crate) fn clang_dump(
-    k_root: KRoot,
-    outlines: Rc<KOutlines>,
-    locals: Rc<Vec<KLocalData>>,
-) -> String {
-    let c_root = clang_gen::gen(k_root, outlines, locals);
+pub(crate) fn clang_dump(k_root: KRoot, outlines: Rc<KOutlines>) -> String {
+    let c_root = clang_gen::gen(k_root, outlines);
 
     let text = {
         let mut out = vec![];

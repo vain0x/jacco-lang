@@ -36,12 +36,12 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
-    let (k_root, outlines, locals) = cps::cps_conversion(p_root, logs.logger());
+    let (k_root, outlines) = cps::cps_conversion(p_root, logs.logger());
     trace!("k_root = {:#?}\n", k_root);
 
     for item in logs.finish() {
         error!("{:?} {}", item.location, item.message);
     }
 
-    clang::clang_dump(k_root, outlines, locals)
+    clang::clang_dump(k_root, outlines)
 }

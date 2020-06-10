@@ -10,12 +10,12 @@ use std::{
 /// C code generation context.
 struct Cx {
     outlines: Rc<KOutlines>,
-    locals: Rc<Vec<KLocalData>>,
     local_ident_id_map: HashMap<KLocal, usize>,
     fn_ident_id_map: HashMap<KFn, usize>,
     extern_fn_ident_id_map: HashMap<KExternFn, usize>,
     struct_id_map: HashMap<usize, usize>,
     name_map: HashMap<String, IdProvider>,
+    locals: Vec<KLocalData>,
     labels: Vec<KLabelData>,
     label_ident_id_map: HashMap<KLabel, usize>,
     stmts: Vec<CStmt>,
@@ -23,15 +23,15 @@ struct Cx {
 }
 
 impl Cx {
-    fn new(outlines: Rc<KOutlines>, locals: Rc<Vec<KLocalData>>) -> Self {
+    fn new(outlines: Rc<KOutlines>) -> Self {
         Self {
             outlines,
-            locals,
             local_ident_id_map: Default::default(),
             fn_ident_id_map: Default::default(),
             extern_fn_ident_id_map: Default::default(),
             struct_id_map: Default::default(),
             name_map: Default::default(),
+            locals: Default::default(),
             labels: Default::default(),
             label_ident_id_map: Default::default(),
             stmts: Default::default(),
@@ -459,7 +459,10 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 
     for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
-        let KExternFnData { params } = extern_fn_data;
+        let KExternFnData { params, locals } = extern_fn_data;
+        cx.locals = locals;
+        cx.local_ident_id_map.clear();
+
         let params = params
             .into_iter()
             .map(|param| gen_param(param, &empty_ty_env, cx))
@@ -470,15 +473,21 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             params,
             result_ty,
         });
+
+        cx.locals.clear();
     }
 
     for (k_fn, fn_data) in outlines.fns_iter().zip(root.fns) {
         let KFnData {
             body,
+            locals,
             labels,
             ty_env,
             ..
         } = fn_data;
+        cx.locals = locals;
+        cx.local_ident_id_map.clear();
+
         let stmts = cx.enter_block(|cx| {
             for id in 0..labels.len() {
                 let label = KLabel::new(id);
@@ -512,11 +521,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             result_ty: CTy::Int,
             body: CBlock { stmts },
         });
+
+        cx.locals.clear();
     }
 }
 
-pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>, locals: Rc<Vec<KLocalData>>) -> CRoot {
-    let mut cx = Cx::new(outlines, locals);
+pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>) -> CRoot {
+    let mut cx = Cx::new(outlines);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }
