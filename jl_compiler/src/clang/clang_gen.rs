@@ -78,7 +78,7 @@ fn format_unique_name(raw_name: &str, ident_id: usize) -> String {
 }
 
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
-    unique_local_name(symbol.def.local, cx)
+    unique_local_name(symbol.local, cx)
 }
 
 fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
@@ -176,7 +176,9 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
 }
 
 fn gen_param(param: KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
-    (unique_name(&param, cx), gen_ty(param.ty(), &ty_env, cx))
+    let name = unique_name(&param, cx);
+    let ty = param.ty(&cx.locals);
+    (name, gen_ty(ty, &ty_env, cx))
 }
 
 fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
@@ -334,7 +336,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
-                let k_struct = result.ty().as_struct().unwrap();
+                let k_struct = result.ty(&cx.locals).as_struct().unwrap();
 
                 let (name, ty) = gen_param(take(result), ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {

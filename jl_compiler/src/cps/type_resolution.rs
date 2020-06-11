@@ -105,25 +105,25 @@ fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     do_unify(&left, &right, &location, tx);
 }
 
-fn resolve_symbol_def(symbol: &KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
-    if symbol.def.ty.borrow().is_unresolved() {
+fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
+    if symbol.ty(&tx.locals).is_unresolved() {
         let expected_ty = match expected_ty_opt {
             None => tx.fresh_meta_ty(symbol.location()),
             Some(ty) => ty.clone(),
         };
 
-        *symbol.def.ty.borrow_mut() = expected_ty;
+        *symbol.ty_mut(&mut tx.locals) = expected_ty;
         return;
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.def.ty.borrow();
+        let symbol_ty = symbol.ty(&tx.locals);
         do_unify(&symbol_ty, expected_ty, &symbol.location, tx);
     }
 }
 
-fn resolve_symbol_use(symbol: &mut KSymbol, _tx: &mut Tx) -> KTy {
-    let current_ty = symbol.ty();
+fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
+    let current_ty = symbol.ty(&tx.locals);
     if current_ty.is_unresolved() {
         error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
     }
@@ -177,7 +177,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let arg_tys = resolve_terms(args, tx);
                 let use_fn_ty = KTy::Fn {
                     param_tys: arg_tys,
-                    result_ty: Box::new(result.ty()),
+                    result_ty: Box::new(result.ty(&tx.locals).to_owned()),
                 };
 
                 unify(def_fn_ty, use_fn_ty, location, tx);
@@ -350,7 +350,11 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
         let label_sig = {
             let name = label_data.name.to_string();
-            let param_tys = label_data.params.iter().map(|param| param.ty()).collect();
+            let param_tys = label_data
+                .params
+                .iter()
+                .map(|param| param.ty(&tx.locals))
+                .collect();
             KLabelSig::new(name, param_tys)
         };
         fn_data.label_sigs.push(label_sig);
@@ -390,12 +394,20 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
     for extern_fn in outlines.extern_fns_iter() {
         let extern_fn_data = &mut root.extern_fns[extern_fn.id()];
+        swap(&mut tx.locals, &mut extern_fn_data.locals);
+
         prepare_extern_fn(extern_fn, extern_fn_data, tx);
+
+        swap(&mut tx.locals, &mut extern_fn_data.locals);
     }
 
     for k_fn in outlines.fns_iter() {
         let fn_data = &mut root.fns[k_fn.id()];
+        swap(&mut tx.locals, &mut fn_data.locals);
+
         prepare_fn(k_fn, fn_data, tx);
+
+        swap(&mut tx.locals, &mut fn_data.locals);
     }
 
     // 項の型を解決する。

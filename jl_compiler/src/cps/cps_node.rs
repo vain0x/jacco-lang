@@ -4,7 +4,6 @@ use super::*;
 use std::cell::RefCell;
 use std::fmt;
 use std::mem::replace;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub(crate) enum KCommand {
@@ -194,6 +193,14 @@ impl KLocal {
     pub(crate) fn id(self) -> usize {
         self.id
     }
+
+    pub(crate) fn ty(self, locals: &[KLocalData]) -> &KTy {
+        &locals[self.id].ty
+    }
+
+    pub(crate) fn ty_mut(self, locals: &mut [KLocalData]) -> &mut KTy {
+        &mut locals[self.id].ty
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -203,47 +210,18 @@ pub(crate) struct KLocalData {
 }
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KVarData {
-    pub(crate) local: KLocal,
-    pub(crate) name: String,
-    pub(crate) ty: RefCell<KTy>,
-}
-
-impl KVarData {
-    pub(crate) fn new_with_ty(local: KLocal, name: String, ty: KTy) -> Self {
-        KVarData {
-            local,
-            name,
-            ty: RefCell::new(ty),
-        }
-    }
-}
-
-#[derive(Clone, Default)]
 pub(crate) struct KSymbol {
+    pub(crate) local: KLocal,
     pub(crate) location: Location,
-    pub(crate) def: Rc<KVarData>,
 }
 
 impl KSymbol {
-    pub(crate) fn raw_name(&self) -> &str {
-        &self.def.name
+    pub(crate) fn ty(&self, locals: &[KLocalData]) -> KTy {
+        self.local.ty(locals).to_owned()
     }
 
-    pub(crate) fn ty(&self) -> KTy {
-        self.def.ty.borrow().clone()
-    }
-}
-
-impl fmt::Debug for KSymbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}_{:X?}: {:?}",
-            self.raw_name(),
-            self.def.as_ref() as *const _,
-            self.ty()
-        )
+    pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut [KLocalData]) -> &'a mut KTy {
+        self.local.ty_mut(locals)
     }
 }
 

@@ -4,7 +4,6 @@ use super::cps_fold::fold_block;
 use super::*;
 use crate::parse::*;
 use crate::token::TokenKind;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::iter::once;
 use std::mem::{replace, take};
@@ -20,7 +19,6 @@ struct KLoopData {
 struct Gx {
     outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
-    var_map: HashMap<PNameId, Rc<KVarData>>,
     local_map: HashMap<PNameId, KLocal>,
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
@@ -39,16 +37,6 @@ struct Gx {
 impl Gx {
     fn new(logger: Logger) -> Self {
         Self {
-            var_map: vec![(
-                0,
-                Rc::new(KVarData {
-                    local: KLocal::new(usize::MAX),
-                    name: "_0".to_string(),
-                    ty: RefCell::new(KTy::Never),
-                }),
-            )]
-            .into_iter()
-            .collect(),
             logger,
             ..Self::default()
         }
@@ -64,10 +52,7 @@ impl Gx {
             ty: ty.clone(),
         });
 
-        KSymbol {
-            location,
-            def: Rc::new(KVarData::new_with_ty(local, name, ty)),
-        }
+        KSymbol { local, location }
     }
 
     fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
@@ -289,15 +274,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
                 }
             };
 
-            let def = match gx.var_map.get(&name_info.id()) {
-                Some(def) => def.clone(),
-                None => {
-                    let def = Rc::new(KVarData::new_with_ty(local, name, ty));
-                    gx.var_map.insert(name_info.id(), def.clone());
-                    def
-                }
-            };
-            KSymbolExt::Symbol(KSymbol { location, def })
+            KSymbolExt::Symbol(KSymbol { local, location })
         }
         PNameKind::I32 | PNameKind::Struct => {
             // FIXME: Unit-like 構造体なら OK
@@ -769,7 +746,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 .into_iter()
                 .map(|param| gen_param(param, gx))
                 .collect::<Vec<_>>();
-            let param_tys = params.iter().map(|param| param.ty()).collect();
+            let param_tys = params
+                .iter()
+                .map(|param| param.ty(&gx.current_locals))
+                .collect();
             let result_ty = match result_ty_opt {
                 Some(ty) => gen_ty(ty, gx),
                 None => KTy::Unit,
