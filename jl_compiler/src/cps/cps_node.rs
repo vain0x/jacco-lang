@@ -212,6 +212,7 @@ pub(crate) struct KLocalData {
     pub(crate) ty: KTy,
 }
 
+/// ローカル変数の出現
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KSymbol {
     pub(crate) local: KLocal,
@@ -234,6 +235,7 @@ impl HaveLocation for KSymbol {
     }
 }
 
+/// 名前を解決した結果。
 #[derive(Clone, Debug)]
 pub(crate) enum KSymbolExt {
     Symbol(KSymbol),
