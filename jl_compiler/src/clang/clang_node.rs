@@ -7,6 +7,17 @@ pub(crate) enum CUnaryOp {
     Not,
 }
 
+impl CUnaryOp {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            CUnaryOp::Deref => "*",
+            CUnaryOp::Ref => "&",
+            CUnaryOp::Minus => "-",
+            CUnaryOp::Not => "!",
+        }
+    }
+}
+
 pub(crate) enum CBinaryOp {
     Assign,
     Add,
@@ -25,6 +36,30 @@ pub(crate) enum CBinaryOp {
     Le,
     Gt,
     Ge,
+}
+
+impl CBinaryOp {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            CBinaryOp::Assign => "=",
+            CBinaryOp::Add => "+",
+            CBinaryOp::Sub => "-",
+            CBinaryOp::Mul => "*",
+            CBinaryOp::Div => "/",
+            CBinaryOp::Modulo => "%",
+            CBinaryOp::BitAnd => "&",
+            CBinaryOp::BitOr => "|",
+            CBinaryOp::BitXor => "^",
+            CBinaryOp::LeftShift => "<<",
+            CBinaryOp::RightShift => ">>",
+            CBinaryOp::Eq => "==",
+            CBinaryOp::Ne => "!=",
+            CBinaryOp::Lt => "<",
+            CBinaryOp::Le => "<=",
+            CBinaryOp::Gt => ">",
+            CBinaryOp::Ge => ">=",
+        }
+    }
 }
 
 pub(crate) enum CTy {

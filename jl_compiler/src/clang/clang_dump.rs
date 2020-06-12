@@ -6,41 +6,6 @@ use std::{
     rc::Rc,
 };
 
-impl CUnaryOp {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CUnaryOp::Deref => "*",
-            CUnaryOp::Ref => "&",
-            CUnaryOp::Minus => "-",
-            CUnaryOp::Not => "!",
-        }
-    }
-}
-
-impl CBinaryOp {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CBinaryOp::Assign => "=",
-            CBinaryOp::Add => "+",
-            CBinaryOp::Sub => "-",
-            CBinaryOp::Mul => "*",
-            CBinaryOp::Div => "/",
-            CBinaryOp::Modulo => "%",
-            CBinaryOp::BitAnd => "&",
-            CBinaryOp::BitOr => "|",
-            CBinaryOp::BitXor => "^",
-            CBinaryOp::LeftShift => "<<",
-            CBinaryOp::RightShift => ">>",
-            CBinaryOp::Eq => "==",
-            CBinaryOp::Ne => "!=",
-            CBinaryOp::Lt => "<",
-            CBinaryOp::Le => "<=",
-            CBinaryOp::Gt => ">",
-            CBinaryOp::Ge => ">=",
-        }
-    }
-}
-
 fn write_indent(indent: usize, out: &mut Vec<u8>) -> io::Result<()> {
     for _ in 0..indent {
         write!(out, "    ")?;
