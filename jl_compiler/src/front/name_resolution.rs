@@ -1,8 +1,7 @@
 //! 名前解決の処理
 
 use super::*;
-use crate::id_provider::IdProvider;
-use crate::logs::Logger;
+use crate::{logs::Logger, utils::IdProvider};
 use std::collections::HashMap;
 use std::mem::{replace, take};
 

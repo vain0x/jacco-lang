@@ -1,4 +1,3 @@
-mod id_provider;
 mod logs;
 
 use log::{error, trace};
@@ -63,7 +62,7 @@ mod clang {
     pub(crate) use clang_dump::clang_dump;
 
     use crate::cps::*;
-    use crate::id_provider::IdProvider;
+    use crate::utils::IdProvider;
     use log::error;
 }
 
@@ -202,4 +201,10 @@ mod token {
     pub(crate) use tokenize_rules::tokenize;
 
     use crate::source::{Position, Range, SourceCode, SourceFile};
+}
+
+mod utils {
+    mod id_provider;
+
+    pub(crate) use id_provider::IdProvider;
 }
