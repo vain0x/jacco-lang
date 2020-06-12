@@ -1,8 +1,7 @@
 mod logs;
 
-use log::{error, trace};
-
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
+    use log::{error, trace};
     use std::rc::Rc;
 
     trace!("source_path = {:?}", source_path);
