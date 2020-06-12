@@ -1,0 +1,16 @@
+use super::{KLabel, KPrim, KSymbol, KTerm, KTy};
+
+#[derive(Debug)]
+pub(crate) enum KCommand {
+    Node {
+        prim: KPrim,
+        tys: Vec<KTy>,
+        args: Vec<KTerm>,
+        result_opt: Option<KSymbol>,
+        cont_count: usize,
+    },
+    Label {
+        label: KLabel,
+        params: Vec<KSymbol>,
+    },
+}
