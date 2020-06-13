@@ -3,7 +3,7 @@
 use super::cps_fold::fold_block;
 use super::*;
 use crate::parse::*;
-use crate::token::TokenKind;
+use crate::{front::NameResolution, token::TokenKind};
 use std::collections::HashMap;
 use std::iter::once;
 use std::mem::{replace, take};
@@ -23,8 +23,6 @@ struct Gx {
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
-    /// 名前解決時の関数ID → 関数ID
-    fn_resolution: HashMap<usize, KFn>,
     current_commands: Vec<KCommand>,
     current_locals: Vec<KLocalData>,
     current_labels: Vec<KLabelData>,
@@ -121,17 +119,6 @@ impl Gx {
     fn push_jump_with_cont(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>) {
         self.do_push_jump(label, args, 1);
     }
-}
-
-fn resolve_fn(fn_id: usize, gx: &mut Gx) -> KFn {
-    if let Some(&k_fn) = gx.fn_resolution.get(&fn_id) {
-        return k_fn;
-    }
-
-    let k_fn = gx.outlines.fn_new(KFnOutline::default());
-    gx.fns.push(KFnData::default());
-    gx.fn_resolution.insert(fn_id, k_fn);
-    k_fn
 }
 
 fn new_int_term(value: i64, location: Location) -> KTerm {
@@ -524,7 +511,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             fn_id_opt,
         }) => {
             let location = keyword.into_location();
-            let k_fn = resolve_fn(fn_id_opt.unwrap(), gx);
+            let k_fn = KFn::new(fn_id_opt.unwrap());
 
             let args = {
                 let return_term = KTerm::Return(k_fn);
@@ -668,18 +655,17 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let location = keyword.into_location();
-            let k_fn = resolve_fn(fn_id_opt.unwrap(), gx);
+            let k_fn = KFn::new(fn_id_opt.unwrap());
 
             let parent_locals = take(&mut gx.current_locals);
 
-            // FIXME: これだと fn の本体より前に fn_name_id が出てきたら落ちてしまう (fn_id の解決時に関数IDを生成していて、それは関数の本体を見るタイミングなので、事前に fn_name_id に関数IDを割り振っておくということはできない。おそらく名前解決の段階で fn_id と fn_name_id の対応を作っておく必要がある？)
             let name = {
                 let mut name = name_opt.unwrap();
                 let name_info = take(&mut name.info_opt).unwrap();
                 let (name, _) = name.decompose();
 
                 assert_eq!(name_info.kind(), PNameKind::Fn);
-                gx.fn_map.insert(name_info.id(), k_fn);
+                assert_eq!(gx.fn_map.get(&name_info.id()).copied(), Some(k_fn));
 
                 name
             };
@@ -823,9 +809,30 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
 }
 
 // FIXME: 結果を構造体に入れる
-pub(crate) fn cps_conversion(p_root: PRoot, logger: Logger) -> (KRoot, Rc<KOutlines>) {
+pub(crate) fn cps_conversion(
+    p_root: PRoot,
+    name_resolution: NameResolution,
+    logger: Logger,
+) -> (KRoot, Rc<KOutlines>) {
     let (mut k_root, outlines) = {
+        // 関数IDと関数名の名前IDの対応表を構築する。
+        let n_fns = name_resolution.fns();
+        let fn_count = n_fns.len();
+        let fns = vec![KFnData::default(); fn_count];
+        let fn_name_to_fn_map = n_fns
+            .iter()
+            .enumerate()
+            .filter_map(|(i, n_fn)| {
+                n_fn.fn_name_id_opt()
+                    .map(|fn_name_id| (fn_name_id, KFn::new(i)))
+            })
+            .collect();
+
         let mut gx = Gx::new(logger.clone());
+        gx.fns = fns;
+        gx.fn_map = fn_name_to_fn_map;
+        gx.outlines.fns.resize_with(fn_count, Default::default);
+
         gen_root(p_root, &mut gx);
         (
             KRoot {

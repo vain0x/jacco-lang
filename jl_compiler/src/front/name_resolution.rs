@@ -5,6 +5,29 @@ use crate::{logs::Logger, utils::IdProvider};
 use std::collections::HashMap;
 use std::mem::{replace, take};
 
+/// 関数定義に関する情報
+#[derive(Default)]
+pub(crate) struct NFn {
+    fn_name_id_opt: Option<PNameId>,
+}
+
+impl NFn {
+    pub(crate) fn fn_name_id_opt(&self) -> Option<PNameId> {
+        self.fn_name_id_opt
+    }
+}
+
+/// 名前解決の結果。
+pub(crate) struct NameResolution {
+    fns: Vec<NFn>,
+}
+
+impl NameResolution {
+    pub(crate) fn fns(&self) -> &[NFn] {
+        &self.fns
+    }
+}
+
 /// Naming context.
 #[derive(Default)]
 struct Nx {
@@ -12,6 +35,7 @@ struct Nx {
     env: HashMap<String, PNameInfo>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
+    fns: Vec<NFn>,
     logger: Logger,
 }
 
@@ -45,7 +69,9 @@ impl Nx {
     }
 
     fn enter_fn(&mut self, do_resolve: impl FnOnce(&mut Nx, usize)) {
-        let fn_id = self.fresh_id();
+        let fn_id = self.fns.len();
+        self.fns.push(NFn::default());
+
         let parent_loop = take(&mut self.parent_loop);
         let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
 
@@ -267,6 +293,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, PNameKind::Fn, nx);
+                    nx.fns[fn_id].fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
                 }
 
                 nx.enter_scope(|nx| {
@@ -338,10 +365,12 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
     }
 }
 
-pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) {
+pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution {
     let mut nx = Nx::new(logger);
 
     for decl in &mut p_root.decls {
         resolve_decl(decl, &mut nx);
     }
+
+    NameResolution { fns: nx.fns }
 }

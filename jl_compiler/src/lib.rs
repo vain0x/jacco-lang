@@ -25,10 +25,10 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         return String::new();
     }
 
-    front::resolve_name(&mut p_root, logs.logger());
+    let name_resolution = front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
-    let (k_root, outlines) = cps::cps_conversion(p_root, logs.logger());
+    let (k_root, outlines) = cps::cps_conversion(p_root, name_resolution, logs.logger());
     trace!("k_root = {:#?}\n", k_root);
 
     for item in logs.finish() {
@@ -117,7 +117,7 @@ mod front {
     mod name_resolution;
     mod syntax_validation;
 
-    pub(crate) use name_resolution::resolve_name;
+    pub(crate) use name_resolution::{resolve_name, NameResolution};
     pub(crate) use syntax_validation::validate_syntax;
 
     use crate::logs::Logger;

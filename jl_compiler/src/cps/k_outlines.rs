@@ -12,12 +12,6 @@ pub(crate) struct KOutlines {
 }
 
 impl KOutlines {
-    pub(crate) fn fn_new(&mut self, fn_outline: KFnOutline) -> KFn {
-        let id = self.fns.len();
-        self.fns.push(fn_outline);
-        KFn::new(id)
-    }
-
     pub(crate) fn fns_iter(&self) -> impl Iterator<Item = KFn> {
         (0..self.fns.len()).map(KFn::new)
     }
