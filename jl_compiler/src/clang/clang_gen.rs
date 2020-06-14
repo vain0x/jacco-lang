@@ -138,7 +138,7 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     format_unique_name(extern_fn.name(&cx.outlines), ident_id)
 }
 
-fn emit_var_decl(symbol: KSymbol, init: CExpr, ty_env: &KTyEnv, cx: &mut Cx) {
+fn emit_var_decl(symbol: KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
     let is_alive = cx.locals[symbol.local.id()].is_alive;
     let (name, ty) = gen_param(symbol, ty_env, cx);
 
@@ -146,15 +146,14 @@ fn emit_var_decl(symbol: KSymbol, init: CExpr, ty_env: &KTyEnv, cx: &mut Cx) {
     if !is_alive {
         cx.stmts
             .push(CStmt::Comment(format!("{} is killed.", name)));
-        cx.stmts.push(CStmt::Expr(init));
+
+        if let Some(expr) = init_opt {
+            cx.stmts.push(CStmt::Expr(expr));
+        }
         return;
     }
 
-    cx.stmts.push(CStmt::VarDecl {
-        name,
-        ty,
-        init_opt: Some(init),
-    });
+    cx.stmts.push(CStmt::VarDecl { name, ty, init_opt });
 }
 
 fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
@@ -237,7 +236,8 @@ fn gen_unary_op(
     ) {
         ([arg], [result], [cont]) => {
             let arg = gen_term(take(arg), cx);
-            emit_var_decl(take(result), arg.into_unary_op(op), ty_env, cx);
+            let expr = arg.into_unary_op(op);
+            emit_var_decl(take(result), Some(expr), ty_env, cx);
             gen_node(take(cont), ty_env, cx);
         }
         _ => unimplemented!(),
@@ -261,7 +261,7 @@ fn gen_binary_op(
             let left = gen_term(take(left), cx);
             let right = gen_term(take(right), cx);
             let expr = left.into_binary_op(op, right);
-            emit_var_decl(take(result), expr, ty_env, cx);
+            emit_var_decl(take(result), Some(expr), ty_env, cx);
             gen_node(take(cont), ty_env, cx);
         }
         _ => unimplemented!(),
@@ -319,7 +319,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     let args = args.map(|arg| gen_term(arg, cx));
                     left.into_call(args)
                 };
-                emit_var_decl(take(result), call_expr, ty_env, cx);
+                emit_var_decl(take(result), Some(call_expr), ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -331,7 +331,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         ) {
             ([init], [result], [cont]) => {
                 let init = gen_term(take(init), cx);
-                emit_var_decl(take(result), init, ty_env, cx);
+                emit_var_decl(take(result), Some(init), ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -373,7 +373,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ) => {
                 let left = gen_term(take(left), cx);
                 let expr = left.into_arrow(take(field_name)).into_ref();
-                emit_var_decl(take(result), expr, ty_env, cx);
+                emit_var_decl(take(result), Some(expr), ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -501,18 +501,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             for id in 0..labels.len() {
                 let label = KLabel::new(id);
                 for i in 0..labels[label.id()].params.len() {
-                    let param = &labels[label.id()].params[i];
-                    let name = unique_name(&param, cx);
-                    if !cx.locals[param.local.id()].is_alive {
-                        cx.stmts
-                            .push(CStmt::Comment(format!("{} is killed.", name)));
-                        continue;
-                    }
-                    cx.stmts.push(CStmt::VarDecl {
-                        name,
-                        ty: CTy::Int,
-                        init_opt: None,
-                    });
+                    let param = labels[label.id()].params[i].clone();
+                    emit_var_decl(param, None, &ty_env, cx);
                 }
             }
 
