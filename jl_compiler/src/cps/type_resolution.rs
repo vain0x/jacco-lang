@@ -425,6 +425,12 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             resolve_node(&mut label.body, tx);
         }
 
+        for local_data in &mut tx.locals {
+            if tx.ty_env.is_unbound(&local_data.ty) {
+                local_data.ty = KTy::Never;
+            }
+        }
+
         swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);

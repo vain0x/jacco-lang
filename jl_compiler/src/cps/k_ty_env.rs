@@ -23,11 +23,21 @@ impl KTyEnv {
         &self.meta_tys[meta_ty.id()]
     }
 
-    pub(crate) fn is_unit(&self, ty: &KTy) -> bool {
+    pub(crate) fn is_unbound(&self, ty: &KTy) -> bool {
         match ty {
-            KTy::Unit => true,
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_unit(&*ty.borrow()),
+                Some(ty) => self.is_unbound(&*ty.borrow()),
+                None => true,
+            },
+            _ => false,
+        }
+    }
+
+    pub(crate) fn is_unit_or_never(&self, ty: &KTy) -> bool {
+        match ty {
+            KTy::Unit | KTy::Never => true,
+            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
+                Some(ty) => self.is_unit_or_never(&*ty.borrow()),
                 None => false,
             },
             _ => false,

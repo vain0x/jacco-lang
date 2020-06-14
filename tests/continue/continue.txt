@@ -14,14 +14,14 @@ next_1:;
 }
 
 int continue_in_loop() {
-    /* free */ void loop_result_1;
+    // loop_result_1 is killed.
     goto continue__1;
 
 continue__1:;
     goto continue__1;
 
 next_1:;
-    return loop_result_1;
+    return (void)0;
 }
 
 int nested_continue() {

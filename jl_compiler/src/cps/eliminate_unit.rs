@@ -1,4 +1,4 @@
-use super::{KLocalData, KNode, KRoot, KTerm,  KTyEnv};
+use super::{KLocalData, KNode, KRoot, KTerm, KTyEnv};
 use std::mem::{swap, take};
 
 #[derive(Default)]
@@ -9,10 +9,11 @@ struct Ex {
 
 fn on_node(node: &mut KNode, ex: &mut Ex) {
     for arg in &mut node.args {
-        // unit 型の変数の参照をリテラルで置き換える。
+        // unit/never 型の変数の参照をリテラルで置き換える。
+        // FIXME: never 型の変数は never リテラル (?) に置き換える？
         if let KTerm::Name(symbol) = arg {
             let local_data = &mut ex.locals[symbol.local.id()];
-            if ex.ty_env.is_unit(&local_data.ty) {
+            if ex.ty_env.is_unit_or_never(&local_data.ty) {
                 local_data.is_alive = false;
                 let location = take(&mut symbol.location);
                 *arg = KTerm::Unit { location };
@@ -33,7 +34,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
         swap(&mut ex.locals, &mut fn_data.locals);
 
         for local_data in &mut ex.locals {
-            if ex.ty_env.is_unit(&local_data.ty) {
+            if ex.ty_env.is_unit_or_never(&local_data.ty) {
                 local_data.is_alive = false;
             }
         }
