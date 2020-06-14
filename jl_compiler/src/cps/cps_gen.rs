@@ -48,6 +48,7 @@ impl Gx {
         self.current_locals.push(KLocalData {
             name: name.clone(),
             ty: ty.clone(),
+            is_alive: true,
         });
 
         KSymbol { local, location }
@@ -255,6 +256,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
                     gx.current_locals.push(KLocalData {
                         name: name.clone(),
                         ty: ty.clone(),
+                        is_alive: true,
                     });
                     gx.local_map.insert(name_info.id(), local);
                     local

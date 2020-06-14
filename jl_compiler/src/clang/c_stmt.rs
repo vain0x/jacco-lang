@@ -1,6 +1,7 @@
 use super::{CBlock, CExpr, CTy};
 
 pub(crate) enum CStmt {
+    Comment(String),
     Expr(CExpr),
     Block(CBlock),
     Label {

@@ -1,44 +1,38 @@
 int main() {
-    int if_result_1;
-    int if_result_2;
-    int if_result_3;
-    int if_result_4;
+    // if_result_1 is killed.
+    // if_result_2 is killed.
+    // if_result_3 is killed.
+    // if_result_4 is killed.
     if (1) {
-        if_result_1 = (void)0;
         goto next_1;
     } else {
-        if_result_1 = (void)0;
         goto next_1;
     }
 
 next_1:;
     if (2) {
-        if_result_2 = (void)0;
         goto next_2;
     } else {
-        if_result_2 = (void)0;
         goto next_2;
     }
 
 next_2:;
     if (3) {
         int body3_1 = 30;
-        if_result_3 = (void)0;
         goto next_3;
     } else {
         if (4) {
             int alt31_1 = 31;
-            if_result_4 = (void)0;
             goto next_4;
         } else {
             int alt32_1 = 32;
-            if_result_4 = (void)0;
             goto next_4;
         }
     }
 
 next_3:;
-    void unit_1 = (void)0;
+    // unit_1 is killed.
+    (void)0;
     int group_expr_1 = 1;
     int a_1 = 1;
     int* ref_1 = &a_1;
@@ -59,6 +53,5 @@ next_3:;
     return 0;
 
 next_4:;
-    if_result_3 = if_result_4;
     goto next_3;
 }

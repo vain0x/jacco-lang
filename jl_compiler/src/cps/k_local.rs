@@ -27,4 +27,5 @@ impl KLocal {
 pub(crate) struct KLocalData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
+    pub(crate) is_alive: bool,
 }

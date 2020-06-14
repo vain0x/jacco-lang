@@ -138,6 +138,25 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     format_unique_name(extern_fn.name(&cx.outlines), ident_id)
 }
 
+fn emit_var_decl(symbol: KSymbol, init: CExpr, ty_env: &KTyEnv, cx: &mut Cx) {
+    let is_alive = cx.locals[symbol.local.id()].is_alive;
+    let (name, ty) = gen_param(symbol, ty_env, cx);
+
+    // 不要な変数なら束縛しない。
+    if !is_alive {
+        cx.stmts
+            .push(CStmt::Comment(format!("{} is killed.", name)));
+        cx.stmts.push(CStmt::Expr(init));
+        return;
+    }
+
+    cx.stmts.push(CStmt::VarDecl {
+        name,
+        ty,
+        init_opt: Some(init),
+    });
+}
+
 fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     match ty {
         KTy::Unresolved => {
@@ -218,12 +237,7 @@ fn gen_unary_op(
     ) {
         ([arg], [result], [cont]) => {
             let arg = gen_term(take(arg), cx);
-            let (name, ty) = gen_param(take(result), ty_env, cx);
-            cx.stmts.push(CStmt::VarDecl {
-                name,
-                ty,
-                init_opt: Some(arg.into_unary_op(op)),
-            });
+            emit_var_decl(take(result), arg.into_unary_op(op), ty_env, cx);
             gen_node(take(cont), ty_env, cx);
         }
         _ => unimplemented!(),
@@ -246,12 +260,8 @@ fn gen_binary_op(
         ([left, right], [result], [cont]) => {
             let left = gen_term(take(left), cx);
             let right = gen_term(take(right), cx);
-            let (name, ty) = gen_param(take(result), ty_env, cx);
-            cx.stmts.push(CStmt::VarDecl {
-                name,
-                ty,
-                init_opt: Some(left.into_binary_op(op, right)),
-            });
+            let expr = left.into_binary_op(op, right);
+            emit_var_decl(take(result), expr, ty_env, cx);
             gen_node(take(cont), ty_env, cx);
         }
         _ => unimplemented!(),
@@ -282,6 +292,12 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
 
                 for (param, arg) in params.into_iter().zip(args) {
                     let name = unique_name(&param, cx);
+
+                    if !cx.locals[param.local.id()].is_alive {
+                        CStmt::Comment(format!("{} is skipped.", &name));
+                        continue;
+                    }
+
                     let arg = gen_term(take(arg), cx);
 
                     cx.stmts.push(
@@ -303,16 +319,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     let args = args.map(|arg| gen_term(arg, cx));
                     left.into_call(args)
                 };
-                let (name, ty) = gen_param(take(result), ty_env, cx);
-
-                let let_stmt = CStmt::VarDecl {
-                    name,
-                    ty,
-                    init_opt: Some(call_expr),
-                };
-
-                cx.stmts.push(let_stmt);
-
+                emit_var_decl(take(result), call_expr, ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -324,12 +331,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         ) {
             ([init], [result], [cont]) => {
                 let init = gen_term(take(init), cx);
-                let (name, ty) = gen_param(take(result), ty_env, cx);
-                cx.stmts.push(CStmt::VarDecl {
-                    name,
-                    ty,
-                    init_opt: Some(init),
-                });
+                emit_var_decl(take(result), init, ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -370,14 +372,8 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 [cont],
             ) => {
                 let left = gen_term(take(left), cx);
-                let (name, ty) = gen_param(take(result), ty_env, cx);
-
-                cx.stmts.push(CStmt::VarDecl {
-                    name,
-                    ty,
-                    init_opt: Some(left.into_arrow(take(field_name)).into_ref()),
-                });
-
+                let expr = left.into_arrow(take(field_name)).into_ref();
+                emit_var_decl(take(result), expr, ty_env, cx);
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -420,13 +416,24 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, ty_env, cx),
         KPrim::Assign => match (args.as_mut_slice(), conts.as_mut_slice()) {
             ([left, right], [cont]) => {
-                let left = gen_term(take(left), cx);
-                let right = gen_term(take(right), cx);
-                cx.stmts.push(
-                    left.into_unary_op(CUnaryOp::Deref)
-                        .into_binary_op(CBinaryOp::Assign, right)
-                        .into_stmt(),
-                );
+                match left {
+                    KTerm::Name(symbol) if !cx.locals[symbol.local.id()].is_alive => {
+                        cx.stmts.push(CStmt::Comment(format!(
+                            "assignment to {} is eliminated.",
+                            &cx.locals[symbol.local.id()].name
+                        )));
+                    }
+                    _ => {
+                        let left = gen_term(take(left), cx);
+                        let right = gen_term(take(right), cx);
+                        cx.stmts.push(
+                            left.into_unary_op(CUnaryOp::Deref)
+                                .into_binary_op(CBinaryOp::Assign, right)
+                                .into_stmt(),
+                        );
+                    }
+                }
+
                 gen_node(take(cont), ty_env, cx);
             }
             _ => unimplemented!(),
@@ -496,6 +503,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
                 for i in 0..labels[label.id()].params.len() {
                     let param = &labels[label.id()].params[i];
                     let name = unique_name(&param, cx);
+                    if !cx.locals[param.local.id()].is_alive {
+                        cx.stmts
+                            .push(CStmt::Comment(format!("{} is killed.", name)));
+                        continue;
+                    }
                     cx.stmts.push(CStmt::VarDecl {
                         name,
                         ty: CTy::Int,

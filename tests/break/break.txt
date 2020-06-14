@@ -1,13 +1,11 @@
 int break_from_while() {
-    int while_result_1;
+    // while_result_1 is killed.
     goto continue__1;
 
 continue__1:;
     if (1) {
-        while_result_1 = (void)0;
         goto next_1;
     } else {
-        while_result_1 = (void)0;
         goto next_1;
     }
 
@@ -16,15 +14,14 @@ next_1:;
 }
 
 int break_from_loop() {
-    int loop_result_1;
+    // loop_result_1 is killed.
     goto continue__1;
 
 continue__1:;
-    loop_result_1 = (void)0;
     goto next_1;
 
 next_1:;
-    return loop_result_1;
+    return (void)0;
 }
 
 int break_with_arg() {

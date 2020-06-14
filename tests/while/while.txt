@@ -1,5 +1,5 @@
 int main() {
-    int while_result_1;
+    // while_result_1 is killed.
     goto continue__1;
 
 continue__1:;
@@ -7,7 +7,6 @@ continue__1:;
         int a_1 = 1;
         goto continue__1;
     } else {
-        while_result_1 = (void)0;
         goto next_1;
     }
 

@@ -1,9 +1,8 @@
 int main() {
-    int if_result_1;
+    // if_result_1 is killed.
     if (1) {
         return 1;
     } else {
-        if_result_1 = (void)0;
         goto next_1;
     }
 

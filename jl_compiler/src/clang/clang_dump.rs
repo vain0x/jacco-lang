@@ -133,6 +133,12 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
 
 fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match stmt {
+        CStmt::Comment(text) => {
+            for line in text.split_terminator('\n') {
+                write!(dx, "// {}", line)?;
+            }
+            Ok(())
+        }
         CStmt::Expr(body) => {
             write_expr(body, dx)?;
             write!(dx, ";")

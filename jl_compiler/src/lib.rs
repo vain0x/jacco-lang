@@ -28,8 +28,11 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let name_resolution = front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
-    let (k_root, outlines) = cps::cps_conversion(p_root, name_resolution, logs.logger());
-    trace!("k_root = {:#?}\n", k_root);
+    let (mut k_root, outlines) = cps::cps_conversion(p_root, name_resolution, logs.logger());
+    trace!("k_root (gen) = {:#?}\n", k_root);
+
+    cps::eliminate_unit(&mut k_root);
+    trace!("k_root (elim) = {:#?}\n", k_root);
 
     for item in logs.finish() {
         error!("{:?} {}", item.location, item.message);
@@ -70,6 +73,7 @@ mod cps {
 
     mod cps_fold;
     mod cps_gen;
+    mod eliminate_unit;
     mod k_command;
     mod k_extern_fn;
     mod k_field;
@@ -89,6 +93,7 @@ mod cps {
     mod type_resolution;
 
     pub(crate) use cps_gen::cps_conversion;
+    pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_command::KCommand;
     pub(crate) use k_extern_fn::{KExternFn, KExternFnData, KExternFnOutline};
     pub(crate) use k_field::{KField, KFieldOutline, KFieldTag};

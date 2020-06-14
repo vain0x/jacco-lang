@@ -1,4 +1,4 @@
-use super::{KMetaTy, KMetaTyData};
+use super::{KMetaTy, KMetaTyData, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -21,5 +21,16 @@ impl KTyEnv {
 
     pub(crate) fn meta_ty_get(&self, meta_ty: KMetaTy) -> &KMetaTyData {
         &self.meta_tys[meta_ty.id()]
+    }
+
+    pub(crate) fn is_unit(&self, ty: &KTy) -> bool {
+        match ty {
+            KTy::Unit => true,
+            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
+                Some(ty) => self.is_unit(&*ty.borrow()),
+                None => false,
+            },
+            _ => false,
+        }
     }
 }
