@@ -519,10 +519,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
 
         let fn_name = k_fn.name(&cx.outlines).to_string();
+        let result_ty = gen_ty(k_fn.result_ty(&outlines).clone(), &ty_env, cx);
         cx.decls.push(CStmt::FnDecl {
             name: fn_name,
             params: vec![],
-            result_ty: CTy::Int,
+            result_ty,
             body: CBlock { stmts },
         });
 

@@ -1,5 +1,5 @@
 int main() {
-    // loop_result_1 is killed.
+    int loop_result_1;
     goto continue__1;
 
 continue__1:;
@@ -7,5 +7,5 @@ continue__1:;
     goto continue__1;
 
 next_1:;
-    return (void)0;
+    return loop_result_1;
 }

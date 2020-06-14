@@ -1,4 +1,4 @@
-int break_from_while() {
+void break_from_while() {
     // while_result_1 is killed.
     goto continue__1;
 
@@ -13,7 +13,7 @@ next_1:;
     return (void)0;
 }
 
-int break_from_loop() {
+void break_from_loop() {
     // loop_result_1 is killed.
     goto continue__1;
 
@@ -24,7 +24,7 @@ next_1:;
     return (void)0;
 }
 
-int break_with_arg() {
+void break_with_arg() {
     int loop_result_2;
     goto continue__1;
 

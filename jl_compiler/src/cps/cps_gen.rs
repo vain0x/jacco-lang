@@ -652,6 +652,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::Fn(PFnDecl {
             keyword,
             name_opt,
+            result_ty_opt,
             block_opt,
             fn_id_opt,
             ..
@@ -670,6 +671,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 assert_eq!(gx.fn_map.get(&name_info.id()).copied(), Some(k_fn));
 
                 name
+            };
+
+            let result_ty = match result_ty_opt {
+                Some(ty) => gen_ty(ty, gx),
+                None => KTy::Unit,
             };
 
             let (commands, labels) = {
@@ -698,7 +704,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             *gx.outlines.fn_get_mut(k_fn) = KFnOutline {
                 name,
                 param_tys: vec![],
-                result_ty: KTy::Never,
+                result_ty,
                 location,
             };
             gx.fns[k_fn.id()] = KFnData {

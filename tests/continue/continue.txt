@@ -1,4 +1,4 @@
-int continue_in_while() {
+void continue_in_while() {
     // while_result_1 is killed.
     goto continue__1;
 
@@ -13,7 +13,7 @@ next_1:;
     return (void)0;
 }
 
-int continue_in_loop() {
+void continue_in_loop() {
     // loop_result_1 is killed.
     goto continue__1;
 
@@ -24,7 +24,7 @@ next_1:;
     return (void)0;
 }
 
-int nested_continue() {
+void nested_continue() {
     // while_result_2 is killed.
     // while_result_3 is killed.
     goto continue__1;
