@@ -279,12 +279,12 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     match prim {
         KPrim::Stuck => unreachable!(),
         KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
+            ([KTerm::Return(_), KTerm::Unit { .. }], []) | ([KTerm::Return(_)], []) => {
+                cx.stmts.push(CStmt::Return(None));
+            }
             ([KTerm::Return(_), arg], []) => {
                 let arg = gen_term(take(arg), cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
-            }
-            ([KTerm::Return(_)], []) => {
-                cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Label(label), args @ ..], []) => {
                 let name = unique_label_name(*label, cx);

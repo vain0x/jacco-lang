@@ -10,7 +10,7 @@ continue__1:;
     }
 
 next_1:;
-    return (void)0;
+    return;
 }
 
 void break_from_loop() {
@@ -21,7 +21,7 @@ continue__1:;
     goto next_1;
 
 next_1:;
-    return (void)0;
+    return;
 }
 
 void break_with_arg() {

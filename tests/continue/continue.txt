@@ -10,7 +10,7 @@ continue__1:;
     }
 
 next_1:;
-    return (void)0;
+    return;
 }
 
 void continue_in_loop() {
@@ -21,7 +21,7 @@ continue__1:;
     goto continue__1;
 
 next_1:;
-    return (void)0;
+    return;
 }
 
 void nested_continue() {
@@ -37,7 +37,7 @@ continue__1:;
     }
 
 next_1:;
-    return (void)0;
+    return;
 
 continue__2:;
     if (0) {
