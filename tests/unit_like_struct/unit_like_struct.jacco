@@ -1,7 +1,7 @@
 struct A;
 
 pub fn main() -> i32 {
-    let a = A {};
+    let a = A;
     let p = &a;
     *p = A {};
     0

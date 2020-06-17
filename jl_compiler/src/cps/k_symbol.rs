@@ -1,4 +1,4 @@
-use super::{KExternFn, KFn, KLocal, KLocalData, KTy};
+use super::{KExternFn, KFn, KLocal, KLocalData, KStruct, KTy};
 use crate::token::{HaveLocation, Location};
 
 /// ローカル変数の出現
@@ -30,6 +30,7 @@ pub(crate) enum KSymbolExt {
     Symbol(KSymbol),
     Fn(KFn),
     ExternFn(KExternFn),
+    UnitLikeStruct(KStruct),
 }
 
 impl KSymbolExt {

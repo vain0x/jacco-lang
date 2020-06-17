@@ -266,7 +266,12 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
             KSymbolExt::Symbol(KSymbol { local, location })
         }
         PNameKind::I32 | PNameKind::Struct => {
-            // FIXME: Unit-like 構造体なら OK
+            if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
+                if gx.structs[k_struct.id()].fields(&gx.outlines).is_empty() {
+                    return KSymbolExt::UnitLikeStruct(k_struct);
+                }
+            }
+
             gx.logger.error(&location, "型の名前です。");
             // FIXME: 適切にハンドル？
             KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
@@ -330,6 +335,12 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
+            KSymbolExt::UnitLikeStruct(k_struct) => {
+                let name = gx.structs[k_struct.id()].name(&gx.outlines).to_string();
+                let result = gx.fresh_symbol(&name, Location::default());
+                gx.push_prim_1(KPrim::Struct, vec![], result.clone());
+                KTerm::Name(result)
+            }
         },
         PExpr::Struct(PStructExpr {
             mut name, fields, ..
