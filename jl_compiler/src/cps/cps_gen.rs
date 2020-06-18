@@ -336,9 +336,16 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
             KSymbolExt::UnitLikeStruct(k_struct) => {
+                let ty = KTy::Struct(k_struct);
                 let name = gx.structs[k_struct.id()].name(&gx.outlines).to_string();
                 let result = gx.fresh_symbol(&name, Location::default());
-                gx.push_prim_1(KPrim::Struct, vec![], result.clone());
+                gx.push(KCommand::Node {
+                    prim: KPrim::Struct,
+                    tys: vec![ty],
+                    args: vec![],
+                    result_opt: Some(result.clone()),
+                    cont_count: 1,
+                });
                 KTerm::Name(result)
             }
         },
