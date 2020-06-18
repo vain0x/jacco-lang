@@ -73,3 +73,9 @@ pub(crate) enum TokenKind {
     Slash,
     Star,
 }
+
+impl Default for TokenKind {
+    fn default() -> Self {
+        TokenKind::Other
+    }
+}

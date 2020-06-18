@@ -1,6 +1,7 @@
 /// CPS 中間表現のプリミティブの種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KPrim {
+    /// 行き詰まり
     Stuck,
     Jump,
     CallDirect,
@@ -35,5 +36,11 @@ pub(crate) enum KPrim {
 impl KPrim {
     pub(crate) fn hint_str(self) -> String {
         format!("{:?}", self).to_lowercase()
+    }
+}
+
+impl Default for KPrim {
+    fn default() -> Self {
+        KPrim::Stuck
     }
 }

@@ -1,4 +1,5 @@
 use super::{KLabel, KPrim, KSymbol, KTerm, KTy};
+use crate::token::Location;
 
 #[derive(Debug)]
 pub(crate) enum KCommand {
@@ -8,6 +9,7 @@ pub(crate) enum KCommand {
         args: Vec<KTerm>,
         result_opt: Option<KSymbol>,
         cont_count: usize,
+        location: Location,
     },
     Label {
         label: KLabel,

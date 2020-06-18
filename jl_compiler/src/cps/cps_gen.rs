@@ -89,12 +89,14 @@ impl Gx {
 
     // ちょうど1つの継続を持つプリミティブノードを生成する。
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
+        let location = result.location.clone();
         self.push(KCommand::Node {
             prim,
             tys: vec![],
             args,
             result_opt: Some(result),
             cont_count: 1,
+            location,
         });
     }
 
@@ -110,6 +112,8 @@ impl Gx {
             args: once(KTerm::Label(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
+            // FIXME: location を持たせる
+            location: Default::default(),
         });
     }
 
@@ -193,6 +197,7 @@ fn emit_if(
         args: vec![k_cond],
         result_opt: None,
         cont_count: 2,
+        location,
     });
 
     // body
@@ -268,7 +273,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
         PNameKind::I32 | PNameKind::Struct => {
             if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
                 if gx.structs[k_struct.id()].fields(&gx.outlines).is_empty() {
-                    return KSymbolExt::UnitLikeStruct(k_struct);
+                    return KSymbolExt::UnitLikeStruct { k_struct, location };
                 }
             }
 
@@ -335,16 +340,17 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
-            KSymbolExt::UnitLikeStruct(k_struct) => {
+            KSymbolExt::UnitLikeStruct { k_struct, location } => {
                 let ty = KTy::Struct(k_struct);
                 let name = gx.structs[k_struct.id()].name(&gx.outlines).to_string();
-                let result = gx.fresh_symbol(&name, Location::default());
+                let result = gx.fresh_symbol(&name, location.clone());
                 gx.push(KCommand::Node {
                     prim: KPrim::Struct,
                     tys: vec![ty],
                     args: vec![],
                     result_opt: Some(result.clone()),
                     cont_count: 1,
+                    location,
                 });
                 KTerm::Name(result)
             }
@@ -378,6 +384,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
+                location,
             });
 
             KTerm::Name(result)
@@ -452,6 +459,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     args: vec![left, right],
                     result_opt: None,
                     cont_count: 1,
+                    location: location.clone(),
                 });
 
                 new_unit_term(location)
@@ -547,6 +555,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: None,
                 cont_count: 1,
+                location: location.clone(),
             });
 
             new_never_term(location)
@@ -582,7 +591,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("while_result", location.clone());
             let continue_label = gx.fresh_label("continue_", location.clone());
             let next_label = gx.fresh_label("next", location.clone());
-            let unit_term = new_unit_term(location);
+            let unit_term = new_unit_term(location.clone());
 
             gx.loop_map.insert(
                 loop_id_opt.unwrap(),
@@ -604,6 +613,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![k_cond],
                 result_opt: None,
                 cont_count: 2,
+                location,
             });
 
             // body:
@@ -707,6 +717,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     args: vec![KTerm::Return(k_fn), result],
                     result_opt: None,
                     cont_count: 1,
+                    location: location.clone(),
                 });
 
                 let commands = replace(&mut gx.current_commands, parent_commands);

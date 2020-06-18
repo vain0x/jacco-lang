@@ -30,7 +30,10 @@ pub(crate) enum KSymbolExt {
     Symbol(KSymbol),
     Fn(KFn),
     ExternFn(KExternFn),
-    UnitLikeStruct(KStruct),
+    UnitLikeStruct {
+        k_struct: KStruct,
+        location: Location,
+    },
 }
 
 impl KSymbolExt {

@@ -2,7 +2,7 @@ use super::*;
 use std::fmt;
 
 /// 字句データ
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct TokenData {
     kind: TokenKind,
     text: String,
@@ -54,16 +54,6 @@ impl fmt::Debug for TokenData {
             | TokenKind::Str
             | TokenKind::Ident => write!(f, "{:?}", self.text()),
             _ => write!(f, "{:?}", self.kind()),
-        }
-    }
-}
-
-impl Default for TokenData {
-    fn default() -> Self {
-        TokenData {
-            kind: TokenKind::Other,
-            text: String::default(),
-            location: Location::default(),
         }
     }
 }

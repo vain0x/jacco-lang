@@ -253,6 +253,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         ref mut args,
         ref mut results,
         ref mut conts,
+        location: _,
     } = &mut node;
     match prim {
         KPrim::Stuck => unreachable!(),

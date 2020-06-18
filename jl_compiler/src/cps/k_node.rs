@@ -1,25 +1,15 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
+use crate::token::Location;
 use std::fmt::{self, Debug, Formatter};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy>,
     pub(crate) args: Vec<KTerm>,
     pub(crate) results: Vec<KSymbol>,
     pub(crate) conts: Vec<KNode>,
-}
-
-impl Default for KNode {
-    fn default() -> Self {
-        KNode {
-            prim: KPrim::Stuck,
-            tys: vec![],
-            args: vec![],
-            results: vec![],
-            conts: vec![],
-        }
-    }
+    pub(crate) location: Location,
 }
 
 impl Debug for KNode {

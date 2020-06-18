@@ -152,8 +152,6 @@ fn resolve_terms(terms: &mut [KTerm], tx: &mut Tx) -> Vec<KTy> {
 }
 
 fn resolve_node(node: &mut KNode, tx: &mut Tx) {
-    let location = Location::default(); // FIXME: node needs location?
-
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
@@ -165,7 +163,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     result_ty: Box::new(KTy::Never),
                 };
 
-                unify(def_fn_ty, use_fn_ty, location, tx);
+                unify(def_fn_ty, use_fn_ty, node.location.clone(), tx);
             }
             _ => unimplemented!(),
         },
@@ -180,7 +178,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     result_ty: Box::new(result.ty(&tx.locals).to_owned()),
                 };
 
-                unify(def_fn_ty, use_fn_ty, location, tx);
+                unify(def_fn_ty, use_fn_ty, node.location.clone(), tx);
             }
             _ => unimplemented!(),
         },
@@ -191,7 +189,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines)) {
                     let arg_ty = resolve_term(arg, tx);
-                    unify(arg_ty, field.ty(&tx.outlines).clone(), location.clone(), tx);
+                    unify(
+                        arg_ty,
+                        field.ty(&tx.outlines).clone(),
+                        node.location.clone(),
+                        tx,
+                    );
                 }
 
                 resolve_symbol_def(result, Some(ty), tx);
@@ -232,7 +235,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::If => match node.args.as_mut_slice() {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);
-                unify(cond_ty, KTy::I32, location, tx);
+                unify(cond_ty, KTy::I32, node.location.clone(), tx);
             }
             _ => unimplemented!(),
         },
@@ -292,7 +295,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 // FIXME: iNN or uNN
-                unify(left_ty, right_ty, location.clone(), tx);
+                unify(left_ty, right_ty, node.location.clone(), tx);
 
                 // FIXME: left_ty?
                 resolve_symbol_def(result, Some(&KTy::I32), tx);
@@ -305,7 +308,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let left_ty = resolve_term(left, tx);
                     let right_ty = resolve_term(right, tx);
                     // FIXME: Eq/Ord only
-                    unify(left_ty, right_ty, location.clone(), tx);
+                    unify(left_ty, right_ty, node.location.clone(), tx);
 
                     // FIXME: bool
                     resolve_symbol_def(result, Some(&KTy::I32), tx);
@@ -317,7 +320,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             [left, right] => {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
-                unify(left_ty, right_ty.into_ptr(), location.clone(), tx);
+                unify(left_ty, right_ty.into_ptr(), node.location.clone(), tx);
             }
             _ => unimplemented!(),
         },
