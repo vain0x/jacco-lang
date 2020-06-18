@@ -24,3 +24,13 @@ pub fn main() -> i32 {
     // exit code
     0
 }
+
+fn fn_with_params(x: i32, y: i32, _unit: ()) -> i32 {
+    let s = x + y;
+    let t = x - y;
+    s * t
+}
+
+fn fn_with_params_user() {
+    fn_with_params(1, 2, ());
+}

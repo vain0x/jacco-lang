@@ -425,6 +425,20 @@ fn gen_node_as_block(node: KNode, ty_env: &KTyEnv, cx: &mut Cx) -> CBlock {
     CBlock { stmts }
 }
 
+fn gen_fn_sig(
+    params: Vec<KSymbol>,
+    result_ty: KTy,
+    ty_env: &KTyEnv,
+    cx: &mut Cx,
+) -> (Vec<(String, CTy)>, CTy) {
+    let params = params
+        .into_iter()
+        .map(|param| gen_param(param, ty_env, cx))
+        .collect();
+    let result_ty = gen_ty(result_ty, ty_env, cx);
+    (params, result_ty)
+}
+
 fn gen_root(root: KRoot, cx: &mut Cx) {
     let outlines = cx.outlines.clone();
     let empty_ty_env = KTyEnv::default();
@@ -454,13 +468,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.locals = locals;
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
-        let params = params
-            .into_iter()
-            .map(|param| gen_param(param, &empty_ty_env, cx))
-            .collect();
-        let result_ty = gen_ty(extern_fn.result_ty(&outlines).clone(), &empty_ty_env, cx);
+        let name = extern_fn.name(&outlines).to_string();
+        let (params, result_ty) = {
+            let result_ty = extern_fn.result_ty(&outlines).clone();
+            gen_fn_sig(params, result_ty, &empty_ty_env, cx)
+        };
         cx.decls.push(CStmt::ExternFnDecl {
-            name: extern_fn.name(&outlines).to_string(),
+            name,
             params,
             result_ty,
         });
@@ -470,6 +484,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
     for (k_fn, fn_data) in outlines.fns_iter().zip(root.fns) {
         let KFnData {
+            params,
             body,
             locals,
             labels,
@@ -501,11 +516,14 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             }
         });
 
-        let fn_name = k_fn.name(&cx.outlines).to_string();
-        let result_ty = gen_ty(k_fn.result_ty(&outlines).clone(), &ty_env, cx);
+        let name = k_fn.name(&cx.outlines).to_string();
+        let (params, result_ty) = {
+            let result_ty = k_fn.result_ty(&outlines).clone();
+            gen_fn_sig(params, result_ty, &empty_ty_env, cx)
+        };
         cx.decls.push(CStmt::FnDecl {
-            name: fn_name,
-            params: vec![],
+            name,
+            params,
             result_ty,
             body: CBlock { stmts },
         });

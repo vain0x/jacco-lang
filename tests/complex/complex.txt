@@ -55,3 +55,17 @@ next_3:;
 next_4:;
     goto next_3;
 }
+
+int fn_with_params(int x_1, int y_2, void _unit_3) {
+    int add_4 = x_1 + y_2;
+    int s_1 = add_4;
+    int sub_1 = x_1 - y_2;
+    int t_1 = sub_1;
+    int mul_1 = s_1 * t_1;
+    return mul_1;
+}
+
+void fn_with_params_user() {
+    int call_result_1 = fn_with_params_1(1, 2, (void)0);
+    return;
+}

@@ -305,6 +305,51 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     gen_name_with_ty(param.name, ty, gx).expect_symbol()
 }
 
+struct GenFnSigResult {
+    fn_name: String,
+    fn_name_id: usize,
+    params: Vec<KSymbol>,
+    param_tys: Vec<KTy>,
+    result_ty: KTy,
+}
+
+fn gen_fn_sig(
+    name_kind: PNameKind,
+    name_opt: Option<PName>,
+    param_list_opt: Option<PParamList>,
+    result_ty_opt: Option<PTy>,
+    gx: &mut Gx,
+) -> GenFnSigResult {
+    let (fn_name, fn_name_id) = {
+        let mut name = name_opt.unwrap();
+        let name_info = take(&mut name.info_opt).unwrap();
+        assert_eq!(name_info.kind(), name_kind);
+        let (name, _) = name.decompose();
+        (name, name_info.id())
+    };
+    let params = param_list_opt
+        .unwrap()
+        .params
+        .into_iter()
+        .map(|param| gen_param(param, gx))
+        .collect::<Vec<_>>();
+    let param_tys = params
+        .iter()
+        .map(|param| param.ty(&gx.current_locals))
+        .collect();
+    let result_ty = match result_ty_opt {
+        Some(ty) => gen_ty(ty, gx),
+        None => KTy::Unit,
+    };
+    GenFnSigResult {
+        fn_name,
+        fn_name_id,
+        params,
+        param_tys,
+        result_ty,
+    }
+}
+
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
 fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
@@ -680,6 +725,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::Fn(PFnDecl {
             keyword,
             name_opt,
+            param_list_opt,
             result_ty_opt,
             block_opt,
             fn_id_opt,
@@ -690,21 +736,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let parent_locals = take(&mut gx.current_locals);
 
-            let name = {
-                let mut name = name_opt.unwrap();
-                let name_info = take(&mut name.info_opt).unwrap();
-                let (name, _) = name.decompose();
-
-                assert_eq!(name_info.kind(), PNameKind::Fn);
-                assert_eq!(gx.fn_map.get(&name_info.id()).copied(), Some(k_fn));
-
-                name
-            };
-
-            let result_ty = match result_ty_opt {
-                Some(ty) => gen_ty(ty, gx),
-                None => KTy::Unit,
-            };
+            let GenFnSigResult {
+                fn_name,
+                fn_name_id,
+                params,
+                param_tys,
+                result_ty,
+            } = gen_fn_sig(PNameKind::Fn, name_opt, param_list_opt, result_ty_opt, gx);
+            assert_eq!(gx.fn_map.get(&fn_name_id).copied(), Some(k_fn));
 
             let (commands, labels) = {
                 let parent_commands = take(&mut gx.current_commands);
@@ -725,20 +764,19 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 (commands, labels)
             };
 
-            let (node, labels) = fold_block(commands, labels);
+            let (body, labels) = fold_block(commands, labels);
 
             let locals = replace(&mut gx.current_locals, parent_locals);
 
-            // FIXME: generate params
             *gx.outlines.fn_get_mut(k_fn) = KFnOutline {
-                name,
-                param_tys: vec![],
+                name: fn_name,
+                param_tys,
                 result_ty,
                 location,
             };
             gx.fns[k_fn.id()] = KFnData {
-                params: vec![],
-                body: node,
+                params,
+                body,
                 locals,
                 labels,
                 label_sigs: vec![],
@@ -756,27 +794,19 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let parent_locals = take(&mut gx.current_locals);
 
             let location = extern_keyword.location().unite(&fn_keyword.location());
-            let (fn_name, fn_name_id) = {
-                let mut name = name_opt.unwrap();
-                let name_info = take(&mut name.info_opt).unwrap();
-                assert_eq!(name_info.kind(), PNameKind::ExternFn);
-                let (name, _) = name.decompose();
-                (name, name_info.id())
-            };
-            let params = param_list_opt
-                .unwrap()
-                .params
-                .into_iter()
-                .map(|param| gen_param(param, gx))
-                .collect::<Vec<_>>();
-            let param_tys = params
-                .iter()
-                .map(|param| param.ty(&gx.current_locals))
-                .collect();
-            let result_ty = match result_ty_opt {
-                Some(ty) => gen_ty(ty, gx),
-                None => KTy::Unit,
-            };
+            let GenFnSigResult {
+                fn_name,
+                fn_name_id,
+                params,
+                param_tys,
+                result_ty,
+            } = gen_fn_sig(
+                PNameKind::ExternFn,
+                name_opt,
+                param_list_opt,
+                result_ty_opt,
+                gx,
+            );
 
             let locals = replace(&mut gx.current_locals, parent_locals);
 
