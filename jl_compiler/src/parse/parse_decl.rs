@@ -115,6 +115,7 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
         arrow_opt,
         result_ty_opt,
         semi_opt,
+        extern_fn_id_opt: None,
     }
 }
 

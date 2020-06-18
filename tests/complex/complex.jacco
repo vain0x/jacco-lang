@@ -34,3 +34,10 @@ fn fn_with_params(x: i32, y: i32, _unit: ()) -> i32 {
 fn fn_with_params_user() {
     fn_with_params(1, 2, ());
 }
+
+// FIXME: 名前解決が後方の宣言を見ていないので、まだコンパイルできない
+// fn use_extern_fn_defined_later() {
+//     an_extern_fn_defined_later();
+// }
+//
+// extern fn an_extern_fn_defined_later();

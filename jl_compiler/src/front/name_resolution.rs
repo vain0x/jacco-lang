@@ -5,7 +5,7 @@ use crate::{logs::Logger, utils::IdProvider};
 use std::collections::HashMap;
 use std::mem::{replace, take};
 
-/// 関数定義に関する情報
+/// 関数の定義に関する情報
 #[derive(Default)]
 pub(crate) struct NFn {
     fn_name_id_opt: Option<PNameId>,
@@ -17,14 +17,31 @@ impl NFn {
     }
 }
 
+/// 外部関数の定義に関する情報
+#[derive(Default)]
+pub(crate) struct NExternFn {
+    extern_fn_name_id_opt: Option<PNameId>,
+}
+
+impl NExternFn {
+    pub(crate) fn extern_fn_name_id_opt(&self) -> Option<PNameId> {
+        self.extern_fn_name_id_opt
+    }
+}
+
 /// 名前解決の結果。
 pub(crate) struct NameResolution {
     fns: Vec<NFn>,
+    extern_fns: Vec<NExternFn>,
 }
 
 impl NameResolution {
     pub(crate) fn fns(&self) -> &[NFn] {
         &self.fns
+    }
+
+    pub(crate) fn extern_fns(&self) -> &[NExternFn] {
+        &self.extern_fns
     }
 }
 
@@ -36,6 +53,7 @@ struct Nx {
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     fns: Vec<NFn>,
+    extern_fns: Vec<NExternFn>,
     logger: Logger,
 }
 
@@ -49,6 +67,12 @@ impl Nx {
 
     fn fresh_id(&mut self) -> PNameId {
         self.ids.next()
+    }
+
+    fn alloc_extern_fn(&mut self) -> PNameId {
+        let extern_fn_id = self.extern_fns.len();
+        self.extern_fns.push(NExternFn::default());
+        extern_fn_id
     }
 
     fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
@@ -293,6 +317,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, PNameKind::Fn, nx);
+
                     nx.fns[fn_id].fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
                 }
 
@@ -308,10 +333,17 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             name_opt,
             param_list_opt,
             result_ty_opt,
+            extern_fn_id_opt,
             ..
         }) => {
+            let extern_fn_id = nx.alloc_extern_fn();
+            *extern_fn_id_opt = Some(extern_fn_id);
+
             if let Some(name) = name_opt.as_mut() {
                 resolve_name_def(name, PNameKind::ExternFn, nx);
+
+                nx.extern_fns[extern_fn_id].extern_fn_name_id_opt =
+                    name.info_opt.as_ref().map(|info| info.id());
             }
 
             nx.enter_scope(|nx| {
@@ -372,5 +404,8 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution
         resolve_decl(decl, &mut nx);
     }
 
-    NameResolution { fns: nx.fns }
+    NameResolution {
+        fns: nx.fns,
+        extern_fns: nx.extern_fns,
+    }
 }

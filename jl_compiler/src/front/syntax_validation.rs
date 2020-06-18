@@ -390,6 +390,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             arrow_opt,
             result_ty_opt,
             semi_opt,
+            ..
         }) => {
             let location = extern_keyword
                 .location()

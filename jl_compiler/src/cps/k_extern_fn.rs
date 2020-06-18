@@ -35,7 +35,7 @@ impl KExternFn {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
@@ -43,7 +43,7 @@ pub(crate) struct KExternFnOutline {
     pub(crate) location: Location,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) locals: Vec<KLocalData>,

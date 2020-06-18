@@ -789,9 +789,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             name_opt,
             param_list_opt,
             result_ty_opt,
+            extern_fn_id_opt,
             ..
         }) => {
             let parent_locals = take(&mut gx.current_locals);
+            let extern_fn = KExternFn::new(extern_fn_id_opt.unwrap());
 
             let location = extern_keyword.location().unite(&fn_keyword.location());
             let GenFnSigResult {
@@ -810,12 +812,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let locals = replace(&mut gx.current_locals, parent_locals);
 
-            let extern_fn = gx.outlines.extern_fn_new(KExternFnOutline {
+            *gx.outlines.extern_fn_get_mut(extern_fn) = KExternFnOutline {
                 name: fn_name,
                 param_tys,
                 result_ty,
                 location,
-            });
+            };
             gx.extern_fns
                 .insert(extern_fn.id(), KExternFnData { params, locals });
             gx.extern_fn_map.insert(fn_name_id, extern_fn);
@@ -882,7 +884,7 @@ pub(crate) fn cps_conversion(
     logger: Logger,
 ) -> (KRoot, Rc<KOutlines>) {
     let (mut k_root, outlines) = {
-        // 関数IDと関数名の名前IDの対応表を構築する。
+        // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = name_resolution.fns();
         let fn_count = n_fns.len();
         let fns = vec![KFnData::default(); fn_count];
@@ -895,10 +897,30 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
+        // 外部関数の ID, 名前ID の対応表を構築する。
+        let n_extern_fns = name_resolution.extern_fns();
+        let extern_fn_count = n_extern_fns.len();
+        let k_extern_fns = vec![KExternFnData::default(); extern_fn_count];
+        let extern_fn_map = n_extern_fns
+            .iter()
+            .enumerate()
+            .filter_map(|(i, extern_fn)| {
+                extern_fn
+                    .extern_fn_name_id_opt()
+                    .map(|name_id| (name_id, KExternFn::new(i)))
+            })
+            .collect();
+
         let mut gx = Gx::new(logger.clone());
         gx.fns = fns;
         gx.fn_map = fn_name_to_fn_map;
         gx.outlines.fns.resize_with(fn_count, Default::default);
+
+        gx.extern_fns = k_extern_fns;
+        gx.extern_fn_map = extern_fn_map;
+        gx.outlines
+            .extern_fns
+            .resize_with(extern_fn_count, Default::default);
 
         gen_root(p_root, &mut gx);
         (

@@ -644,6 +644,8 @@ pub(crate) struct PFnDecl {
     pub(crate) arrow_opt: Option<TokenData>,
     pub(crate) result_ty_opt: Option<PTy>,
     pub(crate) block_opt: Option<PBlock>,
+
+    /// 名前解決用
     pub(crate) fn_id_opt: Option<usize>,
 }
 
@@ -660,6 +662,9 @@ pub(crate) struct PExternFnDecl {
     pub(crate) arrow_opt: Option<TokenData>,
     pub(crate) result_ty_opt: Option<PTy>,
     pub(crate) semi_opt: Option<TokenData>,
+
+    /// 名前解決用
+    pub(crate) extern_fn_id_opt: Option<usize>,
 }
 
 impl PNode for PExternFnDecl {
