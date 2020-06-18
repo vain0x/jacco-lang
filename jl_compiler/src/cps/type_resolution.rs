@@ -200,7 +200,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     tx.logger.error(result, "struct type required");
                 }
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("{:?}", node),
         },
         KPrim::GetField => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             (

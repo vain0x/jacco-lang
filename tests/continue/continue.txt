@@ -25,8 +25,8 @@ next_1:;
 }
 
 void nested_continue() {
+    // while_result_1 is killed.
     // while_result_2 is killed.
-    // while_result_3 is killed.
     goto continue__1;
 
 continue__1:;

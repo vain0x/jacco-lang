@@ -7,17 +7,20 @@ use std::{
     rc::Rc,
 };
 
+type IdentMap = HashMap<String, IdProvider>;
+
 /// C code generation context.
+#[derive(Default)]
 struct Cx {
     outlines: Rc<KOutlines>,
-    local_ident_id_map: HashMap<KLocal, usize>,
-    fn_ident_id_map: HashMap<KFn, usize>,
-    extern_fn_ident_id_map: HashMap<KExternFn, usize>,
-    struct_id_map: HashMap<usize, usize>,
-    name_map: HashMap<String, IdProvider>,
+    ident_map: HashMap<String, IdProvider>,
+    fn_ident_ids: Vec<Option<usize>>,
+    extern_fn_ident_ids: Vec<Option<usize>>,
+    struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
+    local_ident_ids: Vec<Option<usize>>,
     labels: Vec<KLabelData>,
-    label_ident_id_map: HashMap<KLabel, usize>,
+    label_ident_ids: Vec<Option<usize>>,
     stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
 }
@@ -26,42 +29,8 @@ impl Cx {
     fn new(outlines: Rc<KOutlines>) -> Self {
         Self {
             outlines,
-            local_ident_id_map: Default::default(),
-            fn_ident_id_map: Default::default(),
-            extern_fn_ident_id_map: Default::default(),
-            struct_id_map: Default::default(),
-            name_map: Default::default(),
-            locals: Default::default(),
-            labels: Default::default(),
-            label_ident_id_map: Default::default(),
-            stmts: Default::default(),
-            decls: Default::default(),
+            ..Default::default()
         }
-    }
-
-    fn ident_id(&mut self, name: &str) -> usize {
-        let ids = match self.name_map.get_mut(name) {
-            Some(ids) => ids,
-            None => {
-                self.name_map
-                    .insert(name.to_string(), IdProvider::default());
-                self.name_map.get_mut(name).unwrap()
-            }
-        };
-
-        ids.next()
-    }
-
-    fn struct_ident_id(&mut self, k_struct: KStruct) -> usize {
-        if let Some(&ident_id) = self.struct_id_map.get(&k_struct.id()) {
-            return ident_id;
-        }
-
-        let outlines = self.outlines.clone();
-        let name = k_struct.name(&outlines);
-        let ident_id = self.ident_id(name);
-        self.struct_id_map.insert(k_struct.id(), ident_id);
-        ident_id
     }
 
     fn enter_block(&mut self, gen_fn: impl FnOnce(&mut Self)) -> Vec<CStmt> {
@@ -77,65 +46,79 @@ fn format_unique_name(raw_name: &str, ident_id: usize) -> String {
     format!("{}_{:x}", raw_name, ident_id)
 }
 
+fn do_unique_name(
+    id: usize,
+    raw_name: &str,
+    ident_ids: &mut Vec<Option<usize>>,
+    ident_map: &mut IdentMap,
+) -> String {
+    let ident_id = match ident_ids[id] {
+        Some(ident_id) => ident_id,
+        None => match ident_map.get_mut(raw_name) {
+            Some(ids) => {
+                let ident_id = ids.next();
+                ident_ids[id] = Some(ident_id);
+                ident_id
+            }
+            None => {
+                let mut ids = IdProvider::default();
+                let ident_id = ids.next();
+                ident_ids[id] = Some(ident_id);
+                ident_map.insert(raw_name.to_string(), ids);
+                ident_id
+            }
+        },
+    };
+    format_unique_name(raw_name, ident_id)
+}
+
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
     unique_local_name(symbol.local, cx)
 }
 
-fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
-    let ident_id = match cx.local_ident_id_map.get(&local) {
-        Some(&id) => id,
-        None => {
-            let name = cx.locals[local.id()].name.to_string();
-            let ident_id = cx.ident_id(&name);
-            cx.local_ident_id_map.insert(local, ident_id);
-            ident_id
-        }
-    };
-
-    let name = &cx.locals[local.id()].name;
-    format_unique_name(name, ident_id)
+fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
+    do_unique_name(
+        k_fn.id(),
+        &cx.outlines.fns[k_fn.id()].name,
+        &mut cx.fn_ident_ids,
+        &mut cx.ident_map,
+    )
 }
 
-// FIXME: deduplicate
-fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
-    let ident_id = match cx.fn_ident_id_map.get(&k_fn) {
-        Some(&id) => id,
-        None => {
-            let outlines = cx.outlines.clone();
-            let ident_id = cx.ident_id(k_fn.name(&outlines));
-            cx.fn_ident_id_map.insert(k_fn, ident_id);
-            ident_id
-        }
-    };
-    format_unique_name(k_fn.name(&cx.outlines), ident_id)
+fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
+    do_unique_name(
+        extern_fn.id(),
+        &cx.outlines.extern_fns[extern_fn.id()].name,
+        &mut cx.extern_fn_ident_ids,
+        &mut cx.ident_map,
+    )
+}
+
+fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
+    do_unique_name(
+        k_struct.id(),
+        &cx.outlines.structs[k_struct.id()].name,
+        &mut cx.struct_ident_ids,
+        &mut cx.ident_map,
+    )
+}
+
+fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
+    do_unique_name(
+        local.id(),
+        &cx.locals[local.id()].name,
+        &mut cx.local_ident_ids,
+        &mut cx.ident_map,
+    )
 }
 
 fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
-    let ident_id = match cx.label_ident_id_map.get(&label) {
-        Some(&id) => id,
-        None => {
-            let name = cx.labels[label.id()].name.to_string();
-            let ident_id = cx.ident_id(&name);
-            cx.label_ident_id_map.insert(label, ident_id);
-            ident_id
-        }
-    };
-
-    format_unique_name(&cx.labels[label.id()].name, ident_id)
-}
-
-// FIXME: deduplicate
-fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
-    let ident_id = match cx.extern_fn_ident_id_map.get(&extern_fn) {
-        Some(&id) => id,
-        None => {
-            let outlines = cx.outlines.clone();
-            let ident_id = cx.ident_id(extern_fn.name(&outlines));
-            cx.extern_fn_ident_id_map.insert(extern_fn, ident_id);
-            ident_id
-        }
-    };
-    format_unique_name(extern_fn.name(&cx.outlines), ident_id)
+    do_unique_name(
+        label.id(),
+        &cx.labels[label.id()].name,
+        &mut cx.label_ident_ids,
+        &mut cx.ident_map,
+    )
 }
 
 fn emit_var_decl(symbol: KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
@@ -184,12 +167,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::Unit => CTy::Void,
         KTy::I32 => CTy::Int,
         KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
-        KTy::Struct(k_struct) => {
-            let outlines = cx.outlines.clone();
-            let raw_name = k_struct.name(&outlines);
-            let ident_id = cx.struct_ident_id(k_struct);
-            CTy::Struct(format_unique_name(&raw_name, ident_id))
-        }
+        KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
     }
 }
 
@@ -450,10 +428,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     let outlines = cx.outlines.clone();
     let empty_ty_env = KTyEnv::default();
 
+    cx.fn_ident_ids.resize(outlines.fns.len(), None);
+    cx.extern_fn_ident_ids
+        .resize(outlines.extern_fns.len(), None);
+    cx.struct_ident_ids.resize(outlines.structs.len(), None);
+
     for k_struct in outlines.structs_iter() {
-        let raw_name = k_struct.name(&outlines);
-        let ident_id = cx.struct_ident_id(k_struct);
-        let name = format_unique_name(&raw_name, ident_id);
+        let name = unique_struct_name(k_struct, cx);
         let fields = k_struct
             .fields(&outlines)
             .iter()
@@ -470,7 +451,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
         let KExternFnData { params, locals } = extern_fn_data;
         cx.locals = locals;
-        cx.local_ident_id_map.clear();
+        cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let params = params
             .into_iter()
@@ -495,7 +476,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             ..
         } = fn_data;
         cx.locals = locals;
-        cx.local_ident_id_map.clear();
+        cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let stmts = cx.enter_block(|cx| {
             for id in 0..labels.len() {
@@ -507,6 +488,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             }
 
             cx.labels = labels;
+            cx.label_ident_ids.resize(cx.labels.len(), None);
             gen_node(body, &ty_env, cx);
 
             for id in 0..cx.labels.len() {
