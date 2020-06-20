@@ -82,6 +82,7 @@ fn parse_struct_expr(px: &mut Px) -> PExpr {
 fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
     let term = match px.next() {
         TokenKind::Int => PExpr::Int(PIntExpr { token: px.bump() }),
+        TokenKind::Char => PExpr::Char(PCharExpr { token: px.bump() }),
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
         TokenKind::Ident => parse_struct_expr(px),
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {

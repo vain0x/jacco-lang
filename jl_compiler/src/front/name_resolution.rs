@@ -133,6 +133,9 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
         "i32" => {
             name.info_opt = Some(PNameInfo::I32);
         }
+        "c8" => {
+            name.info_opt = Some(PNameInfo::C8);
+        }
         _ => {
             if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined type");
@@ -172,7 +175,7 @@ fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
 
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
-        PExpr::Int(_) | PExpr::Str(_) => {}
+        PExpr::Int(_) | PExpr::Char(_) | PExpr::Str(_) => {}
         PExpr::Name(PNameExpr(name)) => {
             if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined");

@@ -154,6 +154,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         PExpr::Int(_) => {
             // FIXME: should verify
         }
+        PExpr::Char(_) => {}
         PExpr::Str(_) => {
             // FIXME: should verify
         }

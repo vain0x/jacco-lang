@@ -41,6 +41,7 @@ f_all() {
     f assign
     f unit_like_struct
     f record_struct
+    f char
 }
 
 ONLY=${1:-''}

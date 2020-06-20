@@ -1,0 +1,19 @@
+extern fn putc(c: c8);
+
+pub fn main() -> i32 {
+    putc('h');
+    putc('e');
+    putc('l');
+    putc('l');
+    putc('o');
+    putc(',');
+    putc(' ');
+    putc('w');
+    putc('o');
+    putc('r');
+    putc('l');
+    putc('d');
+    putc('!');
+    putc('\n');
+    0
+}

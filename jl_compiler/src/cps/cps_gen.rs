@@ -223,6 +223,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
 
     match name_info.kind() {
         PNameKind::I32 => KTy::I32,
+        PNameKind::C8 => KTy::C8,
         PNameKind::Struct => {
             let k_struct = *gx.struct_map.get(&name_info.id()).unwrap();
             KTy::Struct(k_struct)
@@ -270,7 +271,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
 
             KSymbolExt::Symbol(KSymbol { local, location })
         }
-        PNameKind::I32 | PNameKind::Struct => {
+        PNameKind::I32 | PNameKind::C8 | PNameKind::Struct => {
             if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
                 if gx.structs[k_struct.id()].fields(&gx.outlines).is_empty() {
                     return KSymbolExt::UnitLikeStruct { k_struct, location };
@@ -380,6 +381,7 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
+        PExpr::Char(PCharExpr { token }) => KTerm::Char(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),

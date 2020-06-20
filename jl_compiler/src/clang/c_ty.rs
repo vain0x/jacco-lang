@@ -1,6 +1,7 @@
 pub(crate) enum CTy {
     Other(&'static str),
     Void,
+    UnsignedChar,
     Int,
     Ptr { ty: Box<CTy> },
     Struct(String),

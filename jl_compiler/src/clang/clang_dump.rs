@@ -65,6 +65,7 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CTy::Other(text) => write!(dx, "{}", text),
         CTy::Void => write!(dx, "void"),
         CTy::Int => write!(dx, "int"),
+        CTy::UnsignedChar => write!(dx, "unsigned char"),
         CTy::Ptr { ty } => {
             write_ty(&ty, dx)?;
             write!(dx, "*")
@@ -96,6 +97,7 @@ fn write_param_list(params: &[(String, CTy)], dx: &mut Dx<impl Write>) -> io::Re
 fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match expr {
         CExpr::IntLit(value) => write!(dx, "{}", value),
+        CExpr::CharLit(value) => write!(dx, "{}", value),
         CExpr::Name(name) => write!(dx, "{}", name),
         CExpr::Dot { left, field } => {
             write_expr(left, dx)?;

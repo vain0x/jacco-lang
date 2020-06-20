@@ -1,0 +1,33 @@
+void putc(unsigned char c_1);
+
+int main() {
+    // call_result_1 is killed.
+    putc('h');
+    // call_result_1 is killed.
+    putc('e');
+    // call_result_2 is killed.
+    putc('l');
+    // call_result_3 is killed.
+    putc('l');
+    // call_result_4 is killed.
+    putc('o');
+    // call_result_5 is killed.
+    putc(',');
+    // call_result_6 is killed.
+    putc(' ');
+    // call_result_7 is killed.
+    putc('w');
+    // call_result_8 is killed.
+    putc('o');
+    // call_result_9 is killed.
+    putc('r');
+    // call_result_a is killed.
+    putc('l');
+    // call_result_b is killed.
+    putc('d');
+    // call_result_c is killed.
+    putc('!');
+    // call_result_d is killed.
+    putc('\n');
+    return 0;
+}

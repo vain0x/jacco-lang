@@ -23,6 +23,11 @@ impl PNameInfo {
         kind: PNameKind::I32,
     };
 
+    pub(crate) const C8: Self = Self {
+        id: usize::MAX,
+        kind: PNameKind::C8,
+    };
+
     pub(crate) fn new(id: PNameId, kind: PNameKind) -> Self {
         Self { id, kind }
     }
@@ -40,6 +45,7 @@ impl PNameInfo {
 pub(crate) enum PNameKind {
     Unresolved,
     I32,
+    C8,
     Fn,
     ExternFn,
     /// Local variable or parameter.
@@ -333,6 +339,15 @@ impl PNode for PIntExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PCharExpr {
+    pub(crate) token: TokenData,
+}
+
+impl PNode for PCharExpr {
+    impl_node_seq! { token }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PStrExpr {
     pub(crate) token: TokenData,
 }
@@ -565,6 +580,7 @@ impl PNode for PLoopExpr {
 #[derive(Clone, Debug)]
 pub(crate) enum PExpr {
     Int(PIntExpr),
+    Char(PCharExpr),
     Str(PStrExpr),
     Name(PNameExpr),
     Struct(PStructExpr),
@@ -593,6 +609,7 @@ impl Default for PExpr {
 impl PNode for PExpr {
     impl_node_choice! {
         PExpr::Int,
+        PExpr::Char,
         PExpr::Str,
         PExpr::Name,
         PExpr::Struct,
