@@ -24,7 +24,7 @@ next_1:;
     return;
 }
 
-void break_with_arg_1() {
+int break_with_arg_1() {
     int loop_result_1;
     goto continue__1;
 

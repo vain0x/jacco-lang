@@ -33,8 +33,8 @@ int main() {
     int left_shift_1 = leftshift_1;
     int rightshift_1 = 1 >> 2;
     int right_shift_1 = rightshift_1;
-    if (2) {
-        if_result_1 = 3;
+    if (1) {
+        if_result_1 = 0;
         goto next_1;
     } else {
         if_result_1 = 0;
@@ -43,11 +43,11 @@ int main() {
 
 next_1:;
     int log_and_1 = if_result_1;
-    if (2) {
+    if (0) {
         if_result_2 = 1;
         goto next_2;
     } else {
-        if_result_2 = 3;
+        if_result_2 = 1;
         goto next_2;
     }
 
@@ -55,7 +55,9 @@ next_2:;
     int log_or_1 = if_result_2;
     int minus_1 = -2;
     int minus_2 = minus_1;
-    int not_1 = !2;
-    int not_2 = not_1;
+    int not_1 = !1;
+    int not_bool_1 = not_1;
+    int not_2 = !2;
+    int not_int_1 = not_2;
     return 0;
 }

@@ -242,7 +242,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::If => match node.args.as_mut_slice() {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);
-                unify(cond_ty, KTy::I32, node.location.clone(), tx);
+                unify(cond_ty, KTy::Bool, node.location.clone(), tx);
             }
             _ => unimplemented!(),
         },
@@ -317,8 +317,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // FIXME: Eq/Ord only
                     unify(left_ty, right_ty, node.location.clone(), tx);
 
-                    // FIXME: bool
-                    resolve_symbol_def(result, Some(&KTy::I32), tx);
+                    resolve_symbol_def(result, Some(&KTy::Bool), tx);
                 }
                 _ => unimplemented!(),
             }

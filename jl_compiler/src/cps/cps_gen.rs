@@ -126,16 +126,20 @@ impl Gx {
     }
 }
 
-fn new_int_term(value: i64, location: Location) -> KTerm {
-    KTerm::Int(TokenData::new(TokenKind::Int, value.to_string(), location))
-}
-
 fn new_false_term(location: Location) -> KTerm {
-    new_int_term(0, location)
+    KTerm::False(TokenData::new(
+        TokenKind::False,
+        "false".to_string(),
+        location,
+    ))
 }
 
 fn new_true_term(location: Location) -> KTerm {
-    new_int_term(1, location)
+    KTerm::True(TokenData::new(
+        TokenKind::True,
+        "true".to_string(),
+        location,
+    ))
 }
 
 fn new_unit_term(location: Location) -> KTerm {

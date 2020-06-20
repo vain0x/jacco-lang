@@ -12,18 +12,18 @@ int main() {
     }
 
 next_1:;
-    if (2) {
+    if (1) {
         goto next_2;
     } else {
         goto next_2;
     }
 
 next_2:;
-    if (3) {
+    if (1) {
         int body3_1 = 30;
         goto next_3;
     } else {
-        if (4) {
+        if (1) {
             int alt31_1 = 31;
             goto next_4;
         } else {

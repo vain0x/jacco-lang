@@ -1,5 +1,5 @@
 fn break_from_while() {
-    while 1 {
+    while (true) {
         break;
     }
 }
@@ -10,7 +10,7 @@ fn break_from_loop() {
     }
 }
 
-fn break_with_arg() {
+fn break_with_arg() -> i32 {
     loop {
         break 2;
     }

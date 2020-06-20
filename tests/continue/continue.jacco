@@ -1,5 +1,5 @@
 fn continue_in_while() {
-    while 0 {
+    while (false) {
         continue;
     }
 }
@@ -11,8 +11,8 @@ fn continue_in_loop() {
 }
 
 fn nested_continue() {
-    while 0 {
-        while 0 {
+    while (false) {
+        while (false) {
             continue;
         }
 
