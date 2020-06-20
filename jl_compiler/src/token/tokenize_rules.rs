@@ -87,6 +87,12 @@ fn tokenize_number(tx: &mut Tx) {
         }
     }
 
+    if tx.next() == 'i' {
+        if !tx.eat("i32") {
+            tx.eat("i64");
+        }
+    }
+
     tx.commit(kind);
 }
 

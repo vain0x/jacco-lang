@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Clone)]
 pub(crate) enum KTerm {
     Unit { location: Location },
-    Int(TokenData),
+    Int(TokenData, KTy),
     Char(TokenData),
     True(TokenData),
     False(TokenData),
@@ -21,7 +21,7 @@ impl fmt::Debug for KTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
-            KTerm::Int(token) => write!(f, "{}", token.text()),
+            KTerm::Int(token, _) => write!(f, "{}", token.text()),
             KTerm::Char(token) => write!(f, "{}", token.text()),
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),

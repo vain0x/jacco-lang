@@ -386,7 +386,7 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
 
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Int(PIntExpr { token }) => KTerm::Int(token),
+        PExpr::Int(PIntExpr { token }) => KTerm::Int(token, KTy::Unresolved),
         PExpr::Char(PCharExpr { token }) => KTerm::Char(token),
         PExpr::Str(..) => unimplemented!(),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token),

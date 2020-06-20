@@ -1,6 +1,9 @@
 int main() {
-    int p_1 = 1000000007;
+    int n32_1 = 1000000007;
+    long long n64_1 = 1000000007LL;
     long long cast_1 = (long long)1000;
-    long long k_1 = cast_1;
+    long long cast_64_1 = cast_1;
+    long long mul_1 = n64_1 * cast_64_1;
+    long long mul_64_1 = mul_1;
     return 0;
 }

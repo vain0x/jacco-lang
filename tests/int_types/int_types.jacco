@@ -1,6 +1,8 @@
 pub fn main() -> i32 {
-    let p = 1_000_000_007;
+    let n32 = 1_000_000_007_i32;
+    let n64 = 1_000_000_007_i64;
 
-    let k = 1000 as i64;
+    let cast_64 = 1000 as i64;
+    let mul_64 = n64 * cast_64;
     0
 }

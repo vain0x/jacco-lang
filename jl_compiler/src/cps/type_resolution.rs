@@ -141,7 +141,18 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
     match term {
         KTerm::Unit { .. } => KTy::Unit,
-        KTerm::Int(_) => KTy::I32,
+        KTerm::Int(token, ty) => {
+            if ty.is_unresolved() {
+                if token.text().ends_with("i64") {
+                    *ty = KTy::I64;
+                } else {
+                    // FIXME: untyped int
+                    *ty = KTy::I32
+                }
+            }
+            assert!(ty.is_primitive());
+            ty.clone()
+        }
         KTerm::Char(_) => KTy::C8,
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
@@ -324,10 +335,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 // FIXME: iNN or uNN
-                unify(left_ty, right_ty, node.location.clone(), tx);
+                unify(left_ty.clone(), right_ty, node.location.clone(), tx);
 
-                // FIXME: left_ty?
-                resolve_symbol_def(result, Some(&KTy::I32), tx);
+                resolve_symbol_def(result, Some(&left_ty), tx);
             }
             _ => unimplemented!(),
         },

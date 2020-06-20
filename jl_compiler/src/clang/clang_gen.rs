@@ -185,7 +185,12 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             // FIXME: error!
             CExpr::IntLit("(void)0".to_string())
         }
-        KTerm::Int(token) => CExpr::IntLit(token.into_text().replace("_", "")),
+        KTerm::Int(token, KTy::I64) => {
+            CExpr::LongLongLit(token.into_text().replace("_", "").replace("i64", ""))
+        }
+        KTerm::Int(token, _) => {
+            CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))
+        }
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
         KTerm::False(_) => CExpr::IntLit("0".to_string()),
