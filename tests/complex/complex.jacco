@@ -35,9 +35,38 @@ fn fn_with_params_user() {
     fn_with_params(1, 2, ());
 }
 
-// FIXME: 名前解決が後方の宣言を見ていないので、まだコンパイルできない
-// fn use_extern_fn_defined_later() {
-//     an_extern_fn_defined_later();
+fn use_fn_declared_later() -> i32 {
+    let x = a_fn_declared_later();
+    x + 2
+}
+
+fn a_fn_declared_later() -> i32 {
+    40
+}
+
+fn use_extern_fn_declared_later() {
+    an_extern_fn_declared_later();
+}
+
+extern fn an_extern_fn_declared_later();
+
+// FIXME: コンパイルできない (panic する)
+// struct StructWithFieldOfStructDeclaredLater {
+//     sdl_field: StructDeclaredLater,
 // }
 //
-// extern fn an_extern_fn_defined_later();
+// struct StructDeclaredLater {
+//     sdl_content: i32,
+// }
+
+// FIXME: コンパイルすると不正なコードが生成される
+// fn use_struct_defined_later() -> i32 {
+//     let it = StructDeclaredLater {
+//         sdl_content: 1,
+//     };
+//     it.sdl_content
+// }
+//
+// struct StructDeclaredLater {
+//     sdl_content: i32,
+// }

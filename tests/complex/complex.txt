@@ -1,3 +1,5 @@
+void an_extern_fn_declared_later();
+
 int main() {
     // if_result_1 is killed.
     // if_result_2 is killed.
@@ -67,5 +69,22 @@ int fn_with_params_1(int x_1, int y_2, void _unit_3) {
 
 void fn_with_params_user_1() {
     int call_result_1 = fn_with_params_1(1, 2, (void)0);
+    return;
+}
+
+int use_fn_declared_later_1() {
+    int call_result_1 = a_fn_declared_later_1();
+    int x_1 = call_result_1;
+    int add_1 = x_1 + 2;
+    return add_1;
+}
+
+int a_fn_declared_later_1() {
+    return 40;
+}
+
+void use_extern_fn_declared_later_1() {
+    // call_result_2 is killed.
+    an_extern_fn_declared_later();
     return;
 }

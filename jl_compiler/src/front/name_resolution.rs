@@ -69,6 +69,12 @@ impl Nx {
         self.ids.next()
     }
 
+    fn alloc_fn(&mut self) -> usize {
+        let fn_id = self.fns.len();
+        self.fns.push(NFn::default());
+        fn_id
+    }
+
     fn alloc_extern_fn(&mut self) -> PNameId {
         let extern_fn_id = self.extern_fns.len();
         self.extern_fns.push(NExternFn::default());
@@ -76,6 +82,7 @@ impl Nx {
     }
 
     fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
+        // FIXME: 効率化
         let outer_env = self.env.clone();
 
         do_resolve(self);
@@ -92,14 +99,11 @@ impl Nx {
         self.parent_loop = parent_loop;
     }
 
-    fn enter_fn(&mut self, do_resolve: impl FnOnce(&mut Nx, usize)) {
-        let fn_id = self.fns.len();
-        self.fns.push(NFn::default());
-
+    fn enter_fn(&mut self, fn_id: usize, do_resolve: impl FnOnce(&mut Nx)) {
         let parent_loop = take(&mut self.parent_loop);
         let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
 
-        do_resolve(self, fn_id);
+        do_resolve(self);
 
         self.parent_loop = parent_loop;
         self.parent_fn = parent_fn;
@@ -289,6 +293,68 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
     }
 }
 
+fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
+    // 再帰的に定義される宣言を先に環境に加える。
+    // FIXME: 同じスコープに同じ名前の再帰的な宣言があったらコンパイルエラー
+    for decl in decls.iter_mut() {
+        match decl {
+            PDecl::Fn(PFnDecl {
+                name_opt,
+                fn_id_opt,
+                ..
+            }) => {
+                let fn_id = nx.alloc_fn();
+                *fn_id_opt = Some(fn_id);
+
+                if let Some(name) = name_opt {
+                    resolve_name_def(name, PNameKind::Fn, nx);
+
+                    nx.fns[fn_id].fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+                }
+            }
+            PDecl::ExternFn(PExternFnDecl {
+                name_opt,
+                extern_fn_id_opt,
+                ..
+            }) => {
+                let extern_fn_id = nx.alloc_extern_fn();
+                *extern_fn_id_opt = Some(extern_fn_id);
+
+                if let Some(name) = name_opt.as_mut() {
+                    resolve_name_def(name, PNameKind::ExternFn, nx);
+
+                    nx.extern_fns[extern_fn_id].extern_fn_name_id_opt =
+                        name.info_opt.as_ref().map(|info| info.id());
+                }
+            }
+            PDecl::Struct(PStructDecl {
+                name_opt,
+                variant_opt,
+                ..
+            }) => {
+                if let Some(name) = name_opt.as_mut() {
+                    resolve_name_def(name, PNameKind::Struct, nx);
+                }
+
+                nx.enter_scope(|nx| match variant_opt {
+                    Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
+                        for field in fields {
+                            resolve_name_def(&mut field.name, PNameKind::Field, nx);
+                            resolve_ty_opt(field.ty_opt.as_mut(), nx);
+                        }
+                    }
+                    None => {}
+                });
+            }
+            PDecl::Expr(_) | PDecl::Let(_) => {}
+        }
+    }
+
+    for decl in decls.iter_mut() {
+        resolve_decl(decl, nx);
+    }
+}
+
 fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
     match decl {
         PDecl::Expr(PExprDecl { expr, .. }) => {
@@ -305,22 +371,15 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_pat_opt(name_opt.as_mut(), nx)
         }
         PDecl::Fn(PFnDecl {
-            name_opt,
             param_list_opt,
             result_ty_opt,
             block_opt,
             fn_id_opt,
             ..
         }) => {
-            nx.enter_fn(|nx, fn_id| {
-                *fn_id_opt = Some(fn_id);
+            let fn_id = fn_id_opt.unwrap();
 
-                if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, PNameKind::Fn, nx);
-
-                    nx.fns[fn_id].fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
-                }
-
+            nx.enter_fn(fn_id, |nx| {
                 nx.enter_scope(|nx| {
                     resolve_param_list_opt(param_list_opt.as_mut(), nx);
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
@@ -330,46 +389,16 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             });
         }
         PDecl::ExternFn(PExternFnDecl {
-            name_opt,
             param_list_opt,
             result_ty_opt,
-            extern_fn_id_opt,
             ..
         }) => {
-            let extern_fn_id = nx.alloc_extern_fn();
-            *extern_fn_id_opt = Some(extern_fn_id);
-
-            if let Some(name) = name_opt.as_mut() {
-                resolve_name_def(name, PNameKind::ExternFn, nx);
-
-                nx.extern_fns[extern_fn_id].extern_fn_name_id_opt =
-                    name.info_opt.as_ref().map(|info| info.id());
-            }
-
             nx.enter_scope(|nx| {
                 resolve_param_list_opt(param_list_opt.as_mut(), nx);
                 resolve_ty_opt(result_ty_opt.as_mut(), nx);
             });
         }
-        PDecl::Struct(PStructDecl {
-            name_opt,
-            variant_opt,
-            ..
-        }) => {
-            if let Some(name) = name_opt.as_mut() {
-                resolve_name_def(name, PNameKind::Struct, nx);
-            }
-
-            nx.enter_scope(|nx| match variant_opt {
-                Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
-                    for field in fields {
-                        resolve_name_def(&mut field.name, PNameKind::Field, nx);
-                        resolve_ty_opt(field.ty_opt.as_mut(), nx);
-                    }
-                }
-                None => {}
-            });
-        }
+        PDecl::Struct(_) => {}
     }
 }
 
@@ -381,9 +410,7 @@ fn resolve_expr_opt(expr_opt: Option<&mut PExpr>, nx: &mut Nx) {
 
 fn resolve_block(block: &mut PBlock, nx: &mut Nx) {
     nx.enter_scope(|nx| {
-        for decl in &mut block.decls {
-            resolve_decl(decl, nx);
-        }
+        resolve_decls(&mut block.decls, nx);
 
         if let Some(last) = &mut block.last_opt {
             resolve_expr(last, nx);
@@ -400,9 +427,7 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
 pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution {
     let mut nx = Nx::new(logger);
 
-    for decl in &mut p_root.decls {
-        resolve_decl(decl, &mut nx);
-    }
+    resolve_decls(&mut p_root.decls, &mut nx);
 
     NameResolution {
         fns: nx.fns,
