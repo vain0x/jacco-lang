@@ -151,6 +151,12 @@ impl<'a> TryAsElementRef<'a> for &'a TokenData {
     }
 }
 
+impl<'a, A> TryAsElementRef<'a> for &'a (A, TokenData) {
+    fn try_as_element_ref(self) -> Option<PElementRef<'a>> {
+        Some(PElementRef::Token(&self.1))
+    }
+}
+
 impl<'a, N: PNode> TryAsElementRef<'a> for &'a N {
     fn try_as_element_ref(self) -> Option<PElementRef<'a>> {
         Some(PElementRef::Node(self))
@@ -179,6 +185,12 @@ pub(crate) trait TryAsElementMut<'a> {
 impl<'a> TryAsElementMut<'a> for &'a mut TokenData {
     fn try_as_element_mut(self) -> Option<PElementMut<'a>> {
         Some(PElementMut::Token(self))
+    }
+}
+
+impl<'a, A> TryAsElementMut<'a> for &'a mut (A, TokenData) {
+    fn try_as_element_mut(self) -> Option<PElementMut<'a>> {
+        Some(PElementMut::Token(&mut self.1))
     }
 }
 

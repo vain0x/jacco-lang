@@ -638,6 +638,7 @@ impl PNode for PLetDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PFnDecl {
+    pub(crate) vis_opt: Option<PVis>,
     pub(crate) keyword: TokenData,
     pub(crate) name_opt: Option<PName>,
     pub(crate) param_list_opt: Option<PParamList>,
@@ -650,7 +651,7 @@ pub(crate) struct PFnDecl {
 }
 
 impl PNode for PFnDecl {
-    impl_node_seq! { keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, block_opt }
+    impl_node_seq! { vis_opt, keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, block_opt }
 }
 
 #[derive(Clone, Debug)]

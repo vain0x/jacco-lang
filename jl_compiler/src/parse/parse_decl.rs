@@ -1,6 +1,7 @@
 //! 宣言の構文解析ルール
 
 use super::*;
+use p_vis::Vis;
 
 fn parse_param_list(px: &mut Px) -> Option<PParamList> {
     let left_paren = px.eat(TokenKind::LeftParen)?;
@@ -79,7 +80,7 @@ fn parse_let_decl(px: &mut Px) -> PLetDecl {
     }
 }
 
-fn parse_fn_decl(px: &mut Px) -> PFnDecl {
+fn parse_fn_decl(vis_opt: Option<PVis>, px: &mut Px) -> PFnDecl {
     let keyword = px.expect(TokenKind::Fn);
 
     let name_opt = parse_name(px);
@@ -88,6 +89,7 @@ fn parse_fn_decl(px: &mut Px) -> PFnDecl {
     let block_opt = parse_block(px);
 
     PFnDecl {
+        vis_opt,
         keyword,
         name_opt,
         param_list_opt,
@@ -200,10 +202,25 @@ fn parse_struct_decl(px: &mut Px) -> PStructDecl {
     }
 }
 
+fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
+    let decl = match px.next() {
+        TokenKind::Fn => PDecl::Fn(parse_fn_decl(Some(vis), px)),
+        _ => {
+            px.logger().error(&vis.1, "unexpected visibility");
+            return None;
+        }
+    };
+    Some(decl)
+}
+
 pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     let decl = match px.next() {
+        TokenKind::Pub => {
+            let vis = (Vis::Pub, px.bump());
+            return parse_decl_with_vis(vis, px);
+        }
         TokenKind::Let => PDecl::Let(parse_let_decl(px)),
-        TokenKind::Fn => PDecl::Fn(parse_fn_decl(px)),
+        TokenKind::Fn => PDecl::Fn(parse_fn_decl(None, px)),
         TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
             PDecl::ExternFn(parse_extern_fn_decl(px))
         }
@@ -218,8 +235,6 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Opti
     let mut last_opt = None;
 
     loop {
-        px.eat(TokenKind::Pub);
-
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Semi => {
