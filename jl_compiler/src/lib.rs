@@ -150,7 +150,7 @@ mod parse {
     pub(crate) use p_element::{PElementMut, PElementRef};
     pub(crate) use p_node::{try_as_element_mut, try_as_element_ref, PNode};
     pub(crate) use p_unary_op::PUnaryOp;
-    pub(crate) use p_vis::PVis;
+    pub(crate) use p_vis::{PVis, Vis};
     pub(crate) use parse_decl::parse_tokens;
     pub(crate) use parse_tree::*;
 

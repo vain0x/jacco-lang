@@ -1,7 +1,6 @@
 //! 宣言の構文解析ルール
 
 use super::*;
-use p_vis::Vis;
 
 fn parse_param_list(px: &mut Px) -> Option<PParamList> {
     let left_paren = px.eat(TokenKind::LeftParen)?;

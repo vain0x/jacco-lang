@@ -723,6 +723,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
         PDecl::Fn(PFnDecl {
+            vis_opt,
             keyword,
             name_opt,
             param_list_opt,
@@ -733,6 +734,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         }) => {
             let location = keyword.into_location();
             let k_fn = KFn::new(fn_id_opt.unwrap());
+
+            let vis_opt = vis_opt.map(|(vis, _)| vis);
 
             let parent_locals = take(&mut gx.current_locals);
 
@@ -770,6 +773,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             *gx.outlines.fn_get_mut(k_fn) = KFnOutline {
                 name: fn_name,
+                vis_opt,
                 param_tys,
                 result_ty,
                 location,
