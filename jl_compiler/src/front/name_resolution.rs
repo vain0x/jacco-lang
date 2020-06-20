@@ -136,6 +136,9 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
         "i64" => {
             name.info_opt = Some(PNameInfo::I64);
         }
+        "usize" => {
+            name.info_opt = Some(PNameInfo::USIZE);
+        }
         "c8" => {
             name.info_opt = Some(PNameInfo::C8);
         }

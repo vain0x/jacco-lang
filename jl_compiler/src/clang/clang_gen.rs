@@ -167,6 +167,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::Unit => CTy::Void,
         KTy::I32 | KTy::Bool => CTy::Int,
         KTy::I64 => CTy::LongLong,
+        KTy::Usize => CTy::UnsignedLongLong,
         KTy::C8 => CTy::UnsignedChar,
         KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
@@ -187,6 +188,9 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token, KTy::I64) => {
             CExpr::LongLongLit(token.into_text().replace("_", "").replace("i64", ""))
+        }
+        KTerm::Int(token, KTy::Usize) => {
+            CExpr::UnsignedLongLongLit(token.into_text().replace("_", "").replace("usize", ""))
         }
         KTerm::Int(token, _) => {
             CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))

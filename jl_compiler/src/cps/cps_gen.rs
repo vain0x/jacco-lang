@@ -277,7 +277,12 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
 
             KSymbolExt::Symbol(KSymbol { local, location })
         }
-        PNameKind::Bool | PNameKind::I32 | PNameKind::I64 | PNameKind::C8 | PNameKind::Struct => {
+        PNameKind::I32
+        | PNameKind::I64
+        | PNameKind::Usize
+        | PNameKind::C8
+        | PNameKind::Bool
+        | PNameKind::Struct => {
             if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
                 if gx.structs[k_struct.id()].fields(&gx.outlines).is_empty() {
                     return KSymbolExt::UnitLikeStruct { k_struct, location };

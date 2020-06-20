@@ -9,6 +9,7 @@ pub(crate) enum KTy {
     Unit,
     I32,
     I64,
+    Usize,
     /// Code unit of UTF-8 (unsigned 8-bit integer)
     C8,
     Bool,
@@ -39,7 +40,7 @@ impl KTy {
 
     pub(crate) fn is_primitive(&self) -> bool {
         match self {
-            KTy::I32 | KTy::I64 | KTy::C8 | KTy::Bool | KTy::Ptr { .. } => true,
+            KTy::I32 | KTy::I64 | KTy::Usize | KTy::C8 | KTy::Bool | KTy::Ptr { .. } => true,
             _ => false,
         }
     }
@@ -79,6 +80,7 @@ impl Debug for KTy {
             KTy::Bool => write!(f, "bool"),
             KTy::I32 => write!(f, "i32"),
             KTy::I64 => write!(f, "i64"),
+            KTy::Usize => write!(f, "usize"),
             KTy::C8 => write!(f, "c8"),
             KTy::Ptr { ty } => {
                 write!(f, "*")?;

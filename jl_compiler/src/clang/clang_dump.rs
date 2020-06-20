@@ -66,6 +66,7 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CTy::Void => write!(dx, "void"),
         CTy::Int => write!(dx, "int"),
         CTy::LongLong => write!(dx, "long long"),
+        CTy::UnsignedLongLong => write!(dx, "unsigned long long"),
         CTy::UnsignedChar => write!(dx, "unsigned char"),
         CTy::Ptr { ty } => {
             write_ty(&ty, dx)?;
@@ -99,6 +100,7 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match expr {
         CExpr::IntLit(value) => write!(dx, "{}", value),
         CExpr::LongLongLit(value) => write!(dx, "{}LL", value),
+        CExpr::UnsignedLongLongLit(value) => write!(dx, "{}ULL", value),
         CExpr::CharLit(value) => write!(dx, "{}", value),
         CExpr::Name(name) => write!(dx, "{}", name),
         CExpr::Dot { left, field } => {

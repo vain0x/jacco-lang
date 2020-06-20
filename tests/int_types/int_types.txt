@@ -1,6 +1,7 @@
 int main() {
     int n32_1 = 1000000007;
     long long n64_1 = 1000000007LL;
+    unsigned long long n_usize_1 = 1000000007ULL;
     long long cast_1 = (long long)1000;
     long long cast_64_1 = cast_1;
     long long mul_1 = n64_1 * cast_64_1;
