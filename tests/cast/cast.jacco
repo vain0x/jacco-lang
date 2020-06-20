@@ -1,0 +1,23 @@
+extern fn assert_ok(cond: bool);
+
+pub fn main() -> i32 {
+    // from i32
+    let n: i32 = 1;
+    assert_ok(n as i32 == n);
+    assert_ok(n as c8 == '\x01');
+    assert_ok(n as bool == true);
+
+    // from c8
+    let c: c8 = '\x01';
+    assert_ok(c as i32 == n);
+    assert_ok(c as c8 == c);
+    assert_ok(c as bool == true);
+
+    // from bool
+    let b: bool = true;
+    assert_ok(b as i32 == n);
+    assert_ok(b as c8 == '\x01');
+    assert_ok(b as bool == b);
+
+    0
+}

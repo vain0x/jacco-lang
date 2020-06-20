@@ -30,6 +30,7 @@ pub(crate) enum KPrim {
     Le,
     Gt,
     Ge,
+    Cast,
     Assign,
 }
 

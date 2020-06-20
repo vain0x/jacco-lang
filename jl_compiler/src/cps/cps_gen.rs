@@ -487,6 +487,29 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
+        PExpr::As(PAsExpr {
+            left,
+            keyword,
+            ty_opt,
+            ..
+        }) => {
+            let location = keyword.location();
+            let result = gx.fresh_symbol("cast", location.clone());
+
+            let left = gen_expr(*left, gx);
+            let ty = gen_ty(ty_opt.unwrap(), gx);
+
+            gx.push(KCommand::Node {
+                prim: KPrim::Cast,
+                tys: vec![ty],
+                args: vec![left],
+                result_opt: Some(result.clone()),
+                cont_count: 1,
+                location,
+            });
+
+            KTerm::Name(result)
+        }
         PExpr::UnaryOp(PUnaryOpExpr {
             op,
             arg_opt,

@@ -123,6 +123,25 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
     }
 }
 
+fn parse_as_expr(px: &mut Px) -> Option<PExpr> {
+    let mut left = parse_suffix_expr(px)?;
+
+    loop {
+        match px.next() {
+            TokenKind::As => {
+                let keyword = px.bump();
+                let ty_opt = parse_ty(px);
+                left = PExpr::As(PAsExpr {
+                    left: Box::new(left),
+                    keyword,
+                    ty_opt,
+                });
+            }
+            _ => return Some(left),
+        }
+    }
+}
+
 fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
     let parse_right = |op, px: &mut Px| {
         let op_token = px.bump();
@@ -140,7 +159,7 @@ fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::Bang => parse_right(PUnaryOp::Not, px),
         TokenKind::Minus => parse_right(PUnaryOp::Minus, px),
         TokenKind::Star => parse_right(PUnaryOp::Deref, px),
-        _ => parse_suffix_expr(px),
+        _ => parse_as_expr(px),
     }
 }
 

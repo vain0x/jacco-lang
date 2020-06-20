@@ -208,6 +208,10 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
                 resolve_expr(&mut arg.expr, nx);
             }
         }
+        PExpr::As(PAsExpr { left, ty_opt, .. }) => {
+            resolve_expr(left, nx);
+            resolve_ty_opt(ty_opt.as_mut(), nx);
+        }
         PExpr::UnaryOp(PUnaryOpExpr { arg_opt, .. }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
         }

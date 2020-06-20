@@ -43,6 +43,7 @@ f_all() {
     f record_struct
     f char
     f bool
+    f cast
 }
 
 ONLY=${1:-''}

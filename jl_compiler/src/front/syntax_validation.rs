@@ -203,6 +203,18 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_expr(&left, vx);
             validate_arg_list(arg_list, vx);
         }
+        PExpr::As(PAsExpr {
+            left,
+            keyword,
+            ty_opt,
+        }) => {
+            validate_expr(&left, vx);
+            validate_ty_opt(ty_opt.as_ref(), vx);
+
+            if ty_opt.is_none() {
+                vx.logger.error(keyword, "maybe missed a type?");
+            }
+        }
         PExpr::UnaryOp(PUnaryOpExpr {
             arg_opt, location, ..
         }) => match arg_opt.as_deref() {

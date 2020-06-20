@@ -488,6 +488,17 @@ impl PNode for PCallExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PAsExpr {
+    pub(crate) left: Box<PExpr>,
+    pub(crate) keyword: TokenData,
+    pub(crate) ty_opt: Option<PTy>,
+}
+
+impl PNode for PAsExpr {
+    impl_node_seq! { left, keyword, ty_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PUnaryOpExpr {
     pub(crate) op: PUnaryOp,
     pub(crate) arg_opt: Option<Box<PExpr>>,
@@ -609,6 +620,7 @@ pub(crate) enum PExpr {
     Tuple(PTupleExpr),
     DotField(PDotFieldExpr),
     Call(PCallExpr),
+    As(PAsExpr),
     UnaryOp(PUnaryOpExpr),
     BinaryOp(PBinaryOpExpr),
     Block(PBlockExpr),
@@ -640,6 +652,7 @@ impl PNode for PExpr {
         PExpr::Tuple,
         PExpr::DotField,
         PExpr::Call,
+        PExpr::As,
         PExpr::UnaryOp,
         PExpr::BinaryOp,
         PExpr::Block,

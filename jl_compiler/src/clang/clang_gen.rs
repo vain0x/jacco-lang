@@ -397,6 +397,20 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, ty_env, cx),
         KPrim::LeftShift => gen_binary_op(CBinaryOp::LeftShift, args, results, conts, ty_env, cx),
         KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, ty_env, cx),
+        KPrim::Cast => match (
+            args.as_mut_slice(),
+            results.as_mut_slice(),
+            conts.as_mut_slice(),
+        ) {
+            ([arg], [result], [cont]) => {
+                let arg = gen_term(take(arg), cx);
+                let result_ty = gen_ty(result.ty(&cx.locals), ty_env, cx);
+                let expr = arg.into_cast(result_ty);
+                emit_var_decl(take(result), Some(expr), ty_env, cx);
+                gen_node(take(cont), ty_env, cx);
+            }
+            _ => unimplemented!(),
+        },
         KPrim::Assign => match (args.as_mut_slice(), conts.as_mut_slice()) {
             ([left, right], [cont]) => {
                 match left {

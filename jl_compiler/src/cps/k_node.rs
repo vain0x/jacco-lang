@@ -1,5 +1,5 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
-use crate::token::Location;
+use crate::token::{HaveLocation, Location};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone, Default)]
@@ -65,5 +65,11 @@ impl Debug for KNode {
 
             write!(f, ")")
         }
+    }
+}
+
+impl HaveLocation for KNode {
+    fn location(&self) -> Location {
+        self.location.clone()
     }
 }

@@ -272,6 +272,26 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
+        KPrim::Cast => match (
+            node.tys.as_mut_slice(),
+            node.args.as_mut_slice(),
+            node.results.as_mut_slice(),
+        ) {
+            ([ty], [arg], [result]) => {
+                let arg_ty = resolve_term(arg, tx);
+                resolve_symbol_def(result, Some(ty), tx);
+
+                // FIXME: 同じ型へのキャストは警告?
+                if let KTy::Unresolved | KTy::Never = arg_ty {
+                    // Skip.
+                } else if !arg_ty.is_primitive() {
+                    tx.logger.error(node, "can't cast from non-primitive type");
+                } else if !ty.is_primitive() {
+                    tx.logger.error(node, "can't cast to non-primitive type");
+                }
+            }
+            _ => unimplemented!(),
+        },
         KPrim::Minus => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);

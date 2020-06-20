@@ -1,4 +1,4 @@
-use super::{CBinaryOp, CStmt, CUnaryOp};
+use super::{CBinaryOp, CStmt, CTy, CUnaryOp};
 
 pub(crate) enum CExpr {
     IntLit(String),
@@ -15,6 +15,10 @@ pub(crate) enum CExpr {
     Call {
         left: Box<CExpr>,
         args: Vec<CExpr>,
+    },
+    Cast {
+        ty: CTy,
+        arg: Box<CExpr>,
     },
     UnaryOp {
         op: CUnaryOp,
@@ -53,6 +57,13 @@ impl CExpr {
         CExpr::Call {
             left: Box::new(self),
             args: args.collect(),
+        }
+    }
+
+    pub(crate) fn into_cast(self, ty: CTy) -> CExpr {
+        CExpr::Cast {
+            ty,
+            arg: Box::new(self),
         }
     }
 

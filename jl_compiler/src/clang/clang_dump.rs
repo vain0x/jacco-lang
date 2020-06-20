@@ -121,6 +121,12 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
 
             write!(dx, ")")
         }
+        CExpr::Cast { ty, arg } => {
+            write!(dx, "(")?;
+            write_ty(ty, dx)?;
+            write!(dx, ")")?;
+            write_expr(arg, dx)
+        }
         CExpr::UnaryOp { op, arg } => {
             write!(dx, "{}", op.as_str())?;
             write_expr(arg, dx)

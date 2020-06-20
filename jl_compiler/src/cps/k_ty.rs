@@ -36,6 +36,13 @@ impl KTy {
         }
     }
 
+    pub(crate) fn is_primitive(&self) -> bool {
+        match self {
+            KTy::I32 | KTy::C8 | KTy::Bool | KTy::Ptr { .. } => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn as_ptr(self) -> Option<KTy> {
         match self {
             KTy::Ptr { ty } => Some(*ty),
