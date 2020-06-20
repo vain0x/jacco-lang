@@ -51,6 +51,7 @@ fn tokenize_comment(tx: &mut Tx) {
 fn tokenize_digits(tx: &mut Tx) {
     while tx.next().is_ascii_digit() {
         tx.bump();
+        tx.eat("_");
     }
 }
 

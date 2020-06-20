@@ -1,4 +1,6 @@
 pub fn main() -> i32 {
+    let p = 1_000_000_007;
+
     let k = 1000 as i64;
     0
 }
