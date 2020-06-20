@@ -158,6 +158,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         PExpr::Str(_) => {
             // FIXME: should verify
         }
+        PExpr::True(_) | PExpr::False(_) => {}
         PExpr::Name(_) => {}
         PExpr::Struct(PStructExpr {
             name: _,

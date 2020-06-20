@@ -58,7 +58,10 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
             }
         }
 
-        (KTy::Unit, KTy::Unit) | (KTy::I32, KTy::I32) | (KTy::C8, KTy::C8) => {}
+        (KTy::Unit, KTy::Unit)
+        | (KTy::I32, KTy::I32)
+        | (KTy::C8, KTy::C8)
+        | (KTy::Bool, KTy::Bool) => {}
 
         (KTy::Ptr { ty: left }, KTy::Ptr { ty: right }) => {
             do_unify(left, right, location, tx);
@@ -94,6 +97,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         (KTy::Unit, _)
         | (KTy::I32, _)
         | (KTy::C8, _)
+        | (KTy::Bool, _)
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)
         | (KTy::Struct { .. }, _) => {
@@ -137,6 +141,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(_) => KTy::I32,
         KTerm::Char(_) => KTy::C8,
+        KTerm::True(_) | KTerm::False(_) => KTy::Bool,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
         KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),

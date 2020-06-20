@@ -165,7 +165,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* fn */ void")
         }
         KTy::Unit => CTy::Void,
-        KTy::I32 => CTy::Int,
+        KTy::I32 | KTy::Bool => CTy::Int,
         KTy::C8 => CTy::UnsignedChar,
         KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
@@ -186,6 +186,8 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token) => CExpr::IntLit(token.into_text()),
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
+        KTerm::True(_) => CExpr::IntLit("1".to_string()),
+        KTerm::False(_) => CExpr::IntLit("0".to_string()),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
         KTerm::Label(label) => CExpr::Name(unique_label_name(label, cx)),
         KTerm::Return(k_fn) => {

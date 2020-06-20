@@ -84,6 +84,8 @@ fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::Int => PExpr::Int(PIntExpr { token: px.bump() }),
         TokenKind::Char => PExpr::Char(PCharExpr { token: px.bump() }),
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
+        TokenKind::True => PExpr::True(PTrueExpr(px.bump())),
+        TokenKind::False => PExpr::False(PFalseExpr(px.bump())),
         TokenKind::Ident => parse_struct_expr(px),
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_arg_list(px),

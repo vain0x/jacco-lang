@@ -10,6 +10,7 @@ pub(crate) enum KTy {
     I32,
     /// Code unit of UTF-8 (unsigned 8-bit integer)
     C8,
+    Bool,
     Ptr {
         ty: Box<KTy>,
     },
@@ -67,8 +68,9 @@ impl Debug for KTy {
             KTy::Meta(meta) => Debug::fmt(meta, f),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
-            KTy::C8 => write!(f, "c8"),
+            KTy::Bool => write!(f, "bool"),
             KTy::I32 => write!(f, "i32"),
+            KTy::C8 => write!(f, "c8"),
             KTy::Ptr { ty } => {
                 write!(f, "*")?;
                 Debug::fmt(&ty, f)

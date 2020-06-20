@@ -7,6 +7,8 @@ pub(crate) enum KTerm {
     Unit { location: Location },
     Int(TokenData),
     Char(TokenData),
+    True(TokenData),
+    False(TokenData),
     Name(KSymbol),
     Fn(KFn),
     Label(KLabel),
@@ -21,6 +23,8 @@ impl fmt::Debug for KTerm {
             KTerm::Unit { .. } => write!(f, "()"),
             KTerm::Int(token) => write!(f, "{}", token.text()),
             KTerm::Char(token) => write!(f, "{}", token.text()),
+            KTerm::True(token) => write!(f, "{}", token.text()),
+            KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => fmt::Debug::fmt(symbol, f),
             KTerm::Fn(k_fn) => {
                 // FIXME: name

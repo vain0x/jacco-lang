@@ -18,6 +18,11 @@ impl PNameInfo {
     };
 
     // FIXME: 組み込みのシンボルには特定の ID を割り当てる？
+    pub(crate) const BOOL: Self = Self {
+        id: usize::MAX,
+        kind: PNameKind::Bool,
+    };
+
     pub(crate) const I32: Self = Self {
         id: usize::MAX,
         kind: PNameKind::I32,
@@ -44,6 +49,7 @@ impl PNameInfo {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PNameKind {
     Unresolved,
+    Bool,
     I32,
     C8,
     Fn,
@@ -357,6 +363,20 @@ impl PNode for PStrExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PTrueExpr(pub(crate) TokenData);
+
+impl PNode for PTrueExpr {
+    impl_node_seq! { 0 }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PFalseExpr(pub(crate) TokenData);
+
+impl PNode for PFalseExpr {
+    impl_node_seq! { 0 }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PNameExpr(pub(crate) PName);
 
 impl PNode for PNameExpr {
@@ -582,6 +602,8 @@ pub(crate) enum PExpr {
     Int(PIntExpr),
     Char(PCharExpr),
     Str(PStrExpr),
+    True(PTrueExpr),
+    False(PFalseExpr),
     Name(PNameExpr),
     Struct(PStructExpr),
     Tuple(PTupleExpr),
@@ -612,6 +634,8 @@ impl PNode for PExpr {
         PExpr::Char,
         PExpr::Str,
         PExpr::Name,
+        PExpr::True,
+        PExpr::False,
         PExpr::Struct,
         PExpr::Tuple,
         PExpr::DotField,
