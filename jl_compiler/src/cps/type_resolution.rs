@@ -60,6 +60,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
 
         (KTy::Unit, KTy::Unit)
         | (KTy::I32, KTy::I32)
+        | (KTy::I64, KTy::I64)
         | (KTy::C8, KTy::C8)
         | (KTy::Bool, KTy::Bool) => {}
 
@@ -96,6 +97,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
 
         (KTy::Unit, _)
         | (KTy::I32, _)
+        | (KTy::I64, _)
         | (KTy::C8, _)
         | (KTy::Bool, _)
         | (KTy::Ptr { .. }, _)

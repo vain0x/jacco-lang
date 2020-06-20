@@ -65,6 +65,7 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CTy::Other(text) => write!(dx, "{}", text),
         CTy::Void => write!(dx, "void"),
         CTy::Int => write!(dx, "int"),
+        CTy::LongLong => write!(dx, "long long"),
         CTy::UnsignedChar => write!(dx, "unsigned char"),
         CTy::Ptr { ty } => {
             write_ty(&ty, dx)?;

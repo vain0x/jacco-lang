@@ -3,6 +3,7 @@ pub(crate) enum CTy {
     Void,
     UnsignedChar,
     Int,
+    LongLong,
     Ptr { ty: Box<CTy> },
     Struct(String),
 }

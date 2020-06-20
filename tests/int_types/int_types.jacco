@@ -1,0 +1,4 @@
+pub fn main() -> i32 {
+    let k = 1000 as i64;
+    0
+}

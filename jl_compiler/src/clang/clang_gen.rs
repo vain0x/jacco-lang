@@ -166,6 +166,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         }
         KTy::Unit => CTy::Void,
         KTy::I32 | KTy::Bool => CTy::Int,
+        KTy::I64 => CTy::LongLong,
         KTy::C8 => CTy::UnsignedChar,
         KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),

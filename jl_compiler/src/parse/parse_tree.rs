@@ -28,6 +28,11 @@ impl PNameInfo {
         kind: PNameKind::I32,
     };
 
+    pub(crate) const I64: Self = Self {
+        id: usize::MAX,
+        kind: PNameKind::I64,
+    };
+
     pub(crate) const C8: Self = Self {
         id: usize::MAX,
         kind: PNameKind::C8,
@@ -51,6 +56,7 @@ pub(crate) enum PNameKind {
     Unresolved,
     Bool,
     I32,
+    I64,
     C8,
     Fn,
     ExternFn,
