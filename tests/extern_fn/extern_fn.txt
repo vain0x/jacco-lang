@@ -6,6 +6,6 @@ int i32_add(int left_1, int right_1);
 
 int main() {
     // call_result_1 is killed.
-    gets_1();
+    gets();
     return 0;
 }

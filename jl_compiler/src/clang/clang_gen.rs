@@ -15,7 +15,6 @@ struct Cx {
     outlines: Rc<KOutlines>,
     ident_map: HashMap<String, IdProvider>,
     fn_ident_ids: Vec<Option<usize>>,
-    extern_fn_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
     local_ident_ids: Vec<Option<usize>>,
@@ -91,12 +90,8 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
 }
 
 fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
-    do_unique_name(
-        extern_fn.id(),
-        &cx.outlines.extern_fns[extern_fn.id()].name,
-        &mut cx.extern_fn_ident_ids,
-        &mut cx.ident_map,
-    )
+    // 外部関数の名前は勝手にマングルしない。
+    extern_fn.name(&cx.outlines).to_string()
 }
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
@@ -449,8 +444,6 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     let empty_ty_env = KTyEnv::default();
 
     cx.fn_ident_ids.resize(outlines.fns.len(), None);
-    cx.extern_fn_ident_ids
-        .resize(outlines.extern_fns.len(), None);
     cx.struct_ident_ids.resize(outlines.structs.len(), None);
 
     for k_struct in outlines.structs_iter() {
@@ -473,7 +466,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.locals = locals;
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
-        let name = extern_fn.name(&outlines).to_string();
+        let name = unique_extern_fn_name(extern_fn, cx);
         let (params, result_ty) = {
             let result_ty = extern_fn.result_ty(&outlines).clone();
             gen_fn_sig(params, result_ty, &empty_ty_env, cx)
