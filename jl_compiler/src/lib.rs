@@ -28,7 +28,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let name_resolution = front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
-    let (mut k_root, outlines) = cps::cps_conversion(p_root, name_resolution, logs.logger());
+    let mut k_root = cps::cps_conversion(p_root, name_resolution, logs.logger());
     trace!("k_root (gen) = {:#?}\n", k_root);
 
     cps::eliminate_unit(&mut k_root);
@@ -38,7 +38,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         error!("{:?} {}", item.location, item.message);
     }
 
-    clang::clang_dump(k_root, outlines)
+    clang::clang_dump(k_root)
 }
 
 mod clang {

@@ -7,7 +7,6 @@ use crate::{front::NameResolution, token::TokenKind};
 use std::collections::HashMap;
 use std::iter::once;
 use std::mem::{replace, take};
-use std::rc::Rc;
 
 struct KLoopData {
     break_label: KLabel,
@@ -919,13 +918,12 @@ fn gen_root(root: PRoot, gx: &mut Gx) {
     }
 }
 
-// FIXME: 結果を構造体に入れる
 pub(crate) fn cps_conversion(
     p_root: PRoot,
     name_resolution: NameResolution,
     logger: Logger,
-) -> (KRoot, Rc<KOutlines>) {
-    let (mut k_root, outlines) = {
+) -> KRoot {
+    let mut k_root = {
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = name_resolution.fns();
         let fn_count = n_fns.len();
@@ -965,18 +963,17 @@ pub(crate) fn cps_conversion(
             .resize_with(extern_fn_count, Default::default);
 
         gen_root(p_root, &mut gx);
-        (
-            KRoot {
-                extern_fns: gx.extern_fns,
-                fns: gx.fns,
-            },
-            Rc::new(gx.outlines),
-        )
+
+        KRoot {
+            outlines: gx.outlines,
+            extern_fns: gx.extern_fns,
+            fns: gx.fns,
+        }
     };
 
     trace!("k_root (untyped) = {:#?}\n", k_root);
 
-    type_resolution::resolve_types(&mut k_root, outlines.clone(), logger.clone());
+    type_resolution::resolve_types(&mut k_root, logger.clone());
 
-    (k_root, outlines)
+    k_root
 }

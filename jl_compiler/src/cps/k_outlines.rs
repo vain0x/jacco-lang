@@ -3,7 +3,7 @@ use super::{
     KStruct,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct KOutlines {
     pub(crate) fns: Vec<KFnOutline>,
     pub(crate) extern_fns: Vec<KExternFnOutline>,

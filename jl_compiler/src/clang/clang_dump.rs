@@ -1,10 +1,7 @@
 //! C言語の構文木を文字列に変換する処理
 
 use super::*;
-use std::{
-    io::{self, Write},
-    rc::Rc,
-};
+use std::io::{self, Write};
 
 /// Dump context.
 pub(crate) struct Dx<W> {
@@ -266,8 +263,8 @@ fn write_root(root: &CRoot, dx: &mut Dx<impl Write>) -> io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn clang_dump(k_root: KRoot, outlines: Rc<KOutlines>) -> String {
-    let c_root = clang_gen::gen(k_root, outlines);
+pub(crate) fn clang_dump(k_root: KRoot) -> String {
+    let c_root = clang_gen::gen(k_root);
 
     let text = {
         let out = {

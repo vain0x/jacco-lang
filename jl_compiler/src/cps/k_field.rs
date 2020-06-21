@@ -34,6 +34,7 @@ impl KField {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct KFieldOutline {
     name: String,
     ty: KTy,

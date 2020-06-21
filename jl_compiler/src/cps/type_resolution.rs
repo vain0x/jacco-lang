@@ -1,13 +1,10 @@
 //! 型推論・型検査
 
 use super::*;
-use std::{
-    mem::{swap, take},
-    rc::Rc,
-};
+use std::mem::{swap, take};
 
 /// Typing context.
-struct Tx {
+struct Tx<'a> {
     // 現在の関数の型環境
     ty_env: KTyEnv,
     // 現在の関数に含まれるローカル変数の情報
@@ -16,12 +13,12 @@ struct Tx {
     label_sigs: Vec<KLabelSig>,
     // 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
-    outlines: Rc<KOutlines>,
+    outlines: &'a KOutlines,
     logger: Logger,
 }
 
-impl Tx {
-    fn new(outlines: Rc<KOutlines>, logger: Logger) -> Self {
+impl<'a> Tx<'a> {
+    fn new(outlines: &'a KOutlines, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             locals: Default::default(),
@@ -484,7 +481,11 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(k_root: &mut KRoot, outlines: Rc<KOutlines>, logger: Logger) {
-    let mut tx = Tx::new(outlines, logger);
+pub(crate) fn resolve_types(k_root: &mut KRoot, logger: Logger) {
+    let outlines = take(&mut k_root.outlines);
+
+    let mut tx = Tx::new(&outlines, logger);
     resolve_root(k_root, &mut tx);
+
+    k_root.outlines = outlines;
 }

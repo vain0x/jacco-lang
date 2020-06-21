@@ -2,17 +2,13 @@
 
 use super::*;
 use std::collections::HashMap;
-use std::{
-    mem::{replace, take},
-    rc::Rc,
-};
+use std::mem::{replace, take};
 
 type IdentMap = HashMap<String, IdProvider>;
 
 /// C code generation context.
-#[derive(Default)]
-struct Cx {
-    outlines: Rc<KOutlines>,
+struct Cx<'a> {
+    outlines: &'a KOutlines,
     ident_map: HashMap<String, IdProvider>,
     fn_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
@@ -24,11 +20,19 @@ struct Cx {
     decls: Vec<CStmt>,
 }
 
-impl Cx {
-    fn new(outlines: Rc<KOutlines>) -> Self {
+impl<'a> Cx<'a> {
+    fn new(outlines: &'a KOutlines) -> Self {
         Self {
             outlines,
-            ..Default::default()
+            ident_map: Default::default(),
+            fn_ident_ids: Default::default(),
+            struct_ident_ids: Default::default(),
+            locals: Default::default(),
+            local_ident_ids: Default::default(),
+            labels: Default::default(),
+            label_ident_ids: Default::default(),
+            stmts: Default::default(),
+            decls: Default::default(),
         }
     }
 
@@ -341,7 +345,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     init_opt: None,
                 });
 
-                let outlines = cx.outlines.clone();
+                let outlines = cx.outlines;
                 for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines)) {
                     let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines));
                     let right = gen_term(take(arg), cx);
@@ -469,7 +473,7 @@ fn gen_fn_sig(
 }
 
 fn gen_root(root: KRoot, cx: &mut Cx) {
-    let outlines = cx.outlines.clone();
+    let outlines = cx.outlines;
     let empty_ty_env = KTyEnv::default();
 
     cx.fn_ident_ids.resize(outlines.fns.len(), None);
@@ -559,8 +563,10 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(k_root: KRoot, outlines: Rc<KOutlines>) -> CRoot {
-    let mut cx = Cx::new(outlines);
+pub(crate) fn gen(mut k_root: KRoot) -> CRoot {
+    let outlines = take(&mut k_root.outlines);
+
+    let mut cx = Cx::new(&outlines);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }
