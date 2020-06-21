@@ -45,6 +45,7 @@ f_all() {
     f bool
     f cast
     f int_types
+    f str
 }
 
 ONLY=${1:-''}

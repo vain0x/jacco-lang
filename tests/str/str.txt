@@ -1,0 +1,7 @@
+void puts(unsigned char* s_1);
+
+int main() {
+    // call_result_1 is killed.
+    puts("Hello, world!");
+    return 0;
+}

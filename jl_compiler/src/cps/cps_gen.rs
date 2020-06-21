@@ -243,7 +243,7 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
         PTy::Name(name) => gen_ty_name(name, gx),
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
-        PTy::Ptr(_) => unimplemented!(),
+        PTy::Ptr(PPtrTy { ty_opt, .. }) => gen_ty(*ty_opt.unwrap(), gx).into_ptr(),
     }
 }
 
@@ -393,7 +393,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token, KTy::Unresolved),
         PExpr::Char(PCharExpr { token }) => KTerm::Char(token),
-        PExpr::Str(..) => unimplemented!(),
+        PExpr::Str(PStrExpr { token }) => KTerm::Str(token),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token),
         PExpr::False(PFalseExpr(token)) => KTerm::False(token),
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {

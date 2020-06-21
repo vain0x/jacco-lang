@@ -196,6 +196,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))
         }
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
+        KTerm::Str(token) => CExpr::StrLit(token.into_text()),
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
         KTerm::False(_) => CExpr::IntLit("0".to_string()),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),

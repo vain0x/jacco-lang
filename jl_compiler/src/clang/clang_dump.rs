@@ -102,6 +102,7 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CExpr::LongLongLit(value) => write!(dx, "{}LL", value),
         CExpr::UnsignedLongLongLit(value) => write!(dx, "{}ULL", value),
         CExpr::CharLit(value) => write!(dx, "{}", value),
+        CExpr::StrLit(value) => write!(dx, "{}", value),
         CExpr::Name(name) => write!(dx, "{}", name),
         CExpr::Dot { left, field } => {
             write_expr(left, dx)?;

@@ -158,6 +158,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
             ty.clone()
         }
         KTerm::Char(_) => KTy::C8,
+        KTerm::Str(_) => KTy::C8.into_ptr(),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
         KTerm::Label(label) => tx.label_sigs[label.id()].ty(),

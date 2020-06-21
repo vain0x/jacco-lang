@@ -5,6 +5,7 @@ pub(crate) enum CExpr {
     LongLongLit(String),
     UnsignedLongLongLit(String),
     CharLit(String),
+    StrLit(String),
     Name(String),
     Dot {
         left: Box<CExpr>,
