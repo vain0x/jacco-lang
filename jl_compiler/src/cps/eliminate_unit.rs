@@ -1,4 +1,4 @@
-use super::{KLocalData, KNode, KRoot, KTerm, KTyEnv};
+use super::{KLocalData, KNode, KPrim, KRoot, KTerm, KTyEnv};
 use std::mem::{swap, take};
 
 #[derive(Default)]
@@ -8,6 +8,16 @@ struct Ex {
 }
 
 fn on_node(node: &mut KNode, ex: &mut Ex) {
+    // unit 型の引数は捨てる。
+    match node.prim {
+        KPrim::CallDirect | KPrim::Jump => node.args.retain(|arg| match arg {
+            KTerm::Unit { .. } => false,
+            KTerm::Name(symbol) => !symbol.local.ty(&ex.locals).is_unit(),
+            _ => true,
+        }),
+        _ => {}
+    }
+
     for arg in &mut node.args {
         // unit/never 型の変数の参照をリテラルで置き換える。
         // FIXME: never 型の変数は never リテラル (?) に置き換える？
@@ -29,9 +39,24 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
 pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
     let mut ex = Ex::default();
 
+    // FIXME: zero-sized type の引数はすべて捨てていい。
+    // unit 型の引数は捨てる。
+    for fn_outline in k_root.outlines.fns.iter_mut() {
+        fn_outline.param_tys.retain(|ty| !ty.is_unit());
+    }
+
     for fn_data in &mut k_root.fns {
         swap(&mut ex.ty_env, &mut fn_data.ty_env);
         swap(&mut ex.locals, &mut fn_data.locals);
+
+        // unit 型の引数は捨てる。
+        fn_data
+            .params
+            .retain(|param| !param.ty(&ex.locals).is_unit());
+
+        for label_sig in fn_data.label_sigs.iter_mut() {
+            label_sig.param_tys_mut().retain(|ty| !ty.is_unit());
+        }
 
         for local_data in &mut ex.locals {
             if ex.ty_env.is_unit_or_never(&local_data.ty) {
@@ -41,6 +66,11 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
         on_node(&mut fn_data.body, &mut ex);
 
         for label_data in &mut fn_data.labels {
+            // unit 型の引数は捨てる。
+            label_data
+                .params
+                .retain(|param| !param.ty(&ex.locals).is_unit());
+
             on_node(&mut label_data.body, &mut ex);
         }
 

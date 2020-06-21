@@ -33,6 +33,10 @@ impl KLabelSig {
             result_ty: Box::new(KTy::Never),
         }
     }
+
+    pub(crate) fn param_tys_mut(&mut self) -> &mut Vec<KTy> {
+        &mut self.param_tys
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -31,6 +31,13 @@ impl KTy {
         }
     }
 
+    pub(crate) fn is_unit(&self) -> bool {
+        match self {
+            KTy::Unit => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn is_struct(&self) -> bool {
         match self {
             KTy::Struct { .. } => true,
