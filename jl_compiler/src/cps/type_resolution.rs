@@ -323,9 +323,23 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Add
-        | KPrim::Sub
-        | KPrim::Mul
+        KPrim::Add | KPrim::Sub => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
+            ([left, right], [result]) => {
+                let left_ty = resolve_term(left, tx);
+                let right_ty = resolve_term(right, tx);
+
+                if tx.ty_env.is_ptr(&left_ty) {
+                    unify(right_ty.clone(), KTy::Usize, node.location.clone(), tx);
+                } else {
+                    // FIXME: iNN or uNN
+                    unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                }
+
+                resolve_symbol_def(result, Some(&left_ty), tx);
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::Mul
         | KPrim::Div
         | KPrim::Modulo
         | KPrim::BitAnd
