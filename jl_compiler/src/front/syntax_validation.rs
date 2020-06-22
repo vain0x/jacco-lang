@@ -371,6 +371,42 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .error(&decl.location().behind(), "missed a semicolon?");
             }
         }
+        PDecl::Const(PConstDecl {
+            keyword,
+            name_opt,
+            colon_opt,
+            ty_opt,
+            equal_opt,
+            init_opt,
+            semi_opt,
+        }) => {
+            if name_opt.is_none() {
+                vx.logger.error(keyword, "missed constant name?");
+            }
+
+            match (colon_opt, ty_opt) {
+                (Some(_), Some(ty)) => validate_ty(ty, vx),
+                _ => vx.logger.error(
+                    keyword,
+                    "maybe missed type of constant? (hint: that's required unlike let)",
+                ),
+            }
+
+            match (equal_opt, init_opt) {
+                (Some(_), Some(init)) => validate_expr(init, vx),
+                _ => vx.logger.error(keyword, "maybe missed value of constant?"),
+            }
+
+            if semi_required
+                && semi_opt.is_none()
+                && !init_opt
+                    .as_ref()
+                    .map_or(false, |init| init.ends_with_block())
+            {
+                vx.logger
+                    .error(&decl.location().behind(), "missed a semicolon?");
+            }
+        }
         PDecl::Fn(PFnDecl {
             keyword,
             name_opt,

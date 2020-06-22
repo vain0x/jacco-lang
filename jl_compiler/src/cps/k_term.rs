@@ -11,6 +11,7 @@ pub(crate) enum KTerm {
     True(TokenData),
     False(TokenData),
     Name(KSymbol),
+    Const(KConst),
     Fn(KFn),
     Label(KLabel),
     Return(KFn),
@@ -28,6 +29,7 @@ impl fmt::Debug for KTerm {
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => fmt::Debug::fmt(symbol, f),
+            KTerm::Const(k_const) => write!(f, "const#{}", k_const.id()),
             KTerm::Fn(k_fn) => {
                 // FIXME: name
                 write!(f, "fn#{}", k_fn.id())

@@ -12,6 +12,7 @@ pub(crate) enum TokenKind {
     Ident,
     As,
     Break,
+    Const,
     Continue,
     Else,
     Enum,

@@ -211,6 +211,10 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
+        KTerm::Const(k_const) => {
+            let value = k_const.value(&cx.outlines.consts);
+            CExpr::IntLit(value.to_string())
+        }
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("/* error */ 0".to_string())

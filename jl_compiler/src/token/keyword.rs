@@ -6,6 +6,7 @@ pub(crate) struct Keyword(TokenKind);
 static KEYWORD_TABLE: &[(TokenKind, &str)] = &[
     (TokenKind::As, "as"),
     (TokenKind::Break, "break"),
+    (TokenKind::Const, "const"),
     (TokenKind::Continue, "continue"),
     (TokenKind::Else, "else"),
     (TokenKind::Enum, "enum"),

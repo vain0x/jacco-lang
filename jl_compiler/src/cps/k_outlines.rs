@@ -1,10 +1,11 @@
 use super::{
-    k_struct::KStructOutline, KExternFn, KExternFnOutline, KField, KFieldOutline, KFn, KFnOutline,
-    KStruct,
+    k_struct::KStructOutline, KConstData, KExternFn, KExternFnOutline, KField, KFieldOutline, KFn,
+    KFnOutline, KStruct,
 };
 
 #[derive(Debug, Default)]
 pub(crate) struct KOutlines {
+    pub(crate) consts: Vec<KConstData>,
     pub(crate) fns: Vec<KFnOutline>,
     pub(crate) extern_fns: Vec<KExternFnOutline>,
     pub(crate) structs: Vec<KStructOutline>,

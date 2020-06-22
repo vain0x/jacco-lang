@@ -19,6 +19,7 @@ struct Gx {
     outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
     local_map: HashMap<PNameId, KLocal>,
+    const_map: HashMap<PNameId, KConst>,
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
@@ -276,6 +277,23 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
 
             KSymbolExt::Symbol(KSymbol { local, location })
         }
+        PNameKind::Const => {
+            let k_const = match gx.const_map.get(&name_info.id()) {
+                Some(&k_const) => k_const,
+                None => {
+                    let k_const = KConst::new(gx.outlines.consts.len());
+                    gx.outlines.consts.push(KConstData {
+                        name,
+                        ty,
+                        value: Default::default(),
+                    });
+                    gx.const_map.insert(name_info.id(), k_const);
+                    k_const
+                }
+            };
+
+            KSymbolExt::Const(k_const)
+        }
         PNameKind::I32
         | PNameKind::I64
         | PNameKind::Usize
@@ -397,6 +415,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::False(PFalseExpr(token)) => KTerm::False(token),
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
+            KSymbolExt::Const(k_const) => KTerm::Const(k_const),
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
@@ -758,6 +777,49 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
+        }
+        PDecl::Const(PConstDecl {
+            keyword,
+            name_opt,
+            ty_opt,
+            init_opt,
+            ..
+        }) => {
+            let (name, name_id) = {
+                let mut name = name_opt.unwrap();
+                let name_info = take(&mut name.info_opt).unwrap();
+                assert_eq!(name_info.kind(), PNameKind::Const);
+                let (name, _) = name.decompose();
+                (name, name_info.id())
+            };
+            let ty = gen_ty(ty_opt.unwrap(), gx);
+
+            match &ty {
+                KTy::I32 => {}
+                _ => gx.logger.error(&keyword, "invalid type"),
+            }
+
+            // FIXME: i64, usize などに対応する、値のオーバーフローをハンドルする、など
+            let value = match init_opt.unwrap() {
+                PExpr::Int(PIntExpr { token }) => token
+                    .into_text()
+                    .replace("_", "")
+                    .replace("i32", "")
+                    .parse::<i64>()
+                    .unwrap(),
+                init => {
+                    gx.logger.error(&init, "invalid constant expression");
+                    return;
+                }
+            };
+
+            let k_const = KConst::new(gx.outlines.consts.len());
+            gx.outlines.consts.push(KConstData {
+                name,
+                ty,
+                value: value as usize,
+            });
+            gx.const_map.insert(name_id, k_const);
         }
         PDecl::Fn(PFnDecl {
             vis_opt,

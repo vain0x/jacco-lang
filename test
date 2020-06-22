@@ -47,6 +47,7 @@ f_all() {
     f int_types
     f str
     f ptr
+    f const
 }
 
 ONLY=${1:-''}

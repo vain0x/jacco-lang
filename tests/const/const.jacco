@@ -1,0 +1,22 @@
+extern fn assert(cond: bool);
+
+const GLOBAL_CONST: i32 = 42;
+
+// FIXME: 計算式は未実装
+// const CONST_ADD: i32 = GLOBAL_CONST * 2;
+
+// FIXME: usize は未実装
+// const USIZE_ONE: usize = 1;
+
+pub fn main() -> i32 {
+    assert(GLOBAL_CONST == 42);
+
+    const LOCAL_CONST: i32 = 84;
+    assert(LOCAL_CONST == 84);
+
+    // Shadowing.
+    const LOCAL_CONST: i32 = 126;
+    assert(LOCAL_CONST == 126);
+
+    0
+}

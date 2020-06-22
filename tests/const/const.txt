@@ -1,0 +1,14 @@
+void assert(int cond_1);
+
+int main() {
+    int eq_1 = 42 == 42;
+    // call_result_1 is killed.
+    assert(eq_1);
+    int eq_2 = 84 == 84;
+    // call_result_1 is killed.
+    assert(eq_2);
+    int eq_3 = 126 == 126;
+    // call_result_2 is killed.
+    assert(eq_3);
+    return 0;
+}

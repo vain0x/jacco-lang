@@ -79,6 +79,32 @@ fn parse_let_decl(px: &mut Px) -> PLetDecl {
     }
 }
 
+fn parse_const_decl(px: &mut Px) -> PConstDecl {
+    let keyword = px.expect(TokenKind::Const);
+
+    let name_opt = parse_name(px);
+    let (colon_opt, ty_opt) = parse_ty_ascription(px);
+
+    let equal_opt = px.eat(TokenKind::Equal);
+    let init_opt = if equal_opt.is_some() {
+        parse_expr(px)
+    } else {
+        None
+    };
+
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PConstDecl {
+        keyword,
+        name_opt,
+        colon_opt,
+        ty_opt,
+        equal_opt,
+        init_opt,
+        semi_opt,
+    }
+}
+
 fn parse_fn_decl(vis_opt: Option<PVis>, px: &mut Px) -> PFnDecl {
     let keyword = px.expect(TokenKind::Fn);
 
@@ -202,6 +228,7 @@ fn parse_struct_decl(px: &mut Px) -> PStructDecl {
 }
 
 fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
+    // FIXME: const, struct
     let decl = match px.next() {
         TokenKind::Fn => PDecl::Fn(parse_fn_decl(Some(vis), px)),
         _ => {
@@ -219,6 +246,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
             return parse_decl_with_vis(vis, px);
         }
         TokenKind::Let => PDecl::Let(parse_let_decl(px)),
+        TokenKind::Const => PDecl::Const(parse_const_decl(px)),
         TokenKind::Fn => PDecl::Fn(parse_fn_decl(None, px)),
         TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
             PDecl::ExternFn(parse_extern_fn_decl(px))
