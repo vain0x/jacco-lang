@@ -96,7 +96,7 @@ mod cps {
     pub(crate) use cps_gen::cps_conversion;
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_command::KCommand;
-    pub(crate) use k_const::{KConst, KConstData};
+    pub(crate) use k_const::{KConst, KConstData, KConstValue};
     pub(crate) use k_extern_fn::{KExternFn, KExternFnData, KExternFnOutline};
     pub(crate) use k_field::{KField, KFieldOutline, KFieldTag};
     pub(crate) use k_fn::{KFn, KFnData, KFnOutline};

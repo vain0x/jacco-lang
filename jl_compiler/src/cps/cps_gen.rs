@@ -4,6 +4,7 @@ use super::cps_fold::fold_block;
 use super::*;
 use crate::parse::*;
 use crate::{front::NameResolution, token::TokenKind};
+use k_const::KConstValue;
 use std::collections::HashMap;
 use std::iter::once;
 use std::mem::{replace, take};
@@ -228,6 +229,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
     match name_info.kind() {
         PNameKind::I32 => KTy::I32,
         PNameKind::I64 => KTy::I64,
+        PNameKind::Usize => KTy::Usize,
         PNameKind::C8 => KTy::C8,
         PNameKind::Bool => KTy::Bool,
         PNameKind::Struct => {
@@ -285,7 +287,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
                     gx.outlines.consts.push(KConstData {
                         name,
                         ty,
-                        value: Default::default(),
+                        value_opt: None,
                     });
                     gx.const_map.insert(name_info.id(), k_const);
                     k_const
@@ -376,6 +378,40 @@ fn gen_fn_sig(
         params,
         param_tys,
         result_ty,
+    }
+}
+
+fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
+    fn strip_suffix<'a>(s: &'a str, suffix: &'static str) -> Option<&'a str> {
+        if s.ends_with(suffix) {
+            Some(&s[..s.len() - suffix.len()])
+        } else {
+            None
+        }
+    }
+
+    match expr {
+        PExpr::Int(PIntExpr { token }) => {
+            let text = &token.into_text().replace("_", "");
+            strip_suffix(text, "i32")
+                .and_then(|text| text.parse::<i32>().ok().map(KConstValue::I32))
+                .or_else(|| {
+                    strip_suffix(text, "i64")
+                        .and_then(|text| text.parse::<i64>().ok().map(KConstValue::I64))
+                })
+                .or_else(|| {
+                    strip_suffix(text, "usize")
+                        .and_then(|text| text.parse::<usize>().ok().map(KConstValue::Usize))
+                })
+                .or_else(|| text.parse::<usize>().ok().map(KConstValue::Usize))
+        }
+        PExpr::True(_) => Some(KConstValue::Bool(true)),
+        PExpr::False(_) => Some(KConstValue::Bool(false)),
+        PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
+            KSymbolExt::Const(k_const) => k_const.value_opt(&gx.outlines.consts).cloned(),
+            _ => None,
+        },
+        _ => unimplemented!(),
     }
 }
 
@@ -794,22 +830,19 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
             let ty = gen_ty(ty_opt.unwrap(), gx);
 
-            match &ty {
-                KTy::I32 => {}
-                _ => gx.logger.error(&keyword, "invalid type"),
+            if !ty.is_primitive() {
+                gx.logger
+                    .error(&keyword, "constant must be of primitive type");
             }
 
-            // FIXME: i64, usize などに対応する、値のオーバーフローをハンドルする、など
-            let value = match init_opt.unwrap() {
-                PExpr::Int(PIntExpr { token }) => token
-                    .into_text()
-                    .replace("_", "")
-                    .replace("i32", "")
-                    .parse::<i64>()
-                    .unwrap(),
-                init => {
-                    gx.logger.error(&init, "invalid constant expression");
-                    return;
+            let init = init_opt.unwrap();
+            let init_location = init.location();
+            let value_opt = match gen_constant(init, gx) {
+                Some(value) => Some(value),
+                None => {
+                    gx.logger
+                        .error(&init_location, "invalid constant expression");
+                    None
                 }
             };
 
@@ -817,7 +850,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gx.outlines.consts.push(KConstData {
                 name,
                 ty,
-                value: value as usize,
+                value_opt,
             });
             gx.const_map.insert(name_id, k_const);
         }

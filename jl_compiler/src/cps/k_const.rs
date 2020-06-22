@@ -18,8 +18,8 @@ impl KConst {
         &consts[self.id].ty
     }
 
-    pub(crate) fn value(self, consts: &[KConstData]) -> usize {
-        consts[self.id].value
+    pub(crate) fn value_opt(self, consts: &[KConstData]) -> Option<&KConstValue> {
+        consts[self.id].value_opt.as_ref()
     }
 }
 
@@ -27,5 +27,13 @@ impl KConst {
 pub(crate) struct KConstData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) value: usize,
+    pub(crate) value_opt: Option<KConstValue>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum KConstValue {
+    I32(i32),
+    I64(i64),
+    Usize(usize),
+    Bool(bool),
 }

@@ -211,10 +211,14 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::Const(k_const) => {
-            let value = k_const.value(&cx.outlines.consts);
-            CExpr::IntLit(value.to_string())
-        }
+        KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
+            Some(KConstValue::I32(value)) => CExpr::IntLit(value.to_string()),
+            Some(KConstValue::I64(value)) => CExpr::LongLongLit(value.to_string()),
+            Some(KConstValue::Usize(value)) => CExpr::UnsignedLongLongLit(value.to_string()),
+            Some(KConstValue::Bool(true)) => CExpr::IntLit("1".to_string()),
+            Some(KConstValue::Bool(false)) => CExpr::IntLit("0".to_string()),
+            None => CExpr::IntLit("/* invalid const */ 0".to_string()),
+        },
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("/* error */ 0".to_string())

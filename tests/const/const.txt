@@ -1,14 +1,36 @@
 void assert(int cond_1);
 
 int main() {
-    int eq_1 = 42 == 42;
+    int if_result_1;
+    int eq_1 = 42ULL == 42;
     // call_result_1 is killed.
     assert(eq_1);
-    int eq_2 = 84 == 84;
+    int eq_2 = 84ULL == 84;
     // call_result_1 is killed.
     assert(eq_2);
-    int eq_3 = 126 == 126;
+    int eq_3 = 126ULL == 126;
     // call_result_2 is killed.
     assert(eq_3);
+    int ne_1 = 9223372036854775807LL != 0LL;
+    // call_result_3 is killed.
+    assert(ne_1);
+    int ne_2 = 18446744073709551615ULL != 0ULL;
+    // call_result_4 is killed.
+    assert(ne_2);
+    if (1) {
+        int not_1 = !0;
+        if_result_1 = not_1;
+        goto next_1;
+    } else {
+        if_result_1 = 0;
+        goto next_1;
+    }
+
+next_1:;
+    // call_result_5 is killed.
+    assert(if_result_1);
+    int eq_4 = 9223372036854775807LL == 9223372036854775807LL;
+    // call_result_6 is killed.
+    assert(eq_4);
     return 0;
 }
