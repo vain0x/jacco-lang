@@ -1,0 +1,25 @@
+void assert(int cond_1);
+
+int div_2(int x_1, int y_1) {
+    int div_1 = x_1 / y_1;
+    return div_1;
+}
+
+int sub3_1(int x_2, int y_2, int z_1) {
+    int sub_1 = x_2 - y_2;
+    int sub_2 = sub_1 - z_1;
+    return sub_2;
+}
+
+int main() {
+    int add_1 = 42 + 2;
+    int add_2 = add_1 + 3;
+    int mul_1 = add_2 * 2;
+    int call_result_1 = div_2(mul_1, 2);
+    int call_result_2 = sub3_1(call_result_1, 2, 3);
+    int a_1 = call_result_2;
+    int eq_1 = a_1 == 42;
+    // call_result_3 is killed.
+    assert(eq_1);
+    return 0;
+}

@@ -642,6 +642,32 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 )
             }
         },
+        PExpr::Pipe(PPipeExpr {
+            left: arg,
+            pipe,
+            right_opt,
+        }) => match right_opt.map(|b| *b) {
+            Some(PExpr::Call(PCallExpr { left, arg_list })) => {
+                // FIXME: call expr の生成と共通化
+                let result = {
+                    let location = pipe.into_location();
+                    gx.fresh_symbol("call_result", location.clone())
+                };
+
+                let k_arg = gen_expr(*arg, gx);
+                let k_left = gen_expr(*left, gx);
+
+                let mut k_args = vec![k_left, k_arg];
+                for p_arg in arg_list.args {
+                    let k_arg = gen_expr(p_arg.expr, gx);
+                    k_args.push(k_arg);
+                }
+
+                gx.push_prim_1(KPrim::CallDirect, k_args, result.clone());
+                KTerm::Name(result)
+            }
+            _ => unimplemented!(),
+        },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
         PExpr::Break(PBreakExpr {
             keyword,

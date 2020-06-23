@@ -2,6 +2,11 @@
 
 use super::*;
 
+enum AllowAssign {
+    True,
+    False,
+}
+
 pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
     let token = px.eat(TokenKind::Ident)?;
 
@@ -286,24 +291,37 @@ fn parse_logical(px: &mut Px) -> Option<PExpr> {
     }
 }
 
-fn parse_assign(px: &mut Px) -> Option<PExpr> {
+fn parse_pipe_or_assign(mut allow_assign: AllowAssign, px: &mut Px) -> Option<PExpr> {
     let mut left = parse_logical(px)?;
 
     loop {
-        let binary_op = match px.next() {
-            TokenKind::Equal => PBinaryOp::Assign,
+        let assign_op = match (px.next(), allow_assign) {
+            (TokenKind::Equal, AllowAssign::True) => PBinaryOp::Assign,
+            (TokenKind::PipeRight, _) => {
+                let pipe = px.bump();
+                let right_opt = parse_suffix_expr(px).map(Box::new);
+
+                left = PExpr::Pipe(PPipeExpr {
+                    left: Box::new(left),
+                    pipe,
+                    right_opt,
+                });
+                allow_assign = AllowAssign::False;
+                continue;
+            }
             _ => return Some(left),
         };
 
         let op = px.bump();
-        let right_opt = parse_logical(px).map(Box::new);
+        let right_opt = parse_pipe_or_assign(AllowAssign::False, px).map(Box::new);
 
         left = PExpr::BinaryOp(PBinaryOpExpr {
-            op: binary_op,
+            op: assign_op,
             left: Box::new(left),
             right_opt,
             location: op.into_location(),
         });
+        return Some(left);
     }
 }
 
@@ -312,7 +330,7 @@ pub(crate) fn parse_cond(
 ) -> (Option<TokenData>, Option<Box<PExpr>>, Option<TokenData>) {
     let left_paren_opt = px.eat(TokenKind::LeftParen);
 
-    let expr_opt = parse_logical(px).map(Box::new);
+    let expr_opt = parse_pipe_or_assign(AllowAssign::False, px).map(Box::new);
 
     let right_paren_opt = if left_paren_opt.is_some() {
         px.eat(TokenKind::RightParen)
@@ -442,7 +460,7 @@ pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::If => PExpr::If(parse_if_expr(px)),
         TokenKind::While => PExpr::While(parse_while_expr(px)),
         TokenKind::Loop => PExpr::Loop(parse_loop_expr(px)),
-        _ => return parse_assign(px),
+        _ => return parse_pipe_or_assign(AllowAssign::True, px),
     };
     Some(expr)
 }

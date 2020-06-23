@@ -227,6 +227,12 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             resolve_expr(left, nx);
             resolve_expr_opt(right_opt.as_deref_mut(), nx);
         }
+        PExpr::Pipe(PPipeExpr {
+            left, right_opt, ..
+        }) => {
+            resolve_expr(left, nx);
+            resolve_expr_opt(right_opt.as_deref_mut(), nx);
+        }
         PExpr::Block(PBlockExpr(block)) => {
             resolve_block(block, nx);
         }

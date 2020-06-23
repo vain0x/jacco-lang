@@ -68,6 +68,7 @@ pub(crate) enum TokenKind {
     Percent,
     Pipe,
     PipePipe,
+    PipeRight,
     Plus,
     PlusEqual,
     Semi,

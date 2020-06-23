@@ -48,6 +48,7 @@ f_all() {
     f str
     f ptr
     f const
+    f call_with_pipe
 }
 
 ONLY=${1:-''}

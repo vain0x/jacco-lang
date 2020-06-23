@@ -535,6 +535,17 @@ impl PNode for PBinaryOpExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PPipeExpr {
+    pub(crate) left: Box<PExpr>,
+    pub(crate) pipe: TokenData,
+    pub(crate) right_opt: Option<Box<PExpr>>,
+}
+
+impl PNode for PPipeExpr {
+    impl_node_seq! { left, pipe, right_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PBlockExpr(pub(crate) PBlock);
 
 impl PNode for PBlockExpr {
@@ -636,6 +647,7 @@ pub(crate) enum PExpr {
     As(PAsExpr),
     UnaryOp(PUnaryOpExpr),
     BinaryOp(PBinaryOpExpr),
+    Pipe(PPipeExpr),
     Block(PBlockExpr),
     Break(PBreakExpr),
     Continue(PContinueExpr),
@@ -668,6 +680,7 @@ impl PNode for PExpr {
         PExpr::As,
         PExpr::UnaryOp,
         PExpr::BinaryOp,
+        PExpr::Pipe,
         PExpr::Block,
         PExpr::Break,
         PExpr::Continue,

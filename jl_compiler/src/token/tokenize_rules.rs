@@ -200,6 +200,7 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         '%' => Some((TokenKind::Percent, 1)),
         '|' => match tx.nth(1) {
             '|' => Some((TokenKind::PipePipe, 2)),
+            '>' => Some((TokenKind::PipeRight, 2)),
             _ => Some((TokenKind::Pipe, 1)),
         },
         '+' => match tx.nth(1) {
