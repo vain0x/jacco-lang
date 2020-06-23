@@ -32,6 +32,16 @@ pub(crate) enum KPrim {
     Ge,
     Cast,
     Assign,
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModuloAssign,
+    BitAndAssign,
+    BitOrAssign,
+    BitXorAssign,
+    LeftShiftAssign,
+    RightShiftAssign,
 }
 
 impl KPrim {

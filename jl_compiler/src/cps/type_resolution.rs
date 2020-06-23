@@ -379,6 +379,49 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
+        KPrim::AddAssign | KPrim::SubAssign => {
+            match node.args.as_mut_slice() {
+                [left, right] => {
+                    let left_ty = resolve_term(left, tx);
+                    let right_ty = resolve_term(right, tx);
+
+                    // 左辺は lval なのでポインタ型のはず
+                    let left_ty = tx.ty_env.as_ptr(&left_ty).unwrap();
+
+                    // FIXME: add/sub と同じ
+                    if tx.ty_env.is_ptr(&left_ty) {
+                        unify(right_ty.clone(), KTy::Usize, node.location.clone(), tx);
+                    } else {
+                        // FIXME: iNN or uNN
+                        unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                    }
+                }
+                _ => unimplemented!(),
+            }
+        }
+        KPrim::MulAssign
+        | KPrim::DivAssign
+        | KPrim::ModuloAssign
+        | KPrim::BitAndAssign
+        | KPrim::BitOrAssign
+        | KPrim::BitXorAssign
+        | KPrim::LeftShiftAssign
+        | KPrim::RightShiftAssign => {
+            match node.args.as_mut_slice() {
+                [left, right] => {
+                    let left_ty = resolve_term(left, tx);
+                    let right_ty = resolve_term(right, tx);
+
+                    // 左辺は lval なのでポインタ型のはず
+                    let left_ty = tx.ty_env.as_ptr(&left_ty).unwrap();
+
+                    // FIXME: mul/div/etc. と同じ
+                    // FIXME: iNN or uNN
+                    unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                }
+                _ => unimplemented!(),
+            }
+        }
     }
 
     for cont in &mut node.conts {

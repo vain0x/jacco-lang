@@ -166,18 +166,28 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         '{' => Some((TokenKind::LeftBrace, 1)),
         '}' => Some((TokenKind::RightBrace, 1)),
         '<' => match tx.nth(1) {
-            '<' => Some((TokenKind::LeftShift, 2)),
+            '<' => match tx.nth(2) {
+                '=' => Some((TokenKind::LeftShiftEqual, 3)),
+                _ => Some((TokenKind::LeftShift, 2)),
+            },
             '-' => Some((TokenKind::LeftSlimArrow, 2)),
             '=' => Some((TokenKind::LeftAngleEqual, 2)),
             _ => Some((TokenKind::LeftAngle, 1)),
         },
         '>' => match tx.nth(1) {
-            '>' => Some((TokenKind::RightShift, 2)),
+            '>' => match tx.nth(2) {
+                '=' => Some((TokenKind::RightShiftEqual, 3)),
+                _ => Some((TokenKind::RightShift, 2)),
+            },
             '=' => Some((TokenKind::RightAngleEqual, 2)),
             _ => Some((TokenKind::RightAngle, 1)),
         },
         '&' => match tx.nth(1) {
-            '&' => Some((TokenKind::AndAnd, 2)),
+            '=' => Some((TokenKind::AndEqual, 2)),
+            '&' => match tx.nth(2) {
+                '=' => Some((TokenKind::AndAndEqual, 3)),
+                _ => Some((TokenKind::AndAnd, 2)),
+            },
             _ => Some((TokenKind::And, 1)),
         },
         '!' => match tx.nth(1) {
@@ -192,14 +202,25 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             '=' => Some((TokenKind::EqualEqual, 2)),
             _ => Some((TokenKind::Equal, 1)),
         },
-        '^' => Some((TokenKind::Hat, 1)),
+        '^' => match tx.nth(1) {
+            '=' => Some((TokenKind::HatEqual, 2)),
+            _ => Some((TokenKind::Hat, 1)),
+        },
         '-' => match tx.nth(1) {
+            '=' => Some((TokenKind::MinusEqual, 2)),
             '>' => Some((TokenKind::RightSlimArrow, 2)),
             _ => Some((TokenKind::Minus, 1)),
         },
-        '%' => Some((TokenKind::Percent, 1)),
+        '%' => match tx.nth(1) {
+            '=' => Some((TokenKind::PercentEqual, 2)),
+            _ => Some((TokenKind::Percent, 1)),
+        },
         '|' => match tx.nth(1) {
-            '|' => Some((TokenKind::PipePipe, 2)),
+            '=' => Some((TokenKind::PipeEqual, 2)),
+            '|' => match tx.nth(1) {
+                '=' => Some((TokenKind::PipePipeEqual, 3)),
+                _ => Some((TokenKind::PipePipe, 2)),
+            },
             '>' => Some((TokenKind::PipeRight, 2)),
             _ => Some((TokenKind::Pipe, 1)),
         },
@@ -208,8 +229,14 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             _ => Some((TokenKind::Plus, 1)),
         },
         ';' => Some((TokenKind::Semi, 1)),
-        '/' => Some((TokenKind::Slash, 1)),
-        '*' => Some((TokenKind::Star, 1)),
+        '/' => match tx.nth(1) {
+            '=' => Some((TokenKind::SlashEqual, 2)),
+            _ => Some((TokenKind::Slash, 1)),
+        },
+        '*' => match tx.nth(1) {
+            '=' => Some((TokenKind::StarEqual, 2)),
+            _ => Some((TokenKind::Star, 1)),
+        },
         _ => None,
     }
 }

@@ -273,6 +273,40 @@ fn gen_binary_op(
     }
 }
 
+fn emit_assign(
+    op: CBinaryOp,
+    args: &mut Vec<KTerm>,
+    _results: &mut Vec<KSymbol>,
+    conts: &mut Vec<KNode>,
+    ty_env: &KTyEnv,
+    cx: &mut Cx,
+) {
+    match (args.as_mut_slice(), conts.as_mut_slice()) {
+        ([left, right], [cont]) => {
+            match left {
+                KTerm::Name(symbol) if !cx.locals[symbol.local.id()].is_alive => {
+                    cx.stmts.push(CStmt::Comment(format!(
+                        "assignment to {} is eliminated.",
+                        &cx.locals[symbol.local.id()].name
+                    )));
+                }
+                _ => {
+                    let left = gen_term(take(left), cx);
+                    let right = gen_term(take(right), cx);
+                    cx.stmts.push(
+                        left.into_unary_op(CUnaryOp::Deref)
+                            .into_binary_op(op, right)
+                            .into_stmt(),
+                    );
+                }
+            }
+
+            gen_node(take(cont), ty_env, cx);
+        }
+        _ => unimplemented!(),
+    }
+}
+
 fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     let KNode {
         prim,
@@ -434,30 +468,32 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Assign => match (args.as_mut_slice(), conts.as_mut_slice()) {
-            ([left, right], [cont]) => {
-                match left {
-                    KTerm::Name(symbol) if !cx.locals[symbol.local.id()].is_alive => {
-                        cx.stmts.push(CStmt::Comment(format!(
-                            "assignment to {} is eliminated.",
-                            &cx.locals[symbol.local.id()].name
-                        )));
-                    }
-                    _ => {
-                        let left = gen_term(take(left), cx);
-                        let right = gen_term(take(right), cx);
-                        cx.stmts.push(
-                            left.into_unary_op(CUnaryOp::Deref)
-                                .into_binary_op(CBinaryOp::Assign, right)
-                                .into_stmt(),
-                        );
-                    }
-                }
-
-                gen_node(take(cont), ty_env, cx);
-            }
-            _ => unimplemented!(),
-        },
+        KPrim::Assign => emit_assign(CBinaryOp::Assign, args, results, conts, ty_env, cx),
+        KPrim::AddAssign => emit_assign(CBinaryOp::AddAssign, args, results, conts, ty_env, cx),
+        KPrim::SubAssign => emit_assign(CBinaryOp::SubAssign, args, results, conts, ty_env, cx),
+        KPrim::MulAssign => emit_assign(CBinaryOp::MulAssign, args, results, conts, ty_env, cx),
+        KPrim::DivAssign => emit_assign(CBinaryOp::DivAssign, args, results, conts, ty_env, cx),
+        KPrim::ModuloAssign => {
+            emit_assign(CBinaryOp::ModuloAssign, args, results, conts, ty_env, cx)
+        }
+        KPrim::BitAndAssign => {
+            emit_assign(CBinaryOp::BitAndAssign, args, results, conts, ty_env, cx)
+        }
+        KPrim::BitOrAssign => emit_assign(CBinaryOp::BitOrAssign, args, results, conts, ty_env, cx),
+        KPrim::BitXorAssign => {
+            emit_assign(CBinaryOp::BitXorAssign, args, results, conts, ty_env, cx)
+        }
+        KPrim::LeftShiftAssign => {
+            emit_assign(CBinaryOp::LeftShiftAssign, args, results, conts, ty_env, cx)
+        }
+        KPrim::RightShiftAssign => emit_assign(
+            CBinaryOp::RightShiftAssign,
+            args,
+            results,
+            conts,
+            ty_env,
+            cx,
+        ),
     }
 }
 

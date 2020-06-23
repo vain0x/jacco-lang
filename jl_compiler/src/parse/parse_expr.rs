@@ -297,6 +297,16 @@ fn parse_pipe_or_assign(mut allow_assign: AllowAssign, px: &mut Px) -> Option<PE
     loop {
         let assign_op = match (px.next(), allow_assign) {
             (TokenKind::Equal, AllowAssign::True) => PBinaryOp::Assign,
+            (TokenKind::LeftShiftEqual, AllowAssign::True) => PBinaryOp::LeftShiftAssign,
+            (TokenKind::RightShiftEqual, AllowAssign::True) => PBinaryOp::RightShiftAssign,
+            (TokenKind::AndEqual, AllowAssign::True) => PBinaryOp::BitAndAssign,
+            (TokenKind::HatEqual, AllowAssign::True) => PBinaryOp::BitXorAssign,
+            (TokenKind::MinusEqual, AllowAssign::True) => PBinaryOp::SubAssign,
+            (TokenKind::PercentEqual, AllowAssign::True) => PBinaryOp::ModuloAssign,
+            (TokenKind::PipeEqual, AllowAssign::True) => PBinaryOp::BitOrAssign,
+            (TokenKind::PlusEqual, AllowAssign::True) => PBinaryOp::AddAssign,
+            (TokenKind::SlashEqual, AllowAssign::True) => PBinaryOp::DivAssign,
+            (TokenKind::StarEqual, AllowAssign::True) => PBinaryOp::MulAssign,
             (TokenKind::PipeRight, _) => {
                 let pipe = px.bump();
                 let right_opt = parse_suffix_expr(px).map(Box::new);

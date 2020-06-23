@@ -1,8 +1,25 @@
+fn compound_assign() {
+    let x = 0;
+
+    x += 2;
+    x -= 3;
+    x *= 4;
+    x /= 5;
+    x %= 6;
+    x &= 7;
+    x |= 8;
+    x ^= 9;
+    x <<= 2;
+    x >>= 1;
+}
+
 pub fn main() -> i32 {
     let x = 0;
     x = 1;
 
     let p = &x;
     *p = 2;
+
+    compound_assign();
     0
 }

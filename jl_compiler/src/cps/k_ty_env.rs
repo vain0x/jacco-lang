@@ -45,13 +45,17 @@ impl KTyEnv {
     }
 
     pub(crate) fn is_ptr(&self, ty: &KTy) -> bool {
+        self.as_ptr(ty).is_some()
+    }
+
+    pub(crate) fn as_ptr(&self, ty: &KTy) -> Option<KTy> {
         match ty {
-            KTy::Ptr { .. } => true,
-            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_ptr(&*ty.borrow()),
-                None => false,
-            },
-            _ => false,
+            KTy::Ptr { ty } => Some(ty.as_ref().clone()),
+            KTy::Meta(meta_ty) => {
+                let ty = meta_ty.try_unwrap(self)?;
+                self.as_ptr(&ty.borrow().clone())
+            }
+            _ => None,
         }
     }
 }

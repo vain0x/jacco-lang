@@ -167,6 +167,28 @@ fn emit_unary_op(
     KTerm::Name(result)
 }
 
+fn emit_compound_assign(
+    prim: KPrim,
+    left: PExpr,
+    right_opt: Option<Box<PExpr>>,
+    location: Location,
+    gx: &mut Gx,
+) -> KTerm {
+    let left = gen_expr_lval(left, location.clone(), gx);
+    let right = gen_expr(*right_opt.unwrap(), gx);
+
+    gx.push(KCommand::Node {
+        prim,
+        tys: vec![],
+        args: vec![left, right],
+        result_opt: None,
+        cont_count: 1,
+        location: location.clone(),
+    });
+
+    new_unit_term(location)
+}
+
 fn emit_binary_op(
     prim: KPrim,
     left: PExpr,
@@ -600,6 +622,36 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 });
 
                 new_unit_term(location)
+            }
+            PBinaryOp::AddAssign => {
+                emit_compound_assign(KPrim::AddAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::SubAssign => {
+                emit_compound_assign(KPrim::SubAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::MulAssign => {
+                emit_compound_assign(KPrim::MulAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::DivAssign => {
+                emit_compound_assign(KPrim::DivAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::ModuloAssign => {
+                emit_compound_assign(KPrim::ModuloAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::BitAndAssign => {
+                emit_compound_assign(KPrim::BitAndAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::BitOrAssign => {
+                emit_compound_assign(KPrim::BitOrAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::BitXorAssign => {
+                emit_compound_assign(KPrim::BitXorAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::LeftShiftAssign => {
+                emit_compound_assign(KPrim::LeftShiftAssign, *left, right_opt, location, gx)
+            }
+            PBinaryOp::RightShiftAssign => {
+                emit_compound_assign(KPrim::RightShiftAssign, *left, right_opt, location, gx)
             }
             PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
             PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),

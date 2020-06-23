@@ -1,5 +1,15 @@
 pub(crate) enum CBinaryOp {
     Assign,
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModuloAssign,
+    BitAndAssign,
+    BitOrAssign,
+    BitXorAssign,
+    LeftShiftAssign,
+    RightShiftAssign,
     Add,
     Sub,
     Mul,
@@ -38,6 +48,16 @@ impl CBinaryOp {
             CBinaryOp::Le => "<=",
             CBinaryOp::Gt => ">",
             CBinaryOp::Ge => ">=",
+            CBinaryOp::AddAssign => "+=",
+            CBinaryOp::SubAssign => "-=",
+            CBinaryOp::MulAssign => "*=",
+            CBinaryOp::DivAssign => "/=",
+            CBinaryOp::ModuloAssign => "%=",
+            CBinaryOp::BitAndAssign => "&=",
+            CBinaryOp::BitOrAssign => "|=",
+            CBinaryOp::BitXorAssign => "^=",
+            CBinaryOp::LeftShiftAssign => "<<=",
+            CBinaryOp::RightShiftAssign => ">>=",
         }
     }
 }
