@@ -6,6 +6,7 @@ use std::fmt;
 pub(crate) enum KTerm {
     Unit { location: Location },
     Int(TokenData, KTy),
+    Float(TokenData),
     Char(TokenData),
     Str(TokenData),
     True(TokenData),
@@ -24,6 +25,7 @@ impl fmt::Debug for KTerm {
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
             KTerm::Int(token, _) => write!(f, "{}", token.text()),
+            KTerm::Float(token) => write!(f, "{}", token.text()),
             KTerm::Char(token) => write!(f, "{}", token.text()),
             KTerm::Str(token) => write!(f, "{}", token.text()),
             KTerm::True(token) => write!(f, "{}", token.text()),

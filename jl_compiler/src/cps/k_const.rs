@@ -35,5 +35,6 @@ pub(crate) enum KConstValue {
     I32(i32),
     I64(i64),
     Usize(usize),
+    F64(f64),
     Bool(bool),
 }

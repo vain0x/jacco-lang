@@ -172,6 +172,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::I32 | KTy::Bool => CTy::Int,
         KTy::I64 => CTy::LongLong,
         KTy::Usize => CTy::UnsignedLongLong,
+        KTy::F64 => CTy::Double,
         KTy::C8 => CTy::UnsignedChar,
         KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
@@ -199,6 +200,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Int(token, _) => {
             CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))
         }
+        KTerm::Float(token) => CExpr::DoubleLit(token.into_text().replace("_", "")),
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
         KTerm::Str(token) => CExpr::StrLit(token.into_text()),
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
@@ -215,6 +217,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             Some(KConstValue::I32(value)) => CExpr::IntLit(value.to_string()),
             Some(KConstValue::I64(value)) => CExpr::LongLongLit(value.to_string()),
             Some(KConstValue::Usize(value)) => CExpr::UnsignedLongLongLit(value.to_string()),
+            Some(KConstValue::F64(value)) => CExpr::DoubleLit(value.to_string()),
             Some(KConstValue::Bool(true)) => CExpr::IntLit("1".to_string()),
             Some(KConstValue::Bool(false)) => CExpr::IntLit("0".to_string()),
             None => CExpr::IntLit("/* invalid const */ 0".to_string()),

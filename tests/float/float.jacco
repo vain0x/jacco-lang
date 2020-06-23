@@ -1,0 +1,10 @@
+extern fn assert(cond: bool);
+extern fn f64_abs(value: f64) -> f64;
+
+pub fn main() -> i32 {
+    const PI: f64 = 3.14159;
+    let tau = PI * 2.0;
+    let eps = 1e-9;
+    assert(f64_abs(tau - 6.28) < eps);
+    0
+}

@@ -252,6 +252,7 @@ fn gen_ty_name(ty_name: PNameTy, gx: &mut Gx) -> KTy {
         PNameKind::I32 => KTy::I32,
         PNameKind::I64 => KTy::I64,
         PNameKind::Usize => KTy::Usize,
+        PNameKind::F64 => KTy::F64,
         PNameKind::C8 => KTy::C8,
         PNameKind::Bool => KTy::Bool,
         PNameKind::Struct => {
@@ -321,6 +322,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
         PNameKind::I32
         | PNameKind::I64
         | PNameKind::Usize
+        | PNameKind::F64
         | PNameKind::C8
         | PNameKind::Bool
         | PNameKind::Struct => {
@@ -427,6 +429,12 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
                 })
                 .or_else(|| text.parse::<usize>().ok().map(KConstValue::Usize))
         }
+        PExpr::Float(PFloatExpr { token }) => token
+            .into_text()
+            .replace("_", "")
+            .parse::<f64>()
+            .ok()
+            .map(KConstValue::F64),
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
@@ -467,6 +475,7 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
 fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Int(PIntExpr { token }) => KTerm::Int(token, KTy::Unresolved),
+        PExpr::Float(PFloatExpr { token }) => KTerm::Float(token),
         PExpr::Char(PCharExpr { token }) => KTerm::Char(token),
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token),

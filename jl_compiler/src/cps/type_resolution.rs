@@ -59,6 +59,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::I32, KTy::I32)
         | (KTy::I64, KTy::I64)
         | (KTy::Usize, KTy::Usize)
+        | (KTy::F64, KTy::F64)
         | (KTy::C8, KTy::C8)
         | (KTy::Bool, KTy::Bool) => {}
 
@@ -97,6 +98,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::I32, _)
         | (KTy::I64, _)
         | (KTy::Usize, _)
+        | (KTy::F64, _)
         | (KTy::C8, _)
         | (KTy::Bool, _)
         | (KTy::Ptr { .. }, _)
@@ -154,6 +156,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
             assert!(ty.is_primitive());
             ty.clone()
         }
+        KTerm::Float(_) => KTy::F64,
         KTerm::Char(_) => KTy::C8,
         KTerm::Str(_) => KTy::C8.into_ptr(),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,

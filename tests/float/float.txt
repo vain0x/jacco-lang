@@ -1,0 +1,15 @@
+void assert(int cond_1);
+
+double f64_abs(double value_1);
+
+int main() {
+    double mul_1 = 3.14159 * 2.0;
+    double tau_1 = mul_1;
+    double eps_1 = 1e-9;
+    double sub_1 = tau_1 - 6.28;
+    double call_result_1 = f64_abs(sub_1);
+    int lt_1 = call_result_1 < eps_1;
+    // call_result_2 is killed.
+    assert(lt_1);
+    return 0;
+}

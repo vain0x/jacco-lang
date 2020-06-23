@@ -4,6 +4,7 @@ pub(crate) enum CExpr {
     IntLit(String),
     LongLongLit(String),
     UnsignedLongLongLit(String),
+    DoubleLit(String),
     CharLit(String),
     StrLit(String),
     Name(String),

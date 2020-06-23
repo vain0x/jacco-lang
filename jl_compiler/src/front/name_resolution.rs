@@ -139,6 +139,9 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
         "usize" => {
             name.info_opt = Some(PNameInfo::USIZE);
         }
+        "f64" => {
+            name.info_opt = Some(PNameInfo::F64);
+        }
         "c8" => {
             name.info_opt = Some(PNameInfo::C8);
         }
@@ -184,7 +187,12 @@ fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
 
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
-        PExpr::Int(_) | PExpr::Char(_) | PExpr::Str(_) | PExpr::True(_) | PExpr::False(_) => {}
+        PExpr::Int(_)
+        | PExpr::Float(_)
+        | PExpr::Char(_)
+        | PExpr::Str(_)
+        | PExpr::True(_)
+        | PExpr::False(_) => {}
         PExpr::Name(PNameExpr(name)) => {
             if !resolve_name_use(name, nx) {
                 nx.logger.error(name, "undefined");

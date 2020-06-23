@@ -49,6 +49,7 @@ f_all() {
     f ptr
     f const
     f call_with_pipe
+    f float
 }
 
 ONLY=${1:-''}
