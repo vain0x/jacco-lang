@@ -1,0 +1,27 @@
+//! まだ動きません。
+
+// https://atcoder.jp/contests/practice/tasks/practice_1
+
+// FIXME: 可変長引数を持つ extern fn を宣言できるようにする。
+// extern fn printf(fmt: *c8, ..);
+// extern fn scanf(fmt: *c8, ..);
+extern fn printf(fmt: *c8);
+extern fn scanf(fmt: *c8);
+extern fn malloc(size: usize) -> *();
+extern fn free(ptr: *());
+
+pub fn main() -> i32 {
+    let a = 0;
+    scanf("%d", &a);
+
+    let b = 0;
+    let c = 0;
+    scanf("%d %d", &b, &c);
+
+    let s = malloc(1024) as *c8;
+    scanf("%s", s);
+
+    printf("%d %s\n", a + b + c, s);
+    free(s as *());
+    0
+}
