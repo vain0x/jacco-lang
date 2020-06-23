@@ -15,25 +15,25 @@ next_1:;
 
 void break_from_loop_1() {
     // loop_result_1 is killed.
-    goto continue__1;
+    goto continue__2;
 
-continue__1:;
-    goto next_1;
+continue__2:;
+    goto next_2;
 
-next_1:;
+next_2:;
     return;
 }
 
 int break_with_arg_1() {
-    int loop_result_1;
-    goto continue__1;
+    int loop_result_2;
+    goto continue__3;
 
-continue__1:;
-    loop_result_1 = 2;
-    goto next_1;
+continue__3:;
+    loop_result_2 = 2;
+    goto next_3;
 
-next_1:;
-    return loop_result_1;
+next_3:;
+    return loop_result_2;
 }
 
 int main() {

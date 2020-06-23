@@ -505,6 +505,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
         let KExternFnData { params, locals } = extern_fn_data;
         cx.locals = locals;
+        cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let name = unique_extern_fn_name(extern_fn, cx);
@@ -531,6 +532,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             ..
         } = fn_data;
         cx.locals = locals;
+        cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let stmts = cx.enter_block(|cx| {
@@ -543,6 +545,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             }
 
             cx.labels = labels;
+            cx.label_ident_ids.clear();
             cx.label_ident_ids.resize(cx.labels.len(), None);
             gen_node(body, &ty_env, cx);
 

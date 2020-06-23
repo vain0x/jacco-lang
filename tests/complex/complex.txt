@@ -58,10 +58,10 @@ next_4:;
     goto next_3;
 }
 
-int fn_with_params_1(int x_1, int y_2) {
-    int add_4 = x_1 + y_2;
-    int s_1 = add_4;
-    int sub_1 = x_1 - y_2;
+int fn_with_params_1(int x_1, int y_1) {
+    int add_1 = x_1 + y_1;
+    int s_1 = add_1;
+    int sub_1 = x_1 - y_1;
     int t_1 = sub_1;
     int mul_1 = s_1 * t_1;
     return mul_1;
@@ -73,10 +73,10 @@ void fn_with_params_user_1() {
 }
 
 int use_fn_declared_later_1() {
-    int call_result_1 = a_fn_declared_later_1();
-    int x_1 = call_result_1;
-    int add_1 = x_1 + 2;
-    return add_1;
+    int call_result_2 = a_fn_declared_later_1();
+    int x_2 = call_result_2;
+    int add_2 = x_2 + 2;
+    return add_2;
 }
 
 int a_fn_declared_later_1() {
@@ -84,7 +84,7 @@ int a_fn_declared_later_1() {
 }
 
 void use_extern_fn_declared_later_1() {
-    // call_result_2 is killed.
+    // call_result_3 is killed.
     an_extern_fn_declared_later();
     return;
 }

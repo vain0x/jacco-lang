@@ -15,39 +15,39 @@ next_1:;
 
 void continue_in_loop_1() {
     // loop_result_1 is killed.
-    goto continue__1;
+    goto continue__2;
 
-continue__1:;
-    goto continue__1;
+continue__2:;
+    goto continue__2;
 
-next_1:;
+next_2:;
     return;
 }
 
 void nested_continue_1() {
-    // while_result_1 is killed.
     // while_result_2 is killed.
-    goto continue__1;
+    // while_result_3 is killed.
+    goto continue__3;
 
-continue__1:;
+continue__3:;
     if (0) {
-        goto continue__2;
+        goto continue__4;
     } else {
-        goto next_1;
+        goto next_3;
     }
 
-next_1:;
+next_3:;
     return;
 
-continue__2:;
+continue__4:;
     if (0) {
-        goto continue__2;
+        goto continue__4;
     } else {
-        goto next_2;
+        goto next_4;
     }
 
-next_2:;
-    goto continue__1;
+next_4:;
+    goto continue__3;
 }
 
 int main() {
