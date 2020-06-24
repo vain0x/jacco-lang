@@ -376,7 +376,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     None => {}
                 });
             }
-            PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) => {}
+            PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
         }
     }
 
@@ -411,6 +411,19 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
             if let Some(name) = name_opt {
                 resolve_name_def(name, PNameKind::Const, nx);
+            }
+        }
+        PDecl::Static(PStaticDecl {
+            name_opt,
+            ty_opt,
+            init_opt,
+            ..
+        }) => {
+            resolve_ty_opt(ty_opt.as_mut(), nx);
+            resolve_expr_opt(init_opt.as_mut(), nx);
+
+            if let Some(name) = name_opt {
+                resolve_name_def(name, PNameKind::StaticVar, nx);
             }
         }
         PDecl::Fn(PFnDecl {

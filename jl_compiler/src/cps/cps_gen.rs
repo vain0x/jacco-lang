@@ -21,6 +21,7 @@ struct Gx {
     loop_map: HashMap<usize, KLoopData>,
     local_map: HashMap<PNameId, KLocal>,
     const_map: HashMap<PNameId, KConst>,
+    static_var_map: HashMap<PNameId, KStaticVar>,
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
@@ -319,6 +320,23 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
 
             KSymbolExt::Const(k_const)
         }
+        PNameKind::StaticVar => {
+            let static_var = match gx.static_var_map.get(&name_info.id()) {
+                Some(&static_var) => static_var,
+                None => {
+                    let static_var = KStaticVar::new(gx.outlines.static_vars.len());
+                    gx.outlines.static_vars.push(KStaticVarData {
+                        name,
+                        ty,
+                        value_opt: None,
+                    });
+                    gx.static_var_map.insert(name_info.id(), static_var);
+                    static_var
+                }
+            };
+
+            KSymbolExt::StaticVar(static_var)
+        }
         PNameKind::I32
         | PNameKind::I64
         | PNameKind::Usize
@@ -427,7 +445,7 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
                     strip_suffix(text, "usize")
                         .and_then(|text| text.parse::<usize>().ok().map(KConstValue::Usize))
                 })
-                .or_else(|| text.parse::<usize>().ok().map(KConstValue::Usize))
+                .or_else(|| text.parse::<i32>().ok().map(KConstValue::I32))
         }
         PExpr::Float(PFloatExpr { token }) => token
             .into_text()
@@ -483,6 +501,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Const(k_const) => KTerm::Const(k_const),
+            KSymbolExt::StaticVar(static_var) => KTerm::StaticVar(static_var),
             KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
@@ -941,6 +960,47 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             });
             gx.const_map.insert(name_id, k_const);
         }
+        PDecl::Static(PStaticDecl {
+            keyword,
+            name_opt,
+            ty_opt,
+            init_opt,
+            ..
+        }) => {
+            let (name, name_id) = {
+                let mut name = name_opt.unwrap();
+                let name_info = take(&mut name.info_opt).unwrap();
+                assert_eq!(name_info.kind(), PNameKind::StaticVar);
+                let (name, _) = name.decompose();
+                (name, name_info.id())
+            };
+            let ty = gen_ty(ty_opt.unwrap(), gx);
+
+            if !ty.is_primitive() {
+                gx.logger
+                    .error(&keyword, "static var must be of primitive type");
+            }
+
+            let init = init_opt.unwrap();
+            let init_location = init.location();
+            let value_opt = match gen_constant(init, gx) {
+                Some(value) => Some(value),
+                None => {
+                    gx.logger
+                        .error(&init_location, "invalid constant expression");
+                    None
+                }
+            };
+
+            let static_var = KStaticVar::new(gx.outlines.static_vars.len());
+            gx.outlines.static_vars.push(KStaticVarData {
+                name,
+                ty,
+                value_opt,
+            });
+            gx.static_var_map.insert(name_id, static_var);
+        }
+
         PDecl::Fn(PFnDecl {
             vis_opt,
             keyword,

@@ -1,6 +1,7 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
+use c_stmt::CStorageModifier;
 use std::collections::HashMap;
 use std::mem::{replace, take};
 
@@ -10,6 +11,7 @@ type IdentMap = HashMap<String, IdProvider>;
 struct Cx<'a> {
     outlines: &'a KOutlines,
     ident_map: HashMap<String, IdProvider>,
+    static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
@@ -25,6 +27,7 @@ impl<'a> Cx<'a> {
         Self {
             outlines,
             ident_map: Default::default(),
+            static_var_ident_ids: Default::default(),
             fn_ident_ids: Default::default(),
             struct_ident_ids: Default::default(),
             locals: Default::default(),
@@ -77,6 +80,15 @@ fn do_unique_name(
 
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
     unique_local_name(symbol.local, cx)
+}
+
+fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
+    do_unique_name(
+        static_var.id(),
+        static_var.name(&cx.outlines.static_vars),
+        &mut cx.static_var_ident_ids,
+        &mut cx.ident_map,
+    )
 }
 
 fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
@@ -140,7 +152,27 @@ fn emit_var_decl(symbol: KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: 
         return;
     }
 
-    cx.stmts.push(CStmt::VarDecl { name, ty, init_opt });
+    cx.stmts.push(CStmt::VarDecl {
+        storage_modifier_opt: None,
+        name,
+        ty,
+        init_opt,
+    });
+}
+
+fn gen_constant_value(value: &KConstValue) -> CExpr {
+    match value {
+        KConstValue::I32(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::I64(value) => CExpr::LongLongLit(value.to_string()),
+        KConstValue::Usize(value) => CExpr::UnsignedLongLongLit(value.to_string()),
+        KConstValue::F64(value) => CExpr::DoubleLit(value.to_string()),
+        KConstValue::Bool(true) => CExpr::IntLit("1".to_string()),
+        KConstValue::Bool(false) => CExpr::IntLit("0".to_string()),
+    }
+}
+
+fn gen_invalid_constant_value() -> CExpr {
+    CExpr::IntLit("/* invalid const */ 0".to_string())
 }
 
 fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
@@ -205,6 +237,11 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Str(token) => CExpr::StrLit(token.into_text()),
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
         KTerm::False(_) => CExpr::IntLit("0".to_string()),
+        KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
+            Some(value) => gen_constant_value(value),
+            None => gen_invalid_constant_value(),
+        },
+        KTerm::StaticVar(static_var) => CExpr::Name(unique_static_var_name(static_var, cx)),
         KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
         KTerm::Label(label) => CExpr::Name(unique_label_name(label, cx)),
         KTerm::Return(k_fn) => {
@@ -213,15 +250,6 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
-            Some(KConstValue::I32(value)) => CExpr::IntLit(value.to_string()),
-            Some(KConstValue::I64(value)) => CExpr::LongLongLit(value.to_string()),
-            Some(KConstValue::Usize(value)) => CExpr::UnsignedLongLongLit(value.to_string()),
-            Some(KConstValue::F64(value)) => CExpr::DoubleLit(value.to_string()),
-            Some(KConstValue::Bool(true)) => CExpr::IntLit("1".to_string()),
-            Some(KConstValue::Bool(false)) => CExpr::IntLit("0".to_string()),
-            None => CExpr::IntLit("/* invalid const */ 0".to_string()),
-        },
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("/* error */ 0".to_string())
@@ -385,6 +413,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
 
                 let (name, ty) = gen_param(take(result), ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {
+                    storage_modifier_opt: None,
                     name: name.clone(),
                     ty,
                     init_opt: None,
@@ -523,6 +552,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     let outlines = cx.outlines;
     let empty_ty_env = KTyEnv::default();
 
+    cx.static_var_ident_ids
+        .resize(outlines.static_vars.len(), None);
     cx.fn_ident_ids.resize(outlines.fns.len(), None);
     cx.struct_ident_ids.resize(outlines.structs.len(), None);
 
@@ -539,6 +570,19 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             })
             .collect();
         cx.decls.push(CStmt::StructDecl { name, fields });
+    }
+
+    for (i, static_var_data) in outlines.static_vars.iter().enumerate() {
+        let static_var = KStaticVar::new(i);
+        let name = unique_static_var_name(static_var, cx);
+        let ty = gen_ty(static_var_data.ty.clone(), &empty_ty_env, cx);
+        let init_opt = static_var_data.value_opt.as_ref().map(gen_constant_value);
+        cx.decls.push(CStmt::VarDecl {
+            storage_modifier_opt: Some(CStorageModifier::Static),
+            name,
+            ty,
+            init_opt,
+        });
     }
 
     for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {

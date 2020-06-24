@@ -75,6 +75,7 @@ pub(crate) enum PNameKind {
     /// Local variable or parameter.
     Local,
     Const,
+    StaticVar,
     Struct,
     Field,
 }
@@ -749,6 +750,21 @@ impl PNode for PConstDecl {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PStaticDecl {
+    pub(crate) keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) colon_opt: Option<TokenData>,
+    pub(crate) ty_opt: Option<PTy>,
+    pub(crate) equal_opt: Option<TokenData>,
+    pub(crate) init_opt: Option<PExpr>,
+    pub(crate) semi_opt: Option<TokenData>,
+}
+
+impl PNode for PStaticDecl {
+    impl_node_seq! { keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PFnDecl {
     pub(crate) vis_opt: Option<PVis>,
     pub(crate) keyword: TokenData,
@@ -874,6 +890,7 @@ pub(crate) enum PDecl {
     Expr(PExprDecl),
     Let(PLetDecl),
     Const(PConstDecl),
+    Static(PStaticDecl),
     Fn(PFnDecl),
     ExternFn(PExternFnDecl),
     Struct(PStructDecl),
@@ -884,6 +901,7 @@ impl PNode for PDecl {
         PDecl::Expr,
         PDecl::Let,
         PDecl::Const,
+        PDecl::Static,
         PDecl::Fn,
         PDecl::ExternFn,
         PDecl::Struct,

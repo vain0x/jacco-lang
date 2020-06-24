@@ -1,5 +1,9 @@
 use super::{CBlock, CExpr, CTy};
 
+pub(crate) enum CStorageModifier {
+    Static,
+}
+
 pub(crate) enum CStmt {
     Comment(String),
     Expr(CExpr),
@@ -17,6 +21,7 @@ pub(crate) enum CStmt {
         alt: Box<CStmt>,
     },
     VarDecl {
+        storage_modifier_opt: Option<CStorageModifier>,
         name: String,
         ty: CTy,
         init_opt: Option<CExpr>,

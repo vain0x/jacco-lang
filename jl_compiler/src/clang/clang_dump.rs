@@ -1,6 +1,7 @@
 //! C言語の構文木を文字列に変換する処理
 
 use super::*;
+use c_stmt::CStorageModifier;
 use std::io::{self, Write};
 
 /// Dump context.
@@ -171,7 +172,16 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write!(dx, " else ")?;
             write_stmt(alt, dx)
         }
-        CStmt::VarDecl { name, ty, init_opt } => {
+        CStmt::VarDecl {
+            storage_modifier_opt,
+            name,
+            ty,
+            init_opt,
+        } => {
+            if let &Some(CStorageModifier::Static) = storage_modifier_opt {
+                write!(dx, "static ")?;
+            }
+
             write_var_with_ty(name, ty, dx)?;
 
             if let Some(init) = init_opt {

@@ -86,6 +86,7 @@ mod cps {
     mod k_outlines;
     mod k_prim;
     mod k_root;
+    mod k_static_var;
     mod k_struct;
     mod k_symbol;
     mod k_term;
@@ -107,6 +108,7 @@ mod cps {
     pub(crate) use k_outlines::KOutlines;
     pub(crate) use k_prim::KPrim;
     pub(crate) use k_root::KRoot;
+    pub(crate) use k_static_var::{KStaticVar, KStaticVarData};
     pub(crate) use k_struct::{KStruct, KStructOutline};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;

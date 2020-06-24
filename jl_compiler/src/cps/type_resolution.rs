@@ -161,6 +161,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Str(_) => KTy::C8.into_ptr(),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
         KTerm::Const(k_const) => k_const.ty(&tx.outlines.consts).clone(),
+        KTerm::StaticVar(static_var) => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
         KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),

@@ -50,6 +50,7 @@ f_all() {
     f const
     f call_with_pipe
     f float
+    f static_var
 }
 
 ONLY=${1:-''}
