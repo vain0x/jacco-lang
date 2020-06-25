@@ -1,5 +1,5 @@
 [package]
-name = "jl_tests"
+name = "libjacco"
 version = "0.1.0"
 authors = ["vain0x <vainzerox@gmail.com>"]
 edition = "2018"
@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libjacco = { path = "../jacco_lib" }
-
-# 環境変数に基づいてログ出力を行うロガーの実装。
-# <https://github.com/sebasmagri/env_logger>
-env_logger = "0.7"
+jl_clang = { path = "../jl_clang" }
+jl_cps_actions = { path = "../jl_cps_actions" }
+jl_cps_repr = { path = "../jl_cps_repr" }
+jl_syntax = { path = "../jl_syntax" }
