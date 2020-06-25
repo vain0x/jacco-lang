@@ -9,12 +9,24 @@ pub struct KSymbol {
 }
 
 impl KSymbol {
-    pub(crate) fn ty(&self, locals: &[KLocalData]) -> KTy {
+    pub fn local(&self) -> KLocal {
+        self.local
+    }
+
+    pub fn name<'a>(&self, locals: &'a [KLocalData]) -> &'a str {
+        self.local.name(locals)
+    }
+
+    pub fn ty(&self, locals: &[KLocalData]) -> KTy {
         self.local.ty(locals).to_owned()
     }
 
-    pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut [KLocalData]) -> &'a mut KTy {
+    pub(crate) fn ty_mut(self, locals: &mut [KLocalData]) -> &mut KTy {
         self.local.ty_mut(locals)
+    }
+
+    pub fn is_alive(&self, locals: &[KLocalData]) -> bool {
+        locals[self.local.id()].is_alive
     }
 }
 
@@ -26,7 +38,7 @@ impl HaveLocation for KSymbol {
 
 /// 名前を解決した結果。
 #[derive(Clone, Debug)]
-pub enum KSymbolExt {
+pub(crate) enum KSymbolExt {
     Symbol(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),

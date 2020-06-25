@@ -10,15 +10,15 @@ impl KConst {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
     }
 
-    pub(crate) fn ty(self, consts: &[KConstData]) -> &KTy {
+    pub fn ty(self, consts: &[KConstData]) -> &KTy {
         &consts[self.id].ty
     }
 
-    pub(crate) fn value_opt(self, consts: &[KConstData]) -> Option<&KConstValue> {
+    pub fn value_opt(self, consts: &[KConstData]) -> Option<&KConstValue> {
         consts[self.id].value_opt.as_ref()
     }
 }

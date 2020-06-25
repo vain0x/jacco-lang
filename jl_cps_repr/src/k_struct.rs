@@ -1,4 +1,4 @@
-use super::{KField, KOutlines};
+use super::KField;
 use crate::source::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,16 +11,16 @@ impl KStruct {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.struct_get(self).name
+    pub fn name(self, structs: &[KStructOutline]) -> &str {
+        &structs[self.id].name
     }
 
-    pub(crate) fn fields(self, outlines: &KOutlines) -> &[KField] {
-        &outlines.struct_get(self).fields
+    pub fn fields(self, structs: &[KStructOutline]) -> &[KField] {
+        &structs[self.id].fields
     }
 }
 
@@ -29,4 +29,10 @@ pub struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) location: Location,
+}
+
+impl KStructOutline {
+    pub fn keys(structs: &[KStructOutline]) -> impl Iterator<Item = KStruct> {
+        (0..structs.len()).map(KStruct::new)
+    }
 }

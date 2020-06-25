@@ -1,4 +1,4 @@
-use super::{KLocalData, KOutlines, KSymbol, KTy};
+use super::{KLocalData, KSymbol, KTy};
 use crate::source::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -11,26 +11,26 @@ impl KExternFn {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.extern_fn_get(self).name
+    pub fn name(self, extern_fns: &[KExternFnOutline]) -> &str {
+        &extern_fns[self.id].name
     }
 
-    pub(crate) fn param_tys(self, outlines: &KOutlines) -> &[KTy] {
-        &outlines.extern_fn_get(self).param_tys
+    pub fn param_tys(self, extern_fns: &[KExternFnOutline]) -> &[KTy] {
+        &extern_fns[self.id].param_tys
     }
 
-    pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
-        &outlines.extern_fn_get(self).result_ty
+    pub fn result_ty(self, extern_fns: &[KExternFnOutline]) -> &KTy {
+        &extern_fns[self.id].result_ty
     }
 
-    pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
+    pub fn ty(self, extern_fns: &[KExternFnOutline]) -> KTy {
         KTy::Fn {
-            param_tys: self.param_tys(outlines).to_owned(),
-            result_ty: Box::new(self.result_ty(outlines).clone()),
+            param_tys: self.param_tys(extern_fns).to_owned(),
+            result_ty: Box::new(self.result_ty(extern_fns).clone()),
         }
     }
 }
@@ -47,4 +47,18 @@ pub struct KExternFnOutline {
 pub struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) locals: Vec<KLocalData>,
+}
+
+impl KExternFnData {
+    pub fn iter(
+        extern_fns: &[KExternFnData],
+    ) -> impl Iterator<Item = (KExternFn, &[KSymbol], &[KLocalData])> {
+        extern_fns.iter().enumerate().map(|(i, data)| {
+            (
+                KExternFn::new(i),
+                data.params.as_slice(),
+                data.locals.as_slice(),
+            )
+        })
+    }
 }

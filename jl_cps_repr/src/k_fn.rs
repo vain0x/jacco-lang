@@ -1,4 +1,4 @@
-use super::{KLabelData, KLabelSig, KLocalData, KNode, KOutlines, KSymbol, KTy, KTyEnv, KVis};
+use super::{KLabelData, KLabelSig, KLocalData, KNode, KSymbol, KTy, KTyEnv, KVis};
 use crate::source::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -11,34 +11,38 @@ impl KFn {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.fn_get(self).name
+    pub fn name(self, fns: &[KFnOutline]) -> &str {
+        &fns[self.id].name
     }
 
-    pub(crate) fn param_tys(self, outlines: &KOutlines) -> &[KTy] {
-        &outlines.fn_get(self).param_tys
+    pub fn is_pub(self, fns: &[KFnOutline]) -> bool {
+        fns[self.id].vis_opt.is_some()
     }
 
-    pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
-        &outlines.fn_get(self).result_ty
+    pub fn param_tys(self, fns: &[KFnOutline]) -> &[KTy] {
+        &fns[self.id].param_tys
     }
 
-    pub(crate) fn return_ty(self, outlines: &KOutlines) -> KTy {
-        let result_ty = self.result_ty(outlines).clone();
+    pub fn result_ty(self, fns: &[KFnOutline]) -> &KTy {
+        &fns[self.id].result_ty
+    }
+
+    pub fn return_ty(self, fns: &[KFnOutline]) -> KTy {
+        let result_ty = self.result_ty(fns).clone();
         KTy::Fn {
             param_tys: vec![result_ty],
             result_ty: Box::new(KTy::Never),
         }
     }
 
-    pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
+    pub fn ty(self, fns: &[KFnOutline]) -> KTy {
         KTy::Fn {
-            param_tys: self.param_tys(outlines).to_owned(),
-            result_ty: Box::new(self.result_ty(outlines).clone()),
+            param_tys: self.param_tys(fns).to_owned(),
+            result_ty: Box::new(self.result_ty(fns).clone()),
         }
     }
 }
@@ -52,12 +56,6 @@ pub struct KFnOutline {
     pub(crate) location: Location,
 }
 
-impl KFnOutline {
-    pub(crate) fn is_pub(&self) -> bool {
-        self.vis_opt.is_some()
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct KFnData {
     pub(crate) params: Vec<KSymbol>,
@@ -66,4 +64,32 @@ pub struct KFnData {
     pub(crate) label_sigs: Vec<KLabelSig>,
     pub(crate) locals: Vec<KLocalData>,
     pub(crate) ty_env: KTyEnv,
+}
+
+impl KFnData {
+    pub fn iter(
+        fns: &[KFnData],
+    ) -> impl Iterator<
+        Item = (
+            KFn,
+            &[KSymbol],
+            &KNode,
+            &[KLabelData],
+            &[KLabelSig],
+            &[KLocalData],
+            &KTyEnv,
+        ),
+    > {
+        fns.iter().enumerate().map(|(i, data)| {
+            (
+                KFn::new(i),
+                data.params.as_slice(),
+                &data.body,
+                data.labels.as_slice(),
+                data.label_sigs.as_slice(),
+                data.locals.as_slice(),
+                &data.ty_env,
+            )
+        })
+    }
 }

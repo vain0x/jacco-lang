@@ -61,7 +61,7 @@ pub use k_prim::KPrim;
 pub use k_root::KRoot;
 pub use k_static_var::{KStaticVar, KStaticVarData};
 pub use k_struct::{KStruct, KStructOutline};
-pub use k_symbol::{KSymbol, KSymbolExt};
+pub use k_symbol::KSymbol;
 pub use k_term::KTerm;
 pub use k_ty::KTy;
 pub use k_ty_env::KTyEnv;

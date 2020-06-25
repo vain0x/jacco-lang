@@ -10,8 +10,32 @@ impl KLabel {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
+    }
+
+    pub fn name(self, label_sigs: &[KLabelSig]) -> &str {
+        &label_sigs[self.id].name
+    }
+
+    pub fn ty(self, label_sigs: &[KLabelSig]) -> KTy {
+        let param_tys = label_sigs[self.id].param_tys.iter().cloned().collect();
+        KTy::Fn {
+            param_tys,
+            result_ty: Box::new(KTy::Never),
+        }
+    }
+
+    pub fn param_tys_mut(self, label_sigs: &mut [KLabelSig]) -> &mut Vec<KTy> {
+        &mut label_sigs[self.id].param_tys
+    }
+
+    pub fn params(self, labels: &[KLabelData]) -> &[KSymbol] {
+        &labels[self.id].params
+    }
+
+    pub fn body(self, labels: &[KLabelData]) -> &KNode {
+        &labels[self.id].body
     }
 }
 
@@ -25,18 +49,6 @@ impl KLabelSig {
     pub(crate) fn new(name: String, param_tys: Vec<KTy>) -> Self {
         Self { name, param_tys }
     }
-
-    pub(crate) fn ty(&self) -> KTy {
-        let param_tys = self.param_tys.iter().cloned().collect();
-        KTy::Fn {
-            param_tys,
-            result_ty: Box::new(KTy::Never),
-        }
-    }
-
-    pub(crate) fn param_tys_mut(&mut self) -> &mut Vec<KTy> {
-        &mut self.param_tys
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -44,4 +56,17 @@ pub struct KLabelData {
     pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
+}
+
+impl KLabelData {
+    pub fn iter(labels: &[KLabelData]) -> impl Iterator<Item = (KLabel, &str, &[KSymbol], &KNode)> {
+        labels.iter().enumerate().map(|(i, data)| {
+            (
+                KLabel::new(i),
+                data.name.as_str(),
+                data.params.as_slice(),
+                &data.body,
+            )
+        })
+    }
 }

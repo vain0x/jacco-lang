@@ -66,7 +66,7 @@ impl KTy {
         KTy::Ptr { ty: Box::new(self) }
     }
 
-    pub(crate) fn as_struct(self) -> Option<KStruct> {
+    pub fn as_struct(self) -> Option<KStruct> {
         match self {
             KTy::Struct(k_struct) => Some(k_struct),
             _ => None,

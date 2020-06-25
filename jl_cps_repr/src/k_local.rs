@@ -10,15 +10,19 @@ impl KLocal {
         Self { id }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub fn id(self) -> usize {
         self.id
     }
 
-    pub(crate) fn ty(self, locals: &[KLocalData]) -> &KTy {
+    pub fn name(self, locals: &[KLocalData]) -> &str {
+        &locals[self.id].name
+    }
+
+    pub fn ty(self, locals: &[KLocalData]) -> &KTy {
         &locals[self.id].ty
     }
 
-    pub(crate) fn ty_mut(self, locals: &mut [KLocalData]) -> &mut KTy {
+    pub fn ty_mut(self, locals: &mut [KLocalData]) -> &mut KTy {
         &mut locals[self.id].ty
     }
 }
