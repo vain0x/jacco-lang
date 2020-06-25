@@ -4,7 +4,7 @@ use super::{
 };
 
 #[derive(Debug, Default)]
-pub(crate) struct KOutlines {
+pub struct KOutlines {
     pub(crate) consts: Vec<KConstData>,
     pub(crate) static_vars: Vec<KStaticVarData>,
     pub(crate) fns: Vec<KFnOutline>,
@@ -14,27 +14,27 @@ pub(crate) struct KOutlines {
 }
 
 impl KOutlines {
-    pub(crate) fn fns_iter(&self) -> impl Iterator<Item = KFn> {
+    pub fn fns_iter(&self) -> impl Iterator<Item = KFn> {
         (0..self.fns.len()).map(KFn::new)
     }
 
-    pub(crate) fn fn_get(&self, k_fn: KFn) -> &KFnOutline {
+    pub fn fn_get(&self, k_fn: KFn) -> &KFnOutline {
         &self.fns[k_fn.id()]
     }
 
-    pub(crate) fn fn_get_mut(&mut self, k_fn: KFn) -> &mut KFnOutline {
+    pub fn fn_get_mut(&mut self, k_fn: KFn) -> &mut KFnOutline {
         &mut self.fns[k_fn.id()]
     }
 
-    pub(crate) fn extern_fns_iter(&self) -> impl Iterator<Item = KExternFn> {
+    pub fn extern_fns_iter(&self) -> impl Iterator<Item = KExternFn> {
         (0..self.extern_fns.len()).map(KExternFn::new)
     }
 
-    pub(crate) fn extern_fn_get(&self, extern_fn: KExternFn) -> &KExternFnOutline {
+    pub fn extern_fn_get(&self, extern_fn: KExternFn) -> &KExternFnOutline {
         &self.extern_fns[extern_fn.id()]
     }
 
-    pub(crate) fn extern_fn_get_mut(&mut self, extern_fn: KExternFn) -> &mut KExternFnOutline {
+    pub fn extern_fn_get_mut(&mut self, extern_fn: KExternFn) -> &mut KExternFnOutline {
         &mut self.extern_fns[extern_fn.id()]
     }
 
@@ -44,11 +44,11 @@ impl KOutlines {
         KStruct::new(id)
     }
 
-    pub(crate) fn structs_iter(&self) -> impl Iterator<Item = KStruct> {
+    pub fn structs_iter(&self) -> impl Iterator<Item = KStruct> {
         (0..self.structs.len()).map(KStruct::new)
     }
 
-    pub(crate) fn struct_get(&self, k_struct: KStruct) -> &KStructOutline {
+    pub fn struct_get(&self, k_struct: KStruct) -> &KStructOutline {
         &self.structs[k_struct.id()]
     }
 
@@ -58,7 +58,7 @@ impl KOutlines {
         KField::new(id)
     }
 
-    pub(crate) fn field_get(&self, field: KField) -> &KFieldOutline {
+    pub fn field_get(&self, field: KField) -> &KFieldOutline {
         &self.fields[field.id()]
     }
 }

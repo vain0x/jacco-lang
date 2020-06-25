@@ -1,7 +1,7 @@
-use super::{KLabel, KPrim, KSymbol, KTerm, KTy};
+use super::{source::Location, KLabel, KPrim, KSymbol, KTerm, KTy};
 
 #[derive(Debug)]
-pub(crate) enum KCommand {
+pub enum KCommand {
     Node {
         prim: KPrim,
         tys: Vec<KTy>,

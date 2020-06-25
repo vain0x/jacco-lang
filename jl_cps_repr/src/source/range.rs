@@ -1,28 +1,26 @@
-use super::*;
+use super::Position;
 use std::fmt;
 
 /// テキスト上の範囲
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub(crate) struct Range {
+pub struct Range {
     /// 開始位置
-    pub(crate) start: Position,
+    pub start: Position,
 
     /// 終了位置 (終端は範囲外)
-    pub(crate) end: Position,
+    pub end: Position,
 }
 
 impl Range {
-    pub(crate) fn new(start: Position, end: Position) -> Range {
+    pub fn new(start: Position, end: Position) -> Range {
         Range { start, end }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn start(&self) -> Position {
+    pub fn start(&self) -> Position {
         self.start
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn end(&self) -> Position {
+    pub fn end(&self) -> Position {
         self.end
     }
 
@@ -31,21 +29,21 @@ impl Range {
         self.start <= position && position <= self.end
     }
 
-    pub(crate) fn unite(self, other: Range) -> Range {
+    pub fn unite(self, other: Range) -> Range {
         Range {
             start: self.start.min(other.start),
             end: self.start.max(other.end),
         }
     }
 
-    pub(crate) fn ahead(self) -> Range {
+    pub fn ahead(self) -> Range {
         Range {
             start: self.start,
             end: self.start,
         }
     }
 
-    pub(crate) fn behind(self) -> Range {
+    pub fn behind(self) -> Range {
         Range {
             start: self.end,
             end: self.end,

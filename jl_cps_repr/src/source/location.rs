@@ -3,13 +3,13 @@ use std::fmt;
 
 /// トークンや構文木の位置情報
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Location {
+pub struct Location {
     pub(crate) source: TokenSource,
     pub(crate) range: Range,
 }
 
 impl Location {
-    pub(crate) fn new(source: TokenSource, range: Range) -> Location {
+    pub fn new(source: TokenSource, range: Range) -> Location {
         Location { source, range }
     }
 
@@ -31,14 +31,14 @@ impl Location {
         }
     }
 
-    pub(crate) fn ahead(self) -> Location {
+    pub fn ahead(self) -> Location {
         Location {
             range: self.range.ahead(),
             ..self
         }
     }
 
-    pub(crate) fn behind(self) -> Location {
+    pub fn behind(self) -> Location {
         Location {
             range: self.range.behind(),
             ..self
@@ -58,18 +58,12 @@ impl Default for Location {
     }
 }
 
-pub(crate) trait HaveLocation {
+pub trait HaveLocation {
     fn location(&self) -> Location;
 }
 
 impl HaveLocation for Location {
     fn location(&self) -> Location {
         self.clone()
-    }
-}
-
-impl HaveLocation for TokenData {
-    fn location(&self) -> Location {
-        self.as_location().clone()
     }
 }

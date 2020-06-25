@@ -1,9 +1,9 @@
 use super::{KMetaTy, KMetaTyData, KTy};
-use crate::token::Location;
+use crate::source::Location;
 use std::cell::RefCell;
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KTyEnv {
+pub struct KTyEnv {
     meta_tys: Vec<KMetaTyData>,
 }
 

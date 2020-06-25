@@ -1,14 +1,14 @@
 use super::{KOutlines, KTy};
-use crate::token::Location;
+use crate::source::Location;
 
 #[derive(Clone, Debug)]
-pub(crate) struct KFieldTag {
+pub struct KFieldTag {
     pub(crate) name: String,
     pub(crate) location: Location,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct KField {
+pub struct KField {
     id: usize,
 }
 
@@ -35,7 +35,7 @@ impl KField {
 }
 
 #[derive(Debug)]
-pub(crate) struct KFieldOutline {
+pub struct KFieldOutline {
     name: String,
     ty: KTy,
     location: Location,

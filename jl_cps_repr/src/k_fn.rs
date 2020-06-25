@@ -1,9 +1,8 @@
-use super::{KLabelData, KLabelSig, KLocalData, KNode, KOutlines, KSymbol, KTy, KTyEnv};
-use crate::parse::Vis;
-use crate::token::Location;
+use super::{KLabelData, KLabelSig, KLocalData, KNode, KOutlines, KSymbol, KTy, KTyEnv, KVis};
+use crate::source::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KFn {
+pub struct KFn {
     id: usize,
 }
 
@@ -45,9 +44,9 @@ impl KFn {
 }
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KFnOutline {
+pub struct KFnOutline {
     pub(crate) name: String,
-    pub(crate) vis_opt: Option<Vis>,
+    pub(crate) vis_opt: Option<KVis>,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
@@ -60,7 +59,7 @@ impl KFnOutline {
 }
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KFnData {
+pub struct KFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
     pub(crate) labels: Vec<KLabelData>,

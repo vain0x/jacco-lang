@@ -1,9 +1,9 @@
 use super::{KConst, KExternFn, KFn, KLocal, KLocalData, KStaticVar, KStruct, KTy};
-use crate::token::{HaveLocation, Location};
+use crate::source::{HaveLocation, Location};
 
 /// ローカル変数の出現
 #[derive(Clone, Debug, Default)]
-pub(crate) struct KSymbol {
+pub struct KSymbol {
     pub(crate) local: KLocal,
     pub(crate) location: Location,
 }
@@ -26,7 +26,7 @@ impl HaveLocation for KSymbol {
 
 /// 名前を解決した結果。
 #[derive(Clone, Debug)]
-pub(crate) enum KSymbolExt {
+pub enum KSymbolExt {
     Symbol(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),
