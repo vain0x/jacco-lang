@@ -497,8 +497,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
         prepare_struct(k_struct, tx);
     }
 
-    for extern_fn in outlines.extern_fns_iter() {
-        let extern_fn_data = &mut root.extern_fns[extern_fn.id()];
+    for (extern_fn, extern_fn_data) in KExternFnData::iter_mut(&mut root.extern_fns) {
         swap(&mut tx.locals, &mut extern_fn_data.locals);
 
         prepare_extern_fn(extern_fn, extern_fn_data, tx);

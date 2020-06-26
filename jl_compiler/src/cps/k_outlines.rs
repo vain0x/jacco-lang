@@ -22,10 +22,6 @@ impl KOutlines {
         &mut self.fns[k_fn.id()]
     }
 
-    pub(crate) fn extern_fns_iter(&self) -> impl Iterator<Item = KExternFn> {
-        (0..self.extern_fns.len()).map(KExternFn::new)
-    }
-
     pub(crate) fn extern_fn_get(&self, extern_fn: KExternFn) -> &KExternFnOutline {
         &self.extern_fns[extern_fn.id()]
     }

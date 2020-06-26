@@ -48,3 +48,21 @@ pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) locals: Vec<KLocalData>,
 }
+
+impl KExternFnData {
+    pub(crate) fn into_iter(
+        fns: impl IntoIterator<Item = KExternFnData>,
+    ) -> impl Iterator<Item = (KExternFn, KExternFnData)> {
+        fns.into_iter()
+            .enumerate()
+            .map(|(i, fn_data)| (KExternFn::new(i), fn_data))
+    }
+
+    pub(crate) fn iter_mut(
+        fns: &mut [KExternFnData],
+    ) -> impl Iterator<Item = (KExternFn, &mut KExternFnData)> {
+        fns.iter_mut()
+            .enumerate()
+            .map(|(i, fn_data)| (KExternFn::new(i), fn_data))
+    }
+}

@@ -585,8 +585,9 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for (extern_fn, extern_fn_data) in outlines.extern_fns_iter().zip(root.extern_fns) {
+    for (extern_fn, extern_fn_data) in KExternFnData::into_iter(root.extern_fns) {
         let KExternFnData { params, locals } = extern_fn_data;
+
         cx.locals = locals;
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
