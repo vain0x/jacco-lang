@@ -1,4 +1,5 @@
 use super::{KLabel, KPrim, KSymbol, KTerm, KTy};
+use crate::token::Location;
 
 #[derive(Debug)]
 pub(crate) enum KCommand {

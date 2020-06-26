@@ -1,11 +1,6 @@
 [workspace]
 members = [
-    "jacco_cli",
-    "jacco_lib",
-    "jl_clang",
-    "jl_cps_repr",
-    "jl_cps_actions",
+    "jl_compiler",
     "jl_lsp",
-    "jl_syntax",
     "jl_tests"
 ]

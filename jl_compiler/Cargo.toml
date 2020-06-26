@@ -1,5 +1,5 @@
 [package]
-name = "jl_cps_actions"
+name = "jl_compiler"
 version = "0.1.0"
 authors = ["vain0x <vainzerox@gmail.com>"]
 edition = "2018"
@@ -7,8 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-jl_cps_repr = { path = "../jl_cps_repr" }
-
 # ログ出力 API の基本になるもの。
 # <https://github.com/rust-lang/log>
 log = "0.4"
