@@ -1050,7 +1050,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let locals = replace(&mut gx.current_locals, parent_locals);
 
-            *gx.outlines.fn_get_mut(k_fn) = KFnOutline {
+            gx.outlines.fns[k_fn.id()] = KFnOutline {
                 name: fn_name,
                 vis_opt,
                 param_tys,
