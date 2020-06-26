@@ -40,12 +40,12 @@ cargo build
 #### 略語など
 
 | 略語   | 原語           | 意味 |
-|:------|:--------------|:--|
-| alt   | alternative   | 代替 |
+|:------|:--------------|:----|
+| alt   | alternative   | 代替 (else の式) |
 | arg   | argument      | 実引数 |
 | attr  | attribute     | 属性 |
-| cont  | continuation  | 継続 |
 | cond  | condition     | 条件 |
+| cont  | continuation  | 継続 |
 | decl  | declaration   | 宣言 |
 | expr  | expression    | 式 |
 | gen   | generation    | 生成 |
@@ -60,10 +60,11 @@ cargo build
 | prim  | primitive     | プリミティブ |
 | semi  | semicolon     | セミコロン |
 | sig   | signature     | シグネチャ |
-| ty    | type          | 型 |
+| ty    | type          | (静的) 型 |
 
 - Gx, Tx など
     - 何らかの処理で使うデータを入れた構造体。なんとか context の略。
+- outline は関数の引数の型などの外部に公開されるインターフェイスを指すために使っている。(一般的な用法ではない)
 - continuation passing style (CPS): 継続渡し形式
 
 ### 内部: ステージ
