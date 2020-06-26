@@ -29,7 +29,6 @@ struct Gx {
     current_locals: Vec<KLocalData>,
     current_labels: Vec<KLabelData>,
     extern_fns: Vec<KExternFnData>,
-    structs: Vec<KStruct>,
     fns: Vec<KFnData>,
     logger: Logger,
 }
@@ -345,7 +344,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
         | PNameKind::Bool
         | PNameKind::Struct => {
             if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
-                if gx.structs[k_struct.id()].fields(&gx.outlines).is_empty() {
+                if k_struct.fields(&gx.outlines).is_empty() {
                     return KSymbolExt::UnitLikeStruct { k_struct, location };
                 }
             }
@@ -506,7 +505,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
                 let ty = KTy::Struct(k_struct);
-                let name = gx.structs[k_struct.id()].name(&gx.outlines).to_string();
+                let name = k_struct.name(&gx.outlines).to_string();
                 let result = gx.fresh_symbol(&name, location.clone());
                 gx.push(KCommand::Node {
                     prim: KPrim::Struct,
@@ -1134,7 +1133,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 location,
             });
             gx.struct_map.insert(name_info.id(), k_struct.clone());
-            gx.structs.push(k_struct);
         }
     }
 }
