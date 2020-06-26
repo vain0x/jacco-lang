@@ -20,7 +20,7 @@ impl KMetaTy {
         self.id
     }
 
-    pub fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy>> {
+    pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy>> {
         if ty_env.meta_ty_get(self).ty().borrow().is_unresolved() {
             return None;
         }

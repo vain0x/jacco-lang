@@ -1,10 +1,10 @@
-use super::KTy;
+use super::{KOutlines, KTy};
 use crate::source::Location;
 
 #[derive(Clone, Debug)]
 pub struct KFieldTag {
-    pub name: String,
-    pub location: Location,
+    pub(crate) name: String,
+    pub(crate) location: Location,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -17,20 +17,20 @@ impl KField {
         Self { id }
     }
 
-    pub fn id(self) -> usize {
+    pub(crate) fn id(self) -> usize {
         self.id
     }
 
-    pub fn name(self, fields: &[KFieldOutline]) -> &str {
-        &fields[self.id].name
+    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
+        &outlines.field_get(self).name
     }
 
-    pub fn ty(self, fields: &[KFieldOutline]) -> &KTy {
-        &fields[self.id].ty
+    pub(crate) fn ty(self, outlines: &KOutlines) -> &KTy {
+        &outlines.field_get(self).ty
     }
 
-    pub(crate) fn location(self, fields: &[KFieldOutline]) -> Location {
-        fields[self.id].location.clone()
+    pub(crate) fn location(self, outlines: &KOutlines) -> Location {
+        outlines.field_get(self).location.clone()
     }
 }
 
