@@ -2,8 +2,10 @@
 
 use super::*;
 use c_stmt::CStorageModifier;
-use std::collections::HashMap;
-use std::mem::{replace, take};
+use std::{
+    collections::HashMap,
+    mem::{replace, take},
+};
 
 type IdentMap = HashMap<String, IdProvider>;
 

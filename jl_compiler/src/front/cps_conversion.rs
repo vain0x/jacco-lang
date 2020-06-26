@@ -8,9 +8,11 @@ use crate::{
     token::{HaveLocation, Location, TokenData, TokenKind},
 };
 use log::{error, trace};
-use std::collections::HashMap;
-use std::iter::once;
-use std::mem::{replace, take};
+use std::{
+    collections::HashMap,
+    iter::once,
+    mem::{replace, take},
+};
 
 struct KLoopData {
     break_label: KLabel,

@@ -4,9 +4,7 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::token::{HaveLocation, Location};
-use std::cell::RefCell;
-use std::mem::take;
-use std::rc::Rc;
+use std::{cell::RefCell, mem::take, rc::Rc};
 
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]

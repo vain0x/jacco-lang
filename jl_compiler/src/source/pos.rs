@@ -1,6 +1,8 @@
-use std::fmt::{self, Debug, Display, Formatter};
-use std::iter::Sum;
-use std::ops::{Add, AddAssign};
+use std::{
+    fmt::{self, Debug, Display, Formatter},
+    iter::Sum,
+    ops::{Add, AddAssign},
+};
 
 /// テキスト上の位置 (行番号, 列番号)
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

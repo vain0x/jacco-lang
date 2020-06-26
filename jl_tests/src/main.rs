@@ -5,9 +5,7 @@
 //! `foo.jacco` をコンパイルした結果を `foo.txt` に出力する。
 
 use jl_compiler::compile;
-use std::env;
-use std::fs;
-use std::path::PathBuf;
+use std::{env, fs, path::PathBuf};
 
 fn init_log() {
     let env = env_logger::Env::default().default_filter_or("trace");

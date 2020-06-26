@@ -2,8 +2,10 @@
 
 use super::*;
 use crate::{logs::Logger, utils::IdProvider};
-use std::collections::HashMap;
-use std::mem::{replace, take};
+use std::{
+    collections::HashMap,
+    mem::{replace, take},
+};
 
 /// 関数の定義に関する情報
 #[derive(Default)]

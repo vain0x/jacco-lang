@@ -1,6 +1,5 @@
 use super::*;
-use std::cmp::min;
-use std::rc::Rc;
+use std::{cmp::min, rc::Rc};
 
 /// Tokenization context. 字句解析の文脈
 pub(crate) struct TokenizeContext {

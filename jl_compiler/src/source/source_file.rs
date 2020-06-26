@@ -1,7 +1,9 @@
-use std::fmt::{self, Debug};
-use std::io;
-use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
+use std::{
+    fmt::{self, Debug},
+    io,
+    path::{Component, Path, PathBuf},
+    rc::Rc,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct SourceFile {
