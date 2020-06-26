@@ -92,6 +92,7 @@ mod cps {
     mod k_term;
     mod k_ty;
     mod k_ty_env;
+    mod k_vis;
     mod type_resolution;
 
     pub(crate) use cps_fold::fold_block;
@@ -114,6 +115,7 @@ mod cps {
     pub(crate) use k_term::KTerm;
     pub(crate) use k_ty::KTy;
     pub(crate) use k_ty_env::KTyEnv;
+    pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 
     use crate::logs::Logger;
@@ -157,7 +159,7 @@ mod parse {
     pub(crate) use p_element::{PElementMut, PElementRef};
     pub(crate) use p_node::{try_as_element_mut, try_as_element_ref, PNode};
     pub(crate) use p_unary_op::PUnaryOp;
-    pub(crate) use p_vis::{PVis, Vis};
+    pub(crate) use p_vis::PVis;
     pub(crate) use parse_decl::parse_tokens;
     pub(crate) use parse_tree::*;
 

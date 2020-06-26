@@ -1,6 +1,7 @@
 //! 宣言の構文解析ルール
 
 use super::*;
+use crate::cps::KVis;
 
 fn parse_param_list(px: &mut Px) -> Option<PParamList> {
     let left_paren = px.eat(TokenKind::LeftParen)?;
@@ -268,7 +269,7 @@ fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
 pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     let decl = match px.next() {
         TokenKind::Pub => {
-            let vis = (Vis::Pub, px.bump());
+            let vis = (KVis::Pub, px.bump());
             return parse_decl_with_vis(vis, px);
         }
         TokenKind::Let => PDecl::Let(parse_let_decl(px)),
