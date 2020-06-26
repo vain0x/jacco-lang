@@ -68,16 +68,18 @@ cargo build
 
 ### 内部: ステージ
 
-- 字句 (token)
+- 字句列 (token)
     - 字句解析
 - 構文木 (parse)
-    - 構文解析
-    - 名前解決 (name_resolution)
+    - 構文解析 (parse)
+    - 構文検査 (front::syntax_validation)
+    - 名前解決 (front::name_resolution)
+    - 命令列の生成 (front::cps_conversion)
+        - CPS ノードの構築 (cps::cps_fold)
 - CPS 中間表現 (cps)
-    - 命令列の生成 (cps_gen)
-    - CPS ノードの構築 (cps_fold)
     - 型推論 (type_resolution)
-- C言語 (clang)
+    - unit 除去 (eliminate_unit)
+- C言語 構文木 (clang)
     - 構文木の構築 (clang_gen)
     - 文字列への変換 (clang_dump)
 
