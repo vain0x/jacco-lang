@@ -605,7 +605,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.locals.clear();
     }
 
-    for (k_fn, fn_data) in outlines.fns_iter().zip(root.fns) {
+    for (k_fn, fn_data) in KFnData::into_iter(root.fns) {
         let KFnData {
             params,
             body,
@@ -614,6 +614,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             ty_env,
             ..
         } = fn_data;
+
         cx.locals = locals;
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
