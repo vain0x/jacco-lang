@@ -185,11 +185,11 @@ mod parse {
 mod source {
     //! ソースファイル
 
-    mod position;
+    mod pos;
     mod range;
     mod source_file;
 
-    pub(crate) use position::Position;
+    pub(crate) use pos::Pos;
     pub(crate) use range::Range;
     pub(crate) use source_file::SourceFile;
 
@@ -215,7 +215,7 @@ mod token {
     pub(crate) use token_source::TokenSource;
     pub(crate) use tokenize_rules::tokenize;
 
-    use crate::source::{Position, Range, SourceCode, SourceFile};
+    use crate::source::{Pos, Range, SourceCode, SourceFile};
 }
 
 mod utils {

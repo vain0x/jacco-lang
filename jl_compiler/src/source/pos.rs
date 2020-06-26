@@ -4,7 +4,7 @@ use std::ops::{Add, AddAssign};
 
 /// テキスト上の位置 (行番号, 列番号)
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Position {
+pub(crate) struct Pos {
     /// 行番号。0 から始まる。
     /// テキスト中の改行の個数に等しい。
     pub(crate) line: usize,
@@ -14,27 +14,27 @@ pub(crate) struct Position {
     pub(crate) character: usize,
 }
 
-impl Position {
-    pub(crate) const ZERO: Position = Position {
+impl Pos {
+    pub(crate) const ZERO: Pos = Pos {
         line: 0,
         character: 0,
     };
 
     #[allow(dead_code)]
-    pub(crate) fn new(line: usize, character: usize) -> Position {
-        Position { line, character }
+    pub(crate) fn new(line: usize, character: usize) -> Pos {
+        Pos { line, character }
     }
 }
 
-impl From<char> for Position {
-    fn from(c: char) -> Position {
+impl From<char> for Pos {
+    fn from(c: char) -> Pos {
         if c == '\n' {
-            Position {
+            Pos {
                 line: 1,
                 character: 0,
             }
         } else {
-            Position {
+            Pos {
                 line: 0,
                 character: c.len_utf16(),
             }
@@ -42,13 +42,13 @@ impl From<char> for Position {
     }
 }
 
-impl From<&'_ str> for Position {
-    fn from(s: &str) -> Position {
-        s.chars().map(Position::from).sum::<Position>()
+impl From<&'_ str> for Pos {
+    fn from(s: &str) -> Pos {
+        s.chars().map(Pos::from).sum::<Pos>()
     }
 }
 
-impl AddAssign for Position {
+impl AddAssign for Pos {
     fn add_assign(&mut self, other: Self) {
         if other.line >= 1 {
             self.character = 0;
@@ -59,7 +59,7 @@ impl AddAssign for Position {
     }
 }
 
-impl Add for Position {
+impl Add for Pos {
     type Output = Self;
 
     fn add(mut self, other: Self) -> Self {
@@ -68,19 +68,19 @@ impl Add for Position {
     }
 }
 
-impl Sum for Position {
-    fn sum<I: Iterator<Item = Position>>(iter: I) -> Position {
-        iter.fold(Position::default(), Add::add)
+impl Sum for Pos {
+    fn sum<I: Iterator<Item = Pos>>(iter: I) -> Pos {
+        iter.fold(Pos::default(), Add::add)
     }
 }
 
-impl fmt::Debug for Position {
+impl fmt::Debug for Pos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl fmt::Display for Position {
+impl fmt::Display for Pos {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // <https://www.gnu.org/prep/standards/html_node/Errors.html>
         write!(f, "{}:{}", self.line + 1, self.character + 1)

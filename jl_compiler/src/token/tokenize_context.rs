@@ -8,7 +8,7 @@ pub(crate) struct TokenizeContext {
     source_code: Rc<SourceCode>,
     current_index: usize,
     last_index: usize,
-    last_position: Position,
+    last_pos: Pos,
     tokens: Vec<TokenData>,
 }
 
@@ -19,7 +19,7 @@ impl TokenizeContext {
             source_code,
             current_index: 0,
             last_index: 0,
-            last_position: Position::ZERO,
+            last_pos: Pos::ZERO,
             tokens: vec![],
         }
     }
@@ -80,15 +80,15 @@ impl TokenizeContext {
     pub(crate) fn commit(&mut self, token: TokenKind) {
         let text = self.current_text().to_string();
 
-        let current_position = self.last_position + Position::from(text.as_str());
-        let range = Range::new(self.last_position, current_position);
+        let current_pos = self.last_pos + Pos::from(text.as_str());
+        let range = Range::new(self.last_pos, current_pos);
         let location = Location::new(self.source.clone(), range);
         let token = TokenData::new(token, text, location);
 
         self.push_token(token);
 
         self.last_index = self.current_index;
-        self.last_position = current_position;
+        self.last_pos = current_pos;
 
         self.assert_invariants();
     }

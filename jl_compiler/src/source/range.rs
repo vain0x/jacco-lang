@@ -5,30 +5,30 @@ use std::fmt;
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub(crate) struct Range {
     /// 開始位置
-    pub(crate) start: Position,
+    pub(crate) start: Pos,
 
     /// 終了位置 (終端は範囲外)
-    pub(crate) end: Position,
+    pub(crate) end: Pos,
 }
 
 impl Range {
-    pub(crate) fn new(start: Position, end: Position) -> Range {
+    pub(crate) fn new(start: Pos, end: Pos) -> Range {
         Range { start, end }
     }
 
     #[allow(dead_code)]
-    pub(crate) fn start(&self) -> Position {
+    pub(crate) fn start(&self) -> Pos {
         self.start
     }
 
     #[allow(dead_code)]
-    pub(crate) fn end(&self) -> Position {
+    pub(crate) fn end(&self) -> Pos {
         self.end
     }
 
     #[allow(dead_code)]
-    pub(crate) fn contains_loosely(self, position: Position) -> bool {
-        self.start <= position && position <= self.end
+    pub(crate) fn contains_loosely(self, pos: Pos) -> bool {
+        self.start <= pos && pos <= self.end
     }
 
     pub(crate) fn unite(self, other: Range) -> Range {
