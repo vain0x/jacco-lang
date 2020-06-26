@@ -165,7 +165,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines.fns),
         KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
-        KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines),
+        KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines.extern_fns),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::FieldTag(_) => unreachable!(),
     }
@@ -475,7 +475,7 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
 
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
-        let param_ty = &extern_fn.param_tys(&outlines)[i];
+        let param_ty = &extern_fn.param_tys(&outlines.extern_fns)[i];
         resolve_symbol_def(param, Some(param_ty), tx);
     }
 }

@@ -107,7 +107,7 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
 
 fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     // 外部関数の名前は勝手にマングルしない。
-    extern_fn.name(&cx.outlines).to_string()
+    extern_fn.name(&cx.outlines.extern_fns).to_string()
 }
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
@@ -594,7 +594,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
         let name = unique_extern_fn_name(extern_fn, cx);
         let (params, result_ty) = {
-            let result_ty = extern_fn.result_ty(&outlines).clone();
+            let result_ty = extern_fn.result_ty(&outlines.extern_fns).clone();
             gen_fn_sig(params, result_ty, &empty_ty_env, cx)
         };
         cx.decls.push(CStmt::ExternFnDecl {

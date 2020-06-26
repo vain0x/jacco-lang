@@ -1,4 +1,4 @@
-use super::{KLocalData, KOutlines, KSymbol, KTy};
+use super::{KLocalData, KSymbol, KTy};
 use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -15,22 +15,22 @@ impl KExternFn {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.extern_fn_get(self).name
+    pub(crate) fn name(self, extern_fns: &[KExternFnOutline]) -> &str {
+        &extern_fns[self.id].name
     }
 
-    pub(crate) fn param_tys(self, outlines: &KOutlines) -> &[KTy] {
-        &outlines.extern_fn_get(self).param_tys
+    pub(crate) fn param_tys(self, extern_fns: &[KExternFnOutline]) -> &[KTy] {
+        &extern_fns[self.id].param_tys
     }
 
-    pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
-        &outlines.extern_fn_get(self).result_ty
+    pub(crate) fn result_ty(self, extern_fns: &[KExternFnOutline]) -> &KTy {
+        &extern_fns[self.id].result_ty
     }
 
-    pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
+    pub(crate) fn ty(self, extern_fns: &[KExternFnOutline]) -> KTy {
         KTy::Fn {
-            param_tys: self.param_tys(outlines).to_owned(),
-            result_ty: Box::new(self.result_ty(outlines).clone()),
+            param_tys: self.param_tys(extern_fns).to_owned(),
+            result_ty: Box::new(self.result_ty(extern_fns).clone()),
         }
     }
 }
