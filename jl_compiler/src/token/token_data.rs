@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self, Debug, Formatter};
 
 /// 字句データ
 #[derive(Clone, Default)]
@@ -43,8 +43,8 @@ impl TokenData {
     }
 }
 
-impl fmt::Debug for TokenData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for TokenData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.kind() {
             TokenKind::Comment
             | TokenKind::Int

@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self, Debug, Display, Formatter};
 
 /// テキスト上の範囲
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -53,14 +53,14 @@ impl Range {
     }
 }
 
-impl fmt::Debug for Range {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for Range {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl fmt::Display for Range {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for Range {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // <https://www.gnu.org/prep/standards/html_node/Errors.html>
         write!(
             f,

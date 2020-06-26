@@ -107,11 +107,11 @@ impl Debug for KTy {
                         write!(f, ", ")?;
                     }
                     // NOTE: this cause stack overflow
-                    // fmt::Debug::fmt(ty, f)?;
+                    // Debug::fmt(ty, f)?;
                     write!(f, "_")?;
                 }
                 write!(f, ") -> ")?;
-                fmt::Debug::fmt(result_ty, f)
+                Debug::fmt(result_ty, f)
             }
             KTy::Struct(k_struct) => {
                 // FIXME: print name

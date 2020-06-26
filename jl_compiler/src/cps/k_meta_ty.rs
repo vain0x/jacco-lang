@@ -63,7 +63,7 @@ impl Debug for KMetaTyData {
         // let p = self.ty.as_ptr() as usize;
         // match &*self.ty.borrow() {
         //     KTy::Unresolved => write!(f, "?<{}>", p),
-        //     ty => fmt::Debug::fmt(ty, f),
+        //     ty => Debug::fmt(ty, f),
         // }
         // FIXME: need env
         Debug::fmt(&self.ty, f)

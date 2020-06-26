@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Debug, Display, Formatter};
 use std::iter::Sum;
 use std::ops::{Add, AddAssign};
 
@@ -74,14 +74,14 @@ impl Sum for Pos {
     }
 }
 
-impl fmt::Debug for Pos {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for Pos {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl fmt::Display for Pos {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for Pos {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // <https://www.gnu.org/prep/standards/html_node/Errors.html>
         write!(f, "{}:{}", self.line + 1, self.character + 1)
     }

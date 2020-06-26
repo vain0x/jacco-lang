@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self, Debug};
 
 /// CPS 原子項
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub(crate) enum KTerm {
     FieldTag(KFieldTag),
 }
 
-impl fmt::Debug for KTerm {
+impl Debug for KTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
@@ -31,7 +31,7 @@ impl fmt::Debug for KTerm {
             KTerm::Str(token) => write!(f, "{}", token.text()),
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),
-            KTerm::Name(symbol) => fmt::Debug::fmt(symbol, f),
+            KTerm::Name(symbol) => Debug::fmt(symbol, f),
             KTerm::Const(k_const) => write!(f, "const#{}", k_const.id()),
             KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.id()),
             KTerm::Fn(k_fn) => {

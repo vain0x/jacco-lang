@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -46,8 +46,8 @@ impl Location {
     }
 }
 
-impl fmt::Debug for Location {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for Location {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{:?}:{}", self.source, self.range)
     }
 }

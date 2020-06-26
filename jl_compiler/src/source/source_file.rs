@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
@@ -8,7 +8,7 @@ pub(crate) struct SourceFile {
     pub(crate) source_path: Rc<PathBuf>,
 }
 
-impl fmt::Debug for SourceFile {
+impl Debug for SourceFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // ワークスペースのルートからの相対パスを出力する。
 

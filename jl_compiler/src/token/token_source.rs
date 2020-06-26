@@ -1,5 +1,5 @@
 use super::*;
-use std::fmt;
+use std::fmt::{self, Debug, Formatter};
 
 /// 字句のもとになるもの
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -9,8 +9,8 @@ pub(crate) enum TokenSource {
     File(SourceFile),
 }
 
-impl fmt::Debug for TokenSource {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Debug for TokenSource {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             TokenSource::Special(name) => write!(f, "{}", name),
             TokenSource::File(file) => write!(f, "{:?}", file),
