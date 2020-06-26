@@ -19,7 +19,12 @@ WIP: [TODOs](https://github.com/vain0x/languages/projects/1)
 
 ### 開発: 環境
 
-- Rust <https://www.rustlang.org> のツールチェインをインストールする。
+インストールするもの:
+
+- Git (Windows でシェルスクリプトを動かすのには Git Bash を推奨)
+- Rust <https://www.rustlang.org>
+
+ビルドスクリプトなど:
 
 ```sh
 # ビルド
