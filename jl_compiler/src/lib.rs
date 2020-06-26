@@ -28,7 +28,8 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let name_resolution = front::resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
-    let mut k_root = cps::cps_conversion(p_root, name_resolution, logs.logger());
+    let mut k_root = front::cps_conversion(p_root, name_resolution, logs.logger());
+    cps::resolve_types(&mut k_root, logs.logger());
     trace!("k_root (gen) = {:#?}\n", k_root);
 
     cps::eliminate_unit(&mut k_root);
@@ -72,7 +73,6 @@ mod cps {
     //! CPS 中間表現
 
     mod cps_fold;
-    mod cps_gen;
     mod eliminate_unit;
     mod k_command;
     mod k_const;
@@ -94,7 +94,7 @@ mod cps {
     mod k_ty_env;
     mod type_resolution;
 
-    pub(crate) use cps_gen::cps_conversion;
+    pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_command::KCommand;
     pub(crate) use k_const::{KConst, KConstData, KConstValue};
@@ -114,6 +114,7 @@ mod cps {
     pub(crate) use k_term::KTerm;
     pub(crate) use k_ty::KTy;
     pub(crate) use k_ty_env::KTyEnv;
+    pub(crate) use type_resolution::resolve_types;
 
     use crate::logs::Logger;
     use crate::token::{HaveLocation, Location, TokenData};
@@ -123,9 +124,11 @@ mod cps {
 mod front {
     //! 構文木上の処理
 
+    mod cps_conversion;
     mod name_resolution;
     mod syntax_validation;
 
+    pub(crate) use cps_conversion::cps_conversion;
     pub(crate) use name_resolution::{resolve_name, NameResolution};
     pub(crate) use syntax_validation::validate_syntax;
 

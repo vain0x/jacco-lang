@@ -1,10 +1,13 @@
 //! 構文木から CPS ノードのもとになる命令列を生成する処理
 
-use super::cps_fold::fold_block;
-use super::*;
+use crate::cps::*;
 use crate::parse::*;
-use crate::{front::NameResolution, token::TokenKind};
-use k_const::KConstValue;
+use crate::{
+    front::NameResolution,
+    logs::Logger,
+    token::{HaveLocation, Location, TokenData, TokenKind},
+};
+use log::{error, trace};
 use std::collections::HashMap;
 use std::iter::once;
 use std::mem::{replace, take};
@@ -1162,7 +1165,7 @@ pub(crate) fn cps_conversion(
     name_resolution: NameResolution,
     logger: Logger,
 ) -> KRoot {
-    let mut k_root = {
+    let k_root = {
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = name_resolution.fns();
         let fn_count = n_fns.len();
@@ -1211,8 +1214,6 @@ pub(crate) fn cps_conversion(
     };
 
     trace!("k_root (untyped) = {:#?}\n", k_root);
-
-    type_resolution::resolve_types(&mut k_root, logger.clone());
 
     k_root
 }
