@@ -1,8 +1,8 @@
 use super::{KField, KOutlines};
-use crate::source::Location;
+use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct KStruct {
+pub(crate) struct KStruct {
     id: usize,
 }
 
@@ -25,7 +25,7 @@ impl KStruct {
 }
 
 #[derive(Clone, Debug)]
-pub struct KStructOutline {
+pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) location: Location,

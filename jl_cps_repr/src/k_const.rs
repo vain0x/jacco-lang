@@ -1,7 +1,7 @@
 use super::KTy;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct KConst {
+pub(crate) struct KConst {
     id: usize,
 }
 
@@ -24,14 +24,14 @@ impl KConst {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct KConstData {
+pub(crate) struct KConstData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
 }
 
 #[derive(Clone, Debug)]
-pub enum KConstValue {
+pub(crate) enum KConstValue {
     I32(i32),
     I64(i64),
     Usize(usize),

@@ -6,7 +6,7 @@ mod front {
     mod syntax_validation;
 
     use crate::parse::*;
-    use jl_cps_repr::source::{HaveLocation, Location, TokenData};
+    use crate::token::{HaveLocation, Location, TokenData};
 }
 
 mod parse {
@@ -33,8 +33,8 @@ mod parse {
     pub(crate) use parse_decl::parse_tokens;
     pub(crate) use parse_tree::*;
 
-    use crate::token::{TokenData, TokenKind};
-    use jl_cps_repr::source::{HaveLocation, Location, Logger};
+    use crate::logs::Logger;
+    use crate::token::{HaveLocation, Location, TokenData, TokenKind};
     use parse_context::{p_error, Px};
     use parse_decl::parse_semi;
     use parse_expr::{parse_block, parse_expr, parse_name};

@@ -2,7 +2,7 @@ use super::{KMetaTy, KStruct};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone)]
-pub enum KTy {
+pub(crate) enum KTy {
     Unresolved,
     Meta(KMetaTy),
     Never,

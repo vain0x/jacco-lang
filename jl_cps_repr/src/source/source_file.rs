@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct SourceFile {
+pub(crate) struct SourceFile {
     pub(crate) source_path: Rc<PathBuf>,
 }
 

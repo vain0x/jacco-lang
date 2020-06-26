@@ -1,7 +1,7 @@
 use super::KTy;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct KLocal {
+pub(crate) struct KLocal {
     id: usize,
 }
 
@@ -24,7 +24,7 @@ impl KLocal {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct KLocalData {
+pub(crate) struct KLocalData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) is_alive: bool,

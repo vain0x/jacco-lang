@@ -1,7 +1,7 @@
 use super::{KConstValue, KTy};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct KStaticVar {
+pub(crate) struct KStaticVar {
     id: usize,
 }
 
@@ -24,7 +24,7 @@ impl KStaticVar {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct KStaticVarData {
+pub(crate) struct KStaticVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,

@@ -1,38 +1,16 @@
-use super::{KConst, KExternFn, KFieldTag, KFn, KLabel, KStaticVar, KSymbol, KTy};
-use crate::source::Location;
+use super::*;
 use std::fmt;
 
 /// CPS 原子項
 #[derive(Clone)]
-pub enum KTerm {
-    Unit {
-        location: Location,
-    },
-    Int {
-        text: String,
-        location: Location,
-        ty: KTy,
-    },
-    Float {
-        text: String,
-        location: Location,
-    },
-    Char {
-        text: String,
-        location: Location,
-    },
-    Str {
-        text: String,
-        location: Location,
-    },
-    True {
-        text: String,
-        location: Location,
-    },
-    False {
-        text: String,
-        location: Location,
-    },
+pub(crate) enum KTerm {
+    Unit { location: Location },
+    Int(TokenData, KTy),
+    Float(TokenData),
+    Char(TokenData),
+    Str(TokenData),
+    True(TokenData),
+    False(TokenData),
     Name(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),
@@ -47,12 +25,12 @@ impl fmt::Debug for KTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
-            KTerm::Int { text, .. } => write!(f, "{}", text),
-            KTerm::Float { text, .. } => write!(f, "{}", text),
-            KTerm::Char { text, .. } => write!(f, "{}", text),
-            KTerm::Str { text, .. } => write!(f, "{}", text),
-            KTerm::True { text, .. } => write!(f, "{}", text),
-            KTerm::False { text, .. } => write!(f, "{}", text),
+            KTerm::Int(token, _) => write!(f, "{}", token.text()),
+            KTerm::Float(token) => write!(f, "{}", token.text()),
+            KTerm::Char(token) => write!(f, "{}", token.text()),
+            KTerm::Str(token) => write!(f, "{}", token.text()),
+            KTerm::True(token) => write!(f, "{}", token.text()),
+            KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => fmt::Debug::fmt(symbol, f),
             KTerm::Const(k_const) => write!(f, "const#{}", k_const.id()),
             KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.id()),

@@ -4,23 +4,24 @@ use std::ops::{Add, AddAssign};
 
 /// テキスト上の位置 (行番号, 列番号)
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Position {
+pub(crate) struct Position {
     /// 行番号。0 から始まる。
     /// テキスト中の改行の個数に等しい。
-    pub line: usize,
+    pub(crate) line: usize,
 
     /// 列番号。0 から始まる。UTF-16 でエンコードしたときのバイト数で表す。
     /// テキスト中の最後の改行より後にある文字列の長さに等しい。
-    pub character: usize,
+    pub(crate) character: usize,
 }
 
 impl Position {
-    pub const ZERO: Position = Position {
+    pub(crate) const ZERO: Position = Position {
         line: 0,
         character: 0,
     };
 
-    pub fn new(line: usize, character: usize) -> Position {
+    #[allow(dead_code)]
+    pub(crate) fn new(line: usize, character: usize) -> Position {
         Position { line, character }
     }
 }

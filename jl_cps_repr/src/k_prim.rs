@@ -1,6 +1,6 @@
 /// CPS 中間表現のプリミティブの種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum KPrim {
+pub(crate) enum KPrim {
     /// 行き詰まり
     Stuck,
     Jump,

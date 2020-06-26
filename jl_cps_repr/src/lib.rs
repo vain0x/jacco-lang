@@ -42,12 +42,6 @@ pub mod utils {
     pub use id_provider::IdProvider;
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum KVis {
-    Pub,
-}
-
-pub use k_command::KCommand;
 pub use k_const::{KConst, KConstData, KConstValue};
 pub use k_extern_fn::{KExternFn, KExternFnData, KExternFnOutline};
 pub use k_field::{KField, KFieldOutline, KFieldTag};
@@ -66,4 +60,8 @@ pub use k_term::KTerm;
 pub use k_ty::KTy;
 pub use k_ty_env::KTyEnv;
 
-use log::trace;
+use crate::{
+    k_command::KCommand,
+    source::{logs::Logger, Location, Position, Range, SourceCode, SourceFile},
+};
+use log::{error, trace};

@@ -1,7 +1,7 @@
 use super::{KNode, KSymbol, KTy};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct KLabel {
+pub(crate) struct KLabel {
     id: usize,
 }
 
@@ -16,7 +16,7 @@ impl KLabel {
 }
 
 #[derive(Clone, Debug)]
-pub struct KLabelSig {
+pub(crate) struct KLabelSig {
     name: String,
     param_tys: Vec<KTy>,
 }
@@ -40,7 +40,7 @@ impl KLabelSig {
 }
 
 #[derive(Clone, Debug)]
-pub struct KLabelData {
+pub(crate) struct KLabelData {
     pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,

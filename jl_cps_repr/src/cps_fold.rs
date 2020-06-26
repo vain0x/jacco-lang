@@ -46,7 +46,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
     KNode::default()
 }
 
-pub fn fold_block(
+pub(crate) fn fold_block(
     mut commands: Vec<KCommand>,
     labels: Vec<KLabelData>,
 ) -> (KNode, Vec<KLabelData>) {

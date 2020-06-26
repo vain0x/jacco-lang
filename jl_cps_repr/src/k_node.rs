@@ -1,9 +1,9 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
-use crate::source::{HaveLocation, Location};
+use crate::token::{HaveLocation, Location};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone, Default)]
-pub struct KNode {
+pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy>,
     pub(crate) args: Vec<KTerm>,
