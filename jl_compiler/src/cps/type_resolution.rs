@@ -162,7 +162,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
         KTerm::Const(k_const) => k_const.ty(&tx.outlines.consts).clone(),
         KTerm::StaticVar(static_var) => static_var.ty(&tx.outlines.static_vars).clone(),
-        KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines),
+        KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines.fns),
         KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines),
@@ -441,7 +441,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        let param_ty = &k_fn.param_tys(&outlines)[i];
+        let param_ty = &k_fn.param_tys(&outlines.fns)[i];
         resolve_symbol_def(param, Some(param_ty), tx);
     }
 
@@ -519,7 +519,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     for k_fn in outlines.fns_iter() {
         let fn_data = &mut root.fns[k_fn.id()];
 
-        tx.return_ty_opt = Some(k_fn.return_ty(&outlines));
+        tx.return_ty_opt = Some(k_fn.return_ty(&outlines.fns));
         swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);

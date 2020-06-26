@@ -1,4 +1,4 @@
-use super::{KLabelData, KLabelSig, KLocalData, KNode, KOutlines, KSymbol, KTy, KTyEnv};
+use super::{KLabelData, KLabelSig, KLocalData, KNode, KSymbol, KTy, KTyEnv};
 use crate::parse::Vis;
 use crate::token::Location;
 
@@ -16,30 +16,30 @@ impl KFn {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.fn_get(self).name
+    pub(crate) fn name(self, fns: &[KFnOutline]) -> &str {
+        &fns[self.id].name
     }
 
-    pub(crate) fn param_tys(self, outlines: &KOutlines) -> &[KTy] {
-        &outlines.fn_get(self).param_tys
+    pub(crate) fn param_tys(self, fns: &[KFnOutline]) -> &[KTy] {
+        &fns[self.id].param_tys
     }
 
-    pub(crate) fn result_ty(self, outlines: &KOutlines) -> &KTy {
-        &outlines.fn_get(self).result_ty
+    pub(crate) fn result_ty(self, fns: &[KFnOutline]) -> &KTy {
+        &fns[self.id].result_ty
     }
 
-    pub(crate) fn return_ty(self, outlines: &KOutlines) -> KTy {
-        let result_ty = self.result_ty(outlines).clone();
+    pub(crate) fn return_ty(self, fns: &[KFnOutline]) -> KTy {
+        let result_ty = self.result_ty(fns).clone();
         KTy::Fn {
             param_tys: vec![result_ty],
             result_ty: Box::new(KTy::Never),
         }
     }
 
-    pub(crate) fn ty(self, outlines: &KOutlines) -> KTy {
+    pub(crate) fn ty(self, fns: &[KFnOutline]) -> KTy {
         KTy::Fn {
-            param_tys: self.param_tys(outlines).to_owned(),
-            result_ty: Box::new(self.result_ty(outlines).clone()),
+            param_tys: self.param_tys(fns).to_owned(),
+            result_ty: Box::new(self.result_ty(fns).clone()),
         }
     }
 }

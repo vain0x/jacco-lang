@@ -94,12 +94,12 @@ fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
 fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     // pub な関数の名前はマングルしない。
     if cx.outlines.fn_get(k_fn).is_pub() {
-        return k_fn.name(&cx.outlines).to_string();
+        return k_fn.name(&cx.outlines.fns).to_string();
     }
 
     do_unique_name(
         k_fn.id(),
-        k_fn.name(&cx.outlines),
+        k_fn.name(&cx.outlines.fns),
         &mut cx.fn_ident_ids,
         &mut cx.ident_map,
     )
@@ -643,7 +643,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 
         let name = unique_fn_name(k_fn, cx);
         let (params, result_ty) = {
-            let result_ty = k_fn.result_ty(&outlines).clone();
+            let result_ty = k_fn.result_ty(&outlines.fns).clone();
             gen_fn_sig(params, result_ty, &empty_ty_env, cx)
         };
         cx.decls.push(CStmt::FnDecl {
