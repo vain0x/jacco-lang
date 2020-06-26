@@ -42,6 +42,10 @@ impl KFn {
             result_ty: Box::new(self.result_ty(fns).clone()),
         }
     }
+
+    pub(crate) fn is_pub(self, fns: &[KFnOutline]) -> bool {
+        fns[self.id].vis_opt.is_some()
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -51,12 +55,6 @@ pub(crate) struct KFnOutline {
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
-}
-
-impl KFnOutline {
-    pub(crate) fn is_pub(&self) -> bool {
-        self.vis_opt.is_some()
-    }
 }
 
 #[derive(Clone, Debug, Default)]

@@ -93,7 +93,7 @@ fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
 
 fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     // pub な関数の名前はマングルしない。
-    if cx.outlines.fn_get(k_fn).is_pub() {
+    if k_fn.is_pub(&cx.outlines.fns) {
         return k_fn.name(&cx.outlines.fns).to_string();
     }
 

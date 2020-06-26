@@ -14,10 +14,6 @@ pub(crate) struct KOutlines {
 }
 
 impl KOutlines {
-    pub(crate) fn fn_get(&self, k_fn: KFn) -> &KFnOutline {
-        &self.fns[k_fn.id()]
-    }
-
     pub(crate) fn fn_get_mut(&mut self, k_fn: KFn) -> &mut KFnOutline {
         &mut self.fns[k_fn.id()]
     }
