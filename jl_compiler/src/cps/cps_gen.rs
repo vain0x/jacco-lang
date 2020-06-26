@@ -1101,8 +1101,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 result_ty,
                 location,
             };
-            gx.extern_fns
-                .insert(extern_fn.id(), KExternFnData { params, locals });
+            gx.extern_fns[extern_fn.id()] = KExternFnData { params, locals };
             gx.extern_fn_map.insert(fn_name_id, extern_fn);
         }
         PDecl::Struct(PStructDecl {
