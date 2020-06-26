@@ -557,10 +557,10 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     cx.fn_ident_ids.resize(outlines.fns.len(), None);
     cx.struct_ident_ids.resize(outlines.structs.len(), None);
 
-    for k_struct in outlines.structs_iter() {
+    for (k_struct, struct_data) in KStructOutline::iter(&outlines.structs) {
         let name = unique_struct_name(k_struct, cx);
-        let fields = k_struct
-            .fields(&outlines)
+        let fields = struct_data
+            .fields
             .iter()
             .map(|field| {
                 (

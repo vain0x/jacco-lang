@@ -30,3 +30,18 @@ pub(crate) struct KStructOutline {
     pub(crate) fields: Vec<KField>,
     pub(crate) location: Location,
 }
+
+impl KStructOutline {
+    pub(crate) fn keys(structs: &[KStructOutline]) -> impl Iterator<Item = KStruct> {
+        (0..structs.len()).map(KStruct::new)
+    }
+
+    pub(crate) fn iter(
+        structs: &[KStructOutline],
+    ) -> impl Iterator<Item = (KStruct, &KStructOutline)> {
+        structs
+            .iter()
+            .enumerate()
+            .map(|(i, struct_data)| (KStruct::new(i), struct_data))
+    }
+}

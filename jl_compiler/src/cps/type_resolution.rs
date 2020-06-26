@@ -493,7 +493,7 @@ fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
 fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     let outlines = tx.outlines.clone();
 
-    for k_struct in outlines.structs_iter() {
+    for k_struct in KStructOutline::keys(&outlines.structs) {
         prepare_struct(k_struct, tx);
     }
 
