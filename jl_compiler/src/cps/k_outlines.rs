@@ -1,6 +1,6 @@
 use super::{
-    k_struct::KStructOutline, KConstData, KExternFn, KExternFnOutline, KField, KFieldOutline,
-    KFnOutline, KStaticVarData, KStruct,
+    k_struct::KStructOutline, KConstData, KExternFnOutline, KField, KFieldOutline, KFnOutline,
+    KStaticVarData, KStruct,
 };
 
 #[derive(Debug, Default)]
@@ -14,10 +14,6 @@ pub(crate) struct KOutlines {
 }
 
 impl KOutlines {
-    pub(crate) fn extern_fn_get_mut(&mut self, extern_fn: KExternFn) -> &mut KExternFnOutline {
-        &mut self.extern_fns[extern_fn.id()]
-    }
-
     pub(crate) fn struct_new(&mut self, struct_outline: KStructOutline) -> KStruct {
         let id = self.structs.len();
         self.structs.push(struct_outline);

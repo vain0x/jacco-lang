@@ -1095,7 +1095,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let locals = replace(&mut gx.current_locals, parent_locals);
 
-            *gx.outlines.extern_fn_get_mut(extern_fn) = KExternFnOutline {
+            gx.outlines.extern_fns[extern_fn.id()] = KExternFnOutline {
                 name: fn_name,
                 param_tys,
                 result_ty,
