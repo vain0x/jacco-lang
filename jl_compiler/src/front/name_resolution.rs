@@ -8,13 +8,11 @@ use std::{
 };
 
 /// 関数の定義に関する情報
-#[derive(Default)]
 pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
 }
 
 /// 外部関数の定義に関する情報
-#[derive(Default)]
 pub(crate) struct NExternFnData {
     pub(crate) extern_fn_name_id_opt: Option<PNameId>,
 }
@@ -59,18 +57,6 @@ impl Nx {
 
     fn fresh_id(&mut self) -> PNameId {
         self.ids.next()
-    }
-
-    fn alloc_fn(&mut self) -> usize {
-        let fn_id = self.fns.len();
-        self.fns.push(NFnData::default());
-        fn_id
-    }
-
-    fn alloc_extern_fn(&mut self) -> PNameId {
-        let extern_fn_id = self.extern_fns.len();
-        self.extern_fns.push(NExternFnData::default());
-        extern_fn_id
     }
 
     fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
@@ -325,29 +311,38 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 fn_id_opt,
                 ..
             }) => {
-                let fn_id = nx.alloc_fn();
-                *fn_id_opt = Some(fn_id);
+                let mut fn_name_id_opt = None;
 
                 if let Some(name) = name_opt {
                     resolve_name_def(name, PNameKind::Fn, nx);
 
-                    nx.fns[fn_id].fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+                    fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
                 }
+
+                // alloc fn
+                let fn_id = nx.fns.len();
+                *fn_id_opt = Some(fn_id);
+                nx.fns.push(NFnData { fn_name_id_opt });
             }
             PDecl::ExternFn(PExternFnDecl {
                 name_opt,
                 extern_fn_id_opt,
                 ..
             }) => {
-                let extern_fn_id = nx.alloc_extern_fn();
-                *extern_fn_id_opt = Some(extern_fn_id);
+                let mut extern_fn_name_id_opt = None;
 
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, PNameKind::ExternFn, nx);
 
-                    nx.extern_fns[extern_fn_id].extern_fn_name_id_opt =
-                        name.info_opt.as_ref().map(|info| info.id());
+                    extern_fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
                 }
+
+                // alloc extern fn
+                let extern_fn_id = nx.extern_fns.len();
+                *extern_fn_id_opt = Some(extern_fn_id);
+                nx.extern_fns.push(NExternFnData {
+                    extern_fn_name_id_opt,
+                });
             }
             PDecl::Struct(PStructDecl {
                 name_opt,
@@ -382,6 +377,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     None => {}
                 });
 
+                // alloc struct
                 nx.structs.push(NStructData { struct_name_id_opt });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
