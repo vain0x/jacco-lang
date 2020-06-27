@@ -309,37 +309,11 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
             KSymbolExt::Symbol(KSymbol { local, location })
         }
         PNameKind::Const => {
-            let k_const = match gx.const_map.get(&name_info.id()) {
-                Some(&k_const) => k_const,
-                None => {
-                    let k_const = KConst::new(gx.outlines.consts.len());
-                    gx.outlines.consts.push(KConstData {
-                        name,
-                        ty,
-                        value_opt: None,
-                    });
-                    gx.const_map.insert(name_info.id(), k_const);
-                    k_const
-                }
-            };
-
+            let k_const = gx.const_map[&name_info.id()];
             KSymbolExt::Const(k_const)
         }
         PNameKind::StaticVar => {
-            let static_var = match gx.static_var_map.get(&name_info.id()) {
-                Some(&static_var) => static_var,
-                None => {
-                    let static_var = KStaticVar::new(gx.outlines.static_vars.len());
-                    gx.outlines.static_vars.push(KStaticVarData {
-                        name,
-                        ty,
-                        value_opt: None,
-                    });
-                    gx.static_var_map.insert(name_info.id(), static_var);
-                    static_var
-                }
-            };
-
+            let static_var = gx.static_var_map[&name_info.id()];
             KSymbolExt::StaticVar(static_var)
         }
         PNameKind::I32
@@ -932,12 +906,13 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let (name, name_id) = {
+            let (name, k_const) = {
                 let mut name = name_opt.unwrap();
                 let name_info = take(&mut name.info_opt).unwrap();
                 assert_eq!(name_info.kind(), PNameKind::Const);
+                let k_const = gx.const_map[&name_info.id()];
                 let (name, _) = name.decompose();
-                (name, name_info.id())
+                (name, k_const)
             };
             let ty = gen_ty(ty_opt.unwrap(), gx);
 
@@ -957,13 +932,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 }
             };
 
-            let k_const = KConst::new(gx.outlines.consts.len());
-            gx.outlines.consts.push(KConstData {
+            gx.outlines.consts[k_const.id()] = KConstData {
                 name,
                 ty,
                 value_opt,
-            });
-            gx.const_map.insert(name_id, k_const);
+            };
         }
         PDecl::Static(PStaticDecl {
             keyword,
@@ -972,12 +945,13 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let (name, name_id) = {
+            let (name, static_var) = {
                 let mut name = name_opt.unwrap();
                 let name_info = take(&mut name.info_opt).unwrap();
                 assert_eq!(name_info.kind(), PNameKind::StaticVar);
                 let (name, _) = name.decompose();
-                (name, name_info.id())
+                let static_var = gx.static_var_map[&name_info.id()];
+                (name, static_var)
             };
             let ty = gen_ty(ty_opt.unwrap(), gx);
 
@@ -997,13 +971,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 }
             };
 
-            let static_var = KStaticVar::new(gx.outlines.static_vars.len());
-            gx.outlines.static_vars.push(KStaticVarData {
+            gx.outlines.static_vars[static_var.id()] = KStaticVarData {
                 name,
                 ty,
                 value_opt,
-            });
-            gx.static_var_map.insert(name_id, static_var);
+            };
         }
 
         PDecl::Fn(PFnDecl {
@@ -1178,6 +1150,30 @@ pub(crate) fn cps_conversion(
     logger: Logger,
 ) -> KRoot {
     let k_root = {
+        let const_count = name_resolution.consts.len();
+        let const_map = name_resolution
+            .consts
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, const_data)| {
+                const_data
+                    .name_id_opt
+                    .map(|name_id| (name_id, KConst::new(i)))
+            })
+            .collect();
+
+        let static_var_count = name_resolution.static_vars.len();
+        let static_var_map = name_resolution
+            .static_vars
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, static_var_data)| {
+                static_var_data
+                    .name_id_opt
+                    .map(|name_id| (name_id, KStaticVar::new(i)))
+            })
+            .collect();
+
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = name_resolution.fns;
         let fn_count = n_fns.len();
@@ -1230,6 +1226,16 @@ pub(crate) fn cps_conversion(
             .collect();
 
         let mut gx = Gx::new(logger.clone());
+        gx.const_map = const_map;
+        gx.outlines
+            .consts
+            .resize_with(const_count, Default::default);
+
+        gx.static_var_map = static_var_map;
+        gx.outlines
+            .static_vars
+            .resize_with(static_var_count, Default::default);
+
         gx.fns = fns;
         gx.fn_map = fn_name_to_fn_map;
         gx.outlines.fns.resize_with(fn_count, Default::default);

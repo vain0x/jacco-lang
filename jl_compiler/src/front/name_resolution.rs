@@ -7,6 +7,14 @@ use std::{
     mem::{replace, take},
 };
 
+pub(crate) struct NConstData {
+    pub(crate) name_id_opt: Option<PNameId>,
+}
+
+pub(crate) struct NStaticVarData {
+    pub(crate) name_id_opt: Option<PNameId>,
+}
+
 pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
 }
@@ -26,6 +34,8 @@ pub(crate) struct NFieldData {
 /// 名前解決の結果。
 #[derive(Default)]
 pub(crate) struct NameResolution {
+    pub(crate) consts: Vec<NConstData>,
+    pub(crate) static_vars: Vec<NStaticVarData>,
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
     pub(crate) structs: Vec<NStructData>,
@@ -404,12 +414,19 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             init_opt,
             ..
         }) => {
+            let mut name_id_opt = None;
+
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
                 resolve_name_def(name, PNameKind::Const, nx);
+
+                name_id_opt = name.info_opt.as_ref().map(|info| info.id());
             }
+
+            // alloc const
+            nx.res.consts.push(NConstData { name_id_opt });
         }
         PDecl::Static(PStaticDecl {
             name_opt,
@@ -417,12 +434,19 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             init_opt,
             ..
         }) => {
+            let mut name_id_opt = None;
+
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
                 resolve_name_def(name, PNameKind::StaticVar, nx);
+
+                name_id_opt = name.info_opt.as_ref().map(|info| info.id());
             }
+
+            // alloc static var
+            nx.res.static_vars.push(NStaticVarData { name_id_opt });
         }
         PDecl::Fn(PFnDecl {
             param_list_opt,
@@ -437,7 +461,6 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 nx.enter_scope(|nx| {
                     resolve_param_list_opt(param_list_opt.as_mut(), nx);
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
-
                     resolve_block_opt(block_opt.as_mut(), nx);
                 });
             });
