@@ -1,6 +1,6 @@
 use super::{
     k_struct::KStructOutline, KConstData, KExternFnOutline, KFieldOutline, KFnOutline,
-    KStaticVarData, KStruct,
+    KStaticVarData,
 };
 
 #[derive(Debug, Default)]
@@ -11,12 +11,4 @@ pub(crate) struct KOutlines {
     pub(crate) extern_fns: Vec<KExternFnOutline>,
     pub(crate) structs: Vec<KStructOutline>,
     pub(crate) fields: Vec<KFieldOutline>,
-}
-
-impl KOutlines {
-    pub(crate) fn struct_new(&mut self, struct_outline: KStructOutline) -> KStruct {
-        let id = self.structs.len();
-        self.structs.push(struct_outline);
-        KStruct::new(id)
-    }
 }

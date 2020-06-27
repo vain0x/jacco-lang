@@ -29,6 +29,10 @@ impl NExternFn {
     }
 }
 
+pub(crate) struct NStructData {
+    pub(crate) struct_name_id_opt: Option<PNameId>,
+}
+
 pub(crate) struct NFieldData {
     pub(crate) field_name_id_opt: Option<PNameId>,
 }
@@ -37,6 +41,7 @@ pub(crate) struct NFieldData {
 pub(crate) struct NameResolution {
     pub(crate) fns: Vec<NFn>,
     pub(crate) extern_fns: Vec<NExternFn>,
+    pub(crate) structs: Vec<NStructData>,
     pub(crate) fields: Vec<NFieldData>,
 }
 
@@ -49,6 +54,7 @@ struct Nx {
     parent_fn: Option<usize>,
     fns: Vec<NFn>,
     extern_fns: Vec<NExternFn>,
+    structs: Vec<NStructData>,
     fields: Vec<NFieldData>,
     logger: Logger,
 }
@@ -358,8 +364,12 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 variant_opt,
                 ..
             }) => {
+                let mut struct_name_id_opt = None;
+
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, PNameKind::Struct, nx);
+
+                    struct_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
                 }
 
                 nx.enter_scope(|nx| match variant_opt {
@@ -381,6 +391,8 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     }
                     None => {}
                 });
+
+                nx.structs.push(NStructData { struct_name_id_opt });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
         }
@@ -494,6 +506,7 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution
     NameResolution {
         fns: nx.fns,
         extern_fns: nx.extern_fns,
+        structs: nx.structs,
         fields: nx.fields,
     }
 }

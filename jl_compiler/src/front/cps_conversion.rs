@@ -1115,6 +1115,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let mut name = name_opt.unwrap();
             let name_info = take(&mut name.info_opt).unwrap();
             assert_eq!(name_info.kind(), PNameKind::Struct);
+            let k_struct = gx.struct_map[&name_info.id()];
             let (name, location) = name.decompose();
 
             let fields = match variant_opt {
@@ -1140,12 +1141,11 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 None => vec![],
             };
 
-            let k_struct = gx.outlines.struct_new(KStructOutline {
+            gx.outlines.structs[k_struct.id()] = KStructOutline {
                 name,
                 fields,
                 location,
-            });
-            gx.struct_map.insert(name_info.id(), k_struct.clone());
+            };
         }
     }
 }
@@ -1203,6 +1203,18 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
+        let struct_count = name_resolution.structs.len();
+        let struct_map = name_resolution
+            .structs
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, struct_data)| {
+                struct_data
+                    .struct_name_id_opt
+                    .map(|name_id| (name_id, KStruct::new(i)))
+            })
+            .collect();
+
         let field_count = name_resolution.fields.len();
         let field_map = name_resolution
             .fields
@@ -1225,6 +1237,11 @@ pub(crate) fn cps_conversion(
         gx.outlines
             .extern_fns
             .resize_with(extern_fn_count, Default::default);
+
+        gx.struct_map = struct_map;
+        gx.outlines
+            .structs
+            .resize_with(struct_count, Default::default);
 
         gx.field_map = field_map;
         gx.outlines

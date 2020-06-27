@@ -24,7 +24,7 @@ impl KStruct {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
