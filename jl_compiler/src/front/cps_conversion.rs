@@ -1,5 +1,6 @@
 //! 構文木から CPS ノードのもとになる命令列を生成する処理
 
+use super::name_resolution::NLoopData;
 use crate::cps::*;
 use crate::parse::*;
 use crate::{
@@ -14,6 +15,7 @@ use std::{
     mem::{replace, take},
 };
 
+#[derive(Clone)]
 struct KLoopData {
     break_label: KLabel,
     continue_label: KLabel,
@@ -23,7 +25,6 @@ struct KLoopData {
 #[derive(Default)]
 struct Gx {
     outlines: KOutlines,
-    loop_map: HashMap<usize, KLoopData>,
     const_map: HashMap<PNameId, KConst>,
     static_var_map: HashMap<PNameId, KStaticVar>,
     fn_map: HashMap<PNameId, KFn>,
@@ -33,9 +34,11 @@ struct Gx {
     current_commands: Vec<KCommand>,
     current_locals: Vec<KLocalData>,
     current_local_var_map: HashMap<PNameId, KLocal>,
+    current_loops: Vec<KLoopData>,
     current_labels: Vec<KLabelData>,
     fns: Vec<KFnData>,
     fn_local_var_maps: Vec<HashMap<PNameId, KLocal>>,
+    fn_loops: Vec<Vec<NLoopData>>,
     extern_fns: Vec<KExternFnData>,
     extern_fn_local_maps: Vec<HashMap<PNameId, KLocal>>,
     logger: Logger,
@@ -74,18 +77,6 @@ impl Gx {
             body: KNode::default(),
         });
         label
-    }
-
-    fn get_break_label(&self, loop_id_opt: Option<usize>) -> Option<KLabel> {
-        self.loop_map
-            .get(&loop_id_opt?)
-            .map(|data| data.break_label)
-    }
-
-    fn get_continue_label(&self, loop_id_opt: Option<usize>) -> Option<KLabel> {
-        self.loop_map
-            .get(&loop_id_opt?)
-            .map(|data| data.continue_label)
     }
 
     fn push(&mut self, command: KCommand) {
@@ -743,7 +734,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
 
-            let label = gx.get_break_label(loop_id_opt).unwrap().clone();
+            let label = gx.current_loops[loop_id_opt.unwrap()].break_label;
             let arg = match arg_opt {
                 Some(arg) => gen_expr(*arg, gx),
                 None => new_unit_term(location.clone()),
@@ -758,7 +749,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
 
-            let label = gx.get_continue_label(loop_id_opt).unwrap().clone();
+            let label = gx.current_loops[loop_id_opt.unwrap()].continue_label;
             gx.push_jump_with_cont(label, vec![]);
 
             new_never_term(location)
@@ -819,17 +810,11 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("while_result", location.clone());
-            let continue_label = gx.fresh_label("continue_", location.clone());
-            let next_label = gx.fresh_label("next", location.clone());
             let unit_term = new_unit_term(location.clone());
-
-            gx.loop_map.insert(
-                loop_id_opt.unwrap(),
-                KLoopData {
-                    break_label: next_label,
-                    continue_label,
-                },
-            );
+            let KLoopData {
+                break_label: next_label,
+                continue_label,
+            } = gx.current_loops[loop_id_opt.unwrap()].clone();
 
             gx.push_jump(continue_label, vec![]);
 
@@ -866,16 +851,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let location = keyword.into_location();
             let result = gx.fresh_symbol("loop_result", location.clone());
-            let continue_label = gx.fresh_label("continue_", location.clone());
-            let next_label = gx.fresh_label("next", location.clone());
-
-            gx.loop_map.insert(
-                loop_id_opt.unwrap(),
-                KLoopData {
-                    break_label: next_label,
-                    continue_label,
-                },
-            );
+            let KLoopData {
+                break_label: next_label,
+                continue_label,
+            } = gx.current_loops[loop_id_opt.unwrap()].clone();
 
             gx.push_jump(continue_label.clone(), vec![]);
 
@@ -1027,6 +1006,20 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let (commands, labels) = {
                 let parent_commands = take(&mut gx.current_commands);
                 let parent_labels = take(&mut gx.current_labels);
+                let parent_loops = take(&mut gx.current_loops);
+
+                gx.current_loops = take(&mut gx.fn_loops[k_fn.id()])
+                    .into_iter()
+                    .map(|loop_data| {
+                        let location = loop_data.location;
+                        let continue_label = gx.fresh_label("continue_", location.clone());
+                        let break_label = gx.fresh_label("next", location);
+                        KLoopData {
+                            break_label,
+                            continue_label,
+                        }
+                    })
+                    .collect();
 
                 let result = gen_block(block_opt.unwrap(), gx);
                 gx.push(KCommand::Node {
@@ -1040,6 +1033,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
                 let commands = replace(&mut gx.current_commands, parent_commands);
                 let labels = replace(&mut gx.current_labels, parent_labels);
+                gx.current_loops = parent_loops;
                 (commands, labels)
             };
 
@@ -1205,7 +1199,7 @@ pub(crate) fn cps_conversion(
             .collect();
 
         // 関数の ID, 名前ID の対応表を構築する。
-        let n_fns = name_resolution.fns;
+        let mut n_fns = name_resolution.fns;
         let fn_count = n_fns.len();
         let fn_local_var_maps = n_fns
             .iter()
@@ -1222,6 +1216,10 @@ pub(crate) fn cps_conversion(
                     .collect::<HashMap<_, _>>()
             })
             .collect();
+        let fn_loops = n_fns
+            .iter_mut()
+            .map(|fn_data| take(&mut fn_data.loops))
+            .collect::<Vec<_>>();
         let fns = n_fns
             .iter()
             .map(|fn_data| KFnData {
@@ -1311,6 +1309,7 @@ pub(crate) fn cps_conversion(
         gx.fns = fns;
         gx.fn_map = fn_name_to_fn_map;
         gx.fn_local_var_maps = fn_local_var_maps;
+        gx.fn_loops = fn_loops;
         gx.outlines.fns.resize_with(fn_count, Default::default);
 
         gx.extern_fns = k_extern_fns;
@@ -1330,7 +1329,6 @@ pub(crate) fn cps_conversion(
             .fields
             .resize_with(field_count, Default::default);
 
-        trace!("{:?}", gx.fns);
         gen_root(p_root, &mut gx);
 
         KRoot {

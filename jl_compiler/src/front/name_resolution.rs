@@ -7,6 +7,11 @@ use std::{
     mem::{replace, take},
 };
 
+#[derive(Default)]
+pub(crate) struct NLoopData {
+    pub(crate) location: Location,
+}
+
 pub(crate) struct NLocalVarData {
     pub(crate) name_id_opt: Option<PNameId>,
 }
@@ -23,6 +28,7 @@ pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: Vec<NLocalVarData>,
+    pub(crate) loops: Vec<NLoopData>,
 }
 
 pub(crate) struct NExternFnData {
@@ -57,6 +63,7 @@ struct Nx {
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     parent_local_vars: Vec<NLocalVarData>,
+    parent_loops: Vec<NLoopData>,
     res: NameResolution,
     logger: Logger,
 }
@@ -82,8 +89,10 @@ impl Nx {
         self.env = outer_env;
     }
 
-    fn enter_loop(&mut self, do_resolve: impl FnOnce(&mut Nx, usize)) {
-        let loop_id = self.fresh_id();
+    fn enter_loop(&mut self, location: Location, do_resolve: impl FnOnce(&mut Nx, usize)) {
+        let loop_id = self.parent_loops.len();
+        self.parent_loops.push(NLoopData { location });
+
         let parent_loop = replace(&mut self.parent_loop, Some(loop_id));
 
         do_resolve(self, loop_id);
@@ -95,14 +104,18 @@ impl Nx {
         let parent_loop = take(&mut self.parent_loop);
         let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
         let parent_local_vars = take(&mut self.parent_local_vars);
+        let parent_loops = take(&mut self.parent_loops);
 
         do_resolve(self);
 
         self.parent_loop = parent_loop;
         self.parent_fn = parent_fn;
         let local_vars = replace(&mut self.parent_local_vars, parent_local_vars);
+        let loops = replace(&mut self.parent_loops, parent_loops);
 
-        self.res.fns[fn_id].local_vars = local_vars;
+        let mut fn_data = &mut self.res.fns[fn_id];
+        fn_data.local_vars = local_vars;
+        fn_data.loops = loops;
     }
 }
 
@@ -287,24 +300,30 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             resolve_expr_opt(alt_opt.as_deref_mut(), nx);
         }
         PExpr::While(PWhileExpr {
+            keyword,
             cond_opt,
             body_opt,
             loop_id_opt,
             ..
         }) => {
+            let location = keyword.location();
+
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
 
-            nx.enter_loop(|nx, loop_id| {
+            nx.enter_loop(location, |nx, loop_id| {
                 *loop_id_opt = Some(loop_id);
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
         }
         PExpr::Loop(PLoopExpr {
+            keyword,
             body_opt,
             loop_id_opt,
             ..
         }) => {
-            nx.enter_loop(|nx, loop_id| {
+            let location = keyword.location();
+
+            nx.enter_loop(location, |nx, loop_id| {
                 *loop_id_opt = Some(loop_id);
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
@@ -346,6 +365,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 nx.res.fns.push(NFnData {
                     fn_name_id_opt,
                     local_vars: vec![],
+                    loops: vec![],
                 });
             }
             PDecl::ExternFn(PExternFnDecl {
