@@ -24,12 +24,6 @@ impl KOutlines {
         &self.structs[k_struct.id()]
     }
 
-    pub(crate) fn field_new(&mut self, field: KFieldOutline) -> KField {
-        let id = self.fields.len();
-        self.fields.push(field);
-        KField::new(id)
-    }
-
     pub(crate) fn field_get(&self, field: KField) -> &KFieldOutline {
         &self.fields[field.id()]
     }

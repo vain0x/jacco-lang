@@ -28,6 +28,7 @@ struct Gx {
     fn_map: HashMap<PNameId, KFn>,
     extern_fn_map: HashMap<PNameId, KExternFn>,
     struct_map: HashMap<PNameId, KStruct>,
+    field_map: HashMap<PNameId, KField>,
     current_commands: Vec<KCommand>,
     current_locals: Vec<KLocalData>,
     current_labels: Vec<KLabelData>,
@@ -1120,11 +1121,20 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
                     .into_iter()
                     .map(|field| {
-                        // NOTE: フィールド名は型推論中に解決されるので、PName::info_opt は使わない。(sizeof(K::foo) のようにフィールドを直接指す構文があれば必要になる。)
-                        let (text, location) = field.name.decompose();
+                        let k_field = {
+                            let name_id = field.name.info_opt.as_ref().unwrap().id();
+                            gx.field_map[&name_id]
+                        };
+
+                        let (name, location) = field.name.decompose();
                         let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
-                        gx.outlines
-                            .field_new(KFieldOutline::new(text, field_ty, location))
+                        gx.outlines.fields[k_field.id()] = KFieldOutline {
+                            name,
+                            ty: field_ty,
+                            location,
+                        };
+
+                        k_field
                     })
                     .collect(),
                 None => vec![],
@@ -1193,6 +1203,18 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
+        let field_count = name_resolution.fields.len();
+        let field_map = name_resolution
+            .fields
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, field_data)| {
+                field_data
+                    .field_name_id_opt
+                    .map(|name_id| (name_id, KField::new(i)))
+            })
+            .collect();
+
         let mut gx = Gx::new(logger.clone());
         gx.fns = fns;
         gx.fn_map = fn_name_to_fn_map;
@@ -1203,6 +1225,11 @@ pub(crate) fn cps_conversion(
         gx.outlines
             .extern_fns
             .resize_with(extern_fn_count, Default::default);
+
+        gx.field_map = field_map;
+        gx.outlines
+            .fields
+            .resize_with(field_count, Default::default);
 
         gen_root(p_root, &mut gx);
 

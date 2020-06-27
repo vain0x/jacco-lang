@@ -29,10 +29,15 @@ impl NExternFn {
     }
 }
 
+pub(crate) struct NFieldData {
+    pub(crate) field_name_id_opt: Option<PNameId>,
+}
+
 /// 名前解決の結果。
 pub(crate) struct NameResolution {
     pub(crate) fns: Vec<NFn>,
     pub(crate) extern_fns: Vec<NExternFn>,
+    pub(crate) fields: Vec<NFieldData>,
 }
 
 /// Naming context.
@@ -44,6 +49,7 @@ struct Nx {
     parent_fn: Option<usize>,
     fns: Vec<NFn>,
     extern_fns: Vec<NExternFn>,
+    fields: Vec<NFieldData>,
     logger: Logger,
 }
 
@@ -361,6 +367,16 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                         for field in fields {
                             resolve_name_def(&mut field.name, PNameKind::Field, nx);
                             resolve_ty_opt(field.ty_opt.as_mut(), nx);
+
+                            let field_id = nx.fields.len();
+                            nx.fields.push(NFieldData {
+                                field_name_id_opt: field
+                                    .name
+                                    .info_opt
+                                    .as_ref()
+                                    .map(|info| info.id()),
+                            });
+                            field.field_id_opt = Some(field_id);
                         }
                     }
                     None => {}
@@ -478,5 +494,6 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution
     NameResolution {
         fns: nx.fns,
         extern_fns: nx.extern_fns,
+        fields: nx.fields,
     }
 }

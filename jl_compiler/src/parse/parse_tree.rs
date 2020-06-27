@@ -806,6 +806,9 @@ pub(crate) struct PFieldDecl {
     pub(crate) colon_opt: Option<TokenData>,
     pub(crate) ty_opt: Option<PTy>,
     pub(crate) comma_opt: Option<TokenData>,
+
+    // 名前解決用
+    pub(crate) field_id_opt: Option<usize>,
 }
 
 impl PNode for PFieldDecl {

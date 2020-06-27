@@ -186,6 +186,7 @@ fn parse_field_decl(px: &mut Px) -> PFieldDecl {
         colon_opt,
         ty_opt,
         comma_opt,
+        field_id_opt: None,
     }
 }
 

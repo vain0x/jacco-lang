@@ -34,15 +34,9 @@ impl KField {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct KFieldOutline {
-    name: String,
-    ty: KTy,
-    location: Location,
-}
-
-impl KFieldOutline {
-    pub(crate) fn new(name: String, ty: KTy, location: Location) -> Self {
-        Self { name, ty, location }
-    }
+    pub(crate) name: String,
+    pub(crate) ty: KTy,
+    pub(crate) location: Location,
 }
