@@ -1167,7 +1167,7 @@ pub(crate) fn cps_conversion(
 ) -> KRoot {
     let k_root = {
         // 関数の ID, 名前ID の対応表を構築する。
-        let n_fns = name_resolution.fns();
+        let n_fns = name_resolution.fns;
         let fn_count = n_fns.len();
         let fns = vec![KFnData::default(); fn_count];
         let fn_name_to_fn_map = n_fns
@@ -1180,7 +1180,7 @@ pub(crate) fn cps_conversion(
             .collect();
 
         // 外部関数の ID, 名前ID の対応表を構築する。
-        let n_extern_fns = name_resolution.extern_fns();
+        let n_extern_fns = name_resolution.extern_fns;
         let extern_fn_count = n_extern_fns.len();
         let k_extern_fns = vec![KExternFnData::default(); extern_fn_count];
         let extern_fn_map = n_extern_fns

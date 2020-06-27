@@ -31,18 +31,8 @@ impl NExternFn {
 
 /// 名前解決の結果。
 pub(crate) struct NameResolution {
-    fns: Vec<NFn>,
-    extern_fns: Vec<NExternFn>,
-}
-
-impl NameResolution {
-    pub(crate) fn fns(&self) -> &[NFn] {
-        &self.fns
-    }
-
-    pub(crate) fn extern_fns(&self) -> &[NExternFn] {
-        &self.extern_fns
-    }
+    pub(crate) fns: Vec<NFn>,
+    pub(crate) extern_fns: Vec<NExternFn>,
 }
 
 /// Naming context.
