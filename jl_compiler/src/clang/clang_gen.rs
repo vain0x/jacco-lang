@@ -420,7 +420,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 });
 
                 let outlines = cx.outlines;
-                for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines)) {
+                for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
                     let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines.fields));
                     let right = gen_term(take(arg), cx);
                     cx.stmts

@@ -1,4 +1,4 @@
-use super::{KField, KOutlines};
+use super::KField;
 use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,12 +15,12 @@ impl KStruct {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.struct_get(self).name
+    pub(crate) fn name(self, structs: &[KStructOutline]) -> &str {
+        &structs[self.id].name
     }
 
-    pub(crate) fn fields(self, outlines: &KOutlines) -> &[KField] {
-        &outlines.struct_get(self).fields
+    pub(crate) fn fields(self, structs: &[KStructOutline]) -> &[KField] {
+        &structs[self.id].fields
     }
 }
 

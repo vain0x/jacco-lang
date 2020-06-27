@@ -348,7 +348,7 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
         | PNameKind::Bool
         | PNameKind::Struct => {
             if let Some(&k_struct) = gx.struct_map.get(&name_info.id()) {
-                if k_struct.fields(&gx.outlines).is_empty() {
+                if k_struct.fields(&gx.outlines.structs).is_empty() {
                     return KSymbolExt::UnitLikeStruct { k_struct, location };
                 }
             }
@@ -509,7 +509,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
                 let ty = KTy::Struct(k_struct);
-                let name = k_struct.name(&gx.outlines).to_string();
+                let name = k_struct.name(&gx.outlines.structs).to_string();
                 let result = gx.fresh_symbol(&name, location.clone());
                 gx.push(KCommand::Node {
                     prim: KPrim::Struct,

@@ -214,7 +214,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let k_struct = ty.clone().as_struct().unwrap();
                 let outlines = tx.outlines.clone();
 
-                for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines)) {
+                for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
                     let arg_ty = resolve_term(arg, tx);
                     unify(
                         arg_ty,
@@ -245,7 +245,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let result_ty = (|| {
                     let k_struct = left_ty.as_ptr()?.as_struct()?;
                     k_struct
-                        .fields(&tx.outlines)
+                        .fields(&tx.outlines.structs)
                         .iter()
                         .find(|field| field.name(&tx.outlines.fields) == *field_name)
                         .map(|field| field.ty(&tx.outlines.fields).clone().into_ptr())
@@ -481,7 +481,7 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
 }
 
 fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
-    for field in k_struct.fields(&tx.outlines) {
+    for field in k_struct.fields(&tx.outlines.structs) {
         if field.ty(&tx.outlines.fields).is_unresolved() {
             // FIXME: handle correctly. unresolved type crashes on unification for now
             tx.logger.error(

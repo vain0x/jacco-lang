@@ -19,8 +19,4 @@ impl KOutlines {
         self.structs.push(struct_outline);
         KStruct::new(id)
     }
-
-    pub(crate) fn struct_get(&self, k_struct: KStruct) -> &KStructOutline {
-        &self.structs[k_struct.id()]
-    }
 }
