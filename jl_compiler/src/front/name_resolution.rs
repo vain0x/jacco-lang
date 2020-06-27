@@ -15,7 +15,7 @@ pub(crate) struct NFn {
 
 /// 外部関数の定義に関する情報
 #[derive(Default)]
-pub(crate) struct NExternFn {
+pub(crate) struct NExternFnData {
     pub(crate) extern_fn_name_id_opt: Option<PNameId>,
 }
 
@@ -30,7 +30,7 @@ pub(crate) struct NFieldData {
 /// 名前解決の結果。
 pub(crate) struct NameResolution {
     pub(crate) fns: Vec<NFn>,
-    pub(crate) extern_fns: Vec<NExternFn>,
+    pub(crate) extern_fns: Vec<NExternFnData>,
     pub(crate) structs: Vec<NStructData>,
     pub(crate) fields: Vec<NFieldData>,
 }
@@ -43,7 +43,7 @@ struct Nx {
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     fns: Vec<NFn>,
-    extern_fns: Vec<NExternFn>,
+    extern_fns: Vec<NExternFnData>,
     structs: Vec<NStructData>,
     fields: Vec<NFieldData>,
     logger: Logger,
@@ -69,7 +69,7 @@ impl Nx {
 
     fn alloc_extern_fn(&mut self) -> PNameId {
         let extern_fn_id = self.extern_fns.len();
-        self.extern_fns.push(NExternFn::default());
+        self.extern_fns.push(NExternFnData::default());
         extern_fn_id
     }
 
