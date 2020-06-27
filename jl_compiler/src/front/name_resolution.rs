@@ -359,14 +359,12 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                             resolve_name_def(&mut field.name, PNameKind::Field, nx);
                             resolve_ty_opt(field.ty_opt.as_mut(), nx);
 
+                            let field_name_id_opt =
+                                field.name.info_opt.as_ref().map(|info| info.id());
+
+                            // alloc field
                             let field_id = nx.res.fields.len();
-                            nx.res.fields.push(NFieldData {
-                                field_name_id_opt: field
-                                    .name
-                                    .info_opt
-                                    .as_ref()
-                                    .map(|info| info.id()),
-                            });
+                            nx.res.fields.push(NFieldData { field_name_id_opt });
                             field.field_id_opt = Some(field_id);
                         }
                     }
