@@ -106,14 +106,29 @@ impl Nx {
     }
 }
 
-fn resolve_name_use(name: &mut PName, nx: &mut Nx) -> bool {
-    match nx.env.get(name.text()) {
-        Some(info) => {
-            name.info_opt = Some(info.clone());
-            true
-        }
-        None => false,
-    }
+fn parse_known_ty_name(s: &str) -> Option<PNameInfo> {
+    let name_info = match s {
+        "i32" => PNameInfo::I32,
+        "i64" => PNameInfo::I64,
+        "usize" => PNameInfo::USIZE,
+        "f64" => PNameInfo::F64,
+        "c8" => PNameInfo::C8,
+        "bool" => PNameInfo::BOOL,
+        _ => return None,
+    };
+    Some(name_info)
+}
+
+fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
+    let name_info = {
+        let resolved_opt = nx.env.get(name.text()).cloned();
+        resolved_opt.unwrap_or_else(|| {
+            nx.logger.error(name, "undefined");
+            PNameInfo::UNRESOLVED
+        })
+    };
+
+    name.info_opt = Some(name_info);
 }
 
 fn resolve_name_def(name: &mut PName, kind: PNameKind, nx: &mut Nx) {
@@ -125,34 +140,20 @@ fn resolve_name_def(name: &mut PName, kind: PNameKind, nx: &mut Nx) {
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
     let name = &mut ty_name.0;
-    match name.text() {
-        "i32" => {
-            name.info_opt = Some(PNameInfo::I32);
-        }
-        "i64" => {
-            name.info_opt = Some(PNameInfo::I64);
-        }
-        "usize" => {
-            name.info_opt = Some(PNameInfo::USIZE);
-        }
-        "f64" => {
-            name.info_opt = Some(PNameInfo::F64);
-        }
-        "c8" => {
-            name.info_opt = Some(PNameInfo::C8);
-        }
-        "bool" => {
-            name.info_opt = Some(PNameInfo::BOOL);
-        }
-        _ => {
-            if !resolve_name_use(name, nx) {
-                nx.logger.error(name, "undefined type");
-                name.info_opt = Some(PNameInfo::UNRESOLVED);
-            }
-        }
-    }
 
-    assert!(name.info_opt.is_some());
+    let name_info = {
+        // 環境から探して、なければ組み込み型の名前とみなす。
+        let resolved_opt = nx.env.get(name.text()).cloned();
+
+        resolved_opt
+            .or_else(|| parse_known_ty_name(name.text()))
+            .unwrap_or_else(|| {
+                nx.logger.error(name, "undefined type");
+                PNameInfo::UNRESOLVED
+            })
+    };
+
+    name.info_opt = Some(name_info);
 }
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
@@ -195,10 +196,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         | PExpr::True(_)
         | PExpr::False(_) => {}
         PExpr::Name(PNameExpr(name)) => {
-            if !resolve_name_use(name, nx) {
-                nx.logger.error(name, "undefined");
-                name.info_opt = Some(PNameInfo::UNRESOLVED);
-            }
+            resolve_name_use(name, nx);
         }
         PExpr::Struct(PStructExpr { name, fields, .. }) => {
             resolve_ty_name(name, nx);
