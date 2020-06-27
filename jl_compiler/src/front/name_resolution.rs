@@ -9,7 +9,7 @@ use std::{
 
 /// 関数の定義に関する情報
 #[derive(Default)]
-pub(crate) struct NFn {
+pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
 }
 
@@ -29,7 +29,7 @@ pub(crate) struct NFieldData {
 
 /// 名前解決の結果。
 pub(crate) struct NameResolution {
-    pub(crate) fns: Vec<NFn>,
+    pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
     pub(crate) structs: Vec<NStructData>,
     pub(crate) fields: Vec<NFieldData>,
@@ -42,7 +42,7 @@ struct Nx {
     env: HashMap<String, PNameInfo>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
-    fns: Vec<NFn>,
+    fns: Vec<NFnData>,
     extern_fns: Vec<NExternFnData>,
     structs: Vec<NStructData>,
     fields: Vec<NFieldData>,
@@ -63,7 +63,7 @@ impl Nx {
 
     fn alloc_fn(&mut self) -> usize {
         let fn_id = self.fns.len();
-        self.fns.push(NFn::default());
+        self.fns.push(NFnData::default());
         fn_id
     }
 
