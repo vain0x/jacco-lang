@@ -1186,7 +1186,7 @@ pub(crate) fn cps_conversion(
             .iter()
             .enumerate()
             .filter_map(|(i, n_fn)| {
-                n_fn.fn_name_id_opt()
+                n_fn.fn_name_id_opt
                     .map(|fn_name_id| (fn_name_id, KFn::new(i)))
             })
             .collect();
@@ -1200,7 +1200,7 @@ pub(crate) fn cps_conversion(
             .enumerate()
             .filter_map(|(i, extern_fn)| {
                 extern_fn
-                    .extern_fn_name_id_opt()
+                    .extern_fn_name_id_opt
                     .map(|name_id| (name_id, KExternFn::new(i)))
             })
             .collect();

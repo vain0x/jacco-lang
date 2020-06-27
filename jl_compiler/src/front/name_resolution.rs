@@ -10,25 +10,13 @@ use std::{
 /// 関数の定義に関する情報
 #[derive(Default)]
 pub(crate) struct NFn {
-    fn_name_id_opt: Option<PNameId>,
-}
-
-impl NFn {
-    pub(crate) fn fn_name_id_opt(&self) -> Option<PNameId> {
-        self.fn_name_id_opt
-    }
+    pub(crate) fn_name_id_opt: Option<PNameId>,
 }
 
 /// 外部関数の定義に関する情報
 #[derive(Default)]
 pub(crate) struct NExternFn {
-    extern_fn_name_id_opt: Option<PNameId>,
-}
-
-impl NExternFn {
-    pub(crate) fn extern_fn_name_id_opt(&self) -> Option<PNameId> {
-        self.extern_fn_name_id_opt
-    }
+    pub(crate) extern_fn_name_id_opt: Option<PNameId>,
 }
 
 pub(crate) struct NStructData {
