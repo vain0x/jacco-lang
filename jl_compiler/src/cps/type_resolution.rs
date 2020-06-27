@@ -218,7 +218,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let arg_ty = resolve_term(arg, tx);
                     unify(
                         arg_ty,
-                        field.ty(&tx.outlines).clone(),
+                        field.ty(&tx.outlines.fields).clone(),
                         node.location.clone(),
                         tx,
                     );
@@ -247,8 +247,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     k_struct
                         .fields(&tx.outlines)
                         .iter()
-                        .find(|field| field.name(&tx.outlines) == *field_name)
-                        .map(|field| field.ty(&tx.outlines).clone().into_ptr())
+                        .find(|field| field.name(&tx.outlines.fields) == *field_name)
+                        .map(|field| field.ty(&tx.outlines.fields).clone().into_ptr())
                 })()
                 .unwrap_or_else(|| {
                     tx.logger.error(location, "bad type");
@@ -482,10 +482,12 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
 
 fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
     for field in k_struct.fields(&tx.outlines) {
-        if field.ty(&tx.outlines).is_unresolved() {
+        if field.ty(&tx.outlines.fields).is_unresolved() {
             // FIXME: handle correctly. unresolved type crashes on unification for now
-            tx.logger
-                .error(&field.location(&tx.outlines), "unresolved field type");
+            tx.logger.error(
+                &field.location(&tx.outlines.fields),
+                "unresolved field type",
+            );
         }
     }
 }

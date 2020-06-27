@@ -1,4 +1,4 @@
-use super::{KOutlines, KTy};
+use super::KTy;
 use crate::token::Location;
 
 #[derive(Clone, Debug)]
@@ -21,16 +21,16 @@ impl KField {
         self.id
     }
 
-    pub(crate) fn name(self, outlines: &KOutlines) -> &str {
-        &outlines.field_get(self).name
+    pub(crate) fn name(self, fields: &[KFieldOutline]) -> &str {
+        &fields[self.id].name
     }
 
-    pub(crate) fn ty(self, outlines: &KOutlines) -> &KTy {
-        &outlines.field_get(self).ty
+    pub(crate) fn ty(self, fields: &[KFieldOutline]) -> &KTy {
+        &fields[self.id].ty
     }
 
-    pub(crate) fn location(self, outlines: &KOutlines) -> Location {
-        outlines.field_get(self).location.clone()
+    pub(crate) fn location(self, fields: &[KFieldOutline]) -> Location {
+        fields[self.id].location.clone()
     }
 }
 

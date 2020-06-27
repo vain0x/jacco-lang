@@ -421,7 +421,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
 
                 let outlines = cx.outlines;
                 for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines)) {
-                    let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines));
+                    let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines.fields));
                     let right = gen_term(take(arg), cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
@@ -564,8 +564,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .iter()
             .map(|field| {
                 (
-                    field.name(&cx.outlines).to_string(),
-                    gen_ty(field.ty(&cx.outlines).clone(), &empty_ty_env, cx),
+                    field.name(&cx.outlines.fields).to_string(),
+                    gen_ty(field.ty(&cx.outlines.fields).clone(), &empty_ty_env, cx),
                 )
             })
             .collect();

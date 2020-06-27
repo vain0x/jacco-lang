@@ -1,5 +1,5 @@
 use super::{
-    k_struct::KStructOutline, KConstData, KExternFnOutline, KField, KFieldOutline, KFnOutline,
+    k_struct::KStructOutline, KConstData, KExternFnOutline, KFieldOutline, KFnOutline,
     KStaticVarData, KStruct,
 };
 
@@ -22,9 +22,5 @@ impl KOutlines {
 
     pub(crate) fn struct_get(&self, k_struct: KStruct) -> &KStructOutline {
         &self.structs[k_struct.id()]
-    }
-
-    pub(crate) fn field_get(&self, field: KField) -> &KFieldOutline {
-        &self.fields[field.id()]
     }
 }
