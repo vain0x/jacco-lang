@@ -1,84 +1,8 @@
 //! Jacco 言語の構文木の定義
 
 use super::*;
+use crate::front::NName;
 use crate::{impl_node_choice, impl_node_seq};
-
-pub(crate) type PNameId = usize;
-
-#[derive(Clone, Debug)]
-pub(crate) struct PNameInfo {
-    id: PNameId,
-    kind: PNameKind,
-}
-
-impl PNameInfo {
-    pub(crate) const UNRESOLVED: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::Unresolved,
-    };
-
-    // FIXME: 組み込みのシンボルには特定の ID を割り当てる？
-    pub(crate) const BOOL: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::Bool,
-    };
-
-    pub(crate) const I32: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::I32,
-    };
-
-    pub(crate) const I64: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::I64,
-    };
-
-    pub(crate) const USIZE: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::Usize,
-    };
-
-    pub(crate) const F64: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::F64,
-    };
-
-    pub(crate) const C8: Self = Self {
-        id: usize::MAX,
-        kind: PNameKind::C8,
-    };
-
-    pub(crate) fn new(id: PNameId, kind: PNameKind) -> Self {
-        Self { id, kind }
-    }
-
-    pub(crate) fn id(&self) -> PNameId {
-        self.id
-    }
-
-    pub(crate) fn kind(&self) -> PNameKind {
-        self.kind
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PNameKind {
-    Unresolved,
-    Bool,
-    I32,
-    I64,
-    Usize,
-    F64,
-    C8,
-    Fn,
-    ExternFn,
-    /// Local variable or parameter.
-    Local,
-    Const,
-    StaticVar,
-    Struct,
-    Field,
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct PName {
@@ -86,7 +10,7 @@ pub(crate) struct PName {
 
     /// 名前解決の結果
     /// FIXME: 構文ノードを id か何かで特定できるようにして、このような情報は外部のマップに持つ？
-    pub(crate) info_opt: Option<PNameInfo>,
+    pub(crate) info_opt: Option<NName>,
 }
 
 impl PName {

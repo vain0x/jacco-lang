@@ -1,7 +1,7 @@
 //! 名前解決の処理
 
 use super::*;
-use crate::{logs::Logger, utils::IdProvider};
+use crate::logs::Logger;
 use std::{
     collections::HashMap,
     mem::{replace, take},
@@ -12,37 +12,25 @@ pub(crate) struct NLoopData {
     pub(crate) location: Location,
 }
 
-pub(crate) struct NLocalVarData {
-    pub(crate) name_id_opt: Option<PNameId>,
-}
+pub(crate) struct NLocalVarData;
 
-pub(crate) struct NConstData {
-    pub(crate) name_id_opt: Option<PNameId>,
-}
+pub(crate) struct NConstData;
 
-pub(crate) struct NStaticVarData {
-    pub(crate) name_id_opt: Option<PNameId>,
-}
+pub(crate) struct NStaticVarData;
 
 pub(crate) struct NFnData {
-    pub(crate) fn_name_id_opt: Option<PNameId>,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: Vec<NLocalVarData>,
     pub(crate) loops: Vec<NLoopData>,
 }
 
 pub(crate) struct NExternFnData {
-    pub(crate) extern_fn_name_id_opt: Option<PNameId>,
     pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
-pub(crate) struct NStructData {
-    pub(crate) struct_name_id_opt: Option<PNameId>,
-}
+pub(crate) struct NStructData;
 
-pub(crate) struct NFieldData {
-    pub(crate) field_name_id_opt: Option<PNameId>,
-}
+pub(crate) struct NFieldData;
 
 /// 名前解決の結果。
 #[derive(Default)]
@@ -55,11 +43,34 @@ pub(crate) struct NameResolution {
     pub(crate) fields: Vec<NFieldData>,
 }
 
-/// Naming context.
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum NName {
+    Unresolved,
+    /// ローカル変数や仮引数
+    LocalVar(usize),
+    Const(usize),
+    StaticVar(usize),
+    Fn(usize),
+    ExternFn(usize),
+    Struct(usize),
+    Bool,
+    I32,
+    I64,
+    Usize,
+    F64,
+    C8,
+}
+
+impl Default for NName {
+    fn default() -> Self {
+        NName::Unresolved
+    }
+}
+
+/// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {
-    ids: IdProvider,
-    env: HashMap<String, PNameInfo>,
+    env: HashMap<String, NName>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     parent_local_vars: Vec<NLocalVarData>,
@@ -74,10 +85,6 @@ impl Nx {
             logger,
             ..Self::default()
         }
-    }
-
-    fn fresh_id(&mut self) -> PNameId {
-        self.ids.next()
     }
 
     fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
@@ -119,17 +126,17 @@ impl Nx {
     }
 }
 
-fn parse_known_ty_name(s: &str) -> Option<PNameInfo> {
-    let name_info = match s {
-        "i32" => PNameInfo::I32,
-        "i64" => PNameInfo::I64,
-        "usize" => PNameInfo::USIZE,
-        "f64" => PNameInfo::F64,
-        "c8" => PNameInfo::C8,
-        "bool" => PNameInfo::BOOL,
+fn parse_known_ty_name(s: &str) -> Option<NName> {
+    let n_name = match s {
+        "i32" => NName::I32,
+        "i64" => NName::I64,
+        "usize" => NName::Usize,
+        "f64" => NName::F64,
+        "c8" => NName::C8,
+        "bool" => NName::Bool,
         _ => return None,
     };
-    Some(name_info)
+    Some(n_name)
 }
 
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
@@ -137,18 +144,16 @@ fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
         let resolved_opt = nx.env.get(name.text()).cloned();
         resolved_opt.unwrap_or_else(|| {
             nx.logger.error(name, "undefined");
-            PNameInfo::UNRESOLVED
+            NName::Unresolved
         })
     };
 
     name.info_opt = Some(name_info);
 }
 
-fn resolve_name_def(name: &mut PName, kind: PNameKind, nx: &mut Nx) {
-    let id = nx.fresh_id();
-    let info = PNameInfo::new(id, kind);
-    name.info_opt = Some(info.clone());
-    nx.env.insert(name.text().to_string(), info);
+fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
+    p_name.info_opt = Some(n_name);
+    nx.env.insert(p_name.text().to_string(), n_name);
 }
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
@@ -162,7 +167,7 @@ fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
             .or_else(|| parse_known_ty_name(name.text()))
             .unwrap_or_else(|| {
                 nx.logger.error(name, "undefined type");
-                PNameInfo::UNRESOLVED
+                NName::Unresolved
             })
     };
 
@@ -186,12 +191,11 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 }
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
-    resolve_name_def(name, PNameKind::Local, nx);
-
-    let name_id_opt = name.info_opt.as_ref().map(|info| info.id());
-
     // alloc local
-    nx.parent_local_vars.push(NLocalVarData { name_id_opt });
+    let local_var_id = nx.parent_local_vars.len();
+    nx.parent_local_vars.push(NLocalVarData);
+
+    resolve_name_def(name, NName::LocalVar(local_var_id), nx);
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
@@ -351,77 +355,59 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 fn_id_opt,
                 ..
             }) => {
-                let mut fn_name_id_opt = None;
-
-                if let Some(name) = name_opt {
-                    resolve_name_def(name, PNameKind::Fn, nx);
-
-                    fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
-                }
-
                 // alloc fn
                 let fn_id = nx.res.fns.len();
                 *fn_id_opt = Some(fn_id);
                 nx.res.fns.push(NFnData {
-                    fn_name_id_opt,
                     local_vars: vec![],
                     loops: vec![],
                 });
+
+                if let Some(name) = name_opt {
+                    resolve_name_def(name, NName::Fn(fn_id), nx);
+                }
             }
             PDecl::ExternFn(PExternFnDecl {
                 name_opt,
                 extern_fn_id_opt,
                 ..
             }) => {
-                let mut extern_fn_name_id_opt = None;
-
-                if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, PNameKind::ExternFn, nx);
-
-                    extern_fn_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
-                }
-
                 // alloc extern fn
                 let extern_fn_id = nx.res.extern_fns.len();
                 *extern_fn_id_opt = Some(extern_fn_id);
-                nx.res.extern_fns.push(NExternFnData {
-                    extern_fn_name_id_opt,
-                    local_vars: vec![],
-                });
+                nx.res.extern_fns.push(NExternFnData { local_vars: vec![] });
+
+                if let Some(name) = name_opt.as_mut() {
+                    resolve_name_def(name, NName::ExternFn(extern_fn_id), nx);
+                }
             }
             PDecl::Struct(PStructDecl {
                 name_opt,
                 variant_opt,
                 ..
             }) => {
-                let mut struct_name_id_opt = None;
+                // alloc struct
+                let struct_id = nx.res.structs.len();
+                nx.res.structs.push(NStructData);
 
                 if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, PNameKind::Struct, nx);
-
-                    struct_name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+                    resolve_name_def(name, NName::Struct(struct_id), nx);
                 }
 
                 nx.enter_scope(|nx| match variant_opt {
                     Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
                         for field in fields {
-                            resolve_name_def(&mut field.name, PNameKind::Field, nx);
-                            resolve_ty_opt(field.ty_opt.as_mut(), nx);
-
-                            let field_name_id_opt =
-                                field.name.info_opt.as_ref().map(|info| info.id());
-
                             // alloc field
                             let field_id = nx.res.fields.len();
-                            nx.res.fields.push(NFieldData { field_name_id_opt });
+                            nx.res.fields.push(NFieldData);
                             field.field_id_opt = Some(field_id);
+
+                            // resolve_name_def(&mut field.name, PNameKind::Field, nx);
+                            resolve_ty_opt(field.ty_opt.as_mut(), nx);
                         }
                     }
                     None => {}
                 });
-
-                // alloc struct
-                nx.res.structs.push(NStructData { struct_name_id_opt });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
         }
@@ -453,19 +439,16 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             init_opt,
             ..
         }) => {
-            let mut name_id_opt = None;
+            // alloc const
+            let const_id = nx.res.consts.len();
+            nx.res.consts.push(NConstData);
 
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, PNameKind::Const, nx);
-
-                name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+                resolve_name_def(name, NName::Const(const_id), nx);
             }
-
-            // alloc const
-            nx.res.consts.push(NConstData { name_id_opt });
         }
         PDecl::Static(PStaticDecl {
             name_opt,
@@ -473,19 +456,16 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             init_opt,
             ..
         }) => {
-            let mut name_id_opt = None;
+            // alloc static var
+            let static_var_id = nx.res.static_vars.len();
+            nx.res.static_vars.push(NStaticVarData);
 
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, PNameKind::StaticVar, nx);
-
-                name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+                resolve_name_def(name, NName::StaticVar(static_var_id), nx);
             }
-
-            // alloc static var
-            nx.res.static_vars.push(NStaticVarData { name_id_opt });
         }
         PDecl::Fn(PFnDecl {
             param_list_opt,
