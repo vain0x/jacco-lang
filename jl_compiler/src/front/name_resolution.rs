@@ -7,12 +7,10 @@ use std::{
     mem::{replace, take},
 };
 
-/// 関数の定義に関する情報
 pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
 }
 
-/// 外部関数の定義に関する情報
 pub(crate) struct NExternFnData {
     pub(crate) extern_fn_name_id_opt: Option<PNameId>,
 }
@@ -26,6 +24,7 @@ pub(crate) struct NFieldData {
 }
 
 /// 名前解決の結果。
+#[derive(Default)]
 pub(crate) struct NameResolution {
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
@@ -40,10 +39,7 @@ struct Nx {
     env: HashMap<String, PNameInfo>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
-    fns: Vec<NFnData>,
-    extern_fns: Vec<NExternFnData>,
-    structs: Vec<NStructData>,
-    fields: Vec<NFieldData>,
+    res: NameResolution,
     logger: Logger,
 }
 
@@ -320,9 +316,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 }
 
                 // alloc fn
-                let fn_id = nx.fns.len();
+                let fn_id = nx.res.fns.len();
                 *fn_id_opt = Some(fn_id);
-                nx.fns.push(NFnData { fn_name_id_opt });
+                nx.res.fns.push(NFnData { fn_name_id_opt });
             }
             PDecl::ExternFn(PExternFnDecl {
                 name_opt,
@@ -338,9 +334,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 }
 
                 // alloc extern fn
-                let extern_fn_id = nx.extern_fns.len();
+                let extern_fn_id = nx.res.extern_fns.len();
                 *extern_fn_id_opt = Some(extern_fn_id);
-                nx.extern_fns.push(NExternFnData {
+                nx.res.extern_fns.push(NExternFnData {
                     extern_fn_name_id_opt,
                 });
             }
@@ -363,8 +359,8 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                             resolve_name_def(&mut field.name, PNameKind::Field, nx);
                             resolve_ty_opt(field.ty_opt.as_mut(), nx);
 
-                            let field_id = nx.fields.len();
-                            nx.fields.push(NFieldData {
+                            let field_id = nx.res.fields.len();
+                            nx.res.fields.push(NFieldData {
                                 field_name_id_opt: field
                                     .name
                                     .info_opt
@@ -378,7 +374,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 });
 
                 // alloc struct
-                nx.structs.push(NStructData { struct_name_id_opt });
+                nx.res.structs.push(NStructData { struct_name_id_opt });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
         }
@@ -489,10 +485,5 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution
 
     resolve_decls(&mut p_root.decls, &mut nx);
 
-    NameResolution {
-        fns: nx.fns,
-        extern_fns: nx.extern_fns,
-        structs: nx.structs,
-        fields: nx.fields,
-    }
+    nx.res
 }
