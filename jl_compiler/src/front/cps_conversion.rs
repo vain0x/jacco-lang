@@ -24,7 +24,6 @@ struct KLoopData {
 struct Gx {
     outlines: KOutlines,
     loop_map: HashMap<usize, KLoopData>,
-    local_map: HashMap<PNameId, KLocal>,
     const_map: HashMap<PNameId, KConst>,
     static_var_map: HashMap<PNameId, KStaticVar>,
     fn_map: HashMap<PNameId, KFn>,
@@ -33,9 +32,12 @@ struct Gx {
     field_map: HashMap<PNameId, KField>,
     current_commands: Vec<KCommand>,
     current_locals: Vec<KLocalData>,
+    current_local_var_map: HashMap<PNameId, KLocal>,
     current_labels: Vec<KLabelData>,
-    extern_fns: Vec<KExternFnData>,
     fns: Vec<KFnData>,
+    fn_local_var_maps: Vec<HashMap<PNameId, KLocal>>,
+    extern_fns: Vec<KExternFnData>,
+    extern_fn_local_maps: Vec<HashMap<PNameId, KLocal>>,
     logger: Logger,
 }
 
@@ -278,7 +280,7 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
+fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
     let name_info = take(&mut name.info_opt).unwrap();
     let (name, location) = name.decompose();
 
@@ -292,19 +294,24 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
             None => unimplemented!("maybe recursive extern fn reference?"),
         },
         PNameKind::Local => {
-            let local = match gx.local_map.get(&name_info.id()) {
-                Some(&local) => local,
-                None => {
-                    let local = KLocal::new(gx.current_locals.len());
-                    gx.current_locals.push(KLocalData {
-                        name: name.clone(),
-                        ty: ty.clone(),
-                        is_alive: true,
-                    });
-                    gx.local_map.insert(name_info.id(), local);
-                    local
-                }
-            };
+            let local = *gx
+                .current_local_var_map
+                .get(&name_info.id())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{:?}",
+                        (
+                            &gx.fns,
+                            &gx.outlines.fns,
+                            &gx.current_local_var_map,
+                            &name_info
+                        )
+                    );
+                });
+
+            let local_data = &mut gx.current_locals[local.id()];
+            local_data.name = name;
+            local_data.is_alive = true;
 
             KSymbolExt::Symbol(KSymbol { local, location })
         }
@@ -341,10 +348,6 @@ fn gen_name_with_ty(mut name: PName, ty: KTy, gx: &mut Gx) -> KSymbolExt {
     }
 }
 
-fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
-    gen_name_with_ty(name, KTy::default(), gx)
-}
-
 fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
     let ty = match param.ty_opt {
         Some(ty) => gen_ty(ty, gx),
@@ -354,7 +357,12 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
         }
     };
 
-    gen_name_with_ty(param.name, ty, gx).expect_symbol()
+    let symbol = gen_name(param.name, gx).expect_symbol();
+
+    let old_ty = replace(&mut gx.current_locals[symbol.local.id()].ty, ty);
+    assert!(old_ty.is_unresolved());
+
+    symbol
 }
 
 struct GenFnSigResult {
@@ -892,8 +900,13 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             gen_expr(expr, gx);
         }
         PDecl::Let(PLetDecl {
-            name_opt, init_opt, ..
+            name_opt,
+            ty_opt: _,
+            init_opt,
+            ..
         }) => {
+            // FIXME: 型を割り当てる
+
             let result = gen_name(name_opt.unwrap(), gx).expect_symbol();
             let k_init = gen_expr(init_opt.unwrap(), gx);
 
@@ -993,7 +1006,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let vis_opt = vis_opt.map(|(vis, _)| vis);
 
-            let parent_locals = take(&mut gx.current_locals);
+            let parent_local_vars = {
+                let local_vars = take(&mut gx.fns[k_fn.id()].locals);
+                replace(&mut gx.current_locals, local_vars)
+            };
+            let parent_local_var_map = {
+                let local_var_map = take(&mut gx.fn_local_var_maps[k_fn.id()]);
+                replace(&mut gx.current_local_var_map, local_var_map)
+            };
 
             let GenFnSigResult {
                 fn_name,
@@ -1025,7 +1045,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
 
             let (body, labels) = fold_block(commands, labels);
 
-            let locals = replace(&mut gx.current_locals, parent_locals);
+            let locals = replace(&mut gx.current_locals, parent_local_vars);
+            gx.current_local_var_map = parent_local_var_map;
 
             gx.outlines.fns[k_fn.id()] = KFnOutline {
                 name: fn_name,
@@ -1052,8 +1073,16 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             extern_fn_id_opt,
             ..
         }) => {
-            let parent_locals = take(&mut gx.current_locals);
             let extern_fn = KExternFn::new(extern_fn_id_opt.unwrap());
+
+            let parent_local_vars = {
+                let local_vars = take(&mut gx.extern_fns[extern_fn.id()].locals);
+                replace(&mut gx.current_locals, local_vars)
+            };
+            let parent_local_var_map = {
+                let local_var_map = take(&mut gx.extern_fn_local_maps[extern_fn.id()]);
+                replace(&mut gx.current_local_var_map, local_var_map)
+            };
 
             let location = extern_keyword.location().unite(&fn_keyword.location());
             let GenFnSigResult {
@@ -1069,8 +1098,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 result_ty_opt,
                 gx,
             );
+            assert_eq!(gx.extern_fn_map.get(&fn_name_id).copied(), Some(extern_fn));
 
-            let locals = replace(&mut gx.current_locals, parent_locals);
+            let locals = replace(&mut gx.current_locals, parent_local_vars);
+            gx.current_local_var_map = parent_local_var_map;
 
             gx.outlines.extern_fns[extern_fn.id()] = KExternFnOutline {
                 name: fn_name,
@@ -1079,7 +1110,6 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 location,
             };
             gx.extern_fns[extern_fn.id()] = KExternFnData { params, locals };
-            gx.extern_fn_map.insert(fn_name_id, extern_fn);
         }
         PDecl::Struct(PStructDecl {
             name_opt,
@@ -1177,7 +1207,28 @@ pub(crate) fn cps_conversion(
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = name_resolution.fns;
         let fn_count = n_fns.len();
-        let fns = vec![KFnData::default(); fn_count];
+        let fn_local_var_maps = n_fns
+            .iter()
+            .map(|fn_data| {
+                fn_data
+                    .local_vars
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, local_var_data)| {
+                        local_var_data
+                            .name_id_opt
+                            .map(|name_id| (name_id, KLocal::new(i)))
+                    })
+                    .collect::<HashMap<_, _>>()
+            })
+            .collect();
+        let fns = n_fns
+            .iter()
+            .map(|fn_data| KFnData {
+                locals: vec![KLocalData::default(); fn_data.local_vars.len()],
+                ..KFnData::default()
+            })
+            .collect();
         let fn_name_to_fn_map = n_fns
             .iter()
             .enumerate()
@@ -1190,7 +1241,28 @@ pub(crate) fn cps_conversion(
         // 外部関数の ID, 名前ID の対応表を構築する。
         let n_extern_fns = name_resolution.extern_fns;
         let extern_fn_count = n_extern_fns.len();
-        let k_extern_fns = vec![KExternFnData::default(); extern_fn_count];
+        let extern_fn_local_var_maps = n_extern_fns
+            .iter()
+            .map(|extern_fn_data| {
+                extern_fn_data
+                    .local_vars
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, local_var_data)| {
+                        local_var_data
+                            .name_id_opt
+                            .map(|name_id| (name_id, KLocal::new(i)))
+                    })
+                    .collect::<HashMap<_, _>>()
+            })
+            .collect();
+        let k_extern_fns = n_extern_fns
+            .iter()
+            .map(|extern_fn_data| KExternFnData {
+                locals: vec![KLocalData::default(); extern_fn_data.local_vars.len()],
+                ..KExternFnData::default()
+            })
+            .collect();
         let extern_fn_map = n_extern_fns
             .iter()
             .enumerate()
@@ -1238,10 +1310,12 @@ pub(crate) fn cps_conversion(
 
         gx.fns = fns;
         gx.fn_map = fn_name_to_fn_map;
+        gx.fn_local_var_maps = fn_local_var_maps;
         gx.outlines.fns.resize_with(fn_count, Default::default);
 
         gx.extern_fns = k_extern_fns;
         gx.extern_fn_map = extern_fn_map;
+        gx.extern_fn_local_maps = extern_fn_local_var_maps;
         gx.outlines
             .extern_fns
             .resize_with(extern_fn_count, Default::default);
@@ -1256,6 +1330,7 @@ pub(crate) fn cps_conversion(
             .fields
             .resize_with(field_count, Default::default);
 
+        trace!("{:?}", gx.fns);
         gen_root(p_root, &mut gx);
 
         KRoot {

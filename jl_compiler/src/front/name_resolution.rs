@@ -7,6 +7,10 @@ use std::{
     mem::{replace, take},
 };
 
+pub(crate) struct NLocalVarData {
+    pub(crate) name_id_opt: Option<PNameId>,
+}
+
 pub(crate) struct NConstData {
     pub(crate) name_id_opt: Option<PNameId>,
 }
@@ -17,10 +21,13 @@ pub(crate) struct NStaticVarData {
 
 pub(crate) struct NFnData {
     pub(crate) fn_name_id_opt: Option<PNameId>,
+    // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
+    pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
 pub(crate) struct NExternFnData {
     pub(crate) extern_fn_name_id_opt: Option<PNameId>,
+    pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
 pub(crate) struct NStructData {
@@ -49,6 +56,7 @@ struct Nx {
     env: HashMap<String, PNameInfo>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
+    parent_local_vars: Vec<NLocalVarData>,
     res: NameResolution,
     logger: Logger,
 }
@@ -86,11 +94,15 @@ impl Nx {
     fn enter_fn(&mut self, fn_id: usize, do_resolve: impl FnOnce(&mut Nx)) {
         let parent_loop = take(&mut self.parent_loop);
         let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
+        let parent_local_vars = take(&mut self.parent_local_vars);
 
         do_resolve(self);
 
         self.parent_loop = parent_loop;
         self.parent_fn = parent_fn;
+        let local_vars = replace(&mut self.parent_local_vars, parent_local_vars);
+
+        self.res.fns[fn_id].local_vars = local_vars;
     }
 }
 
@@ -161,6 +173,11 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
     resolve_name_def(name, PNameKind::Local, nx);
+
+    let name_id_opt = name.info_opt.as_ref().map(|info| info.id());
+
+    // alloc local
+    nx.parent_local_vars.push(NLocalVarData { name_id_opt });
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
@@ -328,7 +345,10 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 // alloc fn
                 let fn_id = nx.res.fns.len();
                 *fn_id_opt = Some(fn_id);
-                nx.res.fns.push(NFnData { fn_name_id_opt });
+                nx.res.fns.push(NFnData {
+                    fn_name_id_opt,
+                    local_vars: vec![],
+                });
             }
             PDecl::ExternFn(PExternFnDecl {
                 name_opt,
@@ -348,6 +368,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 *extern_fn_id_opt = Some(extern_fn_id);
                 nx.res.extern_fns.push(NExternFnData {
                     extern_fn_name_id_opt,
+                    local_vars: vec![],
                 });
             }
             PDecl::Struct(PStructDecl {
@@ -468,12 +489,19 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         PDecl::ExternFn(PExternFnDecl {
             param_list_opt,
             result_ty_opt,
+            extern_fn_id_opt,
             ..
         }) => {
+            let parent_local_vars = take(&mut nx.parent_local_vars);
+
             nx.enter_scope(|nx| {
                 resolve_param_list_opt(param_list_opt.as_mut(), nx);
                 resolve_ty_opt(result_ty_opt.as_mut(), nx);
             });
+
+            let local_vars = replace(&mut nx.parent_local_vars, parent_local_vars);
+
+            nx.res.extern_fns[extern_fn_id_opt.unwrap()].local_vars = local_vars;
         }
         PDecl::Struct(_) => {}
     }
