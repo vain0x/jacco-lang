@@ -22,7 +22,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         for item in logs.finish() {
             error!("{:?} {}", item.location, item.message);
         }
-        return String::new();
+        std::process::exit(1);
     }
 
     let name_resolution = front::resolve_name(&mut p_root, logs.logger());

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -eu
+
+# jacco のバイナリを探す。
+# JACCO_BIN が指定されていたらそれを使い、
+# なければパスが通っている jacco を使い、
+# それもなければ開発用のデバッグビルドを使う。
+if test -f ${JACCO_BIN:-'jacco'}
+then
+    JACCO_BIN=${JACCO_BIN:-'jacco'}
+else
+    JACCO_BIN='../../target/debug/jacco'
+fi
+
+# jacco -> C language
+$JACCO_BIN build calc.jacco >calc.c
+
+# C language -> static library
+gcc -std=c11 -Wall -c calc.c -o calc.o
+ar rcs libcalc.a calc.o
+
+cargo run -- "$@"

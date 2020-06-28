@@ -1,0 +1,159 @@
+// defined in C stdlib
+extern fn malloc(size: usize) -> *();
+
+// defined in main.rs
+extern fn assert(cond: bool);
+extern fn trace(s: *c8);
+extern fn trace_i32(s: *c8, value: i32);
+
+struct Tx {
+    text: *c8,
+    text_len: usize,
+    current_index: usize,
+}
+
+fn char_is_whitespace(c: c8) -> bool {
+    trace_i32("char_is_whitespace", c as i32);
+
+    c == ' ' || c == '\t' || c == '\r' || c == '\n'
+}
+
+fn char_is_digit(c: c8) -> bool {
+    trace_i32("char_is_digit", c as i32);
+
+    '0' <= c && c <= '9'
+}
+
+fn tx_bump(tx: *Tx) {
+    trace_i32("tx_bump", (*tx).current_index as i32);
+
+    (*tx).current_index += 1_usize;
+}
+
+fn tx_next(tx: *Tx) -> c8 {
+    trace_i32("tx_next    current_index:", (*tx).current_index as i32);
+
+    if ((*tx).current_index >= (*tx).text_len) {
+        trace("tx_next: EOF");
+        return '\0';
+    }
+
+    *((*tx).text + (*tx).current_index)
+}
+
+fn parse_spaces(tx: *Tx) {
+    trace("parse_spaces");
+
+    while (tx |> tx_next() |> char_is_whitespace()) {
+        tx |> tx_bump();
+    }
+}
+
+fn parse_i32(tx: *Tx) -> i32 {
+    trace("parse_i32");
+
+    let x = 0;
+    let neg = false;
+
+    if ((tx |> tx_next()) == '-') {
+        tx |> tx_bump();
+        neg = true;
+    }
+
+    while (tx |> tx_next() |> char_is_digit()) {
+        x *= 10;
+        x -= ((tx |> tx_next()) - '0') as i32;
+        tx |> tx_bump();
+    }
+
+    if (neg) { x } else { -x }
+}
+
+fn parse_atomic(tx: *Tx) -> i32 {
+    let c = tx |> tx_next();
+    if (c == '-' || (c |> char_is_digit())) {
+        parse_i32(tx)
+    } else {
+        trace_i32("error", (*tx).current_index as i32);
+        0
+    }
+}
+
+fn parse_mul(tx: *Tx) -> i32 {
+    parse_atomic(tx)
+}
+
+fn parse_add(tx: *Tx) -> i32 {
+    let left = parse_mul(tx);
+
+    loop {
+        parse_spaces(tx);
+
+        let c = tx |> tx_next();
+        if (c == '+') {
+            tx |> tx_bump();
+            parse_spaces(tx);
+
+            let right = parse_mul(tx);
+            left += right;
+            continue;
+        }
+
+        if (c == '-') {
+            tx |> tx_bump();
+            parse_spaces(tx);
+
+            let right = parse_mul(tx);
+            left -= right;
+            continue;
+        }
+
+        return left;
+    }
+}
+
+fn parse_expr(tx: *Tx) -> i32 {
+    parse_add(tx)
+}
+
+pub fn calc_tests() {
+    trace("calc_tests");
+
+    let text = " 42";
+    let text_len = 3_usize;
+
+    let tx = Tx {
+        text: text,
+        text_len: text_len,
+        current_index: 0_usize,
+    };
+
+    parse_spaces(&tx);
+
+    trace_i32("current_index", tx.current_index as i32);
+    assert(tx.current_index == 1_usize);
+
+    let value = parse_i32(&tx);
+    trace_i32("value", value);
+    assert(value == 42);
+
+    trace("OK");
+}
+
+pub fn calc_str(text: *c8, text_len: usize) -> i32 {
+    calc_tests();
+
+    trace("calc_str");
+    let tx = Tx {
+        text: text,
+        text_len: text_len,
+        current_index: 0_usize,
+    };
+
+    parse_spaces(&tx);
+    let value = parse_expr(&tx);
+    parse_spaces(&tx);
+    // FIXME: EOF でなければ構文エラー
+
+    value
+}
