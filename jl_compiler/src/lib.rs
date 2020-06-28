@@ -1,5 +1,11 @@
 mod logs;
 
+/// API for Rust.
+pub mod rust_api {
+    pub use super::lang_service::lang_service::{LangService, Source};
+    pub use super::source::{pos::Pos, range::Range};
+}
+
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     use log::{error, trace};
     use std::rc::Rc;
@@ -139,6 +145,14 @@ mod front {
     use crate::token::{HaveLocation, Location, TokenData};
 }
 
+mod lang_service {
+    //! 入力支援機能 (LSP サーバーの内部実装)
+
+    #![allow(unused)]
+
+    pub(crate) mod lang_service;
+}
+
 mod parse {
     //! 構文木・構文解析
 
@@ -185,8 +199,8 @@ mod parse {
 mod source {
     //! ソースファイル
 
-    mod pos;
-    mod range;
+    pub(crate) mod pos;
+    pub(crate) mod range;
     mod source_file;
 
     pub(crate) use pos::Pos;

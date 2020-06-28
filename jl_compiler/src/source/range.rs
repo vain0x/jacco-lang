@@ -3,7 +3,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 /// テキスト上の範囲
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub(crate) struct Range {
+pub struct Range {
     /// 開始位置
     pub(crate) start: Pos,
 
@@ -12,22 +12,19 @@ pub(crate) struct Range {
 }
 
 impl Range {
-    pub(crate) fn new(start: Pos, end: Pos) -> Range {
+    pub fn new(start: Pos, end: Pos) -> Range {
         Range { start, end }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn start(&self) -> Pos {
+    pub fn start(&self) -> Pos {
         self.start
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn end(&self) -> Pos {
+    pub fn end(&self) -> Pos {
         self.end
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn contains_loosely(self, pos: Pos) -> bool {
+    pub fn contains_loosely(self, pos: Pos) -> bool {
         self.start <= pos && pos <= self.end
     }
 

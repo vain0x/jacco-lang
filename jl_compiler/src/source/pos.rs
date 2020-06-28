@@ -6,7 +6,7 @@ use std::{
 
 /// テキスト上の位置 (行番号, 列番号)
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Pos {
+pub struct Pos {
     /// 行番号。0 から始まる。
     /// テキスト中の改行の個数に等しい。
     pub(crate) line: usize,
@@ -17,13 +17,12 @@ pub(crate) struct Pos {
 }
 
 impl Pos {
-    pub(crate) const ZERO: Pos = Pos {
+    pub const ZERO: Pos = Pos {
         line: 0,
         character: 0,
     };
 
-    #[allow(dead_code)]
-    pub(crate) fn new(line: usize, character: usize) -> Pos {
+    pub fn new(line: usize, character: usize) -> Pos {
         Pos { line, character }
     }
 }
