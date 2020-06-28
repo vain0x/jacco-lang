@@ -427,6 +427,11 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
 fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
+        PExpr::Tuple(PTupleExpr { mut arg_list }) if !arg_list.is_tuple() => {
+            let args = take(&mut arg_list.args);
+            let mut arg = args.into_iter().next().unwrap();
+            gen_expr_lval(take(&mut arg.expr), location, gx)
+        }
         PExpr::UnaryOp(PUnaryOpExpr {
             op: PUnaryOp::Deref,
             arg_opt: Some(arg),
