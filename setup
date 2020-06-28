@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cargo build
+
+(
+    cd jl_vscode_ext
+    test -d node_modules || npm ci
+)

@@ -1,0 +1,19 @@
+#!/bin/bash
+# VSCode 拡張機能をビルドして、インストールする。
+# これを実行する前に、LSP サーバーをビルドしておくこと。
+
+set -eu
+
+# 過去のビルド結果を削除する。
+test -f jacco-lang.vsix && rm jacco-lang.vsix
+
+# 配布用ディレクトリに必要なファイルを入れる。
+cp ../target/release/jacco_lsp ./dist/jacco_lsp
+
+# 拡張機能をビルドする。
+npm run vsce-package
+npm run webpack-prod
+
+# ローカルにインストールする。
+./uninstall || :
+code --install-extension jacco-lang.vsix

@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "lib": [
+            "ES2017"
+        ],
+        "module": "CommonJS",
+        "outDir": "out",
+        "rootDir": "src",
+        "sourceMap": true,
+        "strict": true,
+        "target": "ES2017"
+    }
+}
