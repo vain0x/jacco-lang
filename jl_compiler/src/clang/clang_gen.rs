@@ -236,7 +236,10 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Float(token) => CExpr::DoubleLit(token.into_text().replace("_", "")),
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
-        KTerm::Str(token) => CExpr::StrLit(token.into_text()),
+        KTerm::Str(token) => CExpr::Cast {
+            ty: CTy::UnsignedChar.into_ptr(),
+            arg: Box::new(CExpr::StrLit(token.into_text())),
+        },
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
         KTerm::False(_) => CExpr::IntLit("0".to_string()),
         KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
