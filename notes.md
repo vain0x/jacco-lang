@@ -17,6 +17,12 @@
 - LSP を備えること
 - DAP を備えること
 
+## 実行例
+
+```sh
+cargo build && RUST_LOG=error $J build ./tests/while/while.jacco
+```
+
 ## CPS 変換
 
 CPS 変換の方法。

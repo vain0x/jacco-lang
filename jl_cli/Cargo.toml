@@ -1,0 +1,14 @@
+[package]
+name = "jacco"
+version = "0.1.0"
+authors = ["vain0x <vainzerox@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jl_compiler = { path = "../jl_compiler" }
+
+# 環境変数に基づいてログ出力を行うロガーの実装。
+# <https://github.com/sebasmagri/env_logger>
+env_logger = "0.7"
