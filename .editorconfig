@@ -1,7 +1,7 @@
 root = true
 
 [*.{c,cc,cpp,cxx,h,hh,hpp,hxx}]
-indent_size = 2
+indent_size = 4
 indent_style = space
 insert_final_line = true
 trim_trailing_whitespace = true
