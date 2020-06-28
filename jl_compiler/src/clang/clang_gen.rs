@@ -611,6 +611,28 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         cx.locals.clear();
     }
 
+    // 関数宣言
+    for (k_fn, fn_data) in KFnData::iter(&root.fns) {
+        let name = unique_fn_name(k_fn, cx);
+        let params = fn_data
+            .params
+            .iter()
+            .map(|symbol| {
+                let name = symbol.local.name(&fn_data.locals).to_string();
+                let ty = gen_ty(symbol.local.ty(&fn_data.locals).clone(), &empty_ty_env, cx);
+                (name, ty)
+            })
+            .collect();
+        let result_ty = gen_ty(k_fn.result_ty(&outlines.fns).clone(), &empty_ty_env, cx);
+
+        cx.decls.push(CStmt::FnDecl {
+            name,
+            params,
+            result_ty,
+            body_opt: None,
+        });
+    }
+
     for (k_fn, fn_data) in KFnData::into_iter(root.fns) {
         let KFnData {
             params,
@@ -657,7 +679,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             name,
             params,
             result_ty,
-            body: CBlock { stmts },
+            body_opt: Some(CBlock { stmts }),
         });
 
         cx.locals.clear();

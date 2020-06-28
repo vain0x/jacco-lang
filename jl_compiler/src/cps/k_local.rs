@@ -14,6 +14,10 @@ impl KLocal {
         self.id
     }
 
+    pub(crate) fn name(self, locals: &[KLocalData]) -> &str {
+        &locals[self.id].name
+    }
+
     pub(crate) fn ty(self, locals: &[KLocalData]) -> &KTy {
         &locals[self.id].ty
     }

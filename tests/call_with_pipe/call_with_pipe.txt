@@ -1,8 +1,14 @@
 void assert(int cond_1);
 
-int div_2(int x_1, int y_1) {
-    int div_1 = x_1 / y_1;
-    return div_1;
+int div_1(int x, int y);
+
+int sub3_1(int x, int y, int z);
+
+int main();
+
+int div_1(int x_1, int y_1) {
+    int div_2 = x_1 / y_1;
+    return div_2;
 }
 
 int sub3_1(int x_2, int y_2, int z_1) {
@@ -15,7 +21,7 @@ int main() {
     int add_1 = 42 + 2;
     int add_2 = add_1 + 3;
     int mul_1 = add_2 * 2;
-    int call_result_1 = div_2(mul_1, 2);
+    int call_result_1 = div_1(mul_1, 2);
     int call_result_2 = sub3_1(call_result_1, 2, 3);
     int a_1 = call_result_2;
     int eq_1 = a_1 == 42;

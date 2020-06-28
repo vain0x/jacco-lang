@@ -1,3 +1,5 @@
+int main();
+
 int main() {
     // while_result_1 is killed.
     goto continue__1;

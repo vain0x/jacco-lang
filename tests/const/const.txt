@@ -1,5 +1,7 @@
 void assert(int cond_1);
 
+int main();
+
 int main() {
     int if_result_1;
     int eq_1 = 42 == 42;

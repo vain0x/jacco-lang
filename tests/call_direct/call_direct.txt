@@ -2,6 +2,8 @@ int f(int x_1, int y_1, int z_1);
 
 int g();
 
+int main();
+
 int main() {
     int mul_1 = 1 * 2;
     int add_1 = 3 + 4;

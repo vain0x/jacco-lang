@@ -1,5 +1,7 @@
 void assert_ok(int cond_1);
 
+int main();
+
 int main() {
     int n_1 = 1;
     int cast_1 = (int)n_1;

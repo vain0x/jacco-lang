@@ -4,6 +4,12 @@ static int ERR_NO_1 = 0;
 
 void assert(int cond_1);
 
+int fresh_id_1();
+
+void perform_failible_operation_1(int err);
+
+int main();
+
 int fresh_id_1() {
     int* ref_1 = &LAST_ID_1;
     *ref_1 += 1;

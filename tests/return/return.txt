@@ -1,3 +1,5 @@
+int main();
+
 int main() {
     // if_result_1 is killed.
     if (1) {

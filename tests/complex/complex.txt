@@ -1,5 +1,17 @@
 void an_extern_fn_declared_later();
 
+int main();
+
+int fn_with_params_1(int x, int y);
+
+void fn_with_params_user_1();
+
+int use_fn_declared_later_1();
+
+int a_fn_declared_later_1();
+
+void use_extern_fn_declared_later_1();
+
 int main() {
     // if_result_1 is killed.
     // if_result_2 is killed.

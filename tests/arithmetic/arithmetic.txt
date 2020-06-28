@@ -1,3 +1,5 @@
+int main();
+
 int main() {
     int mul_1 = 3 * 4;
     int div_1 = mul_1 / 1;

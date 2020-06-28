@@ -1,3 +1,7 @@
+void compound_assign_1();
+
+int main();
+
 void compound_assign_1() {
     int x_1 = 0;
     int* ref_1 = &x_1;

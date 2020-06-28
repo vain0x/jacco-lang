@@ -1,5 +1,7 @@
 void putc(unsigned char c_1);
 
+int main();
+
 int main() {
     // call_result_1 is killed.
     putc('h');

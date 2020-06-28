@@ -30,7 +30,7 @@ pub(crate) enum CStmt {
         name: String,
         params: Vec<(String, CTy)>,
         result_ty: CTy,
-        body: CBlock,
+        body_opt: Option<CBlock>,
     },
     ExternFnDecl {
         name: String,

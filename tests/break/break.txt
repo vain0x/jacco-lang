@@ -1,3 +1,11 @@
+void break_from_while_1();
+
+void break_from_loop_1();
+
+int break_with_arg_1();
+
+int main();
+
 void break_from_while_1() {
     // while_result_1 is killed.
     goto continue__1;

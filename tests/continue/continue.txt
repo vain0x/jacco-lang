@@ -1,3 +1,11 @@
+void continue_in_while_1();
+
+void continue_in_loop_1();
+
+void nested_continue_1();
+
+int main();
+
 void continue_in_while_1() {
     // while_result_1 is killed.
     goto continue__1;

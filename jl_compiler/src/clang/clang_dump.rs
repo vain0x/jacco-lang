@@ -195,13 +195,19 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             name,
             params,
             result_ty,
-            body,
+            body_opt,
         } => {
             write_ty(result_ty, dx)?;
             write!(dx, " {}", name)?;
             write_param_list(&params, dx)?;
-            write!(dx, " ")?;
-            write_block(body, dx)
+
+            match body_opt {
+                Some(body) => {
+                    write!(dx, " ")?;
+                    write_block(body, dx)
+                }
+                None => write!(dx, ";"),
+            }
         }
         CStmt::ExternFnDecl {
             name,

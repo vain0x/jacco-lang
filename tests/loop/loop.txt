@@ -1,3 +1,5 @@
+int main();
+
 int main() {
     int loop_result_1;
     goto continue__1;
