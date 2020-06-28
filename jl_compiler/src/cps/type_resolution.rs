@@ -304,10 +304,14 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: 同じ型へのキャストは警告?
                 if let KTy::Unresolved | KTy::Never = arg_ty {
                     // Skip.
-                } else if !arg_ty.is_primitive() {
-                    tx.logger.error(node, "can't cast from non-primitive type");
-                } else if !ty.is_primitive() {
-                    tx.logger.error(node, "can't cast to non-primitive type");
+                } else if !tx.ty_env.is_primitive(&arg_ty) {
+                    tx.logger.error(
+                        node,
+                        format!("can't cast from non-primitive type {:?}", arg_ty),
+                    );
+                } else if !tx.ty_env.is_primitive(ty) {
+                    let msg = format!("can't cast to non-primitive type {:?}", ty);
+                    tx.logger.error(node, msg);
                 }
             }
             _ => unimplemented!(),
