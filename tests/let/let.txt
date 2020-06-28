@@ -1,4 +1,5 @@
 int main() {
     int a_1 = 0;
+    int b_1 = 4;
     return a_1;
 }

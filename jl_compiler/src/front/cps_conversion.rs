@@ -862,14 +862,15 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         }
         PDecl::Let(PLetDecl {
             name_opt,
-            ty_opt: _,
+            ty_opt,
             init_opt,
             ..
         }) => {
-            // FIXME: 型を割り当てる
+            let ty = ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
 
-            let result = gen_name(name_opt.unwrap(), gx).expect_symbol();
             let k_init = gen_expr(init_opt.unwrap(), gx);
+            let mut result = gen_name(name_opt.unwrap(), gx).expect_symbol();
+            *result.ty_mut(&mut gx.current_locals) = ty;
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
