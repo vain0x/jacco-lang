@@ -1,5 +1,5 @@
 use crate::{
-    front::validate_syntax,
+    front::{self, validate_syntax, NameResolution},
     logs::Logs,
     parse::{self, PRoot},
     source::{Pos, Range, SourceFile},
@@ -24,12 +24,18 @@ struct Syntax {
     errors: Vec<(Range, String)>,
 }
 
+struct Symbols {
+    name_resolution: NameResolution,
+    errors: Vec<(Range, String)>,
+}
+
 #[derive(Default)]
 struct AnalysisCache {
     version: i64,
     text: Rc<String>,
     source_path: Rc<PathBuf>,
     syntax_opt: Option<Syntax>,
+    symbols_opt: Option<Symbols>,
 }
 
 impl AnalysisCache {
@@ -37,6 +43,7 @@ impl AnalysisCache {
         self.version = version;
         self.text = text;
         self.syntax_opt = None;
+        self.symbols_opt = None;
     }
 
     fn request_syntax(&mut self) -> &mut Syntax {
@@ -70,6 +77,33 @@ impl AnalysisCache {
         self.syntax_opt = Some(syntax);
         self.syntax_opt.as_mut().unwrap()
     }
+
+    fn request_symbols(&mut self) -> &mut Symbols {
+        if self.symbols_opt.is_some() {
+            return self.symbols_opt.as_mut().unwrap();
+        }
+
+        let symbols = {
+            let syntax = self.request_syntax();
+
+            let logs = Logs::new();
+            let res = front::resolve_name(&mut syntax.root, logs.logger());
+
+            let log_items = logs.finish();
+            let errors = log_items
+                .into_iter()
+                .map(|log_item| (log_item.location.range(), log_item.message))
+                .collect();
+
+            Symbols {
+                name_resolution: res,
+                errors,
+            }
+        };
+
+        self.symbols_opt = Some(symbols);
+        self.symbols_opt.as_mut().unwrap()
+    }
 }
 
 #[derive(Default)]
@@ -102,6 +136,7 @@ impl LangService {
                 // FIXME: 引数でもらう
                 source_path: Rc::new(PathBuf::from("main.jacco")),
                 syntax_opt: None,
+                symbols_opt: None,
             },
         );
         self.dirty_sources.insert(source);
@@ -156,8 +191,13 @@ impl LangService {
         self.sources
             .get_mut(&source)
             .map(|analysis| {
-                let errors = analysis.request_syntax().errors.clone();
                 let version_opt = Some(analysis.version);
+
+                let mut errors = analysis.request_syntax().errors.clone();
+                if errors.is_empty() {
+                    errors.extend(analysis.request_symbols().errors.clone());
+                }
+
                 (version_opt, errors)
             })
             .unwrap_or((None, vec![]))
@@ -187,6 +227,13 @@ mod tests {
     #[test]
     fn test_validate_syntax_errors() {
         let mut lang_service = new_service_from_str("fn f() { bad!! syntax!! }");
+        let (_, errors) = lang_service.validate(SOURCE);
+        assert_ne!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_validate_name_resolution_errors() {
+        let mut lang_service = new_service_from_str("fn f() { g(); }");
         let (_, errors) = lang_service.validate(SOURCE);
         assert_ne!(errors.len(), 0);
     }
