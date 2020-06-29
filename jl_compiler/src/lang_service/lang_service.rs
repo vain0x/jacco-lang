@@ -163,3 +163,31 @@ impl LangService {
             .unwrap_or((None, vec![]))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{LangService, Source};
+
+    const SOURCE: Source = 1;
+
+    fn new_service_from_str(s: &str) -> LangService {
+        let mut it = LangService::new();
+        it.did_initialize();
+        it.open_doc(SOURCE, 1, s.to_string().into());
+        it
+    }
+
+    #[test]
+    fn test_validate_good() {
+        let mut lang_service = new_service_from_str("pub fn main() { let a = 0; 0 }");
+        let (_, errors) = lang_service.validate(SOURCE);
+        assert_eq!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_validate_syntax_errors() {
+        let mut lang_service = new_service_from_str("fn f() { bad!! syntax!! }");
+        let (_, errors) = lang_service.validate(SOURCE);
+        assert_ne!(errors.len(), 0);
+    }
+}
