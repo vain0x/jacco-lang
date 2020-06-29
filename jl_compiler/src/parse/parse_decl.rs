@@ -210,7 +210,7 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
             _ => {
                 // FIXME: recovery
                 p_error("expected a field (`name: ty,`)", px);
-                px.bump();
+                px.skip();
                 continue;
             }
         }
@@ -292,7 +292,7 @@ fn do_parse_decls(decls: &mut Vec<PDecl>, px: &mut Px) {
             TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Semi => {
                 // Empty declaration.
-                px.bump();
+                px.skip();
                 continue;
             }
             _ => {}
@@ -302,7 +302,7 @@ fn do_parse_decls(decls: &mut Vec<PDecl>, px: &mut Px) {
             Some(decl) => decls.push(decl),
             None => {
                 p_error("expected decl", px);
-                px.bump();
+                px.skip();
             }
         }
     }
@@ -337,7 +337,7 @@ fn parse_root(px: &mut Px) -> Vec<PDecl> {
         match px.next() {
             TokenKind::Eof => break,
             _ => {
-                px.bump();
+                px.skip();
             }
         }
     }
@@ -358,9 +358,13 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
-    let eof = px.finish();
+    let (eof, skipped) = px.finish();
 
-    PRoot { decls, eof }
+    PRoot {
+        decls,
+        eof,
+        skipped,
+    }
 }
 
 #[cfg(test)]

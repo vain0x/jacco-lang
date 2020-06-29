@@ -571,6 +571,10 @@ fn validate_root(root: &PRoot, vx: &Vx) {
     for decl in &root.decls {
         validate_decl(decl, vx, Placement::Global, SEMI_REQUIRED);
     }
+
+    for token in &root.skipped {
+        vx.logger.error(token, "this token is ignored");
+    }
 }
 
 pub(crate) fn validate_syntax(root: &PRoot, logger: Logger) {

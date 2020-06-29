@@ -3,6 +3,7 @@ use super::*;
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
     tokens: Vec<TokenData>,
+    skipped: Vec<TokenData>,
     logger: Logger,
 }
 
@@ -10,7 +11,11 @@ impl Px {
     pub(crate) fn new(mut tokens: Vec<TokenData>, logger: Logger) -> Self {
         tokens.reverse();
 
-        Px { tokens, logger }
+        Px {
+            tokens,
+            skipped: vec![],
+            logger,
+        }
     }
 
     pub(crate) fn logger(&self) -> &Logger {
@@ -37,6 +42,12 @@ impl Px {
         self.tokens.pop().unwrap()
     }
 
+    pub(crate) fn skip(&mut self) {
+        let token = self.bump();
+
+        self.skipped.push(token);
+    }
+
     pub(crate) fn expect(&mut self, kind: TokenKind) -> TokenData {
         assert_eq!(self.next(), kind);
 
@@ -51,10 +62,11 @@ impl Px {
         }
     }
 
-    pub(crate) fn finish(mut self) -> TokenData {
+    pub(crate) fn finish(mut self) -> (TokenData, Vec<TokenData>) {
         assert_eq!(self.tokens.len(), 1);
 
-        self.expect(TokenKind::Eof)
+        let eof = self.expect(TokenKind::Eof);
+        (eof, self.skipped)
     }
 }
 

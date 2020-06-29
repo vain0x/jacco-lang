@@ -839,6 +839,7 @@ impl PNode for PDecl {
 pub(crate) struct PRoot {
     pub(crate) decls: Vec<PDecl>,
     pub(crate) eof: TokenData,
+    pub(crate) skipped: Vec<TokenData>,
 }
 
 impl PNode for PRoot {

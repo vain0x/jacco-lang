@@ -56,7 +56,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<PFieldExpr> {
             _ => {
                 // FIXME: recovery
                 p_error("expected a field (`name: expr,`)", px);
-                px.bump();
+                px.skip();
                 continue;
             }
         }
@@ -487,7 +487,7 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
                 let expr = match parse_expr(px) {
                     None => {
                         p_error("expected argument", px);
-                        px.bump();
+                        px.skip();
                         continue;
                     }
                     Some(expr) => expr,
