@@ -25,6 +25,10 @@ fn lsp_display_name() -> String {
     format!("{} v{}", get_package_name(), get_package_version())
 }
 
+fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::Pos {
+    jl_compiler::rust_api::Pos::new(position.line as usize, position.character as usize)
+}
+
 fn to_lsp_pos(pos: jl_compiler::rust_api::Pos) -> Position {
     Position {
         line: pos.line() as u64,
@@ -132,7 +136,7 @@ impl<W: Write> LspHandler<W> {
                 //     work_done_progress_options: WorkDoneProgressOptions::default(),
                 // }),
                 // definition_provider: Some(true),
-                // document_highlight_provider: Some(true),
+                document_highlight_provider: Some(true),
                 // hover_provider: Some(true),
                 // references_provider: Some(true),
                 // rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
@@ -233,13 +237,34 @@ impl<W: Write> LspHandler<W> {
     //     }
     // }
 
-    // fn text_document_highlight(
-    //     &mut self,
-    //     params: TextDocumentPositionParams,
-    // ) -> Vec<lsp_types::DocumentHighlight> {
-    //     self.service
-    //         .document_highlight(params.text_document.uri, params.position)
-    // }
+    fn text_document_highlight(
+        &mut self,
+        params: TextDocumentPositionParams,
+    ) -> Vec<DocumentHighlight> {
+        let doc = params.text_document;
+        let pos = from_lsp_pos(params.position);
+
+        (|| {
+            let uri = doc.uri.clone();
+            let source = self.sources.url_to_source(&doc.uri)?;
+
+            let (def_sites, use_sites) = self.service.document_highlight(source, pos)?;
+
+            let def_highlights = def_sites.into_iter().map(|range| {
+                let range = to_lsp_range(range);
+                let kind = Some(DocumentHighlightKind::Write);
+                DocumentHighlight { kind, range }
+            });
+            let use_highlights = use_sites.into_iter().map(|range| {
+                let range = to_lsp_range(range);
+                let kind = Some(DocumentHighlightKind::Read);
+                DocumentHighlight { kind, range }
+            });
+            let highlights = def_highlights.chain(use_highlights).collect();
+            Some(highlights)
+        })()
+        .unwrap_or(vec![])
+    }
 
     // fn text_document_hover(&mut self, params: TextDocumentPositionParams) -> Option<Hover> {
     //     self.service.hover(params.text_document.uri, params.position)
@@ -324,13 +349,13 @@ impl<W: Write> LspHandler<W> {
             //     let response = self.text_document_definition(msg.params);
             //     self.sender.send_response(msg_id, response);
             // }
-            // "textDocument/documentHighlight" => {
-            //     let msg =
-            //         serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();
-            //     let msg_id = msg.id;
-            //     let response = self.text_document_highlight(msg.params);
-            //     self.sender.send_response(msg_id, response);
-            // }
+            "textDocument/documentHighlight" => {
+                let msg =
+                    serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();
+                let msg_id = msg.id;
+                let response = self.text_document_highlight(msg.params);
+                self.sender.send_response(msg_id, response);
+            }
             // "textDocument/hover" => {
             //     let msg: LspRequest<TextDocumentPositionParams> =
             //         serde_json::from_str(json).unwrap();

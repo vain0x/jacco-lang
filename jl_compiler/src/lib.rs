@@ -134,10 +134,12 @@ mod front {
 
     mod cps_conversion;
     mod name_resolution;
+    mod occurrence_collection;
     mod syntax_validation;
 
     pub(crate) use cps_conversion::cps_conversion;
     pub(crate) use name_resolution::{resolve_name, NName, NameResolution};
+    pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;
 
     use crate::logs::Logger;

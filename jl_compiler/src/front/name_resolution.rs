@@ -43,7 +43,7 @@ pub(crate) struct NameResolution {
     pub(crate) fields: Vec<NFieldData>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum NName {
     Unresolved,
     /// ローカル変数や仮引数

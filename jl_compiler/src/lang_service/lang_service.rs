@@ -1,5 +1,5 @@
 use crate::{
-    front::{self, validate_syntax, NameResolution},
+    front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
     source::{Pos, Range, SourceFile},
@@ -26,6 +26,7 @@ struct Syntax {
 
 struct Symbols {
     name_resolution: NameResolution,
+    occurrences: Occurrences,
     errors: Vec<(Range, String)>,
 }
 
@@ -89,6 +90,13 @@ impl AnalysisCache {
             let logs = Logs::new();
             let res = front::resolve_name(&mut syntax.root, logs.logger());
 
+            let res = Rc::new(res);
+            let occurrences = {
+                let res = res.clone();
+                front::collect_occurrences(&syntax.root, res)
+            };
+            let res = Rc::try_unwrap(res).ok().unwrap();
+
             let log_items = logs.finish();
             let errors = log_items
                 .into_iter()
@@ -97,6 +105,7 @@ impl AnalysisCache {
 
             Symbols {
                 name_resolution: res,
+                occurrences,
                 errors,
             }
         };
@@ -125,6 +134,12 @@ impl LangService {
         self.sources
             .get_mut(&source)
             .map(|cache| cache.request_syntax())
+    }
+
+    fn request_symbols(&mut self, source: Source) -> Option<&mut Symbols> {
+        self.sources
+            .get_mut(&source)
+            .map(|cache| cache.request_symbols())
     }
 
     pub fn open_doc(&mut self, source: Source, version: i64, text: Rc<String>) {
@@ -162,8 +177,46 @@ impl LangService {
         vec![]
     }
 
-    pub fn document_highlight(&mut self, source: Source, pos: Pos) -> Vec<()> {
-        vec![]
+    pub fn document_highlight(
+        &mut self,
+        source: Source,
+        pos: Pos,
+    ) -> Option<(Vec<Range>, Vec<Range>)> {
+        let symbols = self.request_symbols(source)?;
+
+        let name = symbols
+            .occurrences
+            .def_sites
+            .iter()
+            .chain(symbols.occurrences.use_sites.iter())
+            .find_map(|(&name, locations)| {
+                if locations
+                    .iter()
+                    .any(|location| location.range().contains_loosely(pos))
+                {
+                    Some(name)
+                } else {
+                    None
+                }
+            })?;
+
+        let def_sites = symbols
+            .occurrences
+            .def_sites
+            .get(&name)
+            .iter()
+            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .collect();
+
+        let use_sites = symbols
+            .occurrences
+            .use_sites
+            .get(&name)
+            .iter()
+            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .collect();
+
+        Some((def_sites, use_sites))
     }
 
     pub fn hover(&mut self, source: Source, pos: Pos) -> Option<()> {

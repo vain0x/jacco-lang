@@ -50,7 +50,8 @@ impl Debug for SourceFile {
         let mut base_dir = PathBuf::from(manifest_dir);
         base_dir.pop();
 
-        let short_path = make_relative_path(&self.source_path, &base_dir).unwrap();
+        let short_path =
+            make_relative_path(&self.source_path, &base_dir).unwrap_or(PathBuf::default());
         write!(f, "{}", short_path.to_string_lossy())
     }
 }
