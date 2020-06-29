@@ -286,10 +286,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
     Some(decl)
 }
 
-pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Option<PExpr>) {
-    let mut decls = vec![];
-    let mut last_opt = None;
-
+fn do_parse_decls(decls: &mut Vec<PDecl>, px: &mut Px) {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
@@ -309,27 +306,41 @@ pub(crate) fn parse_semi(placement: Placement, px: &mut Px) -> (Vec<PDecl>, Opti
             }
         }
     }
+}
 
-    if placement == Placement::Local {
-        match decls.pop() {
-            Some(PDecl::Expr(PExprDecl {
-                expr: last,
-                semi_opt: None,
-            })) => {
-                last_opt = Some(last);
-            }
-            Some(last) => decls.push(last),
-            None => {}
+pub(crate) fn parse_semi(px: &mut Px) -> (Vec<PDecl>, Option<PExpr>) {
+    let mut decls = vec![];
+    let mut last_opt = None;
+
+    do_parse_decls(&mut decls, px);
+
+    match decls.pop() {
+        Some(PDecl::Expr(PExprDecl {
+            expr: last,
+            semi_opt: None,
+        })) => {
+            last_opt = Some(last);
         }
+        Some(last) => decls.push(last),
+        None => {}
     }
 
     (decls, last_opt)
 }
 
 fn parse_root(px: &mut Px) -> Vec<PDecl> {
-    let (decls, last_opt) = parse_semi(Placement::Global, px);
+    let mut decls = vec![];
 
-    assert!(last_opt.is_none());
+    loop {
+        do_parse_decls(&mut decls, px);
+
+        match px.next() {
+            TokenKind::Eof => break,
+            _ => {
+                px.bump();
+            }
+        }
+    }
 
     decls
 }
@@ -350,4 +361,25 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let eof = px.finish();
 
     PRoot { decls, eof }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        logs::Logs,
+        parse,
+        token::{self, TokenSource},
+    };
+
+    #[test]
+    fn test_parse_does_not_stop() {
+        let token_source = TokenSource::Special("test");
+        let source_code = "}}}}}";
+
+        let logs = Logs::new();
+        let tokens = token::tokenize(token_source, source_code.to_string().into());
+        let p_root = parse::parse_tokens(tokens, logs.logger());
+
+        assert!(p_root.decls.is_empty());
+    }
 }

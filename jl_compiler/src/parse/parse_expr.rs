@@ -355,7 +355,7 @@ pub(crate) fn parse_cond(
 pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
     let left_brace = px.eat(TokenKind::LeftBrace)?;
 
-    let (decls, last_opt) = parse_semi(Placement::Local, px);
+    let (decls, last_opt) = parse_semi(px);
 
     let right_brace_opt = px.eat(TokenKind::RightBrace);
 
