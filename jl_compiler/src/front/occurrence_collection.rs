@@ -1,7 +1,6 @@
 //! シンボルの出現箇所を収集する。
 
 use super::*;
-use log::trace;
 use std::{collections::HashMap, mem::replace, rc::Rc};
 
 #[derive(Default)]
@@ -39,8 +38,6 @@ fn full_name(n_name: NName, cx: &Cx) -> (NName, NName) {
 
 fn resolve_name_def(p_name: &PName, cx: &mut Cx) {
     if let Some(n_name) = p_name.info_opt.clone() {
-        trace!("def {:?}", (full_name(n_name, cx), p_name.location()));
-
         cx.occurrences
             .def_sites
             .entry(full_name(n_name, cx))
@@ -51,8 +48,6 @@ fn resolve_name_def(p_name: &PName, cx: &mut Cx) {
 
 fn resolve_name_use(p_name: &PName, cx: &mut Cx) {
     if let Some(n_name) = p_name.info_opt.clone() {
-        trace!("use {:?}", (full_name(n_name, cx), p_name.location()));
-
         cx.occurrences
             .use_sites
             .entry(full_name(n_name, cx))
