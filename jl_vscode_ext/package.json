@@ -45,6 +45,11 @@
           "type": "string",
           "description": "ジャッココンパイラのインストールディレクトリへの絶対パス。未指定時は既定のインストールディレクトリが使用されます。"
         },
+        "jacco-lang.use-lsp": {
+          "type": "boolean",
+          "description": "true のときのみ LSP 機能を使用します。",
+          "default": true
+        },
         "jacco-lang.lsp-bin": {
           "type": "string",
           "description": "[開発者向け] LSP サーバーの実行ファイルへの絶対パス。未指定時は同梱されているものが使用されます。"

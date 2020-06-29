@@ -10,13 +10,21 @@ import {
 let client: LanguageClient | undefined
 
 /** LSP サーバーの実行ファイルの絶対パスを取得する。 */
-const getLspBin = (context: ExtensionContext): string => {
+const getLspBin = (context: ExtensionContext): string | null => {
   const config = workspace.getConfiguration("jacco-lang")
 
-  const relativePath = process.env.JACCO_LSP_BIN
-    || config.get("lsp-bin") as string | undefined
-    || "./out/jacco-lsp"
+  const useLsp = config.get<boolean>("use-lsp", true)
+  if (useLsp === false) {
+    return null
+  }
 
+  if (process.env.JACCO_LSP_BIN) {
+    return process.env.JACCO_LSP_BIN
+  }
+
+  const relativePath =
+    config.get("lsp-bin") as string | undefined
+    ?? "./out/jacco-lsp"
   return context.asAbsolutePath(relativePath)
 }
 
@@ -29,6 +37,9 @@ const getLspBin = (context: ExtensionContext): string => {
 
 const startLspClient = (context: ExtensionContext) => {
   const lspBin = getLspBin(context)
+  if (lspBin == null) {
+    return
+  }
 
   // const workspaceUris = (workspace.workspaceFolders ?? [])
   //   .map(workspaceFolder => workspaceFolder.uri.toString())
@@ -70,7 +81,7 @@ const startLspClient = (context: ExtensionContext) => {
 export const activate = (context: ExtensionContext): void => {
   // commands.registerCommand("getLspBin", () => getLspBin(context))
 
-  // startLspClient(context)
+  startLspClient(context)
 }
 
 /** 拡張機能の終了時に呼ばれる。 */

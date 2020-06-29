@@ -1,10 +1,13 @@
 #![allow(unused)]
 
 mod lsp_server;
+mod sources;
 
 mod utils {
     mod uri;
     mod watcher;
+
+    pub(crate) use uri::Uri;
 }
 
 use std::{
@@ -39,9 +42,7 @@ fn write_help(w: &mut impl Write) -> io::Result<()> {
 
     OPTIONS:
         -h, --help      ヘルプを表示する
-        -V, --version   バージョン番号を表示する
-            --log-path <file>
-                        ログを保存するファイルパス"#,
+        -V, --version   バージョン番号を表示する"#,
         name = env!("CARGO_PKG_NAME"),
         version = get_version()
     )

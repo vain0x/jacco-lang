@@ -1,22 +1,119 @@
 use super::{
     lsp_receiver::LspReceiver, lsp_sender::LspSender, LspMessageOpaque, LspNotification, LspRequest,
 };
-use jl_compiler::rust_api::LangService;
+use crate::sources::{SourceChange, Sources};
+use jl_compiler::rust_api::{LangService, Source};
 use log::trace;
 use lsp_types::*;
 use std::{
+    collections::HashSet,
     io::{Read, Write},
+    mem::take,
     process,
+    rc::Rc,
 };
+
+fn get_package_name() -> &'static str {
+    env!("CARGO_PKG_NAME")
+}
+
+fn get_package_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+fn lsp_display_name() -> String {
+    format!("{} v{}", get_package_name(), get_package_version())
+}
+
+fn to_lsp_pos(pos: jl_compiler::rust_api::Pos) -> Position {
+    Position {
+        line: pos.line() as u64,
+        character: pos.character() as u64,
+    }
+}
+
+fn to_lsp_range(range: jl_compiler::rust_api::Range) -> Range {
+    Range {
+        start: to_lsp_pos(range.start()),
+        end: to_lsp_pos(range.end()),
+    }
+}
 
 pub(crate) struct LspHandler<W: Write> {
     sender: LspSender<W>,
     service: LangService,
+    sources: Sources,
+    dirty_sources: HashSet<Source>,
+    source_changes: Vec<SourceChange>,
 }
 
 impl<W: Write> LspHandler<W> {
     pub(crate) fn new(sender: LspSender<W>, service: LangService) -> Self {
-        Self { sender, service }
+        Self {
+            sender,
+            service,
+            sources: Sources::new(),
+            dirty_sources: HashSet::new(),
+            source_changes: vec![],
+        }
+    }
+
+    fn notify_source_changes(&mut self) {
+        let mut dirty_sources = take(&mut self.dirty_sources);
+
+        self.sources.drain_changes(&mut self.source_changes);
+        trace!("source_changes={:?}", self.source_changes);
+
+        for change in self.source_changes.drain(..) {
+            match change {
+                SourceChange::DidOpen {
+                    source,
+                    version,
+                    text,
+                    path,
+                } => {
+                    self.service.open_doc(source, version, text);
+                    dirty_sources.insert(source);
+                }
+                SourceChange::DidChange {
+                    source,
+                    version,
+                    text,
+                } => {
+                    self.service.change_doc(source, version, text);
+                    dirty_sources.insert(source);
+                }
+                SourceChange::DidClose { source } => {
+                    self.service.close_doc(source);
+                    dirty_sources.remove(&source);
+                }
+            }
+        }
+
+        let mut diagnostics = vec![];
+
+        for source in dirty_sources.drain() {
+            let url = match self.sources.source_to_url(source) {
+                Some(url) => url,
+                None => continue,
+            };
+
+            let (version_opt, errors) = self.service.validate(source);
+
+            for (range, message) in errors {
+                diagnostics.push(Diagnostic {
+                    severity: Some(DiagnosticSeverity::Error),
+                    range: to_lsp_range(range),
+                    message,
+                    source: Some(lsp_display_name()),
+                    ..Diagnostic::default()
+                });
+            }
+
+            self.send_publish_diagnostics(url, version_opt, diagnostics.split_off(0));
+        }
+
+        self.dirty_sources = dirty_sources;
     }
 
     fn initialize<'a>(&'a mut self, _params: InitializeParams) -> InitializeResult {
@@ -46,8 +143,8 @@ impl<W: Write> LspHandler<W> {
             },
             // 参考: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
             server_info: Some(ServerInfo {
-                name: env!("CARGO_PKG_NAME").to_string(),
-                version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                name: get_package_name().to_string(),
+                version: Some(get_package_version().to_string()),
             }),
         }
     }
@@ -64,44 +161,50 @@ impl<W: Write> LspHandler<W> {
         process::exit(0)
     }
 
-    fn send_publish_diagnostics(&mut self, uri: Url) {
-        // let (version, diagnostics) = self.service.validate(&uri);
-
-        // self.sender.send_notification(
-        //     "textDocument/publishDiagnostics",
-        //     PublishDiagnosticsParams {
-        //         uri,
-        //         version,
-        //         diagnostics,
-        //     },
-        // );
+    fn send_publish_diagnostics(
+        &mut self,
+        url: Url,
+        version_opt: Option<i64>,
+        diagnostics: Vec<Diagnostic>,
+    ) {
+        self.sender.send_notification(
+            "textDocument/publishDiagnostics",
+            PublishDiagnosticsParams {
+                uri: url,
+                version: version_opt,
+                diagnostics,
+            },
+        );
     }
 
     fn text_document_did_open(&mut self, params: DidOpenTextDocumentParams) {
-        // let doc = params.text_document;
-        // let uri = doc.uri.to_owned();
-        // self.service.open_doc(doc.uri, doc.version, doc.text);
+        let doc = params.text_document;
+        let url = doc.uri;
 
-        // self.send_publish_diagnostics(uri);
+        self.sources
+            .doc_did_open(url, doc.version, Rc::new(doc.text));
+        self.notify_source_changes();
     }
 
-    fn text_document_did_change(&mut self, params: DidChangeTextDocumentParams) {
-        // let text = (params.content_changes.into_iter())
-        //     .next()
-        //     .map(|c| c.text)
-        //     .unwrap_or("".to_string());
+    fn text_document_did_change(&mut self, mut params: DidChangeTextDocumentParams) {
+        let text = match params.content_changes.as_mut_slice() {
+            [content_change] => take(&mut content_change.text),
+            _ => return,
+        };
 
-        // let doc = params.text_document;
-        // let uri = doc.uri.to_owned();
-        // let version = doc.version.unwrap_or(0);
+        let doc = params.text_document;
+        let url = doc.uri;
+        let version = doc.version.unwrap_or(0);
 
-        // self.service.change_doc(doc.uri, version, text);
-
-        // self.send_publish_diagnostics(uri);
+        self.sources.doc_did_change(url, version, Rc::new(text));
+        self.notify_source_changes();
     }
 
     fn text_document_did_close(&mut self, params: DidCloseTextDocumentParams) {
-        // self.service.close_doc(params.text_document.uri);
+        let url = params.text_document.uri;
+
+        self.sources.doc_did_close(url);
+        self.notify_source_changes();
     }
 
     // fn text_document_completion(&mut self, params: CompletionParams) -> CompletionList {

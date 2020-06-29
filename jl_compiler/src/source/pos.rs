@@ -25,6 +25,14 @@ impl Pos {
     pub fn new(line: usize, character: usize) -> Pos {
         Pos { line, character }
     }
+
+    pub fn line(self) -> usize {
+        self.line
+    }
+
+    pub fn character(self) -> usize {
+        self.character
+    }
 }
 
 impl From<char> for Pos {
