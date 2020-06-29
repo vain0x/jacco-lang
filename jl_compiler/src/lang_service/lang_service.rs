@@ -1,10 +1,12 @@
 use crate::{
+    cps::{self, KOutlines, KRoot},
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
     source::{Pos, Range, SourceFile},
     token::{self, TokenSource},
 };
+use front::NName;
 use log::{error, trace};
 use std::{
     collections::{HashMap, HashSet},
@@ -25,8 +27,13 @@ struct Syntax {
 }
 
 struct Symbols {
-    name_resolution: NameResolution,
+    name_resolution_opt: Option<NameResolution>,
     occurrences: Occurrences,
+    errors: Vec<(Range, String)>,
+}
+
+struct Cps {
+    root: KRoot,
     errors: Vec<(Range, String)>,
 }
 
@@ -37,6 +44,7 @@ struct AnalysisCache {
     source_path: Rc<PathBuf>,
     syntax_opt: Option<Syntax>,
     symbols_opt: Option<Symbols>,
+    cps_opt: Option<Cps>,
 }
 
 impl AnalysisCache {
@@ -45,6 +53,7 @@ impl AnalysisCache {
         self.text = text;
         self.syntax_opt = None;
         self.symbols_opt = None;
+        self.cps_opt = None;
     }
 
     fn request_syntax(&mut self) -> &mut Syntax {
@@ -104,7 +113,7 @@ impl AnalysisCache {
                 .collect();
 
             Symbols {
-                name_resolution: res,
+                name_resolution_opt: Some(res),
                 occurrences,
                 errors,
             }
@@ -112,6 +121,38 @@ impl AnalysisCache {
 
         self.symbols_opt = Some(symbols);
         self.symbols_opt.as_mut().unwrap()
+    }
+
+    fn request_cps(&mut self) -> &mut Cps {
+        if self.cps_opt.is_some() {
+            return self.cps_opt.as_mut().unwrap();
+        }
+
+        let cps = {
+            self.request_symbols();
+            let syntax = self.syntax_opt.as_mut().unwrap();
+            let symbols = self.symbols_opt.as_mut().unwrap();
+
+            let logs = Logs::new();
+            let mut root = front::cps_conversion(
+                syntax.root.clone(),
+                symbols.name_resolution_opt.take().unwrap(),
+                logs.logger(),
+            );
+
+            cps::resolve_types(&mut root, logs.logger());
+
+            let log_items = logs.finish();
+            let errors = log_items
+                .into_iter()
+                .map(|log_item| (log_item.location.range(), log_item.message))
+                .collect();
+
+            Cps { root, errors }
+        };
+
+        self.cps_opt = Some(cps);
+        self.cps_opt.as_mut().unwrap()
     }
 }
 
@@ -142,6 +183,12 @@ impl LangService {
             .map(|cache| cache.request_symbols())
     }
 
+    fn request_cps(&mut self, source: Source) -> Option<&mut Cps> {
+        self.sources
+            .get_mut(&source)
+            .map(|cache| cache.request_cps())
+    }
+
     pub fn open_doc(&mut self, source: Source, version: i64, text: Rc<String>) {
         self.sources.insert(
             source,
@@ -152,6 +199,7 @@ impl LangService {
                 source_path: Rc::new(PathBuf::from("main.jacco")),
                 syntax_opt: None,
                 symbols_opt: None,
+                cps_opt: None,
             },
         );
         self.dirty_sources.insert(source);
@@ -219,8 +267,38 @@ impl LangService {
         Some((def_sites, use_sites))
     }
 
-    pub fn hover(&mut self, source: Source, pos: Pos) -> Option<()> {
-        None
+    pub fn hover(&mut self, source: Source, pos: Pos) -> Option<String> {
+        let name = {
+            let symbols = self.request_symbols(source)?;
+            symbols
+                .occurrences
+                .def_sites
+                .iter()
+                .chain(symbols.occurrences.use_sites.iter())
+                .find_map(|(&name, locations)| {
+                    if locations
+                        .iter()
+                        .any(|location| location.range().contains_loosely(pos))
+                    {
+                        Some(name)
+                    } else {
+                        None
+                    }
+                })?
+        };
+
+        let cps = self.request_cps(source)?;
+
+        match name {
+            (NName::Fn(n_fn), NName::LocalVar(n_local_var)) => {
+                let ty_env = &cps.root.fns[n_fn].ty_env;
+                let ty = &cps.root.fns[n_fn].locals[n_local_var].ty;
+                let structs = &cps.root.outlines.structs;
+                let ty_name = ty_env.display(&ty, &structs);
+                Some(ty_name)
+            }
+            _ => None,
+        }
     }
 
     pub fn references(
@@ -250,6 +328,9 @@ impl LangService {
                 if errors.is_empty() {
                     errors.extend(analysis.request_symbols().errors.clone());
                 }
+                if errors.is_empty() {
+                    errors.extend(analysis.request_cps().errors.clone());
+                }
 
                 (version_opt, errors)
             })
@@ -272,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_validate_good() {
-        let mut lang_service = new_service_from_str("pub fn main() { let a = 0; 0 }");
+        let mut lang_service = new_service_from_str("pub fn main() -> i32 { 0 }");
         let (_, errors) = lang_service.validate(SOURCE);
         assert_eq!(errors.len(), 0);
     }
@@ -287,6 +368,13 @@ mod tests {
     #[test]
     fn test_validate_name_resolution_errors() {
         let mut lang_service = new_service_from_str("fn f() { g(); }");
+        let (_, errors) = lang_service.validate(SOURCE);
+        assert_ne!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_validate_type_errors() {
+        let mut lang_service = new_service_from_str("fn f() { 2_i32 + 3_f64 }");
         let (_, errors) = lang_service.validate(SOURCE);
         assert_ne!(errors.len(), 0);
     }

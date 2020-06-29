@@ -4,6 +4,7 @@ use super::{
 use crate::sources::{SourceChange, Sources};
 use jl_compiler::rust_api::{LangService, Source};
 use log::trace;
+use lsp_types::request::*;
 use lsp_types::*;
 use std::{
     collections::HashSet,
@@ -137,7 +138,7 @@ impl<W: Write> LspHandler<W> {
                 // }),
                 // definition_provider: Some(true),
                 document_highlight_provider: Some(true),
-                // hover_provider: Some(true),
+                hover_provider: Some(true),
                 // references_provider: Some(true),
                 // rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
                 //     prepare_provider: Some(true),
@@ -266,9 +267,19 @@ impl<W: Write> LspHandler<W> {
         .unwrap_or(vec![])
     }
 
-    // fn text_document_hover(&mut self, params: TextDocumentPositionParams) -> Option<Hover> {
-    //     self.service.hover(params.text_document.uri, params.position)
-    // }
+    fn text_document_hover(&mut self, params: TextDocumentPositionParams) -> Option<Hover> {
+        let doc = params.text_document;
+        let url = doc.uri;
+        let pos = from_lsp_pos(params.position);
+
+        let source = self.sources.url_to_source(&url)?;
+        let text = self.service.hover(source, pos)?;
+        let hover = Hover {
+            contents: HoverContents::Scalar(MarkedString::String(text)),
+            range: None,
+        };
+        Some(hover)
+    }
 
     // fn text_document_prepare_rename(
     //     &mut self,
@@ -349,20 +360,20 @@ impl<W: Write> LspHandler<W> {
             //     let response = self.text_document_definition(msg.params);
             //     self.sender.send_response(msg_id, response);
             // }
-            "textDocument/documentHighlight" => {
+            DocumentHighlightRequest::METHOD => {
                 let msg =
                     serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();
                 let msg_id = msg.id;
                 let response = self.text_document_highlight(msg.params);
                 self.sender.send_response(msg_id, response);
             }
-            // "textDocument/hover" => {
-            //     let msg: LspRequest<TextDocumentPositionParams> =
-            //         serde_json::from_str(json).unwrap();
-            //     let msg_id = msg.id;
-            //     let response = self.text_document_hover(msg.params);
-            //     self.sender.send_response(msg_id, response);
-            // }
+            HoverRequest::METHOD => {
+                let msg: LspRequest<TextDocumentPositionParams> =
+                    serde_json::from_str(json).unwrap();
+                let msg_id = msg.id;
+                let response = self.text_document_hover(msg.params);
+                self.sender.send_response(msg_id, response);
+            }
             // request::PrepareRenameRequest::METHOD => {
             //     let msg: LspRequest<TextDocumentPositionParams> =
             //         serde_json::from_str(json).unwrap();
