@@ -11,14 +11,14 @@ void perform_failible_operation_1(int err);
 int main();
 
 int fresh_id_1() {
-    int* ref_1 = &LAST_ID_1;
-    *ref_1 += 1;
+    int* refmut_1 = &LAST_ID_1;
+    *refmut_1 += 1;
     return LAST_ID_1;
 }
 
 void perform_failible_operation_1(int err_1) {
-    int* ref_2 = &ERR_NO_1;
-    *ref_2 = err_1;
+    int* refmut_2 = &ERR_NO_1;
+    *refmut_2 = err_1;
     return;
 }
 

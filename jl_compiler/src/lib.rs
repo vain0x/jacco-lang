@@ -88,6 +88,7 @@ mod cps {
     mod k_label;
     mod k_local;
     mod k_meta_ty;
+    mod k_mut;
     mod k_node;
     mod k_outlines;
     mod k_prim;
@@ -111,6 +112,7 @@ mod cps {
     pub(crate) use k_label::{KLabel, KLabelData, KLabelSig};
     pub(crate) use k_local::{KLocal, KLocalData};
     pub(crate) use k_meta_ty::{KMetaTy, KMetaTyData};
+    pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_outlines::KOutlines;
     pub(crate) use k_prim::KPrim;
@@ -180,11 +182,16 @@ mod parse {
     pub(crate) use parse_tree::*;
 
     use crate::logs::Logger;
-    use crate::token::{HaveLocation, Location, TokenData, TokenKind};
+    use crate::{
+        cps::KMut,
+        token::{HaveLocation, Location, TokenData, TokenKind},
+    };
     use parse_context::{p_error, Px};
     use parse_decl::parse_semi;
     use parse_expr::{parse_block, parse_expr, parse_name};
     use parse_ty::{parse_ty, parse_ty_ascription};
+
+    pub(crate) type PMut = (KMut, TokenData);
 
     /// 関数の中か外か。
     /// FIXME: より適切な名前？

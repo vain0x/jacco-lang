@@ -1,5 +1,5 @@
 // defined in C stdlib
-extern fn malloc(size: usize) -> *();
+extern fn malloc(size: usize) -> *mut ();
 
 // defined in main.rs
 extern fn assert(cond: bool);
@@ -24,7 +24,7 @@ fn char_is_digit(c: c8) -> bool {
     '0' <= c && c <= '9'
 }
 
-fn tx_bump(tx: *Tx) {
+fn tx_bump(tx: *mut Tx) {
     trace_i32("tx_bump", (*tx).current_index as i32);
 
     (*tx).current_index += 1_usize;
@@ -41,7 +41,7 @@ fn tx_next(tx: *Tx) -> c8 {
     *((*tx).text + (*tx).current_index)
 }
 
-fn parse_spaces(tx: *Tx) {
+fn parse_spaces(tx: *mut Tx) {
     trace("parse_spaces");
 
     while (tx |> tx_next() |> char_is_whitespace()) {
@@ -49,7 +49,7 @@ fn parse_spaces(tx: *Tx) {
     }
 }
 
-fn parse_i32(tx: *Tx) -> i32 {
+fn parse_i32(tx: *mut Tx) -> i32 {
     trace("parse_i32");
 
     let x = 0;
@@ -69,7 +69,7 @@ fn parse_i32(tx: *Tx) -> i32 {
     if (neg) { x } else { -x }
 }
 
-fn parse_atomic(tx: *Tx) -> i32 {
+fn parse_atomic(tx: *mut Tx) -> i32 {
     let c = tx |> tx_next();
     if (c == '-' || (c |> char_is_digit())) {
         parse_i32(tx)
@@ -79,11 +79,11 @@ fn parse_atomic(tx: *Tx) -> i32 {
     }
 }
 
-fn parse_mul(tx: *Tx) -> i32 {
+fn parse_mul(tx: *mut Tx) -> i32 {
     parse_atomic(tx)
 }
 
-fn parse_add(tx: *Tx) -> i32 {
+fn parse_add(tx: *mut Tx) -> i32 {
     let left = parse_mul(tx);
 
     loop {
@@ -112,7 +112,7 @@ fn parse_add(tx: *Tx) -> i32 {
     }
 }
 
-fn parse_expr(tx: *Tx) -> i32 {
+fn parse_expr(tx: *mut Tx) -> i32 {
     parse_add(tx)
 }
 
@@ -128,12 +128,12 @@ pub fn calc_tests() {
         current_index: 0_usize,
     };
 
-    parse_spaces(&tx);
+    parse_spaces(&mut tx);
 
     trace_i32("current_index", tx.current_index as i32);
     assert(tx.current_index == 1_usize);
 
-    let value = parse_i32(&tx);
+    let value = parse_i32(&mut tx);
     trace_i32("value", value);
     assert(value == 42);
 
@@ -150,9 +150,9 @@ pub fn calc_str(text: *c8, text_len: usize) -> i32 {
         current_index: 0_usize,
     };
 
-    parse_spaces(&tx);
-    let value = parse_expr(&tx);
-    parse_spaces(&tx);
+    parse_spaces(&mut tx);
+    let value = parse_expr(&mut tx);
+    parse_spaces(&mut tx);
     // FIXME: EOF でなければ構文エラー
 
     value

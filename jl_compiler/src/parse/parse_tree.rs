@@ -69,11 +69,12 @@ impl PNode for PUnitTy {
 #[derive(Clone, Debug)]
 pub(crate) struct PPtrTy {
     pub(crate) star: TokenData,
+    pub(crate) mut_opt: Option<PMut>,
     pub(crate) ty_opt: Option<Box<PTy>>,
 }
 
 impl PNode for PPtrTy {
-    impl_node_seq! { star, ty_opt }
+    impl_node_seq! { star, mut_opt, ty_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -451,17 +452,20 @@ impl PNode for PAsExpr {
     impl_node_seq! { left, keyword, ty_opt }
 }
 
+// FIXME: 演算子のトークンを持つ
 #[derive(Clone, Debug)]
 pub(crate) struct PUnaryOpExpr {
     pub(crate) op: PUnaryOp,
+    pub(crate) mut_opt: Option<PMut>,
     pub(crate) arg_opt: Option<Box<PExpr>>,
     pub(crate) location: Location,
 }
 
 impl PNode for PUnaryOpExpr {
-    impl_node_seq! { arg_opt }
+    impl_node_seq! { mut_opt, arg_opt }
 }
 
+// FIXME: 演算子のトークンを持つ
 #[derive(Clone, Debug)]
 pub(crate) struct PBinaryOpExpr {
     pub(crate) op: PBinaryOp,

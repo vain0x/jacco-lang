@@ -1,6 +1,7 @@
 //! 式の構文解析ルール
 
 use super::*;
+use parse_ty::parse_mut;
 
 enum AllowAssign {
     True,
@@ -149,12 +150,14 @@ fn parse_as_expr(px: &mut Px) -> Option<PExpr> {
 }
 
 fn parse_prefix_expr(px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, px: &mut Px| {
+    let parse_right = |op: PUnaryOp, px: &mut Px| {
         let op_token = px.bump();
+        let mut_opt = if op.allow_mut() { parse_mut(px) } else { None };
         let arg_opt = parse_prefix_expr(px).map(Box::new);
         let location = op_token.into_location();
         Some(PExpr::UnaryOp(PUnaryOpExpr {
             op,
+            mut_opt,
             arg_opt,
             location,
         }))

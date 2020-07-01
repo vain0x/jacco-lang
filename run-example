@@ -10,5 +10,5 @@ shift
 
 cargo build && (
     cd ./examples/$NAME
-    JACCO_BIN=$JACCO_BIN ./run "$@"
+    RUST_LOG=debug JACCO_BIN=$JACCO_BIN ./run "$@"
 )

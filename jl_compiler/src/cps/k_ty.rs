@@ -1,4 +1,4 @@
-use super::{KMetaTy, KStruct};
+use super::{KMetaTy, KMut, KStruct};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone)]
@@ -15,6 +15,7 @@ pub(crate) enum KTy {
     C8,
     Bool,
     Ptr {
+        k_mut: KMut,
         ty: Box<KTy>,
     },
     Fn {
@@ -55,15 +56,11 @@ impl KTy {
         }
     }
 
-    pub(crate) fn as_ptr(self) -> Option<KTy> {
-        match self {
-            KTy::Ptr { ty } => Some(*ty),
-            _ => None,
+    pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy {
+        KTy::Ptr {
+            k_mut,
+            ty: Box::new(self),
         }
-    }
-
-    pub(crate) fn into_ptr(self) -> KTy {
-        KTy::Ptr { ty: Box::new(self) }
     }
 
     pub(crate) fn as_struct(self) -> Option<KStruct> {
@@ -93,8 +90,11 @@ impl Debug for KTy {
             KTy::Usize => write!(f, "usize"),
             KTy::F64 => write!(f, "f64"),
             KTy::C8 => write!(f, "c8"),
-            KTy::Ptr { ty } => {
+            KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;
+                if let KMut::Mut = k_mut {
+                    write!(f, "mut ")?;
+                }
                 Debug::fmt(&ty, f)
             }
             KTy::Fn {

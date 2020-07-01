@@ -163,7 +163,7 @@ fn emit_compound_assign(
     location: Location,
     gx: &mut Gx,
 ) -> KTerm {
-    let left = gen_expr_lval(left, location.clone(), gx);
+    let left = gen_expr_lval(left, KMut::Mut, location.clone(), gx);
     let right = gen_expr(*right_opt.unwrap(), gx);
 
     gx.push(KCommand::Node {
@@ -233,6 +233,13 @@ fn emit_if(
     KTerm::Name(result)
 }
 
+fn gen_mut(p_mut: Option<&PMut>, _gx: &mut Gx) -> KMut {
+    match p_mut {
+        Some(&(k_mut, _)) => k_mut,
+        None => KMut::Const,
+    }
+}
+
 fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
     let mut name = ty_name.0;
     let n_name = take(&mut name.info_opt).unwrap();
@@ -254,7 +261,12 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
         PTy::Name(name) => gen_ty_name(name, gx),
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
-        PTy::Ptr(PPtrTy { ty_opt, .. }) => gen_ty(*ty_opt.unwrap(), gx).into_ptr(),
+        PTy::Ptr(PPtrTy {
+            ty_opt, mut_opt, ..
+        }) => {
+            let k_mut = gen_mut(mut_opt.as_ref(), gx);
+            gen_ty(*ty_opt.unwrap(), gx).into_ptr(k_mut)
+        }
     }
 }
 
@@ -425,12 +437,12 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
-fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
+fn gen_expr_lval(expr: PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Tuple(PTupleExpr { mut arg_list }) if !arg_list.is_tuple() => {
             let args = take(&mut arg_list.args);
             let mut arg = args.into_iter().next().unwrap();
-            gen_expr_lval(take(&mut arg.expr), location, gx)
+            gen_expr_lval(take(&mut arg.expr), k_mut, location, gx)
         }
         PExpr::UnaryOp(PUnaryOpExpr {
             op: PUnaryOp::Deref,
@@ -445,14 +457,24 @@ fn gen_expr_lval(expr: PExpr, location: Location, gx: &mut Gx) -> KTerm {
             let (_, name, location) = name_opt.unwrap().decompose();
             let result = gx.fresh_symbol(&format!("{}_ptr", name), location.clone());
 
-            let left = gen_expr_lval(*left, location.clone(), gx);
+            let left = gen_expr_lval(*left, k_mut, location.clone(), gx);
             let field = KTerm::FieldTag(KFieldTag { name, location });
 
-            gx.push_prim_1(KPrim::GetField, vec![left, field], result.clone());
+            let get_field_prim = match k_mut {
+                KMut::Const => KPrim::GetField,
+                KMut::Mut => KPrim::GetFieldMut,
+            };
+            gx.push_prim_1(get_field_prim, vec![left, field], result.clone());
 
             KTerm::Name(result)
         }
-        expr => emit_unary_op(KPrim::Ref, Some(Box::new(expr)), location, gx),
+        expr => {
+            let prim = match k_mut {
+                KMut::Const => KPrim::Ref,
+                KMut::Mut => KPrim::RefMut,
+            };
+            emit_unary_op(prim, Some(Box::new(expr)), location, gx)
+        }
     }
 }
 
@@ -534,7 +556,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             };
 
             // FIXME: location
-            let result1 = gen_expr_lval(expr, location.clone(), gx);
+            let result1 = gen_expr_lval(expr, KMut::Const, location.clone(), gx);
             let result2 = gx.fresh_symbol(&text, location);
 
             gx.push_prim_1(KPrim::Deref, vec![result1], result2.clone());
@@ -582,11 +604,15 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         }
         PExpr::UnaryOp(PUnaryOpExpr {
             op,
+            mut_opt,
             arg_opt,
             location,
         }) => match op {
             PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
-            PUnaryOp::Ref => gen_expr_lval(*arg_opt.unwrap(), location, gx),
+            PUnaryOp::Ref => {
+                let k_mut = gen_mut(mut_opt.as_ref(), gx);
+                gen_expr_lval(*arg_opt.unwrap(), k_mut, location, gx)
+            }
             PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
             PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt, location, gx),
         },
@@ -597,7 +623,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PBinaryOp::Assign => {
-                let left = gen_expr_lval(*left, location.clone(), gx);
+                let left = gen_expr_lval(*left, KMut::Mut, location.clone(), gx);
                 let right = gen_expr(*right_opt.unwrap(), gx);
 
                 gx.push(KCommand::Node {

@@ -208,7 +208,13 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::Usize => CTy::UnsignedLongLong,
         KTy::F64 => CTy::Double,
         KTy::C8 => CTy::UnsignedChar,
-        KTy::Ptr { ty } => gen_ty(*ty, ty_env, cx).into_ptr(),
+        KTy::Ptr { k_mut, ty } => {
+            let mut ty = gen_ty(*ty, ty_env, cx);
+            if let KMut::Const = k_mut {
+                ty = ty.into_const();
+            }
+            ty.into_ptr()
+        }
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
     }
 }
@@ -237,7 +243,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Float(token) => CExpr::DoubleLit(token.into_text().replace("_", "")),
         KTerm::Char(token) => CExpr::CharLit(token.into_text()),
         KTerm::Str(token) => CExpr::Cast {
-            ty: CTy::UnsignedChar.into_ptr(),
+            ty: CTy::UnsignedChar.into_const().into_ptr(),
             arg: Box::new(CExpr::StrLit(token.into_text())),
         },
         KTerm::True(_) => CExpr::IntLit("1".to_string()),
@@ -436,7 +442,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::GetField => match (
+        KPrim::GetField | KPrim::GetFieldMut => match (
             args.as_mut_slice(),
             results.as_mut_slice(),
             conts.as_mut_slice(),
@@ -472,7 +478,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             _ => unimplemented!(),
         },
         KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, ty_env, cx),
-        KPrim::Ref => gen_unary_op(CUnaryOp::Ref, args, results, conts, ty_env, cx),
+        KPrim::Ref | KPrim::RefMut => gen_unary_op(CUnaryOp::Ref, args, results, conts, ty_env, cx),
         KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, ty_env, cx),
         KPrim::Not => gen_unary_op(CUnaryOp::Not, args, results, conts, ty_env, cx),
         KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, ty_env, cx),

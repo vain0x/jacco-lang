@@ -10,3 +10,13 @@ pub(crate) enum PUnaryOp {
     /// `!`
     Not,
 }
+
+impl PUnaryOp {
+    /// 後ろに const/mut キーワードが続くか？
+    pub(crate) fn allow_mut(self) -> bool {
+        match self {
+            PUnaryOp::Ref => true,
+            _ => false,
+        }
+    }
+}

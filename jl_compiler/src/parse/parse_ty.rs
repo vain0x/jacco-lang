@@ -1,5 +1,14 @@
 use super::*;
 
+pub(crate) fn parse_mut(px: &mut Px) -> Option<PMut> {
+    let p_mut = match px.next() {
+        TokenKind::Const => (KMut::Const, px.bump()),
+        TokenKind::Mut => (KMut::Mut, px.bump()),
+        _ => return None,
+    };
+    Some(p_mut)
+}
+
 pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
     match px.next() {
         TokenKind::Ident => {
@@ -20,8 +29,13 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
         }
         TokenKind::Star => {
             let star = px.bump();
+            let mut_opt = parse_mut(px);
             let ty_opt = parse_ty(px).map(Box::new);
-            Some(PTy::Ptr(PPtrTy { star, ty_opt }))
+            Some(PTy::Ptr(PPtrTy {
+                star,
+                mut_opt,
+                ty_opt,
+            }))
         }
         _ => None,
     }

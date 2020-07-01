@@ -21,6 +21,27 @@ pub(crate) enum KTerm {
     FieldTag(KFieldTag),
 }
 
+impl KTerm {
+    pub(crate) fn location(&self, _outlines: &KOutlines) -> Location {
+        match self {
+            KTerm::Unit { location } => location.clone(),
+            KTerm::Int(token, _) => token.location(),
+            KTerm::Float(token) => token.location(),
+            KTerm::Char(token) => token.location(),
+            KTerm::Str(token) => token.location(),
+            KTerm::True(token) => token.location(),
+            KTerm::False(token) => token.location(),
+            KTerm::Name(KSymbol { location, .. }) => location.clone(),
+            KTerm::FieldTag(KFieldTag { location, .. }) => location.clone(),
+            _ => {
+                // FIXME: no location info
+                trace!("no location for {:?}", self);
+                Location::default()
+            }
+        }
+    }
+}
+
 impl Debug for KTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

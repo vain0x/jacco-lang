@@ -8,10 +8,12 @@ pub(crate) enum KPrim {
     Struct,
     /// 構造体へのポインタから特定のフィールドへのポインタを取得する。(`&p->field`)
     GetField,
+    GetFieldMut,
     If,
     Let,
     Deref,
     Ref,
+    RefMut,
     Minus,
     Not,
     Add,

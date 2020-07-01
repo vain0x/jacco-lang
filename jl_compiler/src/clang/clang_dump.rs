@@ -67,6 +67,10 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CTy::UnsignedLongLong => write!(dx, "unsigned long long"),
         CTy::UnsignedChar => write!(dx, "unsigned char"),
         CTy::Double => write!(dx, "double"),
+        CTy::Const { ty } => {
+            write_ty(ty, dx)?;
+            write!(dx, " const")
+        }
         CTy::Ptr { ty } => {
             write_ty(&ty, dx)?;
             write!(dx, "*")

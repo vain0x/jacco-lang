@@ -1,9 +1,9 @@
-void puts(unsigned char* s_1);
+void puts(unsigned char const* s_1);
 
 int main();
 
 int main() {
     // call_result_1 is killed.
-    puts((unsigned char*)"Hello, world!");
+    puts((unsigned char const*)"Hello, world!");
     return 0;
 }

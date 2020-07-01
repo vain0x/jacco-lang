@@ -4,35 +4,35 @@ int main();
 
 void compound_assign_1() {
     int x_1 = 0;
-    int* ref_1 = &x_1;
-    *ref_1 += 2;
-    int* ref_2 = &x_1;
-    *ref_2 -= 3;
-    int* ref_3 = &x_1;
-    *ref_3 *= 4;
-    int* ref_4 = &x_1;
-    *ref_4 /= 5;
-    int* ref_5 = &x_1;
-    *ref_5 %= 6;
-    int* ref_6 = &x_1;
-    *ref_6 &= 7;
-    int* ref_7 = &x_1;
-    *ref_7 |= 8;
-    int* ref_8 = &x_1;
-    *ref_8 ^= 9;
-    int* ref_9 = &x_1;
-    *ref_9 <<= 2;
-    int* ref_a = &x_1;
-    *ref_a >>= 1;
+    int* refmut_1 = &x_1;
+    *refmut_1 += 2;
+    int* refmut_2 = &x_1;
+    *refmut_2 -= 3;
+    int* refmut_3 = &x_1;
+    *refmut_3 *= 4;
+    int* refmut_4 = &x_1;
+    *refmut_4 /= 5;
+    int* refmut_5 = &x_1;
+    *refmut_5 %= 6;
+    int* refmut_6 = &x_1;
+    *refmut_6 &= 7;
+    int* refmut_7 = &x_1;
+    *refmut_7 |= 8;
+    int* refmut_8 = &x_1;
+    *refmut_8 ^= 9;
+    int* refmut_9 = &x_1;
+    *refmut_9 <<= 2;
+    int* refmut_a = &x_1;
+    *refmut_a >>= 1;
     return;
 }
 
 int main() {
     int x_2 = 0;
-    int* ref_b = &x_2;
-    *ref_b = 1;
-    int* ref_c = &x_2;
-    int* p_1 = ref_c;
+    int* refmut_b = &x_2;
+    *refmut_b = 1;
+    int* refmut_c = &x_2;
+    int* p_1 = refmut_c;
     *p_1 = 2;
     // call_result_1 is killed.
     compound_assign_1();

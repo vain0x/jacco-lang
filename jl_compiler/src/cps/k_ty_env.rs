@@ -1,4 +1,4 @@
-use super::{KMetaTy, KMetaTyData, KStructOutline, KTy};
+use super::{KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -58,9 +58,9 @@ impl KTyEnv {
         self.as_ptr(ty).is_some()
     }
 
-    pub(crate) fn as_ptr(&self, ty: &KTy) -> Option<KTy> {
+    pub(crate) fn as_ptr(&self, ty: &KTy) -> Option<(KMut, KTy)> {
         match ty {
-            KTy::Ptr { ty } => Some(ty.as_ref().clone()),
+            KTy::Ptr { k_mut, ty } => Some((*k_mut, ty.as_ref().clone())),
             KTy::Meta(meta_ty) => {
                 let ty = meta_ty.try_unwrap(self)?;
                 self.as_ptr(&ty.borrow().clone())
@@ -87,7 +87,14 @@ impl KTyEnv {
             | KTy::F64
             | KTy::C8
             | KTy::Bool => format!("{:?}", ty),
-            KTy::Ptr { ty } => format!("*{}", self.display(ty, structs)),
+            KTy::Ptr { k_mut, ty } => format!(
+                "*{}{}",
+                match k_mut {
+                    KMut::Const => "",
+                    KMut::Mut => "mut ",
+                },
+                self.display(ty, structs)
+            ),
             KTy::Fn {
                 param_tys,
                 result_ty,
