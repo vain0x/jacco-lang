@@ -168,6 +168,14 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
             resolve_block_opt(body_opt.as_ref(), cx);
             resolve_expr_opt(alt_opt.as_deref(), cx);
         }
+        PExpr::Match(PMatchExpr { cond_opt, arms, .. }) => {
+            resolve_expr_opt(cond_opt.as_deref(), cx);
+
+            for arm in arms {
+                resolve_name_def(&arm.name, cx);
+                resolve_expr_opt(arm.body_opt.as_deref(), cx);
+            }
+        }
         PExpr::While(PWhileExpr {
             cond_opt, body_opt, ..
         }) => {

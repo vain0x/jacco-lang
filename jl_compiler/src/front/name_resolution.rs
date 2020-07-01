@@ -153,7 +153,10 @@ fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
 
 fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
     p_name.info_opt = Some(n_name);
-    nx.env.insert(p_name.text().to_string(), n_name);
+
+    if p_name.text() != "_" {
+        nx.env.insert(p_name.text().to_string(), n_name);
+    }
 }
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
@@ -302,6 +305,16 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
             resolve_block_opt(body_opt.as_mut(), nx);
             resolve_expr_opt(alt_opt.as_deref_mut(), nx);
+        }
+        PExpr::Match(PMatchExpr { cond_opt, arms, .. }) => {
+            resolve_expr_opt(cond_opt.as_deref_mut(), nx);
+
+            for arm in arms {
+                nx.enter_scope(|nx| {
+                    resolve_pat(&mut arm.name, nx);
+                    resolve_expr_opt(arm.body_opt.as_deref_mut(), nx);
+                });
+            }
         }
         PExpr::While(PWhileExpr {
             keyword,

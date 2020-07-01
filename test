@@ -51,6 +51,7 @@ f_all() {
     f call_with_pipe
     f float
     f static_var
+    f match
 }
 
 ONLY=${1:-''}

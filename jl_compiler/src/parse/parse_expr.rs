@@ -438,6 +438,55 @@ fn parse_if_expr(px: &mut Px) -> PIfExpr {
     }
 }
 
+fn parse_arm(px: &mut Px) -> Option<PArm> {
+    let name = parse_name(px)?;
+    let arrow_opt = px.eat(TokenKind::RightFatArrow);
+    let body_opt = parse_expr(px).map(Box::new);
+    let comma_opt = px.eat(TokenKind::Comma);
+
+    Some(PArm {
+        name,
+        arrow_opt,
+        body_opt,
+        comma_opt,
+    })
+}
+
+fn parse_match_expr(px: &mut Px) -> PMatchExpr {
+    let keyword = px.expect(TokenKind::Match);
+    let (left_paren_opt, cond_opt, right_paren_opt) = parse_cond(px);
+
+    let left_brace_opt = px.eat(TokenKind::LeftBrace);
+    let mut arms = vec![];
+    if left_brace_opt.is_some() {
+        loop {
+            match px.next() {
+                TokenKind::Eof | TokenKind::RightBrace | TokenKind::Semi => break,
+                TokenKind::Comma => px.skip(),
+                _ => match parse_arm(px) {
+                    Some(arm) => arms.push(arm),
+                    None => px.skip(),
+                },
+            }
+        }
+    }
+    let right_brace_opt = if left_brace_opt.is_some() {
+        px.eat(TokenKind::RightBrace)
+    } else {
+        None
+    };
+
+    PMatchExpr {
+        keyword,
+        left_paren_opt,
+        cond_opt,
+        right_paren_opt,
+        left_brace_opt,
+        arms,
+        right_brace_opt,
+    }
+}
+
 fn parse_while_expr(px: &mut Px) -> PWhileExpr {
     let keyword = px.expect(TokenKind::While);
 
@@ -472,6 +521,7 @@ pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::Continue => PExpr::Continue(parse_continue_expr(px)),
         TokenKind::Return => PExpr::Return(parse_return_expr(px)),
         TokenKind::If => PExpr::If(parse_if_expr(px)),
+        TokenKind::Match => PExpr::Match(parse_match_expr(px)),
         TokenKind::While => PExpr::While(parse_while_expr(px)),
         TokenKind::Loop => PExpr::Loop(parse_loop_expr(px)),
         _ => return parse_pipe_or_assign(AllowAssign::True, px),

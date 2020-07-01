@@ -552,6 +552,83 @@ impl PNode for PIfExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PArm {
+    pub(crate) name: PName,
+    pub(crate) arrow_opt: Option<TokenData>,
+    pub(crate) body_opt: Option<Box<PExpr>>,
+    pub(crate) comma_opt: Option<TokenData>,
+}
+
+impl PNode for PArm {
+    impl_node_seq! { name, arrow_opt, body_opt, comma_opt }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PMatchExpr {
+    pub(crate) keyword: TokenData,
+    pub(crate) left_paren_opt: Option<TokenData>,
+    pub(crate) cond_opt: Option<Box<PExpr>>,
+    pub(crate) right_paren_opt: Option<TokenData>,
+    pub(crate) left_brace_opt: Option<TokenData>,
+    pub(crate) arms: Vec<PArm>,
+    pub(crate) right_brace_opt: Option<TokenData>,
+}
+
+impl PNode for PMatchExpr {
+    fn len(&self) -> usize {
+        self.arms.len() + 6
+    }
+
+    fn get(&self, mut i: usize) -> Option<PElementRef> {
+        match i {
+            0 => return try_as_element_ref(&self.keyword),
+            1 => return try_as_element_ref(&self.left_paren_opt),
+            2 => return try_as_element_ref(&self.cond_opt),
+            3 => return try_as_element_ref(&self.right_paren_opt),
+            4 => return try_as_element_ref(&self.left_brace_opt),
+            _ => {}
+        }
+        i -= 5;
+
+        let arm_count = self.arms.len();
+        if let Some(arm) = self.arms.get(i) {
+            return try_as_element_ref(arm);
+        }
+        i -= arm_count;
+
+        if i == 0 {
+            return try_as_element_ref(&self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
+
+    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
+        match i {
+            0 => return try_as_element_mut(&mut self.keyword),
+            1 => return try_as_element_mut(&mut self.left_paren_opt),
+            2 => return try_as_element_mut(&mut self.cond_opt),
+            3 => return try_as_element_mut(&mut self.right_paren_opt),
+            4 => return try_as_element_mut(&mut self.left_brace_opt),
+            _ => {}
+        }
+        i -= 5;
+
+        let arm_count = self.arms.len();
+        if let Some(arm) = self.arms.get_mut(i) {
+            return try_as_element_mut(arm);
+        }
+        i -= arm_count;
+
+        if i == 0 {
+            return try_as_element_mut(&mut self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PWhileExpr {
     pub(crate) keyword: TokenData,
     pub(crate) left_paren_opt: Option<TokenData>,
@@ -598,6 +675,7 @@ pub(crate) enum PExpr {
     Continue(PContinueExpr),
     Return(PReturnExpr),
     If(PIfExpr),
+    Match(PMatchExpr),
     While(PWhileExpr),
     Loop(PLoopExpr),
 }
@@ -632,6 +710,7 @@ impl PNode for PExpr {
         PExpr::Continue,
         PExpr::Return,
         PExpr::If,
+        PExpr::Match,
         PExpr::While,
         PExpr::Loop,
     }

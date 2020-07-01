@@ -866,6 +866,37 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 gx,
             )
         }
+        PExpr::Match(PMatchExpr {
+            keyword,
+            cond_opt,
+            mut arms,
+            ..
+        }) => {
+            // FIXME: switch を生成する
+
+            let location = keyword.into_location();
+            let result = gx.fresh_symbol("match_result", location.clone());
+            let arm_label = gx.fresh_label("arm_1", location.clone());
+            let next_label = gx.fresh_label("match_next", location.clone());
+
+            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
+
+            match arms.as_mut_slice() {
+                [] => return new_never_term(location).clone(),
+                [arm] => {
+                    gx.push_jump(arm_label, vec![k_cond]);
+                    let name = gen_name(arm.name.clone(), gx).expect_symbol();
+                    gx.push_label(arm_label, vec![name]);
+                    let body = gen_expr(*arm.body_opt.take().unwrap(), gx);
+                    gx.push_jump(next_label, vec![body]);
+                }
+                _ => unimplemented!(),
+            }
+
+            gx.push_label(next_label, vec![result.clone()]);
+
+            KTerm::Name(result)
+        }
         PExpr::While(PWhileExpr {
             keyword,
             cond_opt,

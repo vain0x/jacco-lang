@@ -1,5 +1,10 @@
 use super::*;
 
+enum IsRequired<'a> {
+    True(&'a Location),
+    False,
+}
+
 struct Vx {
     logger: Logger,
 }
@@ -96,30 +101,31 @@ fn validate_cond(
     get_location: impl Fn() -> Location,
     vx: &Vx,
 ) {
-    validate_expr_opt(cond_opt, vx);
-
     match (left_paren_opt, cond_opt, right_paren_opt) {
-        (Some(_), Some(_), Some(_)) => {
-            // Pass.
+        (Some(_), Some(cond), Some(_)) => {
+            validate_expr(cond, vx);
         }
         (None, None, None) | (Some(_), None, Some(_)) => {
             vx.logger.error(&get_location(), "maybe missed condition?");
         }
-        (None, Some(expr), None) => {
+        (None, Some(cond), None) => {
             vx.logger.error(
-                expr,
+                cond,
                 "maybe missed a pair of parenthesis around the condition?",
             );
+            validate_expr(cond, vx);
         }
-        (Some(_), Some(expr), None) => {
+        (Some(_), Some(cond), None) => {
             vx.logger
-                .error(&expr.location().behind(), "maybe missed a right paren?");
+                .error(&cond.location().behind(), "maybe missed a right paren?");
+            validate_expr(cond, vx);
         }
-        (None, Some(expr), Some(_)) => {
+        (None, Some(cond), Some(_)) => {
             vx.logger.error(
-                &expr.location().ahead(),
+                &cond.location().ahead(),
                 "maybe missed a left paren in front of the condition?",
             );
+            validate_expr(cond, vx);
         }
         (None, None, Some(paren)) => {
             vx.logger.error(
@@ -165,12 +171,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
 
             for (i, field) in fields.iter().enumerate() {
-                if field.colon_opt.is_none() {
-                    vx.logger
-                        .error(&field.name.location().behind(), "missed a colon?");
+                match &field.colon_opt {
+                    Some(colon) => validate_expr_opt(
+                        field.value_opt.as_ref(),
+                        IsRequired::True(colon.as_location()),
+                        vx,
+                    ),
+                    None => vx
+                        .logger
+                        .error(&field.name.location().behind(), "missed a colon?"),
                 }
-
-                validate_expr_opt(field.value_opt.as_ref(), vx);
 
                 let comma_is_required = {
                     let is_last = i + 1 == fields.len();
@@ -250,11 +260,11 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_block(block, vx);
         }
         PExpr::Break(PBreakExpr { arg_opt, .. }) => {
-            validate_expr_opt(arg_opt.as_deref(), vx);
+            validate_expr_opt(arg_opt.as_deref(), IsRequired::False, vx);
         }
         PExpr::Continue { .. } => {}
         PExpr::Return(PReturnExpr { arg_opt, .. }) => {
-            validate_expr_opt(arg_opt.as_deref(), vx);
+            validate_expr_opt(arg_opt.as_deref(), IsRequired::False, vx);
         }
         PExpr::If(PIfExpr {
             keyword,
@@ -291,6 +301,50 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                 (None, None) => {}
             }
         }
+        PExpr::Match(PMatchExpr {
+            keyword,
+            left_paren_opt,
+            cond_opt,
+            right_paren_opt,
+            left_brace_opt,
+            arms,
+            right_brace_opt,
+        }) => {
+            validate_cond(
+                left_paren_opt.as_ref(),
+                cond_opt.as_deref(),
+                right_paren_opt.as_ref(),
+                || keyword.location().clone(),
+                vx,
+            );
+
+            for (i, arm) in arms.iter().enumerate() {
+                match &arm.arrow_opt {
+                    Some(arrow) => validate_expr_opt(
+                        arm.body_opt.as_deref(),
+                        IsRequired::True(arrow.as_location()),
+                        vx,
+                    ),
+                    None => vx.logger.error(
+                        &arm.name.location().behind(),
+                        "maybe missed an => arrow here?",
+                    ),
+                }
+
+                if i + 1 != arms.len() && arm.comma_opt.is_none() {
+                    vx.logger
+                        .error(&arm.location().behind(), "maybe missed a comma?");
+                }
+            }
+
+            match (left_brace_opt, right_brace_opt) {
+                (Some(_), Some(_)) => {}
+                (Some(left_brace), None) => {
+                    vx.logger.error(left_brace, "maybe missed right brace?")
+                }
+                _ => vx.logger.error(keyword, "maybe missed body of match?"),
+            }
+        }
         PExpr::While(PWhileExpr {
             keyword,
             left_paren_opt,
@@ -325,9 +379,13 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
     }
 }
 
-fn validate_expr_opt(expr_opt: Option<&PExpr>, vx: &Vx) {
-    if let Some(expr) = expr_opt {
-        validate_expr(expr, vx);
+fn validate_expr_opt(expr_opt: Option<&PExpr>, is_required: IsRequired, vx: &Vx) {
+    match (expr_opt, is_required) {
+        (Some(expr), _) => validate_expr(expr, vx),
+        (None, IsRequired::True(location)) => {
+            vx.logger.error(location, "maybe missed an expression?")
+        }
+        (None, IsRequired::False) => {}
     }
 }
 

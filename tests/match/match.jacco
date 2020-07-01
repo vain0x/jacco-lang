@@ -1,0 +1,10 @@
+extern fn abort() -> !;
+extern fn print_i32(value: i32);
+
+pub fn main() -> i32 {
+    match (42) {
+        x => print_i32(x),
+    }
+
+    0
+}
