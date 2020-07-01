@@ -10,7 +10,7 @@ struct Deep {
 pub fn main() -> i32 {
     let a = A {
         foo: 1,
-        bar: ()
+        bar: (),
     };
     let a_foo_val = a.foo;
     let a_foo_ptr = &a.foo;

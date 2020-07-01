@@ -508,7 +508,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
         },
         PExpr::Struct(PStructExpr {
-            mut name, fields, ..
+            mut name,
+            left_brace,
+            mut fields,
+            ..
         }) => {
             let k_struct = match take(&mut name.0.info_opt) {
                 Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
@@ -518,11 +521,65 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let (name, location) = name.0.decompose();
             let result = gx.fresh_symbol(&name, location.clone());
 
-            // FIXME: フィールドに過不足がある、定義時と順番が異なるケースなどに対処
-            let args = fields
-                .into_iter()
-                .map(|field| gen_expr(field.value_opt.unwrap(), gx))
-                .collect();
+            let field_count = k_struct.fields(&gx.outlines.structs).len();
+            let mut args = vec![KTerm::default(); field_count];
+            let mut arg_freq = vec![0_u8; field_count];
+
+            trace!(
+                "fields={:?}",
+                k_struct
+                    .fields(&gx.outlines.structs)
+                    .iter()
+                    .map(|field| field.name(&gx.outlines.fields))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+
+            for field in &mut fields {
+                let term = gen_expr(field.value_opt.take().unwrap(), gx);
+
+                trace!("field: {}", field.name.text());
+
+                match (0..field_count).find(|&i| {
+                    field.name.text()
+                        == k_struct.fields(&gx.outlines.structs)[i].name(&gx.outlines.fields)
+                }) {
+                    Some(i) => {
+                        arg_freq[i] += 1;
+                        args[i] = term;
+                    }
+                    None => gx.logger.error(
+                        field,
+                        format!("not field of {}", k_struct.name(&gx.outlines.structs)),
+                    ),
+                }
+            }
+
+            // フィールドへの割り当ての過不足を計算する。
+            let mut missed = vec![];
+            let mut duped = vec![];
+            for (freq, k_field) in arg_freq.iter().zip(k_struct.fields(&gx.outlines.structs)) {
+                match freq {
+                    0 => missed.push(k_field.name(&gx.outlines.fields)),
+                    1 => {}
+                    _ => duped.push(k_field.name(&gx.outlines.fields)),
+                }
+            }
+
+            if !duped.is_empty() {
+                for field_expr in &fields {
+                    if duped.contains(&field_expr.name.text()) {
+                        gx.logger.error(field_expr, "duplicated");
+                    }
+                }
+            }
+
+            if !missed.is_empty() {
+                gx.logger.error(
+                    &left_brace,
+                    format!("missed some fields: '{}'", missed.join("', '")),
+                );
+            }
 
             gx.push(KCommand::Node {
                 prim: KPrim::Struct,
