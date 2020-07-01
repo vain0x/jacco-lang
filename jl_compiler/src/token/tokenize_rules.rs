@@ -194,7 +194,10 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             '=' => Some((TokenKind::BangEqual, 2)),
             _ => Some((TokenKind::Bang, 1)),
         },
-        ':' => Some((TokenKind::Colon, 1)),
+        ':' => match tx.nth(1) {
+            ':' => Some((TokenKind::ColonColon, 2)),
+            _ => Some((TokenKind::Colon, 1)),
+        },
         ',' => Some((TokenKind::Comma, 1)),
         '.' => Some((TokenKind::Dot, 1)),
         '=' => match tx.nth(1) {

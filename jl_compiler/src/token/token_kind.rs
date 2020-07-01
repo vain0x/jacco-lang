@@ -63,6 +63,7 @@ pub(crate) enum TokenKind {
     Bang,
     BangEqual,
     Colon,
+    ColonColon,
     Comma,
     Dot,
     Equal,
