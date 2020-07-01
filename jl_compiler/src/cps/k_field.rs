@@ -7,7 +7,7 @@ pub(crate) struct KFieldTag {
     pub(crate) location: Location,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct KField {
     id: usize,
 }

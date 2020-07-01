@@ -1,6 +1,5 @@
 struct A_1 {
     int foo;
-    void bar;
 };
 
 struct Deep_1 {
@@ -12,7 +11,6 @@ int main();
 int main() {
     struct A_1 A_2;
     A_2.foo = 1;
-    A_2.bar = (void)0;
     struct A_1 a_1 = A_2;
     struct A_1 const* ref_1 = &a_1;
     int const* foo_ptr_1 = &ref_1->foo;
