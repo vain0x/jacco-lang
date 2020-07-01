@@ -12,6 +12,8 @@ int a_fn_declared_later_1();
 
 void use_extern_fn_declared_later_1();
 
+void f_1();
+
 int main() {
     // if_result_1 is killed.
     // if_result_2 is killed.
@@ -98,5 +100,10 @@ int a_fn_declared_later_1() {
 void use_extern_fn_declared_later_1() {
     // call_result_3 is killed.
     an_extern_fn_declared_later();
+    return;
+}
+
+void f_1() {
+    int b_1 = 2;
     return;
 }

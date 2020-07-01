@@ -5,7 +5,18 @@ use crate::front::NName;
 use crate::{impl_node_choice, impl_node_seq};
 
 #[derive(Clone, Debug)]
+pub(crate) struct PNameQual {
+    pub(crate) name: TokenData,
+    pub(crate) colon_colon: TokenData,
+}
+
+impl PNode for PNameQual {
+    impl_node_seq! { name, colon_colon }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PName {
+    pub(crate) quals: Vec<PNameQual>,
     pub(crate) token: TokenData,
 
     /// 名前解決の結果
@@ -18,6 +29,22 @@ impl PName {
         self.token.text()
     }
 
+    pub(crate) fn is_underscore(&self) -> bool {
+        self.quals.is_empty() && self.token.text() == "_"
+    }
+
+    pub(crate) fn full_name(&self) -> String {
+        let mut s = String::new();
+
+        for qual in &self.quals {
+            s += qual.name.text();
+            s += "::";
+        }
+
+        s += self.token.text();
+        s
+    }
+
     pub(crate) fn decompose(self) -> (String, Location) {
         let (_, text, location) = self.token.decompose();
         (text, location)
@@ -26,17 +53,35 @@ impl PName {
 
 impl PNode for PName {
     fn len(&self) -> usize {
-        1
+        self.quals.len()
     }
 
-    fn get(&self, i: usize) -> Option<PElementRef> {
-        assert_eq!(i, 0);
-        try_as_element_ref(&self.token)
+    fn get(&self, mut i: usize) -> Option<PElementRef> {
+        let qual_len = self.quals.len();
+        if let Some(qual) = self.quals.get(i) {
+            return try_as_element_ref(qual);
+        }
+        i -= qual_len;
+
+        if i == 0 {
+            return try_as_element_ref(&self.token);
+        }
+
+        unreachable!();
     }
 
-    fn get_mut(&mut self, i: usize) -> Option<PElementMut> {
-        assert_eq!(i, 0);
-        try_as_element_mut(&mut self.token)
+    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
+        let qual_len = self.quals.len();
+        if let Some(qual) = self.quals.get_mut(i) {
+            return try_as_element_mut(qual);
+        }
+        i -= qual_len;
+
+        if i == 0 {
+            return try_as_element_mut(&mut self.token);
+        }
+
+        unreachable!();
     }
 }
 

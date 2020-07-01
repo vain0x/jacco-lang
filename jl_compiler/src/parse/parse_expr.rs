@@ -2,6 +2,7 @@
 
 use super::*;
 use parse_ty::parse_mut;
+use std::mem::replace;
 
 enum AllowAssign {
     True,
@@ -9,10 +10,29 @@ enum AllowAssign {
 }
 
 pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
-    let token = px.eat(TokenKind::Ident)?;
+    let mut left = px.eat(TokenKind::Ident)?;
+    let mut quals = vec![];
+
+    loop {
+        if px.next() != TokenKind::ColonColon {
+            break;
+        }
+
+        if px.nth(1) != TokenKind::Ident {
+            px.skip();
+            break;
+        }
+
+        let colon_colon = px.bump();
+        let right = px.bump();
+
+        let name = replace(&mut left, right);
+        quals.push(PNameQual { name, colon_colon });
+    }
 
     Some(PName {
-        token,
+        quals,
+        token: left,
         info_opt: None,
     })
 }

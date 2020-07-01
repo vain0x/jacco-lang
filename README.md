@@ -63,6 +63,7 @@ cargo build
 | opt   | optional      | 省略可能 |
 | param | parameter     | 仮引数 |
 | prim  | primitive     | プリミティブ |
+| qual  | qualifier     | 修飾子 |
 | semi  | semicolon     | セミコロン |
 | sig   | signature     | シグネチャ |
 | ty    | type          | (静的) 型 |

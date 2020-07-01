@@ -141,7 +141,7 @@ fn parse_known_ty_name(s: &str) -> Option<NName> {
 
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
     let name_info = {
-        let resolved_opt = nx.env.get(name.text()).cloned();
+        let resolved_opt = nx.env.get(&name.full_name()).cloned();
         resolved_opt.unwrap_or_else(|| {
             nx.logger.error(name, "undefined");
             NName::Unresolved
@@ -154,8 +154,8 @@ fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
 fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
     p_name.info_opt = Some(n_name);
 
-    if p_name.text() != "_" {
-        nx.env.insert(p_name.text().to_string(), n_name);
+    if !p_name.is_underscore() {
+        nx.env.insert(p_name.full_name(), n_name);
     }
 }
 
