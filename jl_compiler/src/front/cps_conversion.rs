@@ -636,6 +636,28 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
+        PExpr::Index(PIndexExpr { left, arg_list }) => {
+            // a[i] ==> *(a + i)
+
+            let location = arg_list.left_paren.into_location();
+            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location.clone());
+            let result = gx.fresh_symbol("index_result", location.clone());
+
+            if arg_list.args.len() != 1 {
+                gx.logger.error(
+                    &location,
+                    "zero or multiple arguments of indexing is unimplemented",
+                );
+                return new_never_term(location);
+            }
+
+            let k_left = gen_expr(*left, gx);
+            let k_arg = gen_expr(arg_list.args.into_iter().next().unwrap().expr, gx);
+            gx.push_prim_1(KPrim::Add, vec![k_left, k_arg], indexed_ptr.clone());
+            gx.push_prim_1(KPrim::Deref, vec![KTerm::Name(indexed_ptr)], result.clone());
+
+            KTerm::Name(result)
+        }
         PExpr::As(PAsExpr {
             left,
             keyword,

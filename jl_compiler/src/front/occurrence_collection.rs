@@ -122,7 +122,8 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
                     .push((field.text().to_string(), field.location()));
             }
         }
-        PExpr::Call(PCallExpr { left, arg_list }) => {
+        PExpr::Call(PCallExpr { left, arg_list }) |
+        PExpr::Index(PIndexExpr { left, arg_list }) => {
             resolve_expr(left, cx);
 
             for arg in &arg_list.args {

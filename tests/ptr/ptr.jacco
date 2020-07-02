@@ -4,5 +4,8 @@ pub fn main() -> i32 {
     let s = "hello";
     let e = *(s + 1_usize);
     assert_ok(e == 'e');
+
+    let o = s[4_usize];
+    assert_ok(o == 'o');
     0
 }

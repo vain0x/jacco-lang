@@ -95,7 +95,7 @@ fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::False => PExpr::False(PFalseExpr(px.bump())),
         TokenKind::Ident => parse_struct_expr(px),
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
-            arg_list: parse_arg_list(px),
+            arg_list: parse_tuple_arg_list(px),
         }),
         _ => return None,
     };
@@ -118,9 +118,17 @@ fn parse_suffix_expr(px: &mut Px) -> Option<PExpr> {
                 });
             }
             TokenKind::LeftParen => {
-                let arg_list = parse_arg_list(px);
+                let arg_list = parse_tuple_arg_list(px);
 
                 left = PExpr::Call(PCallExpr {
+                    left: Box::new(left),
+                    arg_list,
+                });
+            }
+            TokenKind::LeftBracket => {
+                let arg_list = parse_array_arg_list(px);
+
+                left = PExpr::Index(PIndexExpr {
                     left: Box::new(left),
                     arg_list,
                 });
@@ -559,17 +567,25 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
     }
 }
 
-fn parse_arg_list(px: &mut Px) -> PArgList {
-    let left_paren = px.expect(TokenKind::LeftParen);
+fn do_parse_arg_list(left: TokenKind, right: TokenKind, px: &mut Px) -> PArgList {
+    let left_paren = px.expect(left);
 
     let mut args = vec![];
     parse_args(&mut args, px);
 
-    let right_paren_opt = px.eat(TokenKind::RightParen);
+    let right_paren_opt = px.eat(right);
 
     PArgList {
         left_paren,
         args,
         right_paren_opt,
     }
+}
+
+fn parse_tuple_arg_list(px: &mut Px) -> PArgList {
+    do_parse_arg_list(TokenKind::LeftParen, TokenKind::RightParen, px)
+}
+
+fn parse_array_arg_list(px: &mut Px) -> PArgList {
+    do_parse_arg_list(TokenKind::LeftBracket, TokenKind::RightBracket, px)
 }

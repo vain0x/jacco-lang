@@ -234,7 +234,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             // NOTE: フィールド名は型検査が終わるまで解決できない。
             resolve_expr(left, nx);
         }
-        PExpr::Call(PCallExpr { left, arg_list }) => {
+        PExpr::Call(PCallExpr { left, arg_list }) | PExpr::Index(PIndexExpr { left, arg_list }) => {
             resolve_expr(left, nx);
 
             for arg in &mut arg_list.args {

@@ -168,6 +168,7 @@ impl PNode for PArg {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PArgList {
+    /// FIXME: `a[i]` 構文のときは丸カッコではなく `[]` がここに入る
     pub(crate) left_paren: TokenData,
     pub(crate) args: Vec<PArg>,
     pub(crate) right_paren_opt: Option<TokenData>,
@@ -442,6 +443,16 @@ impl PNode for PCallExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PIndexExpr {
+    pub(crate) left: Box<PExpr>,
+    pub(crate) arg_list: PArgList,
+}
+
+impl PNode for PIndexExpr {
+    impl_node_seq! { left, arg_list }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PAsExpr {
     pub(crate) left: Box<PExpr>,
     pub(crate) keyword: TokenData,
@@ -666,6 +677,7 @@ pub(crate) enum PExpr {
     Tuple(PTupleExpr),
     DotField(PDotFieldExpr),
     Call(PCallExpr),
+    Index(PIndexExpr),
     As(PAsExpr),
     UnaryOp(PUnaryOpExpr),
     BinaryOp(PBinaryOpExpr),
@@ -701,6 +713,7 @@ impl PNode for PExpr {
         PExpr::Tuple,
         PExpr::DotField,
         PExpr::Call,
+        PExpr::Index,
         PExpr::As,
         PExpr::UnaryOp,
         PExpr::BinaryOp,

@@ -205,7 +205,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                     .error(&dot.location().behind(), "missed field name?");
             }
         }
-        PExpr::Call(PCallExpr { left, arg_list }) => {
+        PExpr::Call(PCallExpr { left, arg_list }) | PExpr::Index(PIndexExpr { left, arg_list }) => {
             validate_expr(&left, vx);
             validate_arg_list(arg_list, vx);
         }
