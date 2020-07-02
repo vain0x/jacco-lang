@@ -1,4 +1,4 @@
-use super::{KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
+use super::{KEnumOutline, KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -69,14 +69,19 @@ impl KTyEnv {
         }
     }
 
-    pub(crate) fn display(&self, ty: &KTy, structs: &[KStructOutline]) -> String {
+    pub(crate) fn display(
+        &self,
+        ty: &KTy,
+        enums: &[KEnumOutline],
+        structs: &[KStructOutline],
+    ) -> String {
         match ty {
             KTy::Meta(meta_ty) => {
                 let ty = match meta_ty.try_unwrap(self) {
                     Some(ty) => ty,
                     None => return "{unknown}".to_string(),
                 };
-                self.display(&ty.borrow().clone(), structs)
+                self.display(&ty.borrow().clone(), enums, structs)
             }
             KTy::Unresolved => "{unresolved}".to_string(),
             KTy::Never
@@ -93,7 +98,7 @@ impl KTyEnv {
                     KMut::Const => "",
                     KMut::Mut => "mut ",
                 },
-                self.display(ty, structs)
+                self.display(ty, enums, structs)
             ),
             KTy::Fn {
                 param_tys,
@@ -102,11 +107,12 @@ impl KTyEnv {
                 "|{}| -> {}",
                 param_tys
                     .iter()
-                    .map(|ty| self.display(ty, structs))
+                    .map(|ty| self.display(ty, enums, structs))
                     .collect::<Vec<_>>()
                     .join(", "),
-                self.display(result_ty, structs)
+                self.display(result_ty, enums, structs)
             ),
+            KTy::Enum(k_enum) => k_enum.name(enums).to_string(),
             KTy::Struct(k_struct) => k_struct.name(structs).to_string(),
         }
     }

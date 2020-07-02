@@ -106,6 +106,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
             }
         }
 
+        (KTy::Enum(left), KTy::Enum(right)) if left == right => {}
         (KTy::Struct(left), KTy::Struct(right)) if left == right => {}
 
         (KTy::Unit, _)
@@ -117,6 +118,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::Bool, _)
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)
+        | (KTy::Enum { .. }, _)
         | (KTy::Struct { .. }, _) => {
             tx.logger.error(location, "type mismatch");
         }

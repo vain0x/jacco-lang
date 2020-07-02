@@ -8,7 +8,7 @@ use crate::{
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind},
 };
-use log::trace;
+use log::{debug, trace};
 use std::{
     iter::once,
     mem::{replace, take},
@@ -251,6 +251,7 @@ fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
         NName::F64 => KTy::F64,
         NName::C8 => KTy::C8,
         NName::Bool => KTy::Bool,
+        NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
         NName::Struct(struct_id) => KTy::Struct(KStruct::new(struct_id)),
         _ => unreachable!("expected type name but {:?}", name),
     }
@@ -317,6 +318,7 @@ fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
         | NName::F64
         | NName::C8
         | NName::Bool
+        | NName::Enum(_)
         | NName::Struct(_) => {
             gx.logger.error(&location, "型の名前です。");
             // FIXME: 適切にハンドル？
@@ -1218,6 +1220,61 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             };
             gx.extern_fns[extern_fn.id()] = KExternFnData { params, locals };
         }
+        PDecl::Enum(PEnumDecl {
+            name_opt, variants, ..
+        }) => {
+            let mut name = name_opt.unwrap();
+            let k_enum = match take(&mut name.info_opt) {
+                Some(NName::Enum(enum_id)) => KEnum::new(enum_id),
+                n_name_opt => unreachable!("{:?}", n_name_opt),
+            };
+            let (name, location) = name.decompose();
+            let mut k_variants = vec![];
+            let mut next_value = 0_usize;
+
+            for variant in variants {
+                match variant {
+                    PVariantDecl::Const(PConstVariantDecl {
+                        mut name,
+                        value_opt,
+                        ..
+                    }) => {
+                        let (name, k_const) = {
+                            let k_const = match take(&mut name.info_opt) {
+                                Some(NName::Const(const_id)) => KConst::new(const_id),
+                                _ => unreachable!(),
+                            };
+                            let (name, _) = name.decompose();
+                            (name, k_const)
+                        };
+
+                        if let Some(value) = value_opt {
+                            let location = value.location();
+                            match gen_constant(*value, gx) {
+                                Some(value) => next_value = value.cast_as_usize(),
+                                None => gx.logger.error(&location, "invalid constant expression"),
+                            }
+                        }
+
+                        gx.outlines.consts[k_const.id()] = KConstData {
+                            name,
+                            ty: KTy::Usize,
+                            value_opt: Some(KConstValue::Usize(next_value)),
+                        };
+
+                        k_variants.push(KVariant::Const(k_const));
+                        next_value += 1;
+                    }
+                    PVariantDecl::Struct(_) => unimplemented!(),
+                }
+            }
+
+            gx.outlines.enums[k_enum.id()] = KEnumOutline {
+                name,
+                variants: k_variants,
+                location,
+            };
+        }
         PDecl::Struct(PStructDecl {
             name_opt,
             variant_opt,
@@ -1246,7 +1303,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                         k_field
                     })
                     .collect(),
-                None => vec![],
+                _ => {
+                    debug!("unimplemented");
+                    vec![]
+                }
             };
 
             gx.outlines.structs[k_struct.id()] = KStructOutline {
@@ -1314,6 +1374,8 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
+        let enum_count = name_resolution.enums.len();
+
         let struct_count = name_resolution.structs.len();
 
         let field_count = name_resolution.fields.len();
@@ -1335,6 +1397,8 @@ pub(crate) fn cps_conversion(
         gx.outlines
             .extern_fns
             .resize_with(extern_fn_count, Default::default);
+
+        gx.outlines.enums.resize_with(enum_count, Default::default);
 
         gx.outlines
             .structs

@@ -38,3 +38,26 @@ pub(crate) enum KConstValue {
     F64(f64),
     Bool(bool),
 }
+
+impl KConstValue {
+    pub(crate) fn cast_as_usize(&self) -> usize {
+        match self {
+            KConstValue::I32(value) => *value as usize,
+            KConstValue::I64(value) => *value as usize,
+            KConstValue::Usize(value) => *value,
+            KConstValue::F64(value) => *value as usize,
+            KConstValue::Bool(value) => *value as usize,
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn ty(&self) -> KTy {
+        match self {
+            KConstValue::I32(_) => KTy::I32,
+            KConstValue::I64(_) => KTy::I64,
+            KConstValue::Usize(_) => KTy::Usize,
+            KConstValue::F64(_) => KTy::F64,
+            KConstValue::Bool(_) => KTy::Bool,
+        }
+    }
+}

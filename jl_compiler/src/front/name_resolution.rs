@@ -28,6 +28,8 @@ pub(crate) struct NExternFnData {
     pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
+pub(crate) struct NEnumData;
+
 pub(crate) struct NStructData;
 
 pub(crate) struct NFieldData;
@@ -39,6 +41,7 @@ pub(crate) struct NameResolution {
     pub(crate) static_vars: Vec<NStaticVarData>,
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
+    pub(crate) enums: Vec<NEnumData>,
     pub(crate) structs: Vec<NStructData>,
     pub(crate) fields: Vec<NFieldData>,
 }
@@ -52,6 +55,7 @@ pub(crate) enum NName {
     StaticVar(usize),
     Fn(usize),
     ExternFn(usize),
+    Enum(usize),
     Struct(usize),
     Bool,
     I32,
@@ -156,6 +160,16 @@ fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
 
     if !p_name.is_underscore() {
         nx.env.insert(p_name.full_name(), n_name);
+    }
+}
+
+fn resolve_qualified_name_def(p_name: &mut PName, parent_name: &str, n_name: NName, nx: &mut Nx) {
+    p_name.info_opt = Some(n_name);
+
+    if !p_name.is_underscore() {
+        // PName::full_name と同じエンコーディング
+        let full_name = format!("{}::{}", parent_name, p_name.full_name());
+        nx.env.insert(full_name, n_name);
     }
 }
 
@@ -358,6 +372,33 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
     }
 }
 
+fn resolve_variant(variant: &mut PVariantDecl, parent_name: &str, nx: &mut Nx) {
+    match variant {
+        PVariantDecl::Const(PConstVariantDecl {
+            name, value_opt, ..
+        }) => {
+            // alloc const
+            let const_id = nx.res.consts.len();
+            nx.res.consts.push(NConstData);
+
+            resolve_qualified_name_def(name, parent_name, NName::Const(const_id), nx);
+
+            resolve_expr_opt(value_opt.as_deref_mut(), nx);
+        }
+        PVariantDecl::Struct(PStructVariantDecl { fields, .. }) => {
+            for field in fields {
+                // alloc field
+                let field_id = nx.res.fields.len();
+                nx.res.fields.push(NFieldData);
+                field.field_id_opt = Some(field_id);
+
+                // resolve_name_def(&mut field.name, PNameKind::Field, nx);
+                resolve_ty_opt(field.ty_opt.as_mut(), nx);
+            }
+        }
+    }
+}
+
 fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
     // 再帰的に定義される宣言を先に環境に加える。
     // FIXME: 同じスコープに同じ名前の再帰的な宣言があったらコンパイルエラー
@@ -394,6 +435,24 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     resolve_name_def(name, NName::ExternFn(extern_fn_id), nx);
                 }
             }
+            PDecl::Enum(PEnumDecl {
+                name_opt, variants, ..
+            }) => {
+                // alloc enum
+                let enum_id = nx.res.enums.len();
+                nx.res.enums.push(NEnumData);
+
+                let mut parent_name = "__anonymous_enum";
+
+                if let Some(name) = name_opt {
+                    resolve_name_def(name, NName::Enum(enum_id), nx);
+                    parent_name = name.text();
+                }
+
+                for variant in variants {
+                    resolve_variant(variant, parent_name, nx);
+                }
+            }
             PDecl::Struct(PStructDecl {
                 name_opt,
                 variant_opt,
@@ -403,23 +462,17 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 let struct_id = nx.res.structs.len();
                 nx.res.structs.push(NStructData);
 
+                let mut parent_name = "__anonymous_struct";
+
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, NName::Struct(struct_id), nx);
+                    parent_name = name.text();
                 }
 
-                nx.enter_scope(|nx| match variant_opt {
-                    Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
-                        for field in fields {
-                            // alloc field
-                            let field_id = nx.res.fields.len();
-                            nx.res.fields.push(NFieldData);
-                            field.field_id_opt = Some(field_id);
-
-                            // resolve_name_def(&mut field.name, PNameKind::Field, nx);
-                            resolve_ty_opt(field.ty_opt.as_mut(), nx);
-                        }
+                nx.enter_scope(|nx| {
+                    if let Some(variant) = variant_opt {
+                        resolve_variant(variant, parent_name, nx);
                     }
-                    None => {}
                 });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
@@ -514,7 +567,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
             nx.res.extern_fns[extern_fn_id_opt.unwrap()].local_vars = local_vars;
         }
-        PDecl::Struct(_) => {}
+        PDecl::Enum(_) | PDecl::Struct(_) => {}
     }
 }
 

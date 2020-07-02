@@ -240,6 +240,64 @@ fn parse_variant_decl(px: &mut Px) -> Option<PVariantDecl> {
     Some(variant_decl)
 }
 
+fn parse_variants(px: &mut Px) -> Vec<PVariantDecl> {
+    let mut variants = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
+            TokenKind::Ident => {
+                let name = parse_name(px).unwrap();
+                let equal_opt = px.eat(TokenKind::Equal);
+                let value_opt = if equal_opt.is_some() {
+                    parse_expr(px).map(Box::new)
+                } else {
+                    None
+                };
+
+                let comma_opt = px.eat(TokenKind::Comma);
+                variants.push(PVariantDecl::Const(PConstVariantDecl {
+                    name,
+                    equal_opt,
+                    value_opt,
+                    comma_opt,
+                    const_variant_id_opt: None,
+                }));
+            }
+            _ => px.skip(),
+        }
+    }
+
+    variants
+}
+
+fn parse_enum_decl(vis_opt: Option<PVis>, px: &mut Px) -> PEnumDecl {
+    let keyword = px.expect(TokenKind::Enum);
+
+    let name_opt = parse_name(px);
+
+    let left_brace_opt = px.eat(TokenKind::LeftBrace);
+    let variants = if left_brace_opt.is_some() {
+        parse_variants(px)
+    } else {
+        vec![]
+    };
+    let right_brace_opt = if left_brace_opt.is_some() {
+        px.eat(TokenKind::RightBrace)
+    } else {
+        None
+    };
+
+    PEnumDecl {
+        vis_opt,
+        keyword,
+        name_opt,
+        left_brace_opt,
+        variants,
+        right_brace_opt,
+    }
+}
+
 fn parse_struct_decl(px: &mut Px) -> PStructDecl {
     let keyword = px.expect(TokenKind::Struct);
 
@@ -259,6 +317,7 @@ fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
     // FIXME: const, struct
     let decl = match px.next() {
         TokenKind::Fn => PDecl::Fn(parse_fn_decl(Some(vis), px)),
+        TokenKind::Enum => PDecl::Enum(parse_enum_decl(Some(vis), px)),
         _ => {
             px.logger().error(&vis.1, "unexpected visibility");
             return None;
@@ -280,6 +339,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
         TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
             PDecl::ExternFn(parse_extern_fn_decl(px))
         }
+        TokenKind::Enum => PDecl::Enum(parse_enum_decl(None, px)),
         TokenKind::Struct => PDecl::Struct(parse_struct_decl(px)),
         _ => PDecl::Expr(parse_expr_decl(px)?),
     };

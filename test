@@ -52,6 +52,7 @@ f_all() {
     f float
     f static_var
     f match
+    f enum_consts
 }
 
 ONLY=${1:-''}

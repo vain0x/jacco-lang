@@ -122,8 +122,7 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
                     .push((field.text().to_string(), field.location()));
             }
         }
-        PExpr::Call(PCallExpr { left, arg_list }) |
-        PExpr::Index(PIndexExpr { left, arg_list }) => {
+        PExpr::Call(PCallExpr { left, arg_list }) | PExpr::Index(PIndexExpr { left, arg_list }) => {
             resolve_expr(left, cx);
 
             for arg in &arg_list.args {
@@ -196,6 +195,23 @@ fn resolve_param_list_opt(param_list_opt: Option<&PParamList>, cx: &mut Cx) {
     for param in params {
         resolve_pat(&param.name, cx);
         resolve_ty_opt(param.ty_opt.as_ref(), cx);
+    }
+}
+
+fn resolve_variant(variant: &PVariantDecl, cx: &mut Cx) {
+    match variant {
+        PVariantDecl::Const(PConstVariantDecl {
+            name, value_opt, ..
+        }) => {
+            resolve_name_def(name, cx);
+            resolve_expr_opt(value_opt.as_deref(), cx);
+        }
+        PVariantDecl::Struct(PStructVariantDecl { fields, .. }) => {
+            for field in fields {
+                resolve_name_def(&field.name, cx);
+                resolve_ty_opt(field.ty_opt.as_ref(), cx);
+            }
+        }
     }
 }
 
@@ -294,6 +310,17 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
 
             cx.parent_fn = parent_fn;
         }
+        PDecl::Enum(PEnumDecl {
+            name_opt, variants, ..
+        }) => {
+            if let Some(name) = name_opt {
+                resolve_name_def(name, cx);
+            }
+
+            for variant in variants {
+                resolve_variant(variant, cx);
+            }
+        }
         PDecl::Struct(PStructDecl {
             name_opt,
             variant_opt,
@@ -303,14 +330,8 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
                 resolve_name_def(name, cx);
             }
 
-            match variant_opt {
-                Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => {
-                    for field in fields {
-                        resolve_name_def(&field.name, cx);
-                        resolve_ty_opt(field.ty_opt.as_ref(), cx);
-                    }
-                }
-                None => {}
+            if let Some(variant) = variant_opt {
+                resolve_variant(variant, cx);
             }
         }
     }

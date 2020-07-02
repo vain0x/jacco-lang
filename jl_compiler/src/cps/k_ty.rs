@@ -1,4 +1,4 @@
-use super::{KMetaTy, KMut, KStruct};
+use super::{KEnum, KMetaTy, KMut, KStruct};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone)]
@@ -22,6 +22,7 @@ pub(crate) enum KTy {
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
     },
+    Enum(KEnum),
     Struct(KStruct),
 }
 
@@ -112,6 +113,10 @@ impl Debug for KTy {
                 }
                 write!(f, ") -> ")?;
                 Debug::fmt(result_ty, f)
+            }
+            KTy::Enum(k_enum) => {
+                // FIXME: print name
+                write!(f, "enum#{}", k_enum.id())
             }
             KTy::Struct(k_struct) => {
                 // FIXME: print name

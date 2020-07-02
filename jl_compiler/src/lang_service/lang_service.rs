@@ -293,8 +293,9 @@ impl LangService {
             (NName::Fn(n_fn), NName::LocalVar(n_local_var)) => {
                 let ty_env = &cps.root.fns[n_fn].ty_env;
                 let ty = &cps.root.fns[n_fn].locals[n_local_var].ty;
+                let enums = &cps.root.outlines.enums;
                 let structs = &cps.root.outlines.structs;
-                let ty_name = ty_env.display(&ty, &structs);
+                let ty_name = ty_env.display(ty, enums, structs);
                 Some(ty_name)
             }
             _ => None,

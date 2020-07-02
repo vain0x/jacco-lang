@@ -389,6 +389,56 @@ fn validate_expr_opt(expr_opt: Option<&PExpr>, is_required: IsRequired, vx: &Vx)
     }
 }
 
+fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
+    match variant {
+        PVariantDecl::Const(PConstVariantDecl {
+            equal_opt,
+            value_opt,
+            ..
+        }) => {
+            if let Some(equal) = equal_opt {
+                validate_expr_opt(
+                    value_opt.as_deref(),
+                    IsRequired::True(equal.as_location()),
+                    vx,
+                );
+            }
+        }
+        PVariantDecl::Struct(PStructVariantDecl {
+            left_brace,
+            fields,
+            right_brace_opt,
+            comma_opt,
+        }) => {
+            validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
+
+            for (i, field) in fields.iter().enumerate() {
+                if field.colon_opt.is_none() {
+                    vx.logger
+                        .error(&field.name.location().behind(), "maybe missed a colon?");
+                }
+
+                if field.ty_opt.is_none() {
+                    vx.logger.error(field, "maybe missed a type?");
+                }
+
+                let comma_is_required = {
+                    let is_last = i + 1 == fields.len();
+                    !is_last
+                };
+                if comma_is_required && field.comma_opt.is_none() {
+                    vx.logger
+                        .error(&field.location().behind(), "maybe missed a comma?");
+                }
+            }
+
+            if let Some(comma) = comma_opt {
+                vx.logger.error(comma, "comma is not allowed here");
+            }
+        }
+    }
+}
+
 fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: bool) {
     match (decl, placement) {
         (PDecl::Expr { .. }, Placement::Global) | (PDecl::Let { .. }, Placement::Global) => {
@@ -568,6 +618,30 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .error(&decl.location().behind(), "missed a semicolon?");
             }
         }
+        PDecl::Enum(PEnumDecl {
+            // FIXME: 可視性を処理する
+            vis_opt: _,
+            keyword,
+            name_opt,
+            left_brace_opt,
+            variants,
+            right_brace_opt,
+        }) => {
+            if name_opt.is_none() {
+                vx.logger.error(keyword, "missed enum name?");
+            }
+
+            for variant in variants {
+                validate_variant(variant, vx);
+            }
+
+            match left_brace_opt {
+                Some(left_brace) => {
+                    validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx)
+                }
+                None => vx.logger.error(keyword, "maybe missed left brace?"),
+            }
+        }
         PDecl::Struct(PStructDecl {
             keyword,
             name_opt,
@@ -578,40 +652,8 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                 vx.logger.error(keyword, "maybe missed a struct name?");
             }
 
-            match variant_opt {
-                Some(PVariantDecl::Struct(PStructVariantDecl {
-                    left_brace,
-                    fields,
-                    right_brace_opt,
-                    comma_opt,
-                })) => {
-                    validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
-
-                    for (i, field) in fields.iter().enumerate() {
-                        if field.colon_opt.is_none() {
-                            vx.logger
-                                .error(&field.name.location().behind(), "maybe missed a colon?");
-                        }
-
-                        if field.ty_opt.is_none() {
-                            vx.logger.error(field, "maybe missed a type?");
-                        }
-
-                        let comma_is_required = {
-                            let is_last = i + 1 == fields.len();
-                            !is_last
-                        };
-                        if comma_is_required && field.comma_opt.is_none() {
-                            vx.logger
-                                .error(&field.location().behind(), "maybe missed a comma?");
-                        }
-                    }
-
-                    if let Some(comma) = comma_opt {
-                        vx.logger.error(comma, "comma is not allowed here");
-                    }
-                }
-                None => {}
+            if let Some(variant) = variant_opt {
+                validate_variant(variant, vx);
             }
 
             let ends_with_block = || variant_opt.iter().all(|variant| variant.ends_with_block());

@@ -866,6 +866,21 @@ impl PNode for PExternFnDecl {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PConstVariantDecl {
+    pub(crate) name: PName,
+    pub(crate) equal_opt: Option<TokenData>,
+    pub(crate) value_opt: Option<Box<PExpr>>,
+    pub(crate) comma_opt: Option<TokenData>,
+
+    // 名前解決用
+    pub(crate) const_variant_id_opt: Option<usize>,
+}
+
+impl PNode for PConstVariantDecl {
+    impl_node_seq! { name, equal_opt, value_opt, comma_opt }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PFieldDecl {
     pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
@@ -934,11 +949,76 @@ impl PNode for PStructVariantDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PVariantDecl {
+    Const(PConstVariantDecl),
     Struct(PStructVariantDecl),
 }
 
 impl PNode for PVariantDecl {
-    impl_node_choice! { PVariantDecl::Struct }
+    impl_node_choice! {
+        PVariantDecl::Const,
+        PVariantDecl::Struct,
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PEnumDecl {
+    pub(crate) vis_opt: Option<PVis>,
+    pub(crate) keyword: TokenData,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) left_brace_opt: Option<TokenData>,
+    pub(crate) variants: Vec<PVariantDecl>,
+    pub(crate) right_brace_opt: Option<TokenData>,
+}
+
+impl PNode for PEnumDecl {
+    fn len(&self) -> usize {
+        self.variants.len() + 6
+    }
+
+    fn get(&self, mut i: usize) -> Option<PElementRef> {
+        match i {
+            0 => return try_as_element_ref(&self.vis_opt),
+            1 => return try_as_element_ref(&self.keyword),
+            2 => return try_as_element_ref(&self.name_opt),
+            3 => return try_as_element_ref(&self.left_brace_opt),
+            _ => {}
+        }
+        i -= 4;
+
+        let variant_count = self.variants.len();
+        if let Some(variant) = self.variants.get(i) {
+            return try_as_element_ref(variant);
+        }
+        i -= variant_count;
+
+        if i == 0 {
+            return try_as_element_ref(&self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
+
+    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
+        match i {
+            0 => return try_as_element_mut(&mut self.keyword),
+            1 => return try_as_element_mut(&mut self.name_opt),
+            2 => return try_as_element_mut(&mut self.left_brace_opt),
+            _ => {}
+        }
+        i -= 3;
+
+        let variant_count = self.variants.len();
+        if let Some(variant) = self.variants.get_mut(i) {
+            return try_as_element_mut(variant);
+        }
+        i -= variant_count;
+
+        if i == 0 {
+            return try_as_element_mut(&mut self.right_brace_opt);
+        }
+
+        unreachable!()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -961,6 +1041,7 @@ pub(crate) enum PDecl {
     Static(PStaticDecl),
     Fn(PFnDecl),
     ExternFn(PExternFnDecl),
+    Enum(PEnumDecl),
     Struct(PStructDecl),
 }
 
@@ -972,6 +1053,7 @@ impl PNode for PDecl {
         PDecl::Static,
         PDecl::Fn,
         PDecl::ExternFn,
+        PDecl::Enum,
         PDecl::Struct,
     }
 }

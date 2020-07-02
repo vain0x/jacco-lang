@@ -37,6 +37,11 @@ pub(crate) enum CStmt {
         params: Vec<(String, CTy)>,
         result_ty: CTy,
     },
+    #[allow(unused)]
+    EnumDecl {
+        name: String,
+        variants: Vec<(String, Option<CExpr>)>,
+    },
     StructDecl {
         name: String,
         fields: Vec<(String, CTy)>,

@@ -8,6 +8,7 @@ pub(crate) enum CTy {
     Double,
     Ptr { ty: Box<CTy> },
     Const { ty: Box<CTy> },
+    Enum(String),
     Struct(String),
 }
 

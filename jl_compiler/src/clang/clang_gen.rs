@@ -15,6 +15,7 @@ struct Cx<'a> {
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
+    enum_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
     local_ident_ids: Vec<Option<usize>>,
@@ -31,6 +32,7 @@ impl<'a> Cx<'a> {
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
             fn_ident_ids: Default::default(),
+            enum_ident_ids: Default::default(),
             struct_ident_ids: Default::default(),
             locals: Default::default(),
             local_ident_ids: Default::default(),
@@ -110,6 +112,15 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
 fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     // 外部関数の名前は勝手にマングルしない。
     extern_fn.name(&cx.outlines.extern_fns).to_string()
+}
+
+fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
+    do_unique_name(
+        k_enum.id(),
+        &cx.outlines.enums[k_enum.id()].name,
+        &mut cx.enum_ident_ids,
+        &mut cx.ident_map,
+    )
 }
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
@@ -215,6 +226,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
             ty.into_ptr()
         }
+        KTy::Enum(k_enum) => CTy::Enum(unique_enum_name(k_enum, cx)),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
     }
 }
