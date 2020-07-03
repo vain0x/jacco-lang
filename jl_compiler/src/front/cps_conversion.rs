@@ -499,7 +499,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 let name = k_struct.name(&gx.outlines.structs).to_string();
                 let result = gx.fresh_symbol(&name, location.clone());
                 gx.push(KCommand::Node {
-                    prim: KPrim::Struct,
+                    prim: KPrim::Record,
                     tys: vec![ty],
                     args: vec![],
                     result_opt: Some(result.clone()),
@@ -509,7 +509,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 KTerm::Name(result)
             }
         },
-        PExpr::Struct(PStructExpr {
+        PExpr::Record(PRecordExpr {
             mut name,
             left_brace,
             mut fields,
@@ -584,7 +584,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
 
             gx.push(KCommand::Node {
-                prim: KPrim::Struct,
+                prim: KPrim::Record,
                 tys: vec![KTy::Struct(k_struct)],
                 args,
                 result_opt: Some(result.clone()),

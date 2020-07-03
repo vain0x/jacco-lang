@@ -97,7 +97,7 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
         PExpr::Name(PNameExpr(name)) => {
             resolve_name_use(name, cx);
         }
-        PExpr::Struct(PStructExpr { name, fields, .. }) => {
+        PExpr::Record(PRecordExpr { name, fields, .. }) => {
             resolve_ty_name(name, cx);
 
             for field in fields {

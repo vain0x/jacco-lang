@@ -162,7 +162,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }
         PExpr::True(_) | PExpr::False(_) => {}
         PExpr::Name(_) => {}
-        PExpr::Struct(PStructExpr {
+        PExpr::Record(PRecordExpr {
             name: _,
             left_brace,
             fields,

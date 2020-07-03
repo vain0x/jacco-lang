@@ -86,7 +86,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<PFieldExpr> {
     fields
 }
 
-fn parse_struct_expr(px: &mut Px) -> PExpr {
+fn parse_record_expr(px: &mut Px) -> PExpr {
     assert_eq!(px.next(), TokenKind::Ident);
 
     let name = parse_name(px).unwrap();
@@ -94,7 +94,7 @@ fn parse_struct_expr(px: &mut Px) -> PExpr {
     if let Some(left_brace) = px.eat(TokenKind::LeftBrace) {
         let fields = parse_field_exprs(px);
         let right_brace_opt = px.eat(TokenKind::RightBrace);
-        return PExpr::Struct(PStructExpr {
+        return PExpr::Record(PRecordExpr {
             name: PNameTy(name),
             left_brace,
             fields,
@@ -113,7 +113,7 @@ fn parse_atomic_expr(px: &mut Px) -> Option<PExpr> {
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
         TokenKind::True => PExpr::True(PTrueExpr(px.bump())),
         TokenKind::False => PExpr::False(PFalseExpr(px.bump())),
-        TokenKind::Ident => parse_struct_expr(px),
+        TokenKind::Ident => parse_record_expr(px),
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_tuple_arg_list(px),
         }),

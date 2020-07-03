@@ -430,7 +430,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Struct => match (results.as_mut_slice(), conts.as_mut_slice()) {
+        KPrim::Record => match (results.as_mut_slice(), conts.as_mut_slice()) {
             ([result], [cont]) => {
                 let k_struct = result.ty(&cx.locals).as_struct().unwrap();
 

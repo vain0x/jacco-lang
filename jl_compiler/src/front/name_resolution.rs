@@ -232,7 +232,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         PExpr::Name(PNameExpr(name)) => {
             resolve_name_use(name, nx);
         }
-        PExpr::Struct(PStructExpr { name, fields, .. }) => {
+        PExpr::Record(PRecordExpr { name, fields, .. }) => {
             resolve_ty_name(name, nx);
 
             for field in fields {

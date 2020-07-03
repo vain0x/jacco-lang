@@ -396,14 +396,14 @@ impl PNode for PFieldExpr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PStructExpr {
+pub(crate) struct PRecordExpr {
     pub(crate) name: PNameTy,
     pub(crate) left_brace: TokenData,
     pub(crate) fields: Vec<PFieldExpr>,
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PStructExpr {
+impl PNode for PRecordExpr {
     fn len(&self) -> usize {
         self.fields.len() + 3
     }
@@ -718,7 +718,7 @@ pub(crate) enum PExpr {
     True(PTrueExpr),
     False(PFalseExpr),
     Name(PNameExpr),
-    Struct(PStructExpr),
+    Record(PRecordExpr),
     Tuple(PTupleExpr),
     DotField(PDotFieldExpr),
     Call(PCallExpr),
@@ -754,7 +754,7 @@ impl PNode for PExpr {
         PExpr::Name,
         PExpr::True,
         PExpr::False,
-        PExpr::Struct,
+        PExpr::Record,
         PExpr::Tuple,
         PExpr::DotField,
         PExpr::Call,
