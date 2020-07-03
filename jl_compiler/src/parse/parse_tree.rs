@@ -896,14 +896,14 @@ impl PNode for PFieldDecl {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PStructVariantDecl {
+pub(crate) struct PRecordVariantDecl {
     pub(crate) left_brace: TokenData,
     pub(crate) fields: Vec<PFieldDecl>,
     pub(crate) right_brace_opt: Option<TokenData>,
     pub(crate) comma_opt: Option<TokenData>,
 }
 
-impl PNode for PStructVariantDecl {
+impl PNode for PRecordVariantDecl {
     fn len(&self) -> usize {
         self.fields.len() + 3
     }
@@ -950,13 +950,13 @@ impl PNode for PStructVariantDecl {
 #[derive(Clone, Debug)]
 pub(crate) enum PVariantDecl {
     Const(PConstVariantDecl),
-    Struct(PStructVariantDecl),
+    Record(PRecordVariantDecl),
 }
 
 impl PNode for PVariantDecl {
     impl_node_choice! {
         PVariantDecl::Const,
-        PVariantDecl::Struct,
+        PVariantDecl::Record,
     }
 }
 

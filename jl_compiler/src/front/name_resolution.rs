@@ -385,7 +385,7 @@ fn resolve_variant(variant: &mut PVariantDecl, parent_name: &str, nx: &mut Nx) {
 
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
         }
-        PVariantDecl::Struct(PStructVariantDecl { fields, .. }) => {
+        PVariantDecl::Record(PRecordVariantDecl { fields, .. }) => {
             for field in fields {
                 // alloc field
                 let field_id = nx.res.fields.len();

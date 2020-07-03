@@ -1265,7 +1265,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                         k_variants.push(KVariant::Const(k_const));
                         next_value += 1;
                     }
-                    PVariantDecl::Struct(_) => unimplemented!(),
+                    PVariantDecl::Record(_) => unimplemented!(),
                 }
             }
 
@@ -1288,7 +1288,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let (name, location) = name.decompose();
 
             let fields = match variant_opt {
-                Some(PVariantDecl::Struct(PStructVariantDecl { fields, .. })) => fields
+                Some(PVariantDecl::Record(PRecordVariantDecl { fields, .. })) => fields
                     .into_iter()
                     .map(|field| {
                         let k_field = KField::new(field.field_id_opt.unwrap());

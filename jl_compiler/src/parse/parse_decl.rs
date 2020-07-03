@@ -219,12 +219,12 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
     fields
 }
 
-fn parse_struct_variant_decl(px: &mut Px) -> PStructVariantDecl {
+fn parse_record_variant_decl(px: &mut Px) -> PRecordVariantDecl {
     let left_brace = px.expect(TokenKind::LeftBrace);
     let fields = parse_field_decls(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
     let comma_opt = px.eat(TokenKind::Comma);
-    PStructVariantDecl {
+    PRecordVariantDecl {
         left_brace,
         fields,
         right_brace_opt,
@@ -234,7 +234,7 @@ fn parse_struct_variant_decl(px: &mut Px) -> PStructVariantDecl {
 
 fn parse_variant_decl(px: &mut Px) -> Option<PVariantDecl> {
     let variant_decl = match px.next() {
-        TokenKind::LeftBrace => PVariantDecl::Struct(parse_struct_variant_decl(px)),
+        TokenKind::LeftBrace => PVariantDecl::Record(parse_record_variant_decl(px)),
         _ => return None,
     };
     Some(variant_decl)

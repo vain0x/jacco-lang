@@ -206,7 +206,7 @@ fn resolve_variant(variant: &PVariantDecl, cx: &mut Cx) {
             resolve_name_def(name, cx);
             resolve_expr_opt(value_opt.as_deref(), cx);
         }
-        PVariantDecl::Struct(PStructVariantDecl { fields, .. }) => {
+        PVariantDecl::Record(PRecordVariantDecl { fields, .. }) => {
             for field in fields {
                 resolve_name_def(&field.name, cx);
                 resolve_ty_opt(field.ty_opt.as_ref(), cx);

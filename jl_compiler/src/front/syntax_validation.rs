@@ -404,7 +404,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
                 );
             }
         }
-        PVariantDecl::Struct(PStructVariantDecl {
+        PVariantDecl::Record(PRecordVariantDecl {
             left_brace,
             fields,
             right_brace_opt,
