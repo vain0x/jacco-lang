@@ -235,11 +235,18 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 }
 
 fn resolve_pat(name: &mut PName, nx: &mut Nx) {
-    // alloc local
-    let local_var_id = nx.parent_local_vars.len();
-    nx.parent_local_vars.push(NLocalVarData);
+    match find_value_name(&name.full_name(), nx) {
+        Some(NName::Const(_)) => {
+            resolve_name_use(name, nx);
+        }
+        _ => {
+            // alloc local
+            let local_var_id = nx.parent_local_vars.len();
+            nx.parent_local_vars.push(NLocalVarData);
 
-    resolve_name_def(name, NName::LocalVar(local_var_id), nx);
+            resolve_name_def(name, NName::LocalVar(local_var_id), nx);
+        }
+    }
 }
 
 fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {

@@ -187,13 +187,15 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write_expr(cond, dx)?;
             write!(dx, ") {{\n")?;
 
-            for (pat, body) in cases {
-                write_indent(dx)?;
-                write!(dx, "case ")?;
-                write_expr(pat, dx)?;
-                write!(dx, ": ")?;
-                write_block(body, dx)?;
-                write!(dx, "\n")?;
+            dx.do_with_indent(|dx| {
+                for (pat, body) in cases {
+                    write_indent(dx)?;
+                    write!(dx, "case ")?;
+                    write_expr(pat, dx)?;
+                    write!(dx, ": ")?;
+                    write_block(body, dx)?;
+                    write!(dx, "\n")?;
+                }
 
                 if let Some(body) = default_opt {
                     write_indent(dx)?;
@@ -201,7 +203,8 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
                     write_block(body, dx)?;
                     write!(dx, "\n")?;
                 }
-            }
+                Ok(())
+            })?;
 
             write_indent(dx)?;
             write!(dx, "}}")

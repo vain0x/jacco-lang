@@ -537,6 +537,37 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
+        KPrim::Switch => match args.as_mut_slice() {
+            [cond, pats @ ..] => {
+                let cond = gen_term(take(cond), cx);
+
+                let cases = vec![];
+                let mut default_opt = None;
+
+                assert_eq!(pats.len(), conts.len());
+                for (pat, cont) in pats.iter().zip(conts) {
+                    if let KTerm::Name(_) = pat {
+                        // _ パターン
+                        if default_opt.is_some() {
+                            continue;
+                        }
+
+                        let body = gen_node_as_block(take(cont), ty_env, cx);
+                        default_opt = Some(body);
+                    } else {
+                        // 定数パターン
+                        unimplemented!()
+                    }
+                }
+
+                cx.stmts.push(CStmt::Switch {
+                    cond,
+                    cases,
+                    default_opt,
+                });
+            }
+            _ => unimplemented!(),
+        },
         KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, ty_env, cx),
         KPrim::Ref | KPrim::RefMut => gen_unary_op(CUnaryOp::Ref, args, results, conts, ty_env, cx),
         KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, ty_env, cx),

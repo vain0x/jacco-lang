@@ -8,7 +8,7 @@ use crate::{
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind},
 };
-use log::trace;
+use log::{error, trace};
 use std::{
     iter::once,
     mem::{replace, take},
@@ -969,32 +969,64 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Match(PMatchExpr {
             keyword,
             cond_opt,
-            mut arms,
+            arms,
             ..
         }) => {
-            // FIXME: switch を生成する
-
             let location = keyword.into_location();
+            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
+            if arms.is_empty() {
+                return new_never_term(location).clone();
+            }
+
             let result = gx.fresh_symbol("match_result", location.clone());
-            let arm_label = gx.fresh_label("arm_1", location.clone());
             let next_label = gx.fresh_label("match_next", location.clone());
 
-            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
+            let args = once(k_cond.clone())
+                .chain(
+                    arms.iter()
+                        .map(|arm| match arm.name.info_opt.as_ref().unwrap() {
+                            NName::Const(_) => unimplemented!(),
+                            NName::LocalVar(_) => {
+                                let symbol = gen_name(arm.name.clone(), gx).expect_symbol();
+                                KTerm::Name(symbol)
+                            }
+                            _ => {
+                                error!("unimplemented pat {:?}", arm);
+                                KTerm::Unit {
+                                    location: arm.location().clone(),
+                                }
+                            }
+                        }),
+                )
+                .collect();
+            let cont_count = arms.len();
 
-            match arms.as_mut_slice() {
-                [] => return new_never_term(location).clone(),
-                [arm] => {
-                    gx.push_jump(arm_label, vec![k_cond]);
-                    let name = gen_name(arm.name.clone(), gx).expect_symbol();
-                    gx.push_label(arm_label, vec![name]);
-                    let body = gen_expr(*arm.body_opt.take().unwrap(), gx);
-                    gx.push_jump(next_label, vec![body]);
+            gx.push(KCommand::Node {
+                prim: KPrim::Switch,
+                tys: vec![],
+                args,
+                result_opt: None,
+                cont_count,
+                location,
+            });
+
+            for arm in arms {
+                match arm.name.info_opt.as_ref().unwrap() {
+                    NName::Const(_) => unimplemented!(),
+                    NName::LocalVar(_) => {
+                        let name = gen_name(arm.name.clone(), gx).expect_symbol();
+                        gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
+
+                        let body = gen_expr(*arm.body_opt.unwrap(), gx);
+                        gx.push_jump(next_label, vec![body]);
+                    }
+                    _ => {
+                        error!("unimplemented pat {:?}", arm);
+                    }
                 }
-                _ => unimplemented!(),
             }
 
             gx.push_label(next_label, vec![result.clone()]);
-
             KTerm::Name(result)
         }
         PExpr::While(PWhileExpr {

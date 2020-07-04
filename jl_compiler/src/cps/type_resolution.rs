@@ -128,7 +128,8 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
     }
 }
 
-/// right 型の値を left 型に一致させることを試みる。
+/// left, right の型が一致するように型変数を決定する。
+/// (right 型の値を left 型の引数に代入する状況を想定する。)
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     do_unify(&left, &right, &location, tx);
 }
@@ -157,6 +158,16 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
     }
 
     current_ty
+}
+
+fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) -> KTy {
+    match pat {
+        KTerm::Name(symbol) => {
+            resolve_symbol_def(symbol, Some(expected_ty), tx);
+            symbol.ty(&tx.locals)
+        }
+        _ => resolve_term(pat, tx),
+    }
 }
 
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
@@ -335,6 +346,16 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);
                 unify(KTy::Bool, cond_ty, node.location.clone(), tx);
+            }
+            _ => unimplemented!(),
+        },
+        KPrim::Switch => match node.args.as_mut_slice() {
+            [cond, pats @ ..] => {
+                let cond_ty = resolve_term(cond, tx);
+
+                for pat in pats {
+                    let _pat_ty = resolve_pat(pat, &cond_ty, tx);
+                }
             }
             _ => unimplemented!(),
         },

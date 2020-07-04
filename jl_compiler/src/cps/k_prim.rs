@@ -13,6 +13,7 @@ pub(crate) enum KPrim {
     GetField,
     GetFieldMut,
     If,
+    Switch,
     Let,
     Deref,
     Ref,
