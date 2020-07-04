@@ -22,17 +22,16 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     trace!("tokens = {:#?}\n", tokens);
 
     let mut p_root = parse::parse_tokens(tokens, logs.logger());
-
     front::validate_syntax(&p_root, logs.logger());
+    let name_resolution = front::resolve_name(&mut p_root, logs.logger());
+    trace!("p_root = {:#?}\n", p_root);
+
     if logs.is_fatal() {
         for item in logs.finish() {
             error!("{:?} {}", item.location, item.message);
         }
         std::process::exit(1);
     }
-
-    let name_resolution = front::resolve_name(&mut p_root, logs.logger());
-    trace!("p_root = {:#?}\n", p_root);
 
     let mut k_root = front::cps_conversion(p_root, name_resolution, logs.logger());
     cps::resolve_types(&mut k_root, logs.logger());
