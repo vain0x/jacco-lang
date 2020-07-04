@@ -244,17 +244,39 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write_indent(dx)?;
             write!(dx, "}};")
         }
-        CStmt::StructDecl { name, fields } => {
+        CStmt::StructDecl {
+            name,
+            fields,
+            union_opt,
+        } => {
             write!(dx, "struct {} {{\n", name)?;
 
-            for (name, ty) in fields {
-                dx.do_with_indent(|dx| {
+            dx.do_with_indent(|dx| {
+                for (name, ty) in fields {
                     write_indent(dx)?;
                     write_var_with_ty(&name, &ty, dx)?;
                     write!(dx, ";")?;
-                    write!(dx, "\n")
-                })?;
-            }
+                    write!(dx, "\n")?;
+                }
+
+                if let Some(variants) = union_opt {
+                    write!(dx, "\n")?;
+                    write_indent(dx)?;
+                    write!(dx, "union {{\n")?;
+                    dx.do_with_indent(|dx| {
+                        for (name, ty) in variants {
+                            write_indent(dx)?;
+                            write_var_with_ty(&name, &ty, dx)?;
+                            write!(dx, ";")?;
+                            write!(dx, "\n")?;
+                        }
+                        Ok(())
+                    })?;
+                    write_indent(dx)?;
+                    write!(dx, "}};\n")?;
+                }
+                Ok(())
+            })?;
 
             write_indent(dx)?;
             write!(dx, "}};")

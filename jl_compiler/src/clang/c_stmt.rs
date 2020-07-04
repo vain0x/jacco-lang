@@ -45,5 +45,8 @@ pub(crate) enum CStmt {
     StructDecl {
         name: String,
         fields: Vec<(String, CTy)>,
+
+        /// anonymous union
+        union_opt: Option<Vec<(String, CTy)>>,
     },
 }

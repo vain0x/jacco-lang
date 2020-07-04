@@ -596,7 +596,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
                 )
             })
             .collect();
-        cx.decls.push(CStmt::StructDecl { name, fields });
+        cx.decls.push(CStmt::StructDecl {
+            name,
+            fields,
+            union_opt: None,
+        });
     }
 
     for (i, static_var_data) in outlines.static_vars.iter().enumerate() {
