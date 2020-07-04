@@ -5,6 +5,9 @@ pub(crate) enum KPrim {
     Stuck,
     Jump,
     CallDirect,
+    // enum のタグを取り出す
+    #[allow(unused)]
+    EnumToTag,
     Record,
     /// 構造体へのポインタから特定のフィールドへのポインタを取得する。(`&p->field`)
     GetField,

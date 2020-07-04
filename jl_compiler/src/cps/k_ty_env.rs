@@ -1,4 +1,4 @@
-use super::{KEnumOutline, KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
+use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -64,6 +64,17 @@ impl KTyEnv {
             KTy::Meta(meta_ty) => {
                 let ty = meta_ty.try_unwrap(self)?;
                 self.as_ptr(&ty.borrow().clone())
+            }
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_enum(&self, ty: &KTy) -> Option<KEnum> {
+        match ty {
+            KTy::Enum(k_enum) => Some(*k_enum),
+            KTy::Meta(meta_ty) => {
+                let ty = meta_ty.try_unwrap(self)?;
+                self.as_enum(&ty.borrow())
             }
             _ => None,
         }

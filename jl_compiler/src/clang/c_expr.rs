@@ -2,6 +2,7 @@ use super::{CBinaryOp, CStmt, CTy, CUnaryOp};
 
 #[derive(Clone)]
 pub(crate) enum CExpr {
+    Other(&'static str),
     IntLit(String),
     LongLongLit(String),
     UnsignedLongLongLit(String),

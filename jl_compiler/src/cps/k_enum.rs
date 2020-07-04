@@ -52,6 +52,15 @@ impl KEnum {
     pub(crate) fn repr(self, enums: &[KEnumOutline]) -> &KEnumRepr {
         &enums[self.id].repr
     }
+
+    pub(crate) fn tag_ty(self, enums: &[KEnumOutline]) -> &KTy {
+        match self.repr(enums) {
+            KEnumRepr::Never => &KTy::Never,
+            KEnumRepr::Unit => &KTy::Unit,
+            KEnumRepr::Const { value_ty } => value_ty,
+            KEnumRepr::Sum { tag_ty } => tag_ty,
+        }
+    }
 }
 
 /// enum 型のコンパイル後の表現

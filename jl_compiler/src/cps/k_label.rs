@@ -13,6 +13,10 @@ impl KLabel {
     pub(crate) fn id(self) -> usize {
         self.id
     }
+
+    pub(crate) fn ty(self, labels: &[KLabelSig]) -> KTy {
+        labels[self.id].ty()
+    }
 }
 
 #[derive(Clone, Debug)]

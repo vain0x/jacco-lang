@@ -22,6 +22,33 @@ pub(crate) enum KTerm {
 }
 
 impl KTerm {
+    pub(crate) fn ty<'a>(
+        &self,
+        outlines: &KOutlines,
+        labels: &[KLabelSig],
+        locals: &[KLocalData],
+    ) -> KTy {
+        match self {
+            KTerm::Unit { .. } => KTy::Unit,
+            KTerm::Int(_, ty) => ty.clone(),
+            KTerm::Float(_) => KTy::F64,
+            KTerm::Char(_) => KTy::C8,
+            KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
+            KTerm::True(_) | KTerm::False(_) => KTy::Bool,
+            KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
+            KTerm::Const(k_const) => k_const.ty(&outlines.consts).clone(),
+            KTerm::StaticVar(static_var) => static_var.ty(&outlines.static_vars).clone(),
+            KTerm::Fn(k_fn) => k_fn.ty(&outlines.fns),
+            KTerm::Label(label) => label.ty(labels),
+            KTerm::Return(k_fn) => k_fn.return_ty(&outlines.fns),
+            KTerm::ExternFn(extern_fn) => extern_fn.ty(&outlines.extern_fns),
+            KTerm::FieldTag(field_tag) => {
+                error!("don't obtain type of field tag {:?}", field_tag);
+                KTy::Unresolved
+            }
+        }
+    }
+
     pub(crate) fn location(&self, _outlines: &KOutlines) -> Location {
         match self {
             KTerm::Unit { location } => location.clone(),
