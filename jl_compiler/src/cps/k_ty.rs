@@ -41,13 +41,6 @@ impl KTy {
         }
     }
 
-    pub(crate) fn is_struct(&self) -> bool {
-        match self {
-            KTy::Struct { .. } => true,
-            _ => false,
-        }
-    }
-
     pub(crate) fn is_primitive(&self) -> bool {
         match self {
             KTy::I32 | KTy::I64 | KTy::Usize | KTy::F64 | KTy::C8 | KTy::Bool | KTy::Ptr { .. } => {

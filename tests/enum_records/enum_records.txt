@@ -1,0 +1,22 @@
+struct Text_1 {
+    unsigned char const* str;
+    unsigned long long len;
+};
+
+struct Response_1 {
+    unsigned long long tag_;
+
+    union {
+        struct Text_1 Text_1;
+    };
+};
+
+int main();
+
+int main() {
+    enum Response_1 Text_2;
+    Text_2.Text_1.str = (unsigned char const*)"hello";
+    Text_2.Text_1.len = 6ULL;
+    enum Response_1 text_1 = Text_2;
+    return 0;
+}

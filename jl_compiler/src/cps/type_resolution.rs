@@ -120,7 +120,10 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::Fn { .. }, _)
         | (KTy::Enum { .. }, _)
         | (KTy::Struct { .. }, _) => {
-            tx.logger.error(location, "type mismatch");
+            tx.logger.error(
+                location,
+                format!("type mismatch ({:?} vs. {:?})", left, right),
+            );
         }
     }
 }
@@ -244,8 +247,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let ty = k_struct.ty(&outlines.structs);
                 resolve_symbol_def(result, Some(ty), tx);
 
-                if !ty.is_struct() {
-                    tx.logger.error(result, "struct type required");
+                if !tx.ty_env.is_struct_or_enum(&ty) {
+                    tx.logger
+                        .error(result, format!("struct or enum type required {:?}", ty));
                 }
             }
             _ => unimplemented!("{:?}", node),

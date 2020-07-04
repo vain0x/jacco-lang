@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::logs::Logger;
+use log::trace;
 use std::{
     collections::HashMap,
     mem::{replace, take},
@@ -74,7 +75,8 @@ impl Default for NName {
 /// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {
-    env: HashMap<String, NName>,
+    local_env: HashMap<String, NName>,
+    // global_env: HashMap<String, NName>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
     parent_local_vars: Vec<NLocalVarData>,
@@ -91,13 +93,28 @@ impl Nx {
         }
     }
 
+    // fn import_global(&mut self, name: String, n_name: NName) {
+    //     trace!("global {} => {:?}", name, n_name);
+    //     self.global_env.insert(name, n_name);
+    // }
+
+    fn import_local(&mut self, name: String, n_name: NName) {
+        trace!(
+            "local {} => {:?} (parent={:?})",
+            name,
+            n_name,
+            self.parent_fn
+        );
+        self.local_env.insert(name, n_name);
+    }
+
     fn enter_scope(&mut self, do_resolve: impl FnOnce(&mut Nx)) {
         // FIXME: 効率化
-        let outer_env = self.env.clone();
+        let parent_env = self.local_env.clone();
 
         do_resolve(self);
 
-        self.env = outer_env;
+        self.local_env = parent_env;
     }
 
     fn enter_loop(&mut self, location: Location, do_resolve: impl FnOnce(&mut Nx, usize)) {
@@ -143,14 +160,18 @@ fn parse_known_ty_name(s: &str) -> Option<NName> {
     Some(n_name)
 }
 
+fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
+    nx.local_env
+        .get(name)
+        // .or_else(|| nx.global_env.get(name))
+        .cloned()
+}
+
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
-    let name_info = {
-        let resolved_opt = nx.env.get(&name.full_name()).cloned();
-        resolved_opt.unwrap_or_else(|| {
-            nx.logger.error(name, "undefined");
-            NName::Unresolved
-        })
-    };
+    let name_info = find_value_name(&name.full_name(), nx).unwrap_or_else(|| {
+        nx.logger.error(name, "undefined value");
+        NName::Unresolved
+    });
 
     name.info_opt = Some(name_info);
 }
@@ -159,7 +180,7 @@ fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
     p_name.info_opt = Some(n_name);
 
     if !p_name.is_underscore() {
-        nx.env.insert(p_name.full_name(), n_name);
+        nx.import_local(p_name.full_name(), n_name);
     }
 }
 
@@ -179,24 +200,20 @@ fn resolve_qualified_name_def(
             }
             _ => p_name.full_name(),
         };
-        nx.env.insert(full_name, n_name);
+        nx.import_local(full_name, n_name);
     }
 }
 
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
     let name = &mut ty_name.0;
 
-    let name_info = {
-        // 環境から探して、なければ組み込み型の名前とみなす。
-        let resolved_opt = nx.env.get(name.text()).cloned();
-
-        resolved_opt
-            .or_else(|| parse_known_ty_name(name.text()))
-            .unwrap_or_else(|| {
-                nx.logger.error(name, "undefined type");
-                NName::Unresolved
-            })
-    };
+    // 環境から探して、なければ組み込み型の名前とみなす。
+    let name_info = find_value_name(&name.full_name(), nx)
+        .or_else(|| parse_known_ty_name(name.text()))
+        .unwrap_or_else(|| {
+            nx.logger.error(name, "undefined type");
+            NName::Unresolved
+        });
 
     name.info_opt = Some(name_info);
 }
@@ -405,23 +422,17 @@ fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx
                 NName::Struct(struct_id)
             };
 
-            let mut parent_name = "__anonymous_struct";
-
             resolve_qualified_name_def(name, parent_name_opt, k_struct, nx);
 
-            nx.enter_scope(|nx| {
-                parent_name = name.text();
+            for field in fields {
+                // alloc field
+                let field_id = nx.res.fields.len();
+                nx.res.fields.push(NFieldData);
+                field.field_id_opt = Some(field_id);
 
-                for field in fields {
-                    // alloc field
-                    let field_id = nx.res.fields.len();
-                    nx.res.fields.push(NFieldData);
-                    field.field_id_opt = Some(field_id);
-
-                    // resolve_name_def(&mut field.name, PNameKind::Field, nx);
-                    resolve_ty_opt(field.ty_opt.as_mut(), nx);
-                }
-            });
+                // resolve_name_def(&mut field.name, PNameKind::Field, nx);
+                resolve_ty_opt(field.ty_opt.as_mut(), nx);
+            }
         }
     }
 }

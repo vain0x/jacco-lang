@@ -69,6 +69,17 @@ impl KTyEnv {
         }
     }
 
+    pub(crate) fn is_struct_or_enum(&self, ty: &KTy) -> bool {
+        match ty {
+            KTy::Enum(_) | KTy::Struct(_) => true,
+            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
+                Some(ty) => self.is_struct_or_enum(&ty.borrow().clone()),
+                None => false,
+            },
+            _ => false,
+        }
+    }
+
     pub(crate) fn display(
         &self,
         ty: &KTy,

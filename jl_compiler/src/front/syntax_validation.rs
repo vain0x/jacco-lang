@@ -409,7 +409,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             left_brace,
             fields,
             right_brace_opt,
-            comma_opt,
+            comma_opt: _,
         }) => {
             validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
 
@@ -431,10 +431,6 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
                     vx.logger
                         .error(&field.location().behind(), "maybe missed a comma?");
                 }
-            }
-
-            if let Some(comma) = comma_opt {
-                vx.logger.error(comma, "comma is not allowed here");
             }
         }
     }

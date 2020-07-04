@@ -1,0 +1,14 @@
+enum Response {
+    Text {
+        str: *c8,
+        len: usize,
+    },
+}
+
+pub fn main() -> i32 {
+    let text = Response::Text {
+        str: "hello",
+        len: 6_usize,
+    };
+    0
+}

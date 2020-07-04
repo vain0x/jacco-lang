@@ -226,10 +226,12 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
             ty.into_ptr()
         }
-        KTy::Enum(_) => {
-            // CTy::Enum(unique_enum_name(k_enum, cx)),
-            CTy::UnsignedLongLong
-        }
+        KTy::Enum(k_enum) => match k_enum.repr(&cx.outlines.enums) {
+            KEnumRepr::Unit => CTy::Other("/* unit-like enum */ void"),
+            KEnumRepr::Never => CTy::Other("/* never enum */ void"),
+            KEnumRepr::Const { value_ty } => gen_ty(value_ty.clone(), ty_env, cx),
+            KEnumRepr::Sum { .. } => CTy::Enum(unique_enum_name(k_enum, cx)),
+        },
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
     }
 }
@@ -367,7 +369,7 @@ fn emit_assign(
 fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     let KNode {
         prim,
-        tys: _,
+        ref mut tys,
         ref mut args,
         ref mut results,
         ref mut conts,
@@ -433,9 +435,13 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Record => match (results.as_mut_slice(), conts.as_mut_slice()) {
-            ([result], [cont]) => {
-                let k_struct = result.ty(&cx.locals).as_struct().unwrap();
+        KPrim::Record => match (
+            tys.as_mut_slice(),
+            results.as_mut_slice(),
+            conts.as_mut_slice(),
+        ) {
+            ([ty], [result], [cont]) => {
+                let k_struct = take(ty).as_struct().unwrap();
 
                 let (name, ty) = gen_param(take(result), ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {

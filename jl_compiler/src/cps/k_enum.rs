@@ -48,6 +48,10 @@ impl KEnum {
     pub(crate) fn variants(self, enums: &[KEnumOutline]) -> &[KVariant] {
         &enums[self.id].variants
     }
+
+    pub(crate) fn repr(self, enums: &[KEnumOutline]) -> &KEnumRepr {
+        &enums[self.id].repr
+    }
 }
 
 /// enum 型のコンパイル後の表現
