@@ -1315,11 +1315,14 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     next_value += 1;
                     k_variant
                 })
-                .collect();
+                .collect::<Vec<_>>();
+
+            let repr = KEnumRepr::determine(&k_variants, &gx.outlines.consts);
 
             gx.outlines.enums[k_enum.id()] = KEnumOutline {
                 name,
                 variants: k_variants,
+                repr,
                 location,
             };
         }

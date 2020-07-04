@@ -21,6 +21,13 @@ impl KConst {
     pub(crate) fn value_opt(self, consts: &[KConstData]) -> Option<&KConstValue> {
         consts[self.id].value_opt.as_ref()
     }
+
+    pub(crate) fn is_zero(self, consts: &[KConstData]) -> bool {
+        match &consts[self.id].value_opt {
+            Some(value) => value.is_zero(),
+            None => true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -41,6 +48,10 @@ pub(crate) enum KConstValue {
 }
 
 impl KConstValue {
+    pub(crate) fn is_zero(&self) -> bool {
+        self.cast_as_usize() == 0
+    }
+
     pub(crate) fn cast_as_usize(&self) -> usize {
         match self {
             KConstValue::I32(value) => *value as usize,

@@ -1,10 +1,29 @@
-use super::{KConst, KStruct};
+use super::{KConst, KConstData, KStruct, KTy};
 use crate::token::Location;
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum KVariant {
     Const(KConst),
     Record(KStruct),
+}
+
+impl KVariant {
+    pub(crate) fn as_const(self) -> Option<KConst> {
+        if let KVariant::Const(k_const) = self {
+            Some(k_const)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn is_const(self) -> bool {
+        self.as_const().is_some()
+    }
+
+    pub(crate) fn is_const_zero(self, consts: &[KConstData]) -> bool {
+        self.as_const()
+            .map_or(false, |k_const| k_const.is_zero(consts))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,10 +50,44 @@ impl KEnum {
     }
 }
 
+/// enum 型のコンパイル後の表現
+#[derive(Clone, Debug)]
+pub(crate) enum KEnumRepr {
+    Never,
+    Unit,
+    Const {
+        value_ty: KTy,
+    },
+    /// tagged union
+    Sum {
+        tag_ty: KTy,
+    },
+}
+
+impl KEnumRepr {
+    pub(crate) fn determine(variants: &[KVariant], consts: &[KConstData]) -> KEnumRepr {
+        match variants {
+            [] => KEnumRepr::Never,
+            [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
+            _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
+                value_ty: KTy::Usize,
+            },
+            _ => KEnumRepr::Sum { tag_ty: KTy::Usize },
+        }
+    }
+}
+
+impl Default for KEnumRepr {
+    fn default() -> Self {
+        KEnumRepr::Never
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
+    pub(crate) repr: KEnumRepr,
     pub(crate) location: Location,
 }
 
