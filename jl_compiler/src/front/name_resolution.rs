@@ -466,13 +466,16 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 name_opt, variants, ..
             }) => {
                 // alloc enum
-                let enum_id = nx.res.enums.len();
-                nx.res.enums.push(NEnumData);
+                let k_enum = {
+                    let enum_id = nx.res.enums.len();
+                    nx.res.enums.push(NEnumData);
+                    NName::Enum(enum_id)
+                };
 
                 let mut parent_name = "__anonymous_enum";
 
                 if let Some(name) = name_opt {
-                    resolve_name_def(name, NName::Enum(enum_id), nx);
+                    resolve_name_def(name, k_enum, nx);
                     parent_name = name.text();
                 }
 

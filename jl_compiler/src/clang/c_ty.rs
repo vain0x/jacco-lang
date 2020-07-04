@@ -6,8 +6,13 @@ pub(crate) enum CTy {
     LongLong,
     UnsignedLongLong,
     Double,
-    Ptr { ty: Box<CTy> },
-    Const { ty: Box<CTy> },
+    Ptr {
+        ty: Box<CTy>,
+    },
+    Const {
+        ty: Box<CTy>,
+    },
+    #[allow(unused)]
     Enum(String),
     Struct(String),
 }

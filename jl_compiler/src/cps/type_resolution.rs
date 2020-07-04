@@ -241,6 +241,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     );
                 }
 
+                let ty = k_struct.ty(&outlines.structs);
                 resolve_symbol_def(result, Some(ty), tx);
 
                 if !ty.is_struct() {

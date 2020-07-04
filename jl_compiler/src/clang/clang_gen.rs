@@ -15,7 +15,7 @@ struct Cx<'a> {
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
-    enum_ident_ids: Vec<Option<usize>>,
+    // enum_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
     local_ident_ids: Vec<Option<usize>>,
@@ -32,7 +32,7 @@ impl<'a> Cx<'a> {
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
             fn_ident_ids: Default::default(),
-            enum_ident_ids: Default::default(),
+            // enum_ident_ids: Default::default(),
             struct_ident_ids: Default::default(),
             locals: Default::default(),
             local_ident_ids: Default::default(),
@@ -114,14 +114,14 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     extern_fn.name(&cx.outlines.extern_fns).to_string()
 }
 
-fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
-    do_unique_name(
-        k_enum.id(),
-        &cx.outlines.enums[k_enum.id()].name,
-        &mut cx.enum_ident_ids,
-        &mut cx.ident_map,
-    )
-}
+// fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
+//     do_unique_name(
+//         k_enum.id(),
+//         &cx.outlines.enums[k_enum.id()].name,
+//         &mut cx.enum_ident_ids,
+//         &mut cx.ident_map,
+//     )
+// }
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
     do_unique_name(
@@ -226,7 +226,10 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
             ty.into_ptr()
         }
-        KTy::Enum(k_enum) => CTy::Enum(unique_enum_name(k_enum, cx)),
+        KTy::Enum(_) => {
+            // CTy::Enum(unique_enum_name(k_enum, cx)),
+            CTy::UnsignedLongLong
+        }
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
     }
 }
@@ -578,6 +581,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     cx.static_var_ident_ids
         .resize(outlines.static_vars.len(), None);
     cx.fn_ident_ids.resize(outlines.fns.len(), None);
+    // cx.enum_ident_ids.resize(outlines.enums.len(), None);
     cx.struct_ident_ids.resize(outlines.structs.len(), None);
 
     for (k_struct, struct_data) in KStructOutline::iter(&outlines.structs) {

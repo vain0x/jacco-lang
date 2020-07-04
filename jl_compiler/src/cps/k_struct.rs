@@ -1,4 +1,4 @@
-use super::KField;
+use super::{KField, KTy};
 use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,6 +19,10 @@ impl KStruct {
         &structs[self.id].name
     }
 
+    pub(crate) fn ty(self, structs: &[KStructOutline]) -> &KTy {
+        &structs[self.id].ty
+    }
+
     pub(crate) fn fields(self, structs: &[KStructOutline]) -> &[KField] {
         &structs[self.id].fields
     }
@@ -27,6 +31,8 @@ impl KStruct {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
+    /// 構造体の型、またはレコードバリアントが所属する enum の型
+    pub(crate) ty: KTy,
     pub(crate) fields: Vec<KField>,
     pub(crate) location: Location,
 }

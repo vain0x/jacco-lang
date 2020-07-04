@@ -438,7 +438,12 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
     }
 }
 
-fn gen_const_variant(decl: PConstVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KConst {
+fn gen_const_variant(
+    decl: PConstVariantDecl,
+    enum_ty_opt: Option<KTy>,
+    value_slot: &mut usize,
+    gx: &mut Gx,
+) -> KConst {
     let PConstVariantDecl {
         mut name,
         value_opt,
@@ -464,13 +469,13 @@ fn gen_const_variant(decl: PConstVariantDecl, value_slot: &mut usize, gx: &mut G
 
     gx.outlines.consts[k_const.id()] = KConstData {
         name,
-        ty: KTy::Usize,
+        ty: enum_ty_opt.unwrap_or(KTy::Usize),
         value_opt: Some(KConstValue::Usize(*value_slot)),
     };
     k_const
 }
 
-fn gen_record_variant(decl: PRecordVariantDecl, gx: &mut Gx) -> KStruct {
+fn gen_record_variant(decl: PRecordVariantDecl, enum_ty_opt: Option<KTy>, gx: &mut Gx) -> KStruct {
     let PRecordVariantDecl {
         mut name, fields, ..
     } = decl;
@@ -499,16 +504,24 @@ fn gen_record_variant(decl: PRecordVariantDecl, gx: &mut Gx) -> KStruct {
 
     gx.outlines.structs[k_struct.id()] = KStructOutline {
         name,
+        ty: enum_ty_opt.unwrap_or(KTy::Struct(k_struct)),
         fields,
         location,
     };
     k_struct
 }
 
-fn gen_variant(decl: PVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KVariant {
+fn gen_variant(
+    decl: PVariantDecl,
+    enum_ty_opt: Option<KTy>,
+    value_slot: &mut usize,
+    gx: &mut Gx,
+) -> KVariant {
     match decl {
-        PVariantDecl::Const(decl) => KVariant::Const(gen_const_variant(decl, value_slot, gx)),
-        PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, gx)),
+        PVariantDecl::Const(decl) => {
+            KVariant::Const(gen_const_variant(decl, enum_ty_opt, value_slot, gx))
+        }
+        PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, enum_ty_opt, gx)),
     }
 }
 
@@ -602,20 +615,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let mut args = vec![KTerm::default(); field_count];
             let mut arg_freq = vec![0_u8; field_count];
 
-            trace!(
-                "fields={:?}",
-                k_struct
-                    .fields(&gx.outlines.structs)
-                    .iter()
-                    .map(|field| field.name(&gx.outlines.fields))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-
             for field in &mut fields {
                 let term = gen_expr(field.value_opt.take().unwrap(), gx);
-
-                trace!("field: {}", field.name.text());
 
                 match (0..field_count).find(|&i| {
                     field.name.text()
@@ -1309,7 +1310,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let k_variants = variants
                 .into_iter()
                 .map(|variant_decl| {
-                    let k_variant = gen_variant(variant_decl, &mut next_value, gx);
+                    let k_variant =
+                        gen_variant(variant_decl, Some(KTy::Enum(k_enum)), &mut next_value, gx);
                     next_value += 1;
                     k_variant
                 })
@@ -1323,7 +1325,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         }
         PDecl::Struct(PStructDecl { variant_opt, .. }) => {
             if let Some(variant) = variant_opt {
-                gen_variant(variant, &mut 0, gx);
+                gen_variant(variant, None, &mut 0, gx);
             }
         }
     }

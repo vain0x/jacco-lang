@@ -26,6 +26,7 @@ impl KConst {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KConstData {
     pub(crate) name: String,
+    /// 定数の型、または定数バリアントが所属する enum の型
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
 }
