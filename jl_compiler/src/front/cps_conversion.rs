@@ -8,7 +8,7 @@ use crate::{
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind},
 };
-use log::{debug, trace};
+use log::trace;
 use std::{
     iter::once,
     mem::{replace, take},
@@ -438,6 +438,80 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
     }
 }
 
+fn gen_const_variant(decl: PConstVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KConst {
+    let PConstVariantDecl {
+        mut name,
+        value_opt,
+        ..
+    } = decl;
+
+    let (name, k_const) = {
+        let k_const = match take(&mut name.info_opt) {
+            Some(NName::Const(const_id)) => KConst::new(const_id),
+            _ => unreachable!(),
+        };
+        let (name, _) = name.decompose();
+        (name, k_const)
+    };
+
+    if let Some(value) = value_opt {
+        let location = value.location();
+        match gen_constant(*value, gx) {
+            Some(value) => *value_slot = value.cast_as_usize(),
+            None => gx.logger.error(&location, "invalid constant expression"),
+        }
+    }
+
+    gx.outlines.consts[k_const.id()] = KConstData {
+        name,
+        ty: KTy::Usize,
+        value_opt: Some(KConstValue::Usize(*value_slot)),
+    };
+    k_const
+}
+
+fn gen_record_variant(decl: PRecordVariantDecl, gx: &mut Gx) -> KStruct {
+    let PRecordVariantDecl {
+        mut name, fields, ..
+    } = decl;
+
+    let k_struct = match take(&mut name.info_opt) {
+        Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
+        n_name_opt => unreachable!("{:?}", n_name_opt),
+    };
+    let (name, location) = name.decompose();
+
+    let fields = fields
+        .into_iter()
+        .map(|field| {
+            let k_field = KField::new(field.field_id_opt.unwrap());
+            let (name, location) = field.name.decompose();
+            let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
+            gx.outlines.fields[k_field.id()] = KFieldOutline {
+                name,
+                ty: field_ty,
+                location,
+            };
+
+            k_field
+        })
+        .collect();
+
+    gx.outlines.structs[k_struct.id()] = KStructOutline {
+        name,
+        fields,
+        location,
+    };
+    k_struct
+}
+
+fn gen_variant(decl: PVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KVariant {
+    match decl {
+        PVariantDecl::Const(decl) => KVariant::Const(gen_const_variant(decl, value_slot, gx)),
+        PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, gx)),
+    }
+}
+
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
 fn gen_expr_lval(expr: PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
@@ -516,6 +590,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let k_struct = match take(&mut name.0.info_opt) {
+                Some(NName::Const(_)) => todo!(),
                 Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
                 n_name => unreachable!("{:?}", n_name),
             };
@@ -1229,45 +1304,16 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 n_name_opt => unreachable!("{:?}", n_name_opt),
             };
             let (name, location) = name.decompose();
-            let mut k_variants = vec![];
+
             let mut next_value = 0_usize;
-
-            for variant in variants {
-                match variant {
-                    PVariantDecl::Const(PConstVariantDecl {
-                        mut name,
-                        value_opt,
-                        ..
-                    }) => {
-                        let (name, k_const) = {
-                            let k_const = match take(&mut name.info_opt) {
-                                Some(NName::Const(const_id)) => KConst::new(const_id),
-                                _ => unreachable!(),
-                            };
-                            let (name, _) = name.decompose();
-                            (name, k_const)
-                        };
-
-                        if let Some(value) = value_opt {
-                            let location = value.location();
-                            match gen_constant(*value, gx) {
-                                Some(value) => next_value = value.cast_as_usize(),
-                                None => gx.logger.error(&location, "invalid constant expression"),
-                            }
-                        }
-
-                        gx.outlines.consts[k_const.id()] = KConstData {
-                            name,
-                            ty: KTy::Usize,
-                            value_opt: Some(KConstValue::Usize(next_value)),
-                        };
-
-                        k_variants.push(KVariant::Const(k_const));
-                        next_value += 1;
-                    }
-                    PVariantDecl::Record(_) => unimplemented!(),
-                }
-            }
+            let k_variants = variants
+                .into_iter()
+                .map(|variant_decl| {
+                    let k_variant = gen_variant(variant_decl, &mut next_value, gx);
+                    next_value += 1;
+                    k_variant
+                })
+                .collect();
 
             gx.outlines.enums[k_enum.id()] = KEnumOutline {
                 name,
@@ -1275,45 +1321,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 location,
             };
         }
-        PDecl::Struct(PStructDecl {
-            name_opt,
-            variant_opt,
-            ..
-        }) => {
-            let mut name = name_opt.unwrap();
-            let k_struct = match take(&mut name.info_opt) {
-                Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
-                n_name_opt => unreachable!("{:?}", n_name_opt),
-            };
-            let (name, location) = name.decompose();
-
-            let fields = match variant_opt {
-                Some(PVariantDecl::Record(PRecordVariantDecl { fields, .. })) => fields
-                    .into_iter()
-                    .map(|field| {
-                        let k_field = KField::new(field.field_id_opt.unwrap());
-                        let (name, location) = field.name.decompose();
-                        let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
-                        gx.outlines.fields[k_field.id()] = KFieldOutline {
-                            name,
-                            ty: field_ty,
-                            location,
-                        };
-
-                        k_field
-                    })
-                    .collect(),
-                _ => {
-                    debug!("unimplemented");
-                    vec![]
-                }
-            };
-
-            gx.outlines.structs[k_struct.id()] = KStructOutline {
-                name,
-                fields,
-                location,
-            };
+        PDecl::Struct(PStructDecl { variant_opt, .. }) => {
+            if let Some(variant) = variant_opt {
+                gen_variant(variant, &mut 0, gx);
+            }
         }
     }
 }

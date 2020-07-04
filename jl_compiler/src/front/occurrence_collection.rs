@@ -206,7 +206,9 @@ fn resolve_variant(variant: &PVariantDecl, cx: &mut Cx) {
             resolve_name_def(name, cx);
             resolve_expr_opt(value_opt.as_deref(), cx);
         }
-        PVariantDecl::Record(PRecordVariantDecl { fields, .. }) => {
+        PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
+            resolve_name_def(name, cx);
+
             for field in fields {
                 resolve_name_def(&field.name, cx);
                 resolve_ty_opt(field.ty_opt.as_ref(), cx);
@@ -321,15 +323,7 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
                 resolve_variant(variant, cx);
             }
         }
-        PDecl::Struct(PStructDecl {
-            name_opt,
-            variant_opt,
-            ..
-        }) => {
-            if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
-            }
-
+        PDecl::Struct(PStructDecl { variant_opt, .. }) => {
             if let Some(variant) = variant_opt {
                 resolve_variant(variant, cx);
             }

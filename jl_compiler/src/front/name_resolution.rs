@@ -163,12 +163,22 @@ fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
     }
 }
 
-fn resolve_qualified_name_def(p_name: &mut PName, parent_name: &str, n_name: NName, nx: &mut Nx) {
+fn resolve_qualified_name_def(
+    p_name: &mut PName,
+    parent_name_opt: Option<&str>,
+    n_name: NName,
+    nx: &mut Nx,
+) {
     p_name.info_opt = Some(n_name);
 
     if !p_name.is_underscore() {
-        // PName::full_name と同じエンコーディング
-        let full_name = format!("{}::{}", parent_name, p_name.full_name());
+        let full_name = match parent_name_opt {
+            Some(parent_name) => {
+                // PName::full_name と同じエンコーディング
+                format!("{}::{}", parent_name, p_name.full_name())
+            }
+            _ => p_name.full_name(),
+        };
         nx.env.insert(full_name, n_name);
     }
 }
@@ -372,29 +382,46 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
     }
 }
 
-fn resolve_variant(variant: &mut PVariantDecl, parent_name: &str, nx: &mut Nx) {
+fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx: &mut Nx) {
     match variant {
         PVariantDecl::Const(PConstVariantDecl {
             name, value_opt, ..
         }) => {
             // alloc const
-            let const_id = nx.res.consts.len();
-            nx.res.consts.push(NConstData);
+            let k_const = {
+                let const_id = nx.res.consts.len();
+                nx.res.consts.push(NConstData);
+                NName::Const(const_id)
+            };
 
-            resolve_qualified_name_def(name, parent_name, NName::Const(const_id), nx);
-
+            resolve_qualified_name_def(name, parent_name_opt, k_const, nx);
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
         }
-        PVariantDecl::Record(PRecordVariantDecl { fields, .. }) => {
-            for field in fields {
-                // alloc field
-                let field_id = nx.res.fields.len();
-                nx.res.fields.push(NFieldData);
-                field.field_id_opt = Some(field_id);
+        PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
+            // alloc struct
+            let k_struct = {
+                let struct_id = nx.res.structs.len();
+                nx.res.structs.push(NStructData);
+                NName::Struct(struct_id)
+            };
 
-                // resolve_name_def(&mut field.name, PNameKind::Field, nx);
-                resolve_ty_opt(field.ty_opt.as_mut(), nx);
-            }
+            let mut parent_name = "__anonymous_struct";
+
+            resolve_qualified_name_def(name, parent_name_opt, k_struct, nx);
+
+            nx.enter_scope(|nx| {
+                parent_name = name.text();
+
+                for field in fields {
+                    // alloc field
+                    let field_id = nx.res.fields.len();
+                    nx.res.fields.push(NFieldData);
+                    field.field_id_opt = Some(field_id);
+
+                    // resolve_name_def(&mut field.name, PNameKind::Field, nx);
+                    resolve_ty_opt(field.ty_opt.as_mut(), nx);
+                }
+            });
         }
     }
 }
@@ -450,30 +477,13 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 }
 
                 for variant in variants {
-                    resolve_variant(variant, parent_name, nx);
+                    resolve_variant(variant, Some(parent_name), nx);
                 }
             }
-            PDecl::Struct(PStructDecl {
-                name_opt,
-                variant_opt,
-                ..
-            }) => {
-                // alloc struct
-                let struct_id = nx.res.structs.len();
-                nx.res.structs.push(NStructData);
-
-                let mut parent_name = "__anonymous_struct";
-
-                if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, NName::Struct(struct_id), nx);
-                    parent_name = name.text();
+            PDecl::Struct(PStructDecl { variant_opt, .. }) => {
+                if let Some(variant) = variant_opt {
+                    resolve_variant(variant, None, nx);
                 }
-
-                nx.enter_scope(|nx| {
-                    if let Some(variant) = variant_opt {
-                        resolve_variant(variant, parent_name, nx);
-                    }
-                });
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
         }

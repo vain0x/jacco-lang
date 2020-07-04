@@ -1,10 +1,10 @@
-use super::KConst;
+use super::{KConst, KStruct};
 use crate::token::Location;
 
-// FIXME: add struct variant
 #[derive(Clone, Debug)]
 pub(crate) enum KVariant {
     Const(KConst),
+    Record(KStruct),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

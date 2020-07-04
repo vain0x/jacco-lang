@@ -1,4 +1,5 @@
-struct A;
+// FIXME: いまのところ unit-like 構造体はこう書かないとコンパイルできない
+struct A {}
 
 pub fn main() -> i32 {
     let a = A;

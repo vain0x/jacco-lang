@@ -897,6 +897,7 @@ impl PNode for PFieldDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PRecordVariantDecl {
+    pub(crate) name: PName,
     pub(crate) left_brace: TokenData,
     pub(crate) fields: Vec<PFieldDecl>,
     pub(crate) right_brace_opt: Option<TokenData>,
@@ -905,14 +906,16 @@ pub(crate) struct PRecordVariantDecl {
 
 impl PNode for PRecordVariantDecl {
     fn len(&self) -> usize {
-        self.fields.len() + 3
+        self.fields.len() + 4
     }
 
     fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if i == 0 {
-            return try_as_element_ref(&self.left_brace);
+        match i {
+            0 => return try_as_element_ref(&self.name),
+            1 => return try_as_element_ref(&self.left_brace),
+            _ => {}
         }
-        i -= 1;
+        i -= 2;
 
         let field_count = self.fields.len();
         if let Some(field) = self.fields.get(i) {
@@ -928,10 +931,12 @@ impl PNode for PRecordVariantDecl {
     }
 
     fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        if i == 0 {
-            return try_as_element_mut(&mut self.left_brace);
+        match i {
+            0 => return try_as_element_mut(&mut self.name),
+            1 => return try_as_element_mut(&mut self.left_brace),
+            _ => {}
         }
-        i -= 1;
+        i -= 2;
 
         let field_count = self.fields.len();
         if let Some(field) = self.fields.get_mut(i) {
@@ -1024,13 +1029,12 @@ impl PNode for PEnumDecl {
 #[derive(Clone, Debug)]
 pub(crate) struct PStructDecl {
     pub(crate) keyword: TokenData,
-    pub(crate) name_opt: Option<PName>,
     pub(crate) variant_opt: Option<PVariantDecl>,
     pub(crate) semi_opt: Option<TokenData>,
 }
 
 impl PNode for PStructDecl {
-    impl_node_seq! { keyword, name_opt, variant_opt, semi_opt }
+    impl_node_seq! { keyword, variant_opt, semi_opt }
 }
 
 #[derive(Clone, Debug)]

@@ -405,6 +405,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             }
         }
         PVariantDecl::Record(PRecordVariantDecl {
+            name: _,
             left_brace,
             fields,
             right_brace_opt,
@@ -644,16 +645,12 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
         }
         PDecl::Struct(PStructDecl {
             keyword,
-            name_opt,
             variant_opt,
             semi_opt,
         }) => {
-            if name_opt.is_none() {
-                vx.logger.error(keyword, "maybe missed a struct name?");
-            }
-
-            if let Some(variant) = variant_opt {
-                validate_variant(variant, vx);
+            match variant_opt {
+                Some(variant) => validate_variant(variant, vx),
+                None => vx.logger.error(keyword, "maybe missed struct name?"),
             }
 
             let ends_with_block = || variant_opt.iter().all(|variant| variant.ends_with_block());

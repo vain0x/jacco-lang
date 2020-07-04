@@ -173,6 +173,24 @@ fn parse_extern_fn_decl(px: &mut Px) -> PExternFnDecl {
     }
 }
 
+fn parse_const_variant_decl(name: PName, px: &mut Px) -> PConstVariantDecl {
+    let equal_opt = px.eat(TokenKind::Equal);
+    let value_opt = if equal_opt.is_some() {
+        parse_expr(px).map(Box::new)
+    } else {
+        None
+    };
+
+    let comma_opt = px.eat(TokenKind::Comma);
+    PConstVariantDecl {
+        name,
+        equal_opt,
+        value_opt,
+        comma_opt,
+        const_variant_id_opt: None,
+    }
+}
+
 fn parse_field_decl(px: &mut Px) -> PFieldDecl {
     let name = parse_name(px).unwrap();
 
@@ -219,12 +237,17 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
     fields
 }
 
-fn parse_record_variant_decl(px: &mut Px) -> PRecordVariantDecl {
-    let left_brace = px.expect(TokenKind::LeftBrace);
+fn parse_record_variant_decl(
+    name: PName,
+    left_brace: TokenData,
+    px: &mut Px,
+) -> PRecordVariantDecl {
     let fields = parse_field_decls(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
     let comma_opt = px.eat(TokenKind::Comma);
+
     PRecordVariantDecl {
+        name,
         left_brace,
         fields,
         right_brace_opt,
@@ -233,9 +256,14 @@ fn parse_record_variant_decl(px: &mut Px) -> PRecordVariantDecl {
 }
 
 fn parse_variant_decl(px: &mut Px) -> Option<PVariantDecl> {
+    let name = parse_name(px)?;
+
     let variant_decl = match px.next() {
-        TokenKind::LeftBrace => PVariantDecl::Record(parse_record_variant_decl(px)),
-        _ => return None,
+        TokenKind::LeftBrace => {
+            let left_brace = px.bump();
+            PVariantDecl::Record(parse_record_variant_decl(name, left_brace, px))
+        }
+        _ => PVariantDecl::Const(parse_const_variant_decl(name, px)),
     };
     Some(variant_decl)
 }
@@ -246,25 +274,10 @@ fn parse_variants(px: &mut Px) -> Vec<PVariantDecl> {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
-            TokenKind::Ident => {
-                let name = parse_name(px).unwrap();
-                let equal_opt = px.eat(TokenKind::Equal);
-                let value_opt = if equal_opt.is_some() {
-                    parse_expr(px).map(Box::new)
-                } else {
-                    None
-                };
-
-                let comma_opt = px.eat(TokenKind::Comma);
-                variants.push(PVariantDecl::Const(PConstVariantDecl {
-                    name,
-                    equal_opt,
-                    value_opt,
-                    comma_opt,
-                    const_variant_id_opt: None,
-                }));
-            }
-            _ => px.skip(),
+            _ => match parse_variant_decl(px) {
+                Some(variant_decl) => variants.push(variant_decl),
+                None => px.skip(),
+            },
         }
     }
 
@@ -301,13 +314,11 @@ fn parse_enum_decl(vis_opt: Option<PVis>, px: &mut Px) -> PEnumDecl {
 fn parse_struct_decl(px: &mut Px) -> PStructDecl {
     let keyword = px.expect(TokenKind::Struct);
 
-    let name_opt = parse_name(px);
     let variant_opt = parse_variant_decl(px);
     let semi_opt = px.eat(TokenKind::Semi);
 
     PStructDecl {
         keyword,
-        name_opt,
         variant_opt,
         semi_opt,
     }
