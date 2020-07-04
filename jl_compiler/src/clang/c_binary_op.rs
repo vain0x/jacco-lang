@@ -1,3 +1,4 @@
+#[derive(Copy, Clone)]
 pub(crate) enum CBinaryOp {
     Assign,
     AddAssign,

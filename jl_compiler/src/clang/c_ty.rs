@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub(crate) enum CTy {
     Other(&'static str),
     Void,

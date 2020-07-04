@@ -445,9 +445,17 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     init_opt: None,
                 });
 
+                let self_name = match k_struct.ty(&cx.outlines.structs) {
+                    KTy::Struct(_) => CExpr::Name(name.clone()),
+                    KTy::Enum(_) => {
+                        CExpr::Name(name.clone()).into_dot(unique_struct_name(k_struct, cx))
+                    }
+                    _ => unreachable!(),
+                };
+
                 let outlines = cx.outlines;
                 for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
-                    let left = CExpr::Name(name.clone()).into_dot(field.name(&outlines.fields));
+                    let left = self_name.clone().into_dot(field.name(&outlines.fields));
                     let right = gen_term(take(arg), cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
