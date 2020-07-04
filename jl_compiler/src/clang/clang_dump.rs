@@ -177,6 +177,34 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write!(dx, " else ")?;
             write_stmt(alt, dx)
         }
+        CStmt::Switch {
+            cond,
+            cases,
+            default_opt,
+        } => {
+            write!(dx, "switch (")?;
+            write_expr(cond, dx)?;
+            write!(dx, ") {{\n")?;
+
+            for (pat, body) in cases {
+                write_indent(dx)?;
+                write!(dx, "case ")?;
+                write_expr(pat, dx)?;
+                write!(dx, ": ")?;
+                write_block(body, dx)?;
+                write!(dx, "\n")?;
+
+                if let Some(body) = default_opt {
+                    write_indent(dx)?;
+                    write!(dx, "default: ")?;
+                    write_block(body, dx)?;
+                    write!(dx, "\n")?;
+                }
+            }
+
+            write_indent(dx)?;
+            write!(dx, "}}")
+        }
         CStmt::VarDecl {
             storage_modifier_opt,
             name,

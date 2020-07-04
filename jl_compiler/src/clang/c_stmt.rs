@@ -20,6 +20,12 @@ pub(crate) enum CStmt {
         body: Box<CStmt>,
         alt: Box<CStmt>,
     },
+    #[allow(unused)]
+    Switch {
+        cond: CExpr,
+        cases: Vec<(CExpr, CBlock)>,
+        default_opt: Option<CBlock>,
+    },
     VarDecl {
         storage_modifier_opt: Option<CStorageModifier>,
         name: String,
