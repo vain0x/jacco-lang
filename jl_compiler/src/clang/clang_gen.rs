@@ -541,11 +541,11 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [cond, pats @ ..] => {
                 let cond = gen_term(take(cond), cx);
 
-                let cases = vec![];
+                let mut cases = vec![];
                 let mut default_opt = None;
 
                 assert_eq!(pats.len(), conts.len());
-                for (pat, cont) in pats.iter().zip(conts) {
+                for (pat, cont) in pats.iter_mut().zip(conts) {
                     if let KTerm::Name(_) = pat {
                         // _ パターン
                         if default_opt.is_some() {
@@ -556,7 +556,9 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         default_opt = Some(body);
                     } else {
                         // 定数パターン
-                        unimplemented!()
+                        let pat = gen_term(take(pat), cx);
+                        let body = gen_node_as_block(take(cont), ty_env, cx);
+                        cases.push((pat, body));
                     }
                 }
 

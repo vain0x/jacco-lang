@@ -1,5 +1,7 @@
 /* never */ void abort();
 
+void print_str(unsigned char const* msg_1);
+
 void print_i32(int value_1);
 
 int main();
@@ -7,9 +9,14 @@ int main();
 int main() {
     // match_result_1 is killed.
     switch (42) {
+        case 42: {
+            // call_result_1 is killed.
+            print_str((unsigned char const*)"ok");
+            goto match_next_1;
+        }
         default: {
             int x_1 = 42;
-            // call_result_1 is killed.
+            // call_result_2 is killed.
             print_i32(x_1);
             goto match_next_1;
         }

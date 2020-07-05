@@ -985,7 +985,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 .chain(
                     arms.iter()
                         .map(|arm| match arm.name.info_opt.as_ref().unwrap() {
-                            NName::Const(_) => unimplemented!(),
+                            NName::Const(const_id) => KTerm::Const(KConst::new(*const_id)),
                             NName::LocalVar(_) => {
                                 let symbol = gen_name(arm.name.clone(), gx).expect_symbol();
                                 KTerm::Name(symbol)
@@ -1012,18 +1012,18 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             for arm in arms {
                 match arm.name.info_opt.as_ref().unwrap() {
-                    NName::Const(_) => unimplemented!(),
+                    NName::Const(_) => {}
                     NName::LocalVar(_) => {
                         let name = gen_name(arm.name.clone(), gx).expect_symbol();
                         gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
-
-                        let body = gen_expr(*arm.body_opt.unwrap(), gx);
-                        gx.push_jump(next_label, vec![body]);
                     }
                     _ => {
                         error!("unimplemented pat {:?}", arm);
                     }
                 }
+
+                let body = gen_expr(*arm.body_opt.unwrap(), gx);
+                gx.push_jump(next_label, vec![body]);
             }
 
             gx.push_label(next_label, vec![result.clone()]);
