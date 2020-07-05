@@ -454,6 +454,13 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 let self_name = match k_struct.ty(&cx.outlines.structs) {
                     KTy::Struct(_) => CExpr::Name(name.clone()),
                     KTy::Enum(_) => {
+                        // タグを設定
+                        // FIXME: バリアントに対応するタグの値を事前に決定しておく
+                        let left = CExpr::Name(name.clone()).into_dot("tag_");
+                        let right = CExpr::Other("/* tag */ 0");
+                        cx.stmts
+                            .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
+
                         CExpr::Name(name.clone()).into_dot(unique_struct_name(k_struct, cx))
                     }
                     _ => unreachable!(),

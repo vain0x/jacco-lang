@@ -20,10 +20,12 @@ int main();
 
 int main() {
     enum Response_1 Text_2;
+    Text_2.tag_ = /* tag */ 0;
     Text_2.Text_1.str = (unsigned char const*)"hello";
     Text_2.Text_1.len = 6ULL;
     enum Response_1 text_1 = Text_2;
     enum Response_1 Err_2;
+    Err_2.tag_ = /* tag */ 0;
     Err_2.Err_1.status_code = 403;
     enum Response_1 err_1 = Err_2;
     return 0;
