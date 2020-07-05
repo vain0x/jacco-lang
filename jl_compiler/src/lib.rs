@@ -168,6 +168,7 @@ mod parse {
     mod parse_context;
     mod parse_decl;
     mod parse_expr;
+    mod parse_pat;
     mod parse_tree;
     mod parse_ty;
 

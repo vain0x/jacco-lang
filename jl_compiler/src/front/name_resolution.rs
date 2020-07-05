@@ -204,6 +204,14 @@ fn resolve_qualified_name_def(
     }
 }
 
+fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
+    // alloc local
+    let local_var_id = nx.parent_local_vars.len();
+    nx.parent_local_vars.push(NLocalVarData);
+
+    resolve_name_def(name, NName::LocalVar(local_var_id), nx);
+}
+
 fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
     let name = &mut ty_name.0;
 
@@ -234,22 +242,20 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
     }
 }
 
-fn resolve_pat(name: &mut PName, nx: &mut Nx) {
-    match find_value_name(&name.full_name(), nx) {
-        Some(NName::Const(_)) => {
-            resolve_name_use(name, nx);
-        }
-        _ => {
-            // alloc local
-            let local_var_id = nx.parent_local_vars.len();
-            nx.parent_local_vars.push(NLocalVarData);
-
-            resolve_name_def(name, NName::LocalVar(local_var_id), nx);
-        }
+fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
+    match pat {
+        PPat::Name(name) => match find_value_name(&name.full_name(), nx) {
+            Some(NName::Const(_)) => {
+                resolve_name_use(name, nx);
+            }
+            _ => resolve_local_var_def(name, nx),
+        },
+        PPat::Record(PRecordPat { name, .. }) => resolve_name_use(name, nx),
     }
 }
 
-fn resolve_pat_opt(pat_opt: Option<&mut PName>, nx: &mut Nx) {
+#[allow(unused)]
+fn resolve_pat_opt(pat_opt: Option<&mut PPat>, nx: &mut Nx) {
     if let Some(pat) = pat_opt {
         resolve_pat(pat, nx);
     }
@@ -359,7 +365,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             for arm in arms {
                 nx.enter_scope(|nx| {
-                    resolve_pat(&mut arm.name, nx);
+                    resolve_pat(&mut arm.pat, nx);
                     resolve_expr_opt(arm.body_opt.as_deref_mut(), nx);
                 });
             }
@@ -401,7 +407,7 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
         .into_iter()
         .flat_map(|param_list| param_list.params.iter_mut());
     for param in params {
-        resolve_pat(&mut param.name, nx);
+        resolve_local_var_def(&mut param.name, nx);
         resolve_ty_opt(param.ty_opt.as_mut(), nx);
     }
 }
@@ -528,7 +534,10 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         }) => {
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
-            resolve_pat_opt(name_opt.as_mut(), nx)
+
+            if let Some(name) = name_opt.as_mut() {
+                resolve_local_var_def(name, nx);
+            }
         }
         PDecl::Const(PConstDecl {
             name_opt,

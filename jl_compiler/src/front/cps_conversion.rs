@@ -982,22 +982,22 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             let next_label = gx.fresh_label("match_next", location.clone());
 
             let args = once(k_cond.clone())
-                .chain(
-                    arms.iter()
-                        .map(|arm| match arm.name.info_opt.as_ref().unwrap() {
-                            NName::Const(const_id) => KTerm::Const(KConst::new(*const_id)),
-                            NName::LocalVar(_) => {
-                                let symbol = gen_name(arm.name.clone(), gx).expect_symbol();
-                                KTerm::Name(symbol)
+                .chain(arms.iter().map(|arm| match &arm.pat {
+                    PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
+                        NName::Const(const_id) => KTerm::Const(KConst::new(*const_id)),
+                        NName::LocalVar(_) => {
+                            let symbol = gen_name(name.clone(), gx).expect_symbol();
+                            KTerm::Name(symbol)
+                        }
+                        _ => {
+                            error!("unimplemented pat {:?}", arm);
+                            KTerm::Unit {
+                                location: arm.location().clone(),
                             }
-                            _ => {
-                                error!("unimplemented pat {:?}", arm);
-                                KTerm::Unit {
-                                    location: arm.location().clone(),
-                                }
-                            }
-                        }),
-                )
+                        }
+                    },
+                    PPat::Record(_) => todo!(),
+                }))
                 .collect();
             let cont_count = arms.len();
 
@@ -1011,15 +1011,16 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             });
 
             for arm in arms {
-                match arm.name.info_opt.as_ref().unwrap() {
-                    NName::Const(_) => {}
-                    NName::LocalVar(_) => {
-                        let name = gen_name(arm.name.clone(), gx).expect_symbol();
-                        gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
-                    }
-                    _ => {
-                        error!("unimplemented pat {:?}", arm);
-                    }
+                match arm.pat {
+                    PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
+                        NName::Const(_) => {}
+                        NName::LocalVar(_) => {
+                            let name = gen_name(name.clone(), gx).expect_symbol();
+                            gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
+                        }
+                        _ => error!("unimplemented pat {:?}", name),
+                    },
+                    PPat::Record(_) => todo!(),
                 }
 
                 let body = gen_expr(*arm.body_opt.unwrap(), gx);

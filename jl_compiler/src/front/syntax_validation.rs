@@ -94,6 +94,19 @@ fn validate_ty_opt(ty_opt: Option<&PTy>, vx: &Vx) {
     }
 }
 
+fn validate_pat(pat: &PPat, vx: &Vx) {
+    match pat {
+        PPat::Name(_) => {}
+        PPat::Record(PRecordPat {
+            left_brace,
+            right_brace_opt,
+            ..
+        }) => {
+            validate_brace_matching(left_brace, right_brace_opt.as_ref(), vx);
+        }
+    }
+}
+
 fn validate_cond(
     left_paren_opt: Option<&TokenData>,
     cond_opt: Option<&PExpr>,
@@ -319,6 +332,8 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             );
 
             for (i, arm) in arms.iter().enumerate() {
+                validate_pat(&arm.pat, vx);
+
                 match &arm.arrow_opt {
                     Some(arrow) => validate_expr_opt(
                         arm.body_opt.as_deref(),
@@ -326,7 +341,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                         vx,
                     ),
                     None => vx.logger.error(
-                        &arm.name.location().behind(),
+                        &arm.pat.location().behind(),
                         "maybe missed an => arrow here?",
                     ),
                 }

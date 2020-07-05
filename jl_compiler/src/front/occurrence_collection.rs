@@ -76,11 +76,15 @@ fn resolve_ty_opt(ty_opt: Option<&PTy>, cx: &mut Cx) {
     }
 }
 
-fn resolve_pat(name: &PName, cx: &mut Cx) {
-    resolve_name_def(name, cx);
+fn resolve_pat(pat: &PPat, cx: &mut Cx) {
+    match pat {
+        PPat::Name(name) => resolve_name_def(name, cx),
+        PPat::Record(PRecordPat { name, .. }) => resolve_name_def(name, cx),
+    }
 }
 
-fn resolve_pat_opt(pat_opt: Option<&PName>, cx: &mut Cx) {
+#[allow(unused)]
+fn resolve_pat_opt(pat_opt: Option<&PPat>, cx: &mut Cx) {
     if let Some(pat) = pat_opt {
         resolve_pat(pat, cx);
     }
@@ -172,7 +176,7 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
             resolve_expr_opt(cond_opt.as_deref(), cx);
 
             for arm in arms {
-                resolve_name_def(&arm.name, cx);
+                resolve_pat(&arm.pat, cx);
                 resolve_expr_opt(arm.body_opt.as_deref(), cx);
             }
         }
@@ -193,7 +197,7 @@ fn resolve_param_list_opt(param_list_opt: Option<&PParamList>, cx: &mut Cx) {
         .into_iter()
         .flat_map(|param_list| param_list.params.iter());
     for param in params {
-        resolve_pat(&param.name, cx);
+        resolve_name_def(&param.name, cx);
         resolve_ty_opt(param.ty_opt.as_ref(), cx);
     }
 }
@@ -236,7 +240,10 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
         }) => {
             resolve_ty_opt(ty_opt.as_ref(), cx);
             resolve_expr_opt(init_opt.as_ref(), cx);
-            resolve_pat_opt(name_opt.as_ref(), cx)
+
+            if let Some(name) = name_opt {
+                resolve_name_def(name, cx);
+            }
         }
         PDecl::Const(PConstDecl {
             name_opt,

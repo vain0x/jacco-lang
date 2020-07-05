@@ -1,6 +1,7 @@
 //! 式の構文解析ルール
 
 use super::*;
+use parse_pat::parse_pat;
 use parse_ty::parse_mut;
 use std::mem::replace;
 
@@ -467,13 +468,13 @@ fn parse_if_expr(px: &mut Px) -> PIfExpr {
 }
 
 fn parse_arm(px: &mut Px) -> Option<PArm> {
-    let name = parse_name(px)?;
+    let pat = parse_pat(px)?;
     let arrow_opt = px.eat(TokenKind::RightFatArrow);
     let body_opt = parse_expr(px).map(Box::new);
     let comma_opt = px.eat(TokenKind::Comma);
 
     Some(PArm {
-        name,
+        pat,
         arrow_opt,
         body_opt,
         comma_opt,

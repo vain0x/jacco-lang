@@ -140,6 +140,31 @@ impl PNode for PTy {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PRecordPat {
+    pub(crate) name: PName,
+    pub(crate) left_brace: TokenData,
+    // fields: Vec<PFieldPat>,
+    pub(crate) right_brace_opt: Option<TokenData>,
+}
+
+impl PNode for PRecordPat {
+    impl_node_seq! { name, left_brace, right_brace_opt }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum PPat {
+    Name(PName),
+    Record(PRecordPat),
+}
+
+impl PNode for PPat {
+    impl_node_choice! {
+        PPat::Name,
+        PPat::Record,
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PParam {
     pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
@@ -609,14 +634,14 @@ impl PNode for PIfExpr {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PArm {
-    pub(crate) name: PName,
+    pub(crate) pat: PPat,
     pub(crate) arrow_opt: Option<TokenData>,
     pub(crate) body_opt: Option<Box<PExpr>>,
     pub(crate) comma_opt: Option<TokenData>,
 }
 
 impl PNode for PArm {
-    impl_node_seq! { name, arrow_opt, body_opt, comma_opt }
+    impl_node_seq! { pat, arrow_opt, body_opt, comma_opt }
 }
 
 #[derive(Clone, Debug)]
