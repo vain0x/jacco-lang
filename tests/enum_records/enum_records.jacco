@@ -3,12 +3,18 @@ enum Response {
         str: *c8,
         len: usize,
     },
+    Err {
+        status_code: i32,
+    },
 }
 
 pub fn main() -> i32 {
     let text = Response::Text {
         str: "hello",
         len: 6_usize,
+    };
+    let err = Response::Err {
+        status_code: 403,
     };
     0
 }
