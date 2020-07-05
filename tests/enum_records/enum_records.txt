@@ -19,6 +19,7 @@ struct Response_1 {
 int main();
 
 int main() {
+    unsigned char const* match_result_1;
     enum Response_1 Text_2;
     Text_2.tag_ = /* tag */ 0;
     Text_2.Text_1.str = (unsigned char const*)"hello";
@@ -28,5 +29,18 @@ int main() {
     Err_2.tag_ = /* tag */ 0;
     Err_2.Err_1.status_code = 403;
     enum Response_1 err_1 = Err_2;
+    switch (err_1.tag_) {
+        case /* record tag Text */ 0: {
+            match_result_1 = (unsigned char const*)"text";
+            goto match_next_1;
+        }
+        case /* record tag Err */ 0: {
+            match_result_1 = (unsigned char const*)"err";
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    unsigned char const* tag_1 = match_result_1;
     return 0;
 }

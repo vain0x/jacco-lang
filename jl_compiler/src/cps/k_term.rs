@@ -18,6 +18,7 @@ pub(crate) enum KTerm {
     Label(KLabel),
     Return(KFn),
     ExternFn(KExternFn),
+    RecordTag(KStruct),
     FieldTag(KFieldTag),
 }
 
@@ -42,6 +43,9 @@ impl KTerm {
             KTerm::Label(label) => label.ty(labels),
             KTerm::Return(k_fn) => k_fn.return_ty(&outlines.fns),
             KTerm::ExternFn(extern_fn) => extern_fn.ty(&outlines.extern_fns),
+            KTerm::RecordTag(k_struct) => {
+                k_struct.tag_ty(&outlines.structs, &outlines.enums).clone()
+            }
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
                 KTy::Unresolved
@@ -97,6 +101,10 @@ impl Debug for KTerm {
             KTerm::ExternFn(extern_fn) => {
                 // FIXME: name
                 write!(f, "extern_fn#{}", extern_fn.id())
+            }
+            KTerm::RecordTag(k_struct) => {
+                // FIXME: name
+                write!(f, "struct_tag#{}", k_struct.id())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
         }

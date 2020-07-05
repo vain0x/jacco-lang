@@ -1,4 +1,4 @@
-use super::{KField, KTy};
+use super::{KEnumOutline, KField, KTy};
 use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,6 +21,17 @@ impl KStruct {
 
     pub(crate) fn ty(self, structs: &[KStructOutline]) -> &KTy {
         &structs[self.id].ty
+    }
+
+    pub(crate) fn tag_ty<'a>(
+        self,
+        structs: &[KStructOutline],
+        enums: &'a [KEnumOutline],
+    ) -> &'a KTy {
+        match structs[self.id].ty {
+            KTy::Enum(k_enum) => k_enum.tag_ty(enums),
+            _ => &KTy::Unit,
+        }
     }
 
     pub(crate) fn fields(self, structs: &[KStructOutline]) -> &[KField] {

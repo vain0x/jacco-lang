@@ -16,5 +16,11 @@ pub fn main() -> i32 {
     let err = Response::Err {
         status_code: 403,
     };
+
+    let tag = match (err) {
+        Response::Text { .. } => "text",
+        Response::Err { .. } => "err",
+    };
+
     0
 }

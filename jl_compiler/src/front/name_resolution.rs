@@ -66,6 +66,15 @@ pub(crate) enum NName {
     C8,
 }
 
+impl NName {
+    pub(crate) fn as_struct(self) -> Option<usize> {
+        match self {
+            NName::Struct(struct_id) => Some(struct_id),
+            _ => None,
+        }
+    }
+}
+
 impl Default for NName {
     fn default() -> Self {
         NName::Unresolved

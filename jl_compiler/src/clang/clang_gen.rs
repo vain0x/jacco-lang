@@ -278,6 +278,13 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
+        KTerm::RecordTag(k_struct) => {
+            // FIXME: レコードのタグの値を決めておく
+            CExpr::IntLit(format!(
+                "/* record tag {} */ 0",
+                k_struct.name(&cx.outlines.structs)
+            ))
+        }
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("/* error */ 0".to_string())
@@ -546,7 +553,15 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Switch => match args.as_mut_slice() {
             [cond, pats @ ..] => {
-                let cond = gen_term(take(cond), cx);
+                // FIXME: label_sigs
+                let is_tagged_union = ty_env
+                    .as_enum(&cond.ty(&cx.outlines, &[], &cx.locals))
+                    .map_or(false, |k_enum| k_enum.is_tagged_union(&cx.outlines.enums));
+
+                let mut cond = gen_term(take(cond), cx);
+                if is_tagged_union {
+                    cond = cond.into_dot("tag_");
+                }
 
                 let mut cases = vec![];
                 let mut default_opt = None;

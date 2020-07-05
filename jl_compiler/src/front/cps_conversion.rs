@@ -996,7 +996,15 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                             }
                         }
                     },
-                    PPat::Record(_) => todo!(),
+                    PPat::Record(PRecordPat { name, .. }) => {
+                        let k_struct = name
+                            .info_opt
+                            .unwrap()
+                            .as_struct()
+                            .map(KStruct::new)
+                            .unwrap();
+                        KTerm::RecordTag(k_struct)
+                    }
                 }))
                 .collect();
             let cont_count = arms.len();
@@ -1020,7 +1028,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                         }
                         _ => error!("unimplemented pat {:?}", name),
                     },
-                    PPat::Record(_) => todo!(),
+                    PPat::Record(_) => {}
                 }
 
                 let body = gen_expr(*arm.body_opt.unwrap(), gx);

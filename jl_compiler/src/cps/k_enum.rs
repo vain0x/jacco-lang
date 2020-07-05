@@ -53,6 +53,10 @@ impl KEnum {
         &enums[self.id].repr
     }
 
+    pub(crate) fn is_tagged_union(self, enums: &[KEnumOutline]) -> bool {
+        self.repr(enums).is_tagged_union()
+    }
+
     pub(crate) fn tag_ty(self, enums: &[KEnumOutline]) -> &KTy {
         match self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
@@ -86,6 +90,13 @@ impl KEnumRepr {
                 value_ty: KTy::Usize,
             },
             _ => KEnumRepr::Sum { tag_ty: KTy::Usize },
+        }
+    }
+
+    pub(crate) fn is_tagged_union(&self) -> bool {
+        match self {
+            KEnumRepr::Sum { .. } => true,
+            _ => false,
         }
     }
 }

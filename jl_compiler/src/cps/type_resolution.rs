@@ -198,6 +198,9 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines.extern_fns),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
+        KTerm::RecordTag(k_struct) => k_struct
+            .tag_ty(&tx.outlines.structs, &tx.outlines.enums)
+            .clone(),
         KTerm::FieldTag(_) => unreachable!(),
     }
 }
