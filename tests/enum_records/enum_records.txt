@@ -19,7 +19,7 @@ struct Response_1 {
 int main();
 
 int main() {
-    unsigned char const* match_result_1;
+    int match_result_1;
     enum Response_1 Text_2;
     Text_2.tag_ = 0ULL;
     Text_2.Text_1.str = (unsigned char const*)"hello";
@@ -31,16 +31,20 @@ int main() {
     enum Response_1 err_1 = Err_2;
     switch (err_1.tag_) {
         case 0ULL: {
-            match_result_1 = (unsigned char const*)"text";
+            match_result_1 = 200;
             goto match_next_1;
         }
         case 1ULL: {
-            match_result_1 = (unsigned char const*)"err";
+            enum Response_1 const* ref_1 = &err_1;
+            struct Err_1 const* Err_ptr_1 = &ref_1->Err;
+            int const* status_code_ptr_1 = &Err_ptr_1->status_code;
+            int status_code_1 = *status_code_ptr_1;
+            match_result_1 = status_code_1;
             goto match_next_1;
         }
     }
 
 match_next_1:;
-    unsigned char const* tag_1 = match_result_1;
+    int status_code_2 = match_result_1;
     return 0;
 }

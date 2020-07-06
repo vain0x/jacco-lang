@@ -24,6 +24,22 @@ impl KVariant {
         self.as_const()
             .map_or(false, |k_const| k_const.is_zero(consts))
     }
+
+    pub(crate) fn as_record(self) -> Option<KStruct> {
+        match self {
+            KVariant::Record(k_struct) => Some(k_struct),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_record_with_name(
+        self,
+        name: &str,
+        structs: &[KStructOutline],
+    ) -> Option<KStruct> {
+        self.as_record()
+            .filter(|&k_struct| k_struct.name(structs) == name)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,6 +103,7 @@ impl KEnumRepr {
             [] => KEnumRepr::Never,
             [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
+                // FIXME: 値を見て決定する
                 value_ty: KTy::Usize,
             },
             _ => {
@@ -139,6 +156,7 @@ impl KEnumOutline {
     ) {
         for enum_data in enums {
             if !enum_data.repr.is_tagged_union() {
+                // FIXME: const バリアントの未指定の値を埋める処理をここに移動する？
                 continue;
             }
 

@@ -1,6 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
+use k_ty_env::KEnumOrStruct;
 use std::mem::{swap, take};
 
 /// Typing context.
@@ -296,12 +297,22 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty = (|| {
                     let (_, ty) = tx.ty_env.as_ptr(&left_ty)?;
-                    let k_struct = ty.as_struct()?;
-                    k_struct
-                        .fields(&tx.outlines.structs)
-                        .iter()
-                        .find(|field| field.name(&tx.outlines.fields) == *field_name)
-                        .map(|field| field.ty(&tx.outlines.fields).clone().into_ptr(KMut::Const))
+                    let ty = match tx.ty_env.as_struct_or_enum(&ty)? {
+                        KEnumOrStruct::Enum(k_enum) => k_enum
+                            .variants(&tx.outlines.enums)
+                            .iter()
+                            .find_map(|k_variant| {
+                            k_variant
+                                .as_record_with_name(&field_name, &tx.outlines.structs)
+                                .map(KTy::Struct)
+                        })?,
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.outlines.structs)
+                            .iter()
+                            .find(|field| field.name(&tx.outlines.fields) == *field_name)
+                            .map(|field| field.ty(&tx.outlines.fields).clone())?,
+                    };
+                    Some(ty.into_ptr(KMut::Const))
                 })()
                 .unwrap_or_else(|| {
                     tx.logger.error(location, "bad type");
@@ -329,12 +340,22 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                             .error(&left.location(tx.outlines), "unexpected const reference");
                     }
 
-                    let k_struct = ty.as_struct()?;
-                    k_struct
-                        .fields(&tx.outlines.structs)
-                        .iter()
-                        .find(|field| field.name(&tx.outlines.fields) == *field_name)
-                        .map(|field| field.ty(&tx.outlines.fields).clone().into_ptr(k_mut))
+                    let ty = match tx.ty_env.as_struct_or_enum(&ty)? {
+                        KEnumOrStruct::Enum(k_enum) => k_enum
+                            .variants(&tx.outlines.enums)
+                            .iter()
+                            .find_map(|k_variant| {
+                            k_variant
+                                .as_record_with_name(&field_name, &tx.outlines.structs)
+                                .map(KTy::Struct)
+                        })?,
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.outlines.structs)
+                            .iter()
+                            .find(|field| field.name(&tx.outlines.fields) == *field_name)
+                            .map(|field| field.ty(&tx.outlines.fields).clone())?,
+                    };
+                    Some(ty.into_ptr(k_mut))
                 })()
                 .unwrap_or_else(|| {
                     tx.logger.error(location, "bad type");

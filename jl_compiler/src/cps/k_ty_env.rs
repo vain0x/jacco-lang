@@ -1,6 +1,11 @@
-use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStructOutline, KTy};
+use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStruct, KStructOutline, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
+
+pub(crate) enum KEnumOrStruct {
+    Enum(KEnum),
+    Struct(KStruct),
+}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KTyEnv {
@@ -80,15 +85,20 @@ impl KTyEnv {
         }
     }
 
+    pub(crate) fn as_struct_or_enum(&self, ty: &KTy) -> Option<KEnumOrStruct> {
+        let enum_or_struct = match ty {
+            KTy::Enum(k_enum) => KEnumOrStruct::Enum(*k_enum),
+            KTy::Struct(k_struct) => KEnumOrStruct::Struct(*k_struct),
+            KTy::Meta(meta_ty) => {
+                return self.as_struct_or_enum(&meta_ty.try_unwrap(self)?.borrow());
+            }
+            _ => return None,
+        };
+        Some(enum_or_struct)
+    }
+
     pub(crate) fn is_struct_or_enum(&self, ty: &KTy) -> bool {
-        match ty {
-            KTy::Enum(_) | KTy::Struct(_) => true,
-            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_struct_or_enum(&ty.borrow().clone()),
-                None => false,
-            },
-            _ => false,
-        }
+        self.as_struct_or_enum(ty).is_some()
     }
 
     pub(crate) fn display(
