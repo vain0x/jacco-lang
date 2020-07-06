@@ -195,6 +195,7 @@ fn gen_record_tag(k_struct: KStruct, structs: &[KStructOutline]) -> CExpr {
 }
 
 fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
+    // FIXME: 整数型は std::int32_t とかの方がよいかも
     match ty {
         KTy::Unresolved => {
             error!("Unexpected unresolved type {:?}", ty);
@@ -220,13 +221,16 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* fn */ void")
         }
         KTy::Unit => CTy::Void,
+        KTy::I8 => CTy::SignedChar,
+        KTy::I16 => CTy::Short,
         KTy::I32 | KTy::Bool => CTy::Int,
-        KTy::I64 => CTy::LongLong,
-        KTy::Usize => CTy::UnsignedLongLong,
+        KTy::I64 | KTy::Isize => CTy::LongLong,
+        KTy::U8 | KTy::C8 => CTy::UnsignedChar,
+        KTy::U16 | KTy::C16 => CTy::UnsignedShort,
+        KTy::U32 | KTy::C32 => CTy::UnsignedInt,
+        KTy::U64 | KTy::Usize => CTy::UnsignedLongLong,
+        KTy::F32 => CTy::Float,
         KTy::F64 => CTy::Double,
-        KTy::C8 => CTy::UnsignedChar,
-        KTy::C16 => CTy::UnsignedShort,
-        KTy::C32 => CTy::UnsignedInt,
         KTy::Ptr { k_mut, ty } => {
             let mut ty = gen_ty(*ty, ty_env, cx);
             if let KMut::Const = k_mut {
@@ -256,12 +260,20 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             // FIXME: error!
             CExpr::IntLit("(void)0".to_string())
         }
-        KTerm::Int(token, KTy::I64) => {
-            CExpr::LongLongLit(token.into_text().replace("_", "").replace("i64", ""))
-        }
-        KTerm::Int(token, KTy::Usize) => {
-            CExpr::UnsignedLongLongLit(token.into_text().replace("_", "").replace("usize", ""))
-        }
+        KTerm::Int(token, KTy::I64) | KTerm::Int(token, KTy::Isize) => CExpr::LongLongLit(
+            token
+                .into_text()
+                .replace("_", "")
+                .replace("i64", "")
+                .replace("isize", ""),
+        ),
+        KTerm::Int(token, KTy::U64) | KTerm::Int(token, KTy::Usize) => CExpr::UnsignedLongLongLit(
+            token
+                .into_text()
+                .replace("_", "")
+                .replace("u64", "")
+                .replace("usize", ""),
+        ),
         KTerm::Int(token, _) => {
             CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))
         }

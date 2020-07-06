@@ -245,9 +245,17 @@ fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
     let n_name = take(&mut name.info_opt).unwrap();
 
     match n_name {
+        NName::I8 => KTy::I8,
+        NName::I16 => KTy::I16,
         NName::I32 => KTy::I32,
         NName::I64 => KTy::I64,
+        NName::Isize => KTy::Isize,
+        NName::U8 => KTy::U8,
+        NName::U16 => KTy::U16,
+        NName::U32 => KTy::U32,
+        NName::U64 => KTy::U64,
         NName::Usize => KTy::Usize,
+        NName::F32 => KTy::F32,
         NName::F64 => KTy::F64,
         NName::C8 => KTy::C8,
         NName::C16 => KTy::C16,
@@ -314,9 +322,17 @@ fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
                 location,
             }
         }
-        NName::I32
+        NName::I8
+        | NName::I16
+        | NName::I32
         | NName::I64
+        | NName::Isize
+        | NName::U8
+        | NName::U16
+        | NName::U32
+        | NName::U64
         | NName::Usize
+        | NName::F32
         | NName::F64
         | NName::C8
         | NName::C16

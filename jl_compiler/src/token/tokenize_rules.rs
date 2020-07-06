@@ -87,16 +87,8 @@ fn tokenize_number(tx: &mut Tx) {
         }
     }
 
-    match tx.next() {
-        'i' => {
-            if !tx.eat("i32") {
-                tx.eat("i64");
-            }
-        }
-        'u' => {
-            tx.eat("usize");
-        }
-        _ => {}
+    while tx.next().is_ascii_alphanumeric() {
+        tx.bump();
     }
 
     tx.commit(kind);

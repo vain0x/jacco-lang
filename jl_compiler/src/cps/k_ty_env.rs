@@ -118,9 +118,17 @@ impl KTyEnv {
             KTy::Unresolved => "{unresolved}".to_string(),
             KTy::Never
             | KTy::Unit
+            | KTy::I8
+            | KTy::I16
             | KTy::I32
             | KTy::I64
+            | KTy::Isize
+            | KTy::U8
+            | KTy::U16
+            | KTy::U32
+            | KTy::U64
             | KTy::Usize
+            | KTy::F32
             | KTy::F64
             | KTy::C8
             | KTy::C16

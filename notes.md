@@ -152,6 +152,8 @@ endif(x):
 
 ## 関連記事
 
+読み物系:
+
 - [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook)
 - [Next Few Years#Language Design for Locality](https://rust-analyzer.github.io/blog/2020/05/18/next-few-years.html#language-design-for-locality)
     > There’s a very important language property that an IDE can leverage to massively improve performance:
@@ -161,3 +163,9 @@ endif(x):
     - なぜ Sorbet (Ruby の型検査器) の型検査が速いか
 - [Reflections on software performance - Made of Bugs](https://blog.nelhage.com/post/reflections-on-performance/)
     - ソフトウェアが速いと何が嬉しいか
+
+資料系:
+
+- [C language - cppreference.com](https://en.cppreference.com/w/c/language)
+- [C++ language - cppreference.com](https://en.cppreference.com/w/cpp/language)
+- [cpprefjp - C++日本語リファレンス](https://cpprefjp.github.io/)

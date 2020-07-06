@@ -62,12 +62,15 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match ty {
         CTy::Other(text) => write!(dx, "{}", text),
         CTy::Void => write!(dx, "void"),
+        CTy::SignedChar => write!(dx, "char"),
         CTy::UnsignedChar => write!(dx, "unsigned char"),
+        CTy::Short => write!(dx, "short"),
         CTy::UnsignedShort => write!(dx, "unsigned short"),
         CTy::Int => write!(dx, "int"),
         CTy::UnsignedInt => write!(dx, "unsigned int"),
         CTy::LongLong => write!(dx, "long long"),
         CTy::UnsignedLongLong => write!(dx, "unsigned long long"),
+        CTy::Float => write!(dx, "float"),
         CTy::Double => write!(dx, "double"),
         CTy::Const { ty } => {
             write_ty(ty, dx)?;

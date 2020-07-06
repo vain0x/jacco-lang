@@ -2,12 +2,15 @@
 pub(crate) enum CTy {
     Other(&'static str),
     Void,
+    SignedChar,
     UnsignedChar,
+    Short,
     UnsignedShort,
     Int,
     UnsignedInt,
     LongLong,
     UnsignedLongLong,
+    Float,
     Double,
     Ptr {
         ty: Box<CTy>,

@@ -8,5 +8,22 @@ int main() {
     long long cast_64_1 = cast_1;
     long long mul_1 = n64_1 * cast_64_1;
     long long mul_64_1 = mul_1;
+    char cast_2 = (char)100;
+    char minus_1 = -cast_2;
+    char signed_8bit_1 = minus_1;
+    short cast_3 = (short)3000;
+    short minus_2 = -cast_3;
+    short signed_16bit_1 = minus_2;
+    long long cast_4 = (long long)1;
+    long long minus_3 = -cast_4;
+    long long signed_ptr_size_1 = minus_3;
+    unsigned char cast_5 = (unsigned char)255;
+    unsigned char unsigned_8bit_1 = cast_5;
+    unsigned short cast_6 = (unsigned short)65535;
+    unsigned short unsigned_16bit_1 = cast_6;
+    unsigned int cast_7 = (unsigned int)4200000000ULL;
+    unsigned int unsigned_32bit_1 = cast_7;
+    unsigned long long cast_8 = (unsigned long long)18000000000000000000ULL;
+    unsigned long long unsigned_64bit_1 = cast_8;
     return 0;
 }

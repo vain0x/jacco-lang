@@ -57,9 +57,17 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         }
 
         (KTy::Unit, KTy::Unit)
+        | (KTy::I8, KTy::I8)
+        | (KTy::I16, KTy::I16)
         | (KTy::I32, KTy::I32)
         | (KTy::I64, KTy::I64)
+        | (KTy::Isize, KTy::Isize)
+        | (KTy::U8, KTy::U8)
+        | (KTy::U16, KTy::U16)
+        | (KTy::U32, KTy::U32)
+        | (KTy::U64, KTy::U64)
         | (KTy::Usize, KTy::Usize)
+        | (KTy::F32, KTy::F32)
         | (KTy::F64, KTy::F64)
         | (KTy::C8, KTy::C8)
         | (KTy::C16, KTy::C16)
@@ -113,9 +121,17 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         (KTy::Struct(left), KTy::Struct(right)) if left == right => {}
 
         (KTy::Unit, _)
+        | (KTy::I8, _)
+        | (KTy::I16, _)
         | (KTy::I32, _)
         | (KTy::I64, _)
+        | (KTy::Isize, _)
+        | (KTy::U8, _)
+        | (KTy::U16, _)
+        | (KTy::U32, _)
+        | (KTy::U64, _)
         | (KTy::Usize, _)
+        | (KTy::F32, _)
         | (KTy::F64, _)
         | (KTy::C8, _)
         | (KTy::C16, _)
@@ -179,6 +195,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
     match term {
         KTerm::Unit { .. } => KTy::Unit,
         KTerm::Int(token, ty) => {
+            // FIXME: i8 などに対応
             if ty.is_unresolved() {
                 if token.text().ends_with("i64") {
                     *ty = KTy::I64;
