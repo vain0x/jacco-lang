@@ -62,10 +62,12 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match ty {
         CTy::Other(text) => write!(dx, "{}", text),
         CTy::Void => write!(dx, "void"),
+        CTy::UnsignedChar => write!(dx, "unsigned char"),
+        CTy::UnsignedShort => write!(dx, "unsigned short"),
         CTy::Int => write!(dx, "int"),
+        CTy::UnsignedInt => write!(dx, "unsigned int"),
         CTy::LongLong => write!(dx, "long long"),
         CTy::UnsignedLongLong => write!(dx, "unsigned long long"),
-        CTy::UnsignedChar => write!(dx, "unsigned char"),
         CTy::Double => write!(dx, "double"),
         CTy::Const { ty } => {
             write_ty(ty, dx)?;
@@ -107,7 +109,11 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CExpr::LongLongLit(value) => write!(dx, "{}LL", value),
         CExpr::UnsignedLongLongLit(value) => write!(dx, "{}ULL", value),
         CExpr::DoubleLit(value) => write!(dx, "{}", value),
-        CExpr::CharLit(value) => write!(dx, "{}", value),
+        CExpr::CharLit(value) => {
+            // FIXME: 文字リテラルを使ったほうがよいかも
+            // <https://en.cppreference.com/w/c/language/character_constant>
+            write!(dx, "{}", value)
+        }
         CExpr::StrLit(value) => write!(dx, "{}", value),
         CExpr::Name(name) => write!(dx, "{}", name),
         CExpr::Dot { left, field } => {

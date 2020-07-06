@@ -250,6 +250,8 @@ fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
         NName::Usize => KTy::Usize,
         NName::F64 => KTy::F64,
         NName::C8 => KTy::C8,
+        NName::C16 => KTy::C16,
+        NName::C32 => KTy::C32,
         NName::Bool => KTy::Bool,
         NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
         NName::Struct(struct_id) => KTy::Struct(KStruct::new(struct_id)),
@@ -317,6 +319,8 @@ fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
         | NName::Usize
         | NName::F64
         | NName::C8
+        | NName::C16
+        | NName::C32
         | NName::Bool
         | NName::Enum(_)
         | NName::Struct(_) => {

@@ -62,6 +62,8 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::Usize, KTy::Usize)
         | (KTy::F64, KTy::F64)
         | (KTy::C8, KTy::C8)
+        | (KTy::C16, KTy::C16)
+        | (KTy::C32, KTy::C32)
         | (KTy::Bool, KTy::Bool) => {}
 
         (
@@ -116,6 +118,8 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
         | (KTy::Usize, _)
         | (KTy::F64, _)
         | (KTy::C8, _)
+        | (KTy::C16, _)
+        | (KTy::C32, _)
         | (KTy::Bool, _)
         | (KTy::Ptr { .. }, _)
         | (KTy::Fn { .. }, _)

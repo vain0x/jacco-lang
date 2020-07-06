@@ -225,6 +225,8 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::Usize => CTy::UnsignedLongLong,
         KTy::F64 => CTy::Double,
         KTy::C8 => CTy::UnsignedChar,
+        KTy::C16 => CTy::UnsignedShort,
+        KTy::C32 => CTy::UnsignedInt,
         KTy::Ptr { k_mut, ty } => {
             let mut ty = gen_ty(*ty, ty_env, cx);
             if let KMut::Const = k_mut {

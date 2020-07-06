@@ -123,6 +123,8 @@ impl KTyEnv {
             | KTy::Usize
             | KTy::F64
             | KTy::C8
+            | KTy::C16
+            | KTy::C32
             | KTy::Bool => format!("{:?}", ty),
             KTy::Ptr { k_mut, ty } => format!(
                 "*{}{}",

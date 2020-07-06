@@ -15,5 +15,8 @@ pub fn main() -> i32 {
     putc('d');
     putc('!');
     putc('\n');
+
+    let hiragana_a = 'あ' as c16;
+    let cat_emoji = '😺' as c32;
     0
 }

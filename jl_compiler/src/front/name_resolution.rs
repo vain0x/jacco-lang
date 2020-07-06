@@ -64,6 +64,8 @@ pub(crate) enum NName {
     Usize,
     F64,
     C8,
+    C16,
+    C32,
 }
 
 impl NName {
@@ -163,6 +165,8 @@ fn parse_known_ty_name(s: &str) -> Option<NName> {
         "usize" => NName::Usize,
         "f64" => NName::F64,
         "c8" => NName::C8,
+        "c16" => NName::C16,
+        "c32" => NName::C32,
         "bool" => NName::Bool,
         _ => return None,
     };

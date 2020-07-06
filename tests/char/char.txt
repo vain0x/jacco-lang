@@ -31,5 +31,9 @@ int main() {
     putc('!');
     // call_result_e is killed.
     putc('\n');
+    unsigned short cast_1 = (unsigned short)'あ';
+    unsigned short hiragana_a_1 = cast_1;
+    unsigned int cast_2 = (unsigned int)'😺';
+    unsigned int cat_emoji_1 = cast_2;
     return 0;
 }

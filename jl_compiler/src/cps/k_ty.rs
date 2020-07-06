@@ -11,8 +11,12 @@ pub(crate) enum KTy {
     I64,
     Usize,
     F64,
-    /// Code unit of UTF-8 (unsigned 8-bit integer)
+    /// UTF-8 のコードユニット。(符号なし8ビット整数。C++ の `char8_t`)
     C8,
+    /// UTF-16 のコードユニット
+    C16,
+    /// Unicode scalar value. (Rust の `char`)
+    C32,
     Bool,
     Ptr {
         k_mut: KMut,
@@ -43,9 +47,15 @@ impl KTy {
 
     pub(crate) fn is_primitive(&self) -> bool {
         match self {
-            KTy::I32 | KTy::I64 | KTy::Usize | KTy::F64 | KTy::C8 | KTy::Bool | KTy::Ptr { .. } => {
-                true
-            }
+            KTy::I32
+            | KTy::I64
+            | KTy::Usize
+            | KTy::F64
+            | KTy::C8
+            | KTy::C16
+            | KTy::C32
+            | KTy::Bool
+            | KTy::Ptr { .. } => true,
             _ => false,
         }
     }
@@ -84,6 +94,8 @@ impl Debug for KTy {
             KTy::Usize => write!(f, "usize"),
             KTy::F64 => write!(f, "f64"),
             KTy::C8 => write!(f, "c8"),
+            KTy::C16 => write!(f, "c16"),
+            KTy::C32 => write!(f, "c32"),
             KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;
                 if let KMut::Mut = k_mut {
