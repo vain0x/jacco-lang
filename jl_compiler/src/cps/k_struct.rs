@@ -1,4 +1,4 @@
-use super::{KEnumOutline, KField, KTy};
+use super::{KEnum, KEnumOutline, KField, KTy};
 use crate::token::Location;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,8 +19,11 @@ impl KStruct {
         &structs[self.id].name
     }
 
-    pub(crate) fn ty(self, structs: &[KStructOutline]) -> &KTy {
-        &structs[self.id].ty
+    pub(crate) fn ty(self, structs: &[KStructOutline]) -> KTy {
+        match structs[self.id].parent_enum_opt {
+            Some(k_enum) => KTy::Enum(k_enum),
+            None => KTy::Struct(self),
+        }
     }
 
     pub(crate) fn tag_ty<'a>(
@@ -28,9 +31,9 @@ impl KStruct {
         structs: &[KStructOutline],
         enums: &'a [KEnumOutline],
     ) -> &'a KTy {
-        match structs[self.id].ty {
-            KTy::Enum(k_enum) => k_enum.tag_ty(enums),
-            _ => &KTy::Unit,
+        match structs[self.id].parent_enum_opt {
+            Some(k_enum) => k_enum.tag_ty(enums),
+            None => &KTy::Unit,
         }
     }
 
@@ -42,9 +45,8 @@ impl KStruct {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
-    /// 構造体の型、またはレコードバリアントが所属する enum の型
-    pub(crate) ty: KTy,
     pub(crate) fields: Vec<KField>,
+    pub(crate) parent_enum_opt: Option<KEnum>,
     pub(crate) location: Location,
 }
 

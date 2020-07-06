@@ -440,7 +440,7 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
 
 fn gen_const_variant(
     decl: PConstVariantDecl,
-    enum_ty_opt: Option<KTy>,
+    parent_enum_opt: Option<KEnum>,
     value_slot: &mut usize,
     gx: &mut Gx,
 ) -> KConst {
@@ -469,13 +469,17 @@ fn gen_const_variant(
 
     gx.outlines.consts[k_const.id()] = KConstData {
         name,
-        ty: enum_ty_opt.unwrap_or(KTy::Usize),
+        ty: parent_enum_opt.map_or(KTy::Usize, KTy::Enum),
         value_opt: Some(KConstValue::Usize(*value_slot)),
     };
     k_const
 }
 
-fn gen_record_variant(decl: PRecordVariantDecl, enum_ty_opt: Option<KTy>, gx: &mut Gx) -> KStruct {
+fn gen_record_variant(
+    decl: PRecordVariantDecl,
+    parent_enum_opt: Option<KEnum>,
+    gx: &mut Gx,
+) -> KStruct {
     let PRecordVariantDecl {
         mut name, fields, ..
     } = decl;
@@ -504,7 +508,7 @@ fn gen_record_variant(decl: PRecordVariantDecl, enum_ty_opt: Option<KTy>, gx: &m
 
     gx.outlines.structs[k_struct.id()] = KStructOutline {
         name,
-        ty: enum_ty_opt.unwrap_or(KTy::Struct(k_struct)),
+        parent_enum_opt,
         fields,
         location,
     };
@@ -513,15 +517,17 @@ fn gen_record_variant(decl: PRecordVariantDecl, enum_ty_opt: Option<KTy>, gx: &m
 
 fn gen_variant(
     decl: PVariantDecl,
-    enum_ty_opt: Option<KTy>,
+    parent_enum_opt: Option<KEnum>,
     value_slot: &mut usize,
     gx: &mut Gx,
 ) -> KVariant {
     match decl {
         PVariantDecl::Const(decl) => {
-            KVariant::Const(gen_const_variant(decl, enum_ty_opt, value_slot, gx))
+            KVariant::Const(gen_const_variant(decl, parent_enum_opt, value_slot, gx))
         }
-        PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, enum_ty_opt, gx)),
+        PVariantDecl::Record(decl) => {
+            KVariant::Record(gen_record_variant(decl, parent_enum_opt, gx))
+        }
     }
 }
 
@@ -1351,8 +1357,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             let k_variants = variants
                 .into_iter()
                 .map(|variant_decl| {
-                    let k_variant =
-                        gen_variant(variant_decl, Some(KTy::Enum(k_enum)), &mut next_value, gx);
+                    let k_variant = gen_variant(variant_decl, Some(k_enum), &mut next_value, gx);
                     next_value += 1;
                     k_variant
                 })
