@@ -14,6 +14,12 @@ impl KStructParent {
             tag_opt: None,
         }
     }
+
+    pub(crate) fn set_tag(&mut self, tag: KConstValue) {
+        let old_value = self.tag_opt.replace(tag);
+
+        assert_eq!(old_value, None);
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,6 +56,10 @@ impl KStruct {
             Some(parent) => parent.k_enum.tag_ty(enums),
             None => &KTy::Unit,
         }
+    }
+
+    pub(crate) fn tag_value_opt<'a>(self, structs: &[KStructOutline]) -> Option<KConstValue> {
+        structs[self.id].parent_opt.as_ref()?.tag_opt.clone()
     }
 
     pub(crate) fn fields(self, structs: &[KStructOutline]) -> &[KField] {

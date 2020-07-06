@@ -462,7 +462,10 @@ fn gen_const_variant(
     if let Some(value) = value_opt {
         let location = value.location();
         match gen_constant(*value, gx) {
-            Some(value) => *value_slot = value.cast_as_usize(),
+            Some(value) => {
+                // FIXME: 値を設定できるのはすべてのバリアントが const なときだけ
+                *value_slot = value.cast_as_usize()
+            }
             None => gx.logger.error(&location, "invalid constant expression"),
         }
     }

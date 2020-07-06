@@ -188,6 +188,12 @@ fn gen_invalid_constant_value() -> CExpr {
     CExpr::IntLit("/* invalid const */ 0".to_string())
 }
 
+fn gen_record_tag(k_struct: KStruct, structs: &[KStructOutline]) -> CExpr {
+    // OK: タグ値は決定済みのはず
+    let tag = k_struct.tag_value_opt(structs).unwrap();
+    gen_constant_value(&tag)
+}
+
 fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     match ty {
         KTy::Unresolved => {
@@ -278,13 +284,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::RecordTag(k_struct) => {
-            // FIXME: レコードのタグの値を決めておく
-            CExpr::IntLit(format!(
-                "/* record tag {} */ 0",
-                k_struct.name(&cx.outlines.structs)
-            ))
-        }
+        KTerm::RecordTag(k_struct) => gen_record_tag(k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::IntLit("/* error */ 0".to_string())
@@ -461,10 +461,9 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 let self_name = match k_struct.ty(&cx.outlines.structs) {
                     KTy::Struct(_) => CExpr::Name(name.clone()),
                     KTy::Enum(_) => {
-                        // タグを設定
-                        // FIXME: バリアントに対応するタグの値を事前に決定しておく
+                        // タグを設定する。
                         let left = CExpr::Name(name.clone()).into_dot("tag_");
-                        let right = CExpr::Other("/* tag */ 0");
+                        let right = gen_record_tag(k_struct, &cx.outlines.structs);
                         cx.stmts
                             .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
 
@@ -843,7 +842,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
 }
 
 pub(crate) fn gen(mut k_root: KRoot) -> CRoot {
-    let outlines = take(&mut k_root.outlines);
+    let mut outlines = take(&mut k_root.outlines);
+
+    KEnumOutline::determine_tags(
+        &mut outlines.consts,
+        &mut outlines.enums,
+        &mut outlines.structs,
+    );
 
     let mut cx = Cx::new(&outlines);
     gen_root(k_root, &mut cx);

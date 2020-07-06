@@ -22,6 +22,10 @@ impl KConst {
         consts[self.id].value_opt.as_ref()
     }
 
+    pub(crate) fn value_opt_mut(self, consts: &mut [KConstData]) -> &mut Option<KConstValue> {
+        &mut consts[self.id].value_opt
+    }
+
     pub(crate) fn is_zero(self, consts: &[KConstData]) -> bool {
         match &consts[self.id].value_opt {
             Some(value) => value.is_zero(),
@@ -38,7 +42,7 @@ pub(crate) struct KConstData {
     pub(crate) value_opt: Option<KConstValue>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum KConstValue {
     I32(i32),
     I64(i64),

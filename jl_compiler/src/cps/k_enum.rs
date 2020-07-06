@@ -1,4 +1,4 @@
-use super::{KConst, KConstData, KStruct, KTy};
+use super::{KConst, KConstData, KConstValue, KStruct, KStructOutline, KTy};
 use crate::token::Location;
 
 #[derive(Copy, Clone, Debug)]
@@ -89,7 +89,10 @@ impl KEnumRepr {
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
                 value_ty: KTy::Usize,
             },
-            _ => KEnumRepr::Sum { tag_ty: KTy::Usize },
+            _ => {
+                // FIXME: たいていの場合は u8 で十分
+                KEnumRepr::Sum { tag_ty: KTy::Usize }
+            }
         }
     }
 
@@ -127,5 +130,37 @@ impl KEnumOutline {
             .iter()
             .enumerate()
             .map(|(i, enum_data)| (KEnum::new(i), enum_data))
+    }
+
+    pub(crate) fn determine_tags(
+        consts: &mut [KConstData],
+        enums: &mut [KEnumOutline],
+        structs: &mut [KStructOutline],
+    ) {
+        for enum_data in enums {
+            if !enum_data.repr.is_tagged_union() {
+                continue;
+            }
+
+            for (i, variant) in enum_data.variants.iter().enumerate() {
+                let tag = KConstValue::Usize(i);
+
+                match variant {
+                    KVariant::Const(k_const) => {
+                        let old_value = k_const.value_opt_mut(consts).replace(tag);
+
+                        // 構造体バリアントを持つ enum の const バリアントへの値の指定は許可されていないため
+                        assert_eq!(old_value, None);
+                    }
+                    KVariant::Record(k_struct) => {
+                        structs[k_struct.id()]
+                            .parent_opt
+                            .as_mut()
+                            .unwrap()
+                            .set_tag(tag);
+                    }
+                }
+            }
+        }
     }
 }
