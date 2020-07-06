@@ -1,5 +1,20 @@
-use super::{KEnum, KEnumOutline, KField, KTy};
+use super::{KConstValue, KEnum, KEnumOutline, KField, KTy};
 use crate::token::Location;
+
+#[derive(Clone, Debug)]
+pub(crate) struct KStructParent {
+    k_enum: KEnum,
+    tag_opt: Option<KConstValue>,
+}
+
+impl KStructParent {
+    pub(crate) fn new(k_enum: KEnum) -> Self {
+        Self {
+            k_enum,
+            tag_opt: None,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct KStruct {
@@ -20,8 +35,8 @@ impl KStruct {
     }
 
     pub(crate) fn ty(self, structs: &[KStructOutline]) -> KTy {
-        match structs[self.id].parent_enum_opt {
-            Some(k_enum) => KTy::Enum(k_enum),
+        match &structs[self.id].parent_opt {
+            Some(parent) => KTy::Enum(parent.k_enum),
             None => KTy::Struct(self),
         }
     }
@@ -31,8 +46,8 @@ impl KStruct {
         structs: &[KStructOutline],
         enums: &'a [KEnumOutline],
     ) -> &'a KTy {
-        match structs[self.id].parent_enum_opt {
-            Some(k_enum) => k_enum.tag_ty(enums),
+        match &structs[self.id].parent_opt {
+            Some(parent) => parent.k_enum.tag_ty(enums),
             None => &KTy::Unit,
         }
     }
@@ -46,7 +61,7 @@ impl KStruct {
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
-    pub(crate) parent_enum_opt: Option<KEnum>,
+    pub(crate) parent_opt: Option<KStructParent>,
     pub(crate) location: Location,
 }
 

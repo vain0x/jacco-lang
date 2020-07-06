@@ -505,10 +505,11 @@ fn gen_record_variant(
             k_field
         })
         .collect();
+    let parent_opt = parent_enum_opt.map(KStructParent::new);
 
     gx.outlines.structs[k_struct.id()] = KStructOutline {
         name,
-        parent_enum_opt,
+        parent_opt,
         fields,
         location,
     };
