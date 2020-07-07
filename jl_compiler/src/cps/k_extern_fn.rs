@@ -50,10 +50,8 @@ pub(crate) struct KExternFnData {
 }
 
 impl KExternFnData {
-    pub(crate) fn into_iter(
-        fns: impl IntoIterator<Item = KExternFnData>,
-    ) -> impl Iterator<Item = (KExternFn, KExternFnData)> {
-        fns.into_iter()
+    pub(crate) fn iter(fns: &[KExternFnData]) -> impl Iterator<Item = (KExternFn, &KExternFnData)> {
+        fns.iter()
             .enumerate()
             .map(|(i, fn_data)| (KExternFn::new(i), fn_data))
     }

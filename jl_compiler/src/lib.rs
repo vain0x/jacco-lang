@@ -1,3 +1,5 @@
+use cps::KEnumOutline;
+
 mod logs;
 
 /// API for Rust.
@@ -44,7 +46,13 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         error!("{:?} {}", item.location, item.message);
     }
 
-    clang::clang_dump(k_root)
+    KEnumOutline::determine_tags(
+        &mut k_root.outlines.consts,
+        &mut k_root.outlines.enums,
+        &mut k_root.outlines.structs,
+    );
+
+    clang::clang_dump(&k_root)
 }
 
 mod clang {

@@ -19,7 +19,8 @@ struct Cx<'a> {
     struct_ident_ids: Vec<Option<usize>>,
     locals: Vec<KLocalData>,
     local_ident_ids: Vec<Option<usize>>,
-    labels: Vec<KLabelData>,
+    label_raw_names: Vec<String>,
+    label_param_lists: Vec<Vec<KSymbol>>,
     label_ident_ids: Vec<Option<usize>>,
     stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
@@ -36,7 +37,8 @@ impl<'a> Cx<'a> {
             struct_ident_ids: Default::default(),
             locals: Default::default(),
             local_ident_ids: Default::default(),
-            labels: Default::default(),
+            label_raw_names: Default::default(),
+            label_param_lists: Default::default(),
             label_ident_ids: Default::default(),
             stmts: Default::default(),
             decls: Default::default(),
@@ -144,13 +146,13 @@ fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
 fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
     do_unique_name(
         label.id(),
-        &cx.labels[label.id()].name,
+        &cx.label_raw_names[label.id()],
         &mut cx.label_ident_ids,
         &mut cx.ident_map,
     )
 }
 
-fn emit_var_decl(symbol: KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
+fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
     let is_alive = cx.locals[symbol.local.id()].is_alive;
     let (name, ty) = gen_param(symbol, ty_env, cx);
 
@@ -194,7 +196,7 @@ fn gen_record_tag(k_struct: KStruct, structs: &[KStructOutline]) -> CExpr {
     gen_constant_value(&tag)
 }
 
-fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
+fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     // FIXME: 整数型は std::int32_t とかの方がよいかも
     match ty {
         KTy::Unresolved => {
@@ -202,10 +204,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* unresolved */ void")
         }
         KTy::Meta(meta) => match meta.try_unwrap(&ty_env) {
-            Some(ty) => {
-                let ty = ty.borrow().clone();
-                gen_ty(ty, ty_env, cx)
-            }
+            Some(ty) => gen_ty(&ty.borrow(), ty_env, cx),
             None => {
                 error!("Unexpected free type {:?}", meta);
                 CTy::Other("/* free */ void")
@@ -232,7 +231,7 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::F32 => CTy::Float,
         KTy::F64 => CTy::Double,
         KTy::Ptr { k_mut, ty } => {
-            let mut ty = gen_ty(*ty, ty_env, cx);
+            let mut ty = gen_ty(&ty, ty_env, cx);
             if let KMut::Const = k_mut {
                 ty = ty.into_const();
             }
@@ -241,20 +240,20 @@ fn gen_ty(ty: KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy::Enum(k_enum) => match k_enum.repr(&cx.outlines.enums) {
             KEnumRepr::Unit => CTy::Other("/* unit-like enum */ void"),
             KEnumRepr::Never => CTy::Other("/* never enum */ void"),
-            KEnumRepr::Const { value_ty } => gen_ty(value_ty.clone(), ty_env, cx),
-            KEnumRepr::Sum { .. } => CTy::Enum(unique_enum_name(k_enum, cx)),
+            KEnumRepr::Const { value_ty } => gen_ty(value_ty, ty_env, cx),
+            KEnumRepr::Sum { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
         },
-        KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(k_struct, cx)),
+        KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(*k_struct, cx)),
     }
 }
 
-fn gen_param(param: KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
-    let name = unique_name(&param, cx);
+fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
+    let name = unique_name(param, cx);
     let ty = param.ty(&cx.locals);
-    (name, gen_ty(ty, &ty_env, cx))
+    (name, gen_ty(&ty, &ty_env, cx))
 }
 
-fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
+fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => {
             // FIXME: error!
@@ -262,26 +261,24 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::Int(token, KTy::I64) | KTerm::Int(token, KTy::Isize) => CExpr::LongLongLit(
             token
-                .into_text()
+                .text()
                 .replace("_", "")
                 .replace("i64", "")
                 .replace("isize", ""),
         ),
         KTerm::Int(token, KTy::U64) | KTerm::Int(token, KTy::Usize) => CExpr::UnsignedLongLongLit(
             token
-                .into_text()
+                .text()
                 .replace("_", "")
                 .replace("u64", "")
                 .replace("usize", ""),
         ),
-        KTerm::Int(token, _) => {
-            CExpr::IntLit(token.into_text().replace("_", "").replace("i32", ""))
-        }
-        KTerm::Float(token) => CExpr::DoubleLit(token.into_text().replace("_", "")),
-        KTerm::Char(token) => CExpr::CharLit(token.into_text()),
+        KTerm::Int(token, _) => CExpr::IntLit(token.text().replace("_", "").replace("i32", "")),
+        KTerm::Float(token) => CExpr::DoubleLit(token.text().replace("_", "")),
+        KTerm::Char(token) => CExpr::CharLit(token.text().to_string()),
         KTerm::Str(token) => CExpr::Cast {
             ty: CTy::UnsignedChar.into_const().into_ptr(),
-            arg: Box::new(CExpr::StrLit(token.into_text())),
+            arg: Box::new(CExpr::StrLit(token.text().to_string())),
         },
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
@@ -289,16 +286,16 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             Some(value) => gen_constant_value(value),
             None => gen_invalid_constant_value(),
         },
-        KTerm::StaticVar(static_var) => CExpr::Name(unique_static_var_name(static_var, cx)),
-        KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(k_fn, cx)),
-        KTerm::Label(label) => CExpr::Name(unique_label_name(label, cx)),
+        KTerm::StaticVar(static_var) => CExpr::Name(unique_static_var_name(*static_var, cx)),
+        KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(*k_fn, cx)),
+        KTerm::Label(label) => CExpr::Name(unique_label_name(*label, cx)),
         KTerm::Return(k_fn) => {
-            error!("can't gen return term to c {}", unique_fn_name(k_fn, cx));
+            error!("can't gen return term to c {}", unique_fn_name(*k_fn, cx));
             CExpr::Other("/* error */ 0")
         }
-        KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
+        KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(*extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::RecordTag(k_struct) => gen_record_tag(k_struct, &cx.outlines.structs),
+        KTerm::RecordTag(k_struct) => gen_record_tag(*k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::Other("/* error */ 0")
@@ -308,22 +305,18 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
 
 fn gen_unary_op(
     op: CUnaryOp,
-    args: &mut Vec<KTerm>,
-    results: &mut Vec<KSymbol>,
-    conts: &mut Vec<KNode>,
+    args: &[KTerm],
+    results: &[KSymbol],
+    conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
 ) {
-    match (
-        args.as_mut_slice(),
-        results.as_mut_slice(),
-        conts.as_mut_slice(),
-    ) {
+    match (args, results, conts) {
         ([arg], [result], [cont]) => {
-            let arg = gen_term(take(arg), cx);
+            let arg = gen_term(arg, cx);
             let expr = arg.into_unary_op(op);
-            emit_var_decl(take(result), Some(expr), ty_env, cx);
-            gen_node(take(cont), ty_env, cx);
+            emit_var_decl(result, Some(expr), ty_env, cx);
+            gen_node(cont, ty_env, cx);
         }
         _ => unimplemented!(),
     }
@@ -331,23 +324,19 @@ fn gen_unary_op(
 
 fn gen_binary_op(
     op: CBinaryOp,
-    args: &mut Vec<KTerm>,
-    results: &mut Vec<KSymbol>,
-    conts: &mut Vec<KNode>,
+    args: &[KTerm],
+    results: &[KSymbol],
+    conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
 ) {
-    match (
-        args.as_mut_slice(),
-        results.as_mut_slice(),
-        conts.as_mut_slice(),
-    ) {
+    match (args, results, conts) {
         ([left, right], [result], [cont]) => {
-            let left = gen_term(take(left), cx);
-            let right = gen_term(take(right), cx);
+            let left = gen_term(left, cx);
+            let right = gen_term(right, cx);
             let expr = left.into_binary_op(op, right);
-            emit_var_decl(take(result), Some(expr), ty_env, cx);
-            gen_node(take(cont), ty_env, cx);
+            emit_var_decl(result, Some(expr), ty_env, cx);
+            gen_node(cont, ty_env, cx);
         }
         _ => unimplemented!(),
     }
@@ -355,13 +344,13 @@ fn gen_binary_op(
 
 fn emit_assign(
     op: CBinaryOp,
-    args: &mut Vec<KTerm>,
-    _results: &mut Vec<KSymbol>,
-    conts: &mut Vec<KNode>,
+    args: &[KTerm],
+    _results: &[KSymbol],
+    conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
 ) {
-    match (args.as_mut_slice(), conts.as_mut_slice()) {
+    match (args, conts) {
         ([left, right], [cont]) => {
             match left {
                 KTerm::Name(symbol) if !cx.locals[symbol.local.id()].is_alive => {
@@ -371,8 +360,8 @@ fn emit_assign(
                     )));
                 }
                 _ => {
-                    let left = gen_term(take(left), cx);
-                    let right = gen_term(take(right), cx);
+                    let left = gen_term(left, cx);
+                    let right = gen_term(right, cx);
                     cx.stmts.push(
                         left.into_unary_op(CUnaryOp::Deref)
                             .into_binary_op(op, right)
@@ -381,34 +370,31 @@ fn emit_assign(
                 }
             }
 
-            gen_node(take(cont), ty_env, cx);
+            gen_node(cont, ty_env, cx);
         }
         _ => unimplemented!(),
     }
 }
 
-fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
-    let KNode {
-        prim,
-        ref mut tys,
-        ref mut args,
-        ref mut results,
-        ref mut conts,
-        location: _,
-    } = &mut node;
-    match prim {
+fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
+    let tys = node.tys.as_slice();
+    let args = node.args.as_slice();
+    let results = node.results.as_slice();
+    let conts = node.conts.as_slice();
+
+    match node.prim {
         KPrim::Stuck => unreachable!(),
-        KPrim::Jump => match (args.as_mut_slice(), results.as_slice()) {
+        KPrim::Jump => match (args, results) {
             ([KTerm::Return(_), KTerm::Unit { .. }], []) | ([KTerm::Return(_)], []) => {
                 cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Return(_), arg], []) => {
-                let arg = gen_term(take(arg), cx);
+                let arg = gen_term(arg, cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
             }
             ([KTerm::Label(label), args @ ..], []) => {
                 let name = unique_label_name(*label, cx);
-                let params = cx.labels[label.id()].params.to_owned();
+                let params = cx.label_param_lists[label.id()].to_owned();
 
                 for (param, arg) in params.into_iter().zip(args) {
                     let name = unique_name(&param, cx);
@@ -418,7 +404,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         continue;
                     }
 
-                    let arg = gen_term(take(arg), cx);
+                    let arg = gen_term(arg, cx);
 
                     cx.stmts.push(
                         CExpr::Name(name)
@@ -431,40 +417,32 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::CallDirect => match (results.as_mut_slice(), conts.as_mut_slice()) {
+        KPrim::CallDirect => match (results, conts) {
             ([result], [cont]) => {
                 let call_expr = {
-                    let mut args = args.drain(..);
+                    let mut args = args.iter();
                     let left = gen_term(args.next().unwrap(), cx);
                     let args = args.map(|arg| gen_term(arg, cx));
                     left.into_call(args)
                 };
-                emit_var_decl(take(result), Some(call_expr), ty_env, cx);
-                gen_node(take(cont), ty_env, cx);
+                emit_var_decl(result, Some(call_expr), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
-        KPrim::Let => match (
-            args.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::Let => match (args, results, conts) {
             ([init], [result], [cont]) => {
-                let init = gen_term(take(init), cx);
-                emit_var_decl(take(result), Some(init), ty_env, cx);
-                gen_node(take(cont), ty_env, cx);
+                let init = gen_term(init, cx);
+                emit_var_decl(result, Some(init), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
-        KPrim::Record => match (
-            tys.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::Record => match (tys, results, conts) {
             ([ty], [result], [cont]) => {
-                let k_struct = take(ty).as_struct().unwrap();
+                let k_struct = ty.as_struct().unwrap();
 
-                let (name, ty) = gen_param(take(result), ty_env, cx);
+                let (name, ty) = gen_param(result, ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {
                     storage_modifier_opt: None,
                     name: name.clone(),
@@ -487,22 +465,18 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 };
 
                 let outlines = cx.outlines;
-                for (arg, field) in args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
+                for (arg, field) in args.iter().zip(k_struct.fields(&outlines.structs)) {
                     let left = self_name.clone().into_dot(field.name(&outlines.fields));
-                    let right = gen_term(take(arg), cx);
+                    let right = gen_term(arg, cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
                 }
 
-                gen_node(take(cont), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
-        KPrim::EnumToTag => match (
-            args.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::EnumToTag => match (args, results, conts) {
             ([arg], [result], [cont]) => {
                 let k_enum = {
                     // FIXME: label_sigs
@@ -510,7 +484,7 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     ty_env.as_enum(&arg_ty).unwrap()
                 };
 
-                let arg = gen_term(take(arg), cx);
+                let arg = gen_term(arg, cx);
                 let expr = match k_enum.repr(&cx.outlines.enums) {
                     KEnumRepr::Never => {
                         error!("cannot obtain tag of never enum");
@@ -524,16 +498,12 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     KEnumRepr::Sum { .. } => arg.into_dot("tag_"),
                 };
 
-                emit_var_decl(take(result), Some(expr), ty_env, cx);
-                gen_node(take(cont), ty_env, cx);
+                emit_var_decl(result, Some(expr), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
-        KPrim::GetField | KPrim::GetFieldMut => match (
-            args.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::GetField | KPrim::GetFieldMut => match (args, results, conts) {
             (
                 [left, KTerm::FieldTag(KFieldTag {
                     name: field_name, ..
@@ -541,22 +511,18 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 [result],
                 [cont],
             ) => {
-                let left = gen_term(take(left), cx);
-                let expr = left.into_arrow(take(field_name)).into_ref();
-                emit_var_decl(take(result), Some(expr), ty_env, cx);
-                gen_node(take(cont), ty_env, cx);
+                let left = gen_term(left, cx);
+                let expr = left.into_arrow(field_name).into_ref();
+                emit_var_decl(result, Some(expr), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
-        KPrim::If => match (
-            args.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::If => match (args, results, conts) {
             ([cond], [], [then_cont, else_cont]) => {
-                let cond = gen_term(take(cond), cx);
-                let then_cont = gen_node_as_block(take(then_cont), ty_env, cx);
-                let else_cont = gen_node_as_block(take(else_cont), ty_env, cx);
+                let cond = gen_term(cond, cx);
+                let then_cont = gen_node_as_block(then_cont, ty_env, cx);
+                let else_cont = gen_node_as_block(else_cont, ty_env, cx);
 
                 let body = Box::new(CStmt::Block(then_cont));
                 let alt = Box::new(CStmt::Block(else_cont));
@@ -564,14 +530,14 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Switch => match args.as_mut_slice() {
+        KPrim::Switch => match args {
             [cond, pats @ ..] => {
                 // FIXME: label_sigs
                 let is_tagged_union = ty_env
                     .as_enum(&cond.ty(&cx.outlines, &[], &cx.locals))
                     .map_or(false, |k_enum| k_enum.is_tagged_union(&cx.outlines.enums));
 
-                let mut cond = gen_term(take(cond), cx);
+                let mut cond = gen_term(cond, cx);
                 if is_tagged_union {
                     cond = cond.into_dot("tag_");
                 }
@@ -580,19 +546,19 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 let mut default_opt = None;
 
                 assert_eq!(pats.len(), conts.len());
-                for (pat, cont) in pats.iter_mut().zip(conts) {
+                for (pat, cont) in pats.iter().zip(conts) {
                     if let KTerm::Name(_) = pat {
                         // _ パターン
                         if default_opt.is_some() {
                             continue;
                         }
 
-                        let body = gen_node_as_block(take(cont), ty_env, cx);
+                        let body = gen_node_as_block(cont, ty_env, cx);
                         default_opt = Some(body);
                     } else {
                         // 定数パターン
-                        let pat = gen_term(take(pat), cx);
-                        let body = gen_node_as_block(take(cont), ty_env, cx);
+                        let pat = gen_term(pat, cx);
+                        let body = gen_node_as_block(cont, ty_env, cx);
                         cases.push((pat, body));
                     }
                 }
@@ -629,17 +595,13 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, ty_env, cx),
         KPrim::LeftShift => gen_binary_op(CBinaryOp::LeftShift, args, results, conts, ty_env, cx),
         KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, ty_env, cx),
-        KPrim::Cast => match (
-            args.as_mut_slice(),
-            results.as_mut_slice(),
-            conts.as_mut_slice(),
-        ) {
+        KPrim::Cast => match (args, results, conts) {
             ([arg], [result], [cont]) => {
-                let arg = gen_term(take(arg), cx);
-                let result_ty = gen_ty(result.ty(&cx.locals), ty_env, cx);
+                let arg = gen_term(arg, cx);
+                let result_ty = gen_ty(&result.ty(&cx.locals), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
-                emit_var_decl(take(result), Some(expr), ty_env, cx);
-                gen_node(take(cont), ty_env, cx);
+                emit_var_decl(result, Some(expr), ty_env, cx);
+                gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
         },
@@ -672,14 +634,14 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     }
 }
 
-fn gen_node_as_block(node: KNode, ty_env: &KTyEnv, cx: &mut Cx) -> CBlock {
+fn gen_node_as_block(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) -> CBlock {
     let stmts = cx.enter_block(|cx| gen_node(node, ty_env, cx));
     CBlock { stmts }
 }
 
 fn gen_fn_sig(
-    params: Vec<KSymbol>,
-    result_ty: KTy,
+    params: &[KSymbol],
+    result_ty: &KTy,
     ty_env: &KTyEnv,
     cx: &mut Cx,
 ) -> (Vec<(String, CTy)>, CTy) {
@@ -691,7 +653,7 @@ fn gen_fn_sig(
     (params, result_ty)
 }
 
-fn gen_root(root: KRoot, cx: &mut Cx) {
+fn gen_root(root: &KRoot, cx: &mut Cx) {
     let outlines = cx.outlines;
     let empty_ty_env = KTyEnv::default();
 
@@ -709,7 +671,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .map(|field| {
                 (
                     field.name(&cx.outlines.fields).to_string(),
-                    gen_ty(field.ty(&cx.outlines.fields).clone(), &empty_ty_env, cx),
+                    gen_ty(field.ty(&cx.outlines.fields), &empty_ty_env, cx),
                 )
             })
             .collect();
@@ -726,7 +688,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             KEnumRepr::Sum { tag_ty } => {
                 let name = unique_enum_name(k_enum, cx);
                 let fields = {
-                    let tag_ty = gen_ty(tag_ty.clone(), &empty_ty_env, cx);
+                    let tag_ty = gen_ty(tag_ty, &empty_ty_env, cx);
                     vec![("tag_".to_string(), tag_ty)]
                 };
                 let variants = enum_data
@@ -753,7 +715,7 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     for (i, static_var_data) in outlines.static_vars.iter().enumerate() {
         let static_var = KStaticVar::new(i);
         let name = unique_static_var_name(static_var, cx);
-        let ty = gen_ty(static_var_data.ty.clone(), &empty_ty_env, cx);
+        let ty = gen_ty(&static_var_data.ty, &empty_ty_env, cx);
         let init_opt = static_var_data.value_opt.as_ref().map(gen_constant_value);
         cx.decls.push(CStmt::VarDecl {
             storage_modifier_opt: Some(CStorageModifier::Static),
@@ -763,16 +725,17 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for (extern_fn, extern_fn_data) in KExternFnData::into_iter(root.extern_fns) {
-        let KExternFnData { params, locals } = extern_fn_data;
+    for (extern_fn, extern_fn_data) in KExternFnData::iter(&root.extern_fns) {
+        let params = extern_fn_data.params.as_slice();
+        let locals = extern_fn_data.locals.as_slice();
 
-        cx.locals = locals;
+        cx.locals = locals.to_owned();
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let name = unique_extern_fn_name(extern_fn, cx);
         let (params, result_ty) = {
-            let result_ty = extern_fn.result_ty(&outlines.extern_fns).clone();
+            let result_ty = extern_fn.result_ty(&outlines.extern_fns);
             gen_fn_sig(params, result_ty, &empty_ty_env, cx)
         };
         cx.decls.push(CStmt::ExternFnDecl {
@@ -792,11 +755,11 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             .iter()
             .map(|symbol| {
                 let name = symbol.local.name(&fn_data.locals).to_string();
-                let ty = gen_ty(symbol.local.ty(&fn_data.locals).clone(), &empty_ty_env, cx);
+                let ty = gen_ty(symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
                 (name, ty)
             })
             .collect();
-        let result_ty = gen_ty(k_fn.result_ty(&outlines.fns).clone(), &empty_ty_env, cx);
+        let result_ty = gen_ty(k_fn.result_ty(&outlines.fns), &empty_ty_env, cx);
 
         cx.decls.push(CStmt::FnDecl {
             name,
@@ -806,17 +769,13 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
         });
     }
 
-    for (k_fn, fn_data) in KFnData::into_iter(root.fns) {
-        let KFnData {
-            params,
-            body,
-            locals,
-            labels,
-            ty_env,
-            ..
-        } = fn_data;
+    for (k_fn, fn_data) in KFnData::iter(&root.fns) {
+        let params = fn_data.params.as_slice();
+        let locals = fn_data.locals.as_slice();
+        let labels = fn_data.labels.as_slice();
+        let ty_env = &fn_data.ty_env;
 
-        cx.locals = locals;
+        cx.locals = locals.to_owned();
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
@@ -824,28 +783,35 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
             for id in 0..labels.len() {
                 let label = KLabel::new(id);
                 for i in 0..labels[label.id()].params.len() {
-                    let param = labels[label.id()].params[i].clone();
+                    let param = &labels[label.id()].params[i];
                     emit_var_decl(param, None, &ty_env, cx);
                 }
             }
 
-            cx.labels = labels;
+            cx.label_raw_names.clear();
+            cx.label_raw_names
+                .extend(labels.iter().map(|label| label.name.to_string()));
+            cx.label_param_lists.clear();
+            cx.label_param_lists
+                .extend(labels.iter().map(|label| label.params.to_owned()));
             cx.label_ident_ids.clear();
-            cx.label_ident_ids.resize(cx.labels.len(), None);
-            gen_node(body, &ty_env, cx);
+            cx.label_ident_ids.resize(labels.len(), None);
+            gen_node(&fn_data.body, &ty_env, cx);
 
-            for id in 0..cx.labels.len() {
+            for id in 0..labels.len() {
                 let label = KLabel::new(id);
+
                 let name = unique_label_name(label, cx);
-                let body = take(&mut cx.labels[label.id()].body);
                 cx.stmts.push(CStmt::Label { label: name });
+
+                let body = &labels[label.id()].body;
                 gen_node(body, &ty_env, cx);
             }
         });
 
         let name = unique_fn_name(k_fn, cx);
         let (params, result_ty) = {
-            let result_ty = k_fn.result_ty(&outlines.fns).clone();
+            let result_ty = k_fn.result_ty(&outlines.fns);
             gen_fn_sig(params, result_ty, &empty_ty_env, cx)
         };
         cx.decls.push(CStmt::FnDecl {
@@ -859,16 +825,8 @@ fn gen_root(root: KRoot, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(mut k_root: KRoot) -> CRoot {
-    let mut outlines = take(&mut k_root.outlines);
-
-    KEnumOutline::determine_tags(
-        &mut outlines.consts,
-        &mut outlines.enums,
-        &mut outlines.structs,
-    );
-
-    let mut cx = Cx::new(&outlines);
+pub(crate) fn gen(k_root: &KRoot) -> CRoot {
+    let mut cx = Cx::new(&k_root.outlines);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }

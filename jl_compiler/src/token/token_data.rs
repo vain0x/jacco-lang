@@ -27,10 +27,6 @@ impl TokenData {
         &self.text
     }
 
-    pub(crate) fn into_text(self) -> String {
-        self.text
-    }
-
     pub(crate) fn as_location(&self) -> &Location {
         &self.location
     }

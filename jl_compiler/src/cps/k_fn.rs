@@ -67,14 +67,6 @@ pub(crate) struct KFnData {
 }
 
 impl KFnData {
-    pub(crate) fn into_iter(
-        fns: impl IntoIterator<Item = KFnData>,
-    ) -> impl Iterator<Item = (KFn, KFnData)> {
-        fns.into_iter()
-            .enumerate()
-            .map(|(i, fn_data)| (KFn::new(i), fn_data))
-    }
-
     pub(crate) fn iter(fns: &[KFnData]) -> impl Iterator<Item = (KFn, &KFnData)> {
         fns.iter()
             .enumerate()

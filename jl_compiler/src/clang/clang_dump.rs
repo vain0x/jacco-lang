@@ -370,7 +370,7 @@ fn write_root(root: &CRoot, dx: &mut Dx<impl Write>) -> io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn clang_dump(k_root: KRoot) -> String {
+pub(crate) fn clang_dump(k_root: &KRoot) -> String {
     let c_root = clang_gen::gen(k_root);
 
     let text = {

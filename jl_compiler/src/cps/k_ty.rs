@@ -83,9 +83,9 @@ impl KTy {
         }
     }
 
-    pub(crate) fn as_struct(self) -> Option<KStruct> {
+    pub(crate) fn as_struct(&self) -> Option<KStruct> {
         match self {
-            KTy::Struct(k_struct) => Some(k_struct),
+            KTy::Struct(k_struct) => Some(*k_struct),
             _ => None,
         }
     }
