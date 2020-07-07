@@ -55,7 +55,7 @@ pub(crate) fn make_path_relative_to_manifest_dir(path: &std::path::Path) -> std:
 }
 
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
-    use crate::source::{Doc, SourceFile};
+    use crate::source::Doc;
     use log::{error, trace};
     use std::rc::Rc;
 
@@ -64,12 +64,11 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let logs = logs::Logs::new();
 
     let doc = Doc::new(1);
-    let source_file = SourceFile { doc };
 
     let source_path = make_path_relative_to_manifest_dir(source_path);
-    SourceFile::set_path(source_file, &source_path);
+    Doc::set_path(doc, &source_path);
 
-    let token_source = token::TokenSource::File(source_file);
+    let token_source = token::TokenSource::File(doc);
     let source_code = Rc::new(source_code.to_string());
     let tokens = token::tokenize(token_source, source_code);
     trace!("tokens = {:#?}\n", tokens);
@@ -314,14 +313,10 @@ mod source {
     pub(crate) mod doc;
     pub(crate) mod pos;
     pub(crate) mod range;
-    mod source_file;
 
-    #[allow(unused)]
     pub(crate) use doc::Doc;
-
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
-    pub(crate) use source_file::SourceFile;
 
     pub(crate) type SourceCode = String;
 }
@@ -345,7 +340,7 @@ mod token {
     pub(crate) use token_source::TokenSource;
     pub(crate) use tokenize_rules::tokenize;
 
-    use crate::source::{Pos, Range, SourceCode, SourceFile};
+    use crate::source::{Pos, Range, SourceCode};
 }
 
 mod utils {

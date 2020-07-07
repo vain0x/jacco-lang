@@ -3,7 +3,7 @@ use crate::{
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
-    source::{Doc, Pos, Range, SourceFile},
+    source::{Doc, Pos, Range},
     token::{self, TokenSource},
 };
 use front::NName;
@@ -65,9 +65,8 @@ impl AnalysisCache {
         let tokens = {
             // FIXME: doc (source) を引数からもらう
             let doc = Doc::new(1);
-            let source_file = SourceFile { doc };
-            SourceFile::set_path(source_file, &self.source_path);
-            let token_source = TokenSource::File(source_file);
+            Doc::set_path(doc, &self.source_path);
+            let token_source = TokenSource::File(doc);
             let source_code = self.text.clone();
             token::tokenize(token_source, source_code)
         };
