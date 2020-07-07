@@ -130,6 +130,52 @@ mod cps {
     use crate::logs::Logger;
     use crate::token::{HaveLocation, Location, TokenData};
     use log::{error, trace};
+
+    /// 符号付き？
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub(crate) enum KIsSigned {
+        Signed,
+        Unsigned,
+    }
+
+    /// ビット幅
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub(crate) enum KIntBits {
+        /// 8-bit
+        B8,
+        B16,
+        B32,
+        B64,
+        B128,
+        /// ptr-sized
+        Ptr,
+    }
+
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub(crate) struct KIntFlavor {
+        is_signed: KIsSigned,
+        bits: KIntBits,
+    }
+
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub(crate) enum KFloatBits {
+        B16,
+        B32,
+        B64,
+        B128,
+    }
+
+    #[allow(unused)]
+    #[derive(Copy, Clone)]
+    pub(crate) enum KCharBits {
+        B8,
+        B16,
+        B32,
+    }
 }
 
 mod front {
