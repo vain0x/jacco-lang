@@ -329,7 +329,11 @@ pub(crate) enum PExpr {
 impl Default for PExpr {
     fn default() -> Self {
         PExpr::Str(PStrExpr {
-            token: TokenData::default(),
+            token: TokenData::new(
+                TokenKind::TakenOut,
+                String::new(),
+                Location::new(TokenSource::Special("<PExpr::default>"), Range::default()),
+            ),
         })
     }
 }

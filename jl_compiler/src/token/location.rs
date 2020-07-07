@@ -1,4 +1,5 @@
 use super::*;
+use crate::utils::TakeOut;
 use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
@@ -56,6 +57,12 @@ impl Debug for Location {
 impl Default for Location {
     fn default() -> Self {
         Location::new(TokenSource::Special("<default>"), Range::default())
+    }
+}
+
+impl TakeOut for Location {
+    fn take_out(&mut self) -> Self {
+        self.clone()
     }
 }
 

@@ -208,6 +208,7 @@ mod parse {
     //! 構文木・構文解析
 
     mod p_binary_op;
+    mod p_token;
     mod p_unary_op;
     mod p_vis;
     mod parse_context;
@@ -216,6 +217,9 @@ mod parse {
     mod parse_pat;
     mod parse_tree;
     mod parse_ty;
+
+    #[allow(unused)]
+    pub(crate) use p_token::PToken;
 
     pub(crate) use p_binary_op::PBinaryOp;
     pub(crate) use p_unary_op::PUnaryOp;

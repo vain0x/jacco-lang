@@ -1,8 +1,9 @@
 use super::*;
+use crate::utils::TakeOut;
 use std::fmt::{self, Debug, Formatter};
 
 /// 字句データ
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct TokenData {
     kind: TokenKind,
     text: String,
@@ -40,6 +41,16 @@ impl TokenData {
 
     pub(crate) fn decompose(self) -> (TokenKind, String, Location) {
         (self.kind, self.text, self.location)
+    }
+}
+
+impl TakeOut for TokenData {
+    fn take_out(&mut self) -> TokenData {
+        TokenData::new(
+            self.kind.take_out(),
+            self.text.take_out(),
+            self.location.take_out(),
+        )
     }
 }
 
