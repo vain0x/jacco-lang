@@ -210,9 +210,13 @@ mod parse {
 mod source {
     //! ソースファイル
 
+    pub(crate) mod doc;
     pub(crate) mod pos;
     pub(crate) mod range;
     mod source_file;
+
+    #[allow(unused)]
+    pub(crate) use doc::Doc;
 
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
