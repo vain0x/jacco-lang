@@ -1,8 +1,8 @@
 use super::{KConst, KExternFn, KFn, KLocal, KLocalData, KStaticVar, KStruct, KTy};
-use crate::token::{HaveLocation, Location};
+use crate::token::{HaveLocation, Location, TokenSource};
 
 /// ローカル変数の出現
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KSymbol {
     pub(crate) local: KLocal,
     pub(crate) location: Location,
@@ -15,6 +15,18 @@ impl KSymbol {
 
     pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut [KLocalData]) -> &'a mut KTy {
         self.local.ty_mut(locals)
+    }
+}
+
+impl Default for KSymbol {
+    fn default() -> Self {
+        Self {
+            local: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KSymbol::default>"),
+                Default::default(),
+            ),
+        }
     }
 }
 

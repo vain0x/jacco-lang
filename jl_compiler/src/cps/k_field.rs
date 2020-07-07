@@ -1,5 +1,5 @@
 use super::KTy;
-use crate::token::Location;
+use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
@@ -34,9 +34,22 @@ impl KField {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct KFieldOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
+}
+
+impl Default for KFieldOutline {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            ty: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KFieldOutline::default>"),
+                Default::default(),
+            ),
+        }
+    }
 }

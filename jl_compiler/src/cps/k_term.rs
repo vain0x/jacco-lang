@@ -1,4 +1,5 @@
 use super::*;
+use crate::{source::Range, token::TokenSource};
 use std::fmt::{self, Debug};
 
 /// CPS 原子項
@@ -67,7 +68,7 @@ impl KTerm {
             _ => {
                 // FIXME: no location info
                 trace!("no location for {:?}", self);
-                Location::default()
+                Location::new(TokenSource::Special("<KTerm::location>"), Range::default())
             }
         }
     }
@@ -114,7 +115,7 @@ impl Debug for KTerm {
 impl Default for KTerm {
     fn default() -> Self {
         KTerm::Unit {
-            location: Location::default(),
+            location: Location::new(TokenSource::Special("<KTerm::default>"), Range::default()),
         }
     }
 }

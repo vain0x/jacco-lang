@@ -1,5 +1,5 @@
 use super::{KConstValue, KEnum, KEnumOutline, KField, KTy};
-use crate::token::Location;
+use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStructParent {
@@ -67,7 +67,7 @@ impl KStruct {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
@@ -87,5 +87,19 @@ impl KStructOutline {
             .iter()
             .enumerate()
             .map(|(i, struct_data)| (KStruct::new(i), struct_data))
+    }
+}
+
+impl Default for KStructOutline {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            fields: Default::default(),
+            parent_opt: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KStructOutline::default>"),
+                Default::default(),
+            ),
+        }
     }
 }

@@ -1,5 +1,5 @@
 use super::{KConst, KConstData, KConstValue, KStruct, KStructOutline, KTy};
-use crate::token::Location;
+use crate::token::{Location, TokenSource};
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KVariant {
@@ -127,7 +127,7 @@ impl Default for KEnumRepr {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
@@ -179,6 +179,20 @@ impl KEnumOutline {
                     }
                 }
             }
+        }
+    }
+}
+
+impl Default for KEnumOutline {
+    fn default() -> Self {
+        KEnumOutline {
+            name: Default::default(),
+            variants: Default::default(),
+            repr: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KEnumOutline::default>"),
+                Default::default(),
+            ),
         }
     }
 }

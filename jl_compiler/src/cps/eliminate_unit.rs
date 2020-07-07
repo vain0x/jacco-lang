@@ -1,8 +1,5 @@
 use super::{KField, KLocalData, KNode, KPrim, KRoot, KTerm, KTyEnv};
-use std::{
-    collections::HashSet,
-    mem::{swap, take},
-};
+use std::{collections::HashSet, mem::swap};
 
 #[derive(Default)]
 struct Ex {
@@ -28,7 +25,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
             let local_data = &mut ex.locals[symbol.local.id()];
             if ex.ty_env.is_unit_or_never(&local_data.ty) {
                 local_data.is_alive = false;
-                let location = take(&mut symbol.location);
+                let location = symbol.location.clone();
                 *arg = KTerm::Unit { location };
             }
         }

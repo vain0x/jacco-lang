@@ -1,8 +1,8 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
-use crate::token::{HaveLocation, Location};
+use crate::token::{HaveLocation, Location, TokenSource};
 use std::fmt::{self, Debug, Formatter};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy>,
@@ -64,6 +64,19 @@ impl Debug for KNode {
             list.finish()?;
 
             write!(f, ")")
+        }
+    }
+}
+
+impl Default for KNode {
+    fn default() -> Self {
+        KNode {
+            prim: KPrim::Stuck,
+            tys: Default::default(),
+            args: Default::default(),
+            results: Default::default(),
+            conts: Default::default(),
+            location: Location::new(TokenSource::Special("<KNode::default>"), Default::default()),
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{KLocalData, KSymbol, KTy};
-use crate::token::Location;
+use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KExternFn {
@@ -35,12 +35,26 @@ impl KExternFn {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
+}
+
+impl Default for KExternFnOutline {
+    fn default() -> Self {
+        KExternFnOutline {
+            name: Default::default(),
+            param_tys: Default::default(),
+            result_ty: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KExternFnOutline::default>"),
+                Default::default(),
+            ),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

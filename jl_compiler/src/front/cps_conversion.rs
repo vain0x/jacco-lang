@@ -6,7 +6,7 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::Logger,
-    token::{HaveLocation, Location, TokenData, TokenKind},
+    token::{HaveLocation, Location, TokenData, TokenKind, TokenSource},
 };
 use log::{error, trace};
 use std::{
@@ -107,8 +107,8 @@ impl Gx {
             args: once(KTerm::Label(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
-            // FIXME: &Location を持たせる
-            location: Default::default(),
+            // FIXME: location を持たせる
+            location: Location::new(TokenSource::Special("<do_push_jump>"), Default::default()),
         });
     }
 

@@ -1,5 +1,5 @@
 use super::{KLabelData, KLabelSig, KLocalData, KNode, KSymbol, KTy, KTyEnv, KVis};
-use crate::token::Location;
+use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KFn {
@@ -47,13 +47,28 @@ impl KFn {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
     pub(crate) vis_opt: Option<KVis>,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
+}
+
+impl Default for KFnOutline {
+    fn default() -> Self {
+        KFnOutline {
+            name: Default::default(),
+            vis_opt: Default::default(),
+            param_tys: Default::default(),
+            result_ty: Default::default(),
+            location: Location::new(
+                TokenSource::Special("<KFnOutline::default>"),
+                Default::default(),
+            ),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

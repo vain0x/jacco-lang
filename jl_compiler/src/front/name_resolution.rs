@@ -9,7 +9,7 @@ use std::{
     rc::Rc,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct NLoopData {
     pub(crate) location: Location,
 }
@@ -34,6 +34,7 @@ pub(crate) struct NEnumData;
 
 pub(crate) struct NStructData;
 
+#[derive(Default)]
 pub(crate) struct NFieldData;
 
 /// 名前解決の結果。
