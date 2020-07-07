@@ -1,5 +1,3 @@
-use cps::KEnumOutline;
-
 mod logs;
 
 /// API for Rust.
@@ -55,41 +53,49 @@ pub(crate) fn make_path_relative_to_manifest_dir(path: &std::path::Path) -> std:
 }
 
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
-    use crate::source::Doc;
+    use crate::{
+        clang::clang_dump,
+        cps::{eliminate_unit, resolve_types, KEnumOutline},
+        front::{cps_conversion, resolve_name, validate_syntax},
+        logs::Logs,
+        parse::parse_tokens,
+        source::Doc,
+        token::{tokenize, TokenSource},
+    };
     use log::{error, trace};
-    use std::rc::Rc;
+    use std::{process, rc::Rc};
 
     trace!("source_path = {:?}", source_path);
 
-    let logs = logs::Logs::new();
+    let logs = Logs::new();
 
     let doc = Doc::new(1);
 
     let source_path = make_path_relative_to_manifest_dir(source_path);
     Doc::set_path(doc, &source_path);
 
-    let token_source = token::TokenSource::File(doc);
+    let token_source = TokenSource::File(doc);
     let source_code = Rc::new(source_code.to_string());
-    let tokens = token::tokenize(token_source, source_code);
+    let tokens = tokenize(token_source, source_code);
     trace!("tokens = {:#?}\n", tokens);
 
-    let mut p_root = parse::parse_tokens(tokens, logs.logger());
-    front::validate_syntax(&p_root, logs.logger());
-    let name_resolution = front::resolve_name(&mut p_root, logs.logger());
+    let mut p_root = parse_tokens(tokens, logs.logger());
+    validate_syntax(&p_root, logs.logger());
+    let name_resolution = resolve_name(&mut p_root, logs.logger());
     trace!("p_root = {:#?}\n", p_root);
 
     if logs.is_fatal() {
         for item in logs.finish() {
             error!("{:?} {}", item.location, item.message);
         }
-        std::process::exit(1);
+        process::exit(1);
     }
 
-    let mut k_root = front::cps_conversion(&p_root, &name_resolution, logs.logger());
-    cps::resolve_types(&mut k_root, logs.logger());
+    let mut k_root = cps_conversion(&p_root, &name_resolution, logs.logger());
+    resolve_types(&mut k_root, logs.logger());
     trace!("k_root (gen) = {:#?}\n", k_root);
 
-    cps::eliminate_unit(&mut k_root);
+    eliminate_unit(&mut k_root);
     trace!("k_root (elim) = {:#?}\n", k_root);
 
     for item in logs.finish() {
@@ -102,7 +108,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         &mut k_root.outlines.structs,
     );
 
-    clang::clang_dump(&k_root)
+    clang_dump(&k_root)
 }
 
 mod clang {
