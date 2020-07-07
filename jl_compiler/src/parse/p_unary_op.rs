@@ -3,6 +3,8 @@
 pub(crate) enum PUnaryOp {
     /// `*`
     Deref,
+    /// `**`
+    DerefDeref,
     /// `&`
     Ref,
     /// `-`

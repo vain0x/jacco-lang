@@ -76,54 +76,91 @@ pub(crate) enum TokenKind {
     While,
     With,
     Yield,
-    // `<`
-    LeftAngle,
-    LeftAngleEqual,
-    RightAngle,
-    RightAngleEqual,
-    LeftBrace,
-    RightBrace,
-    LeftBracket,
-    RightBracket,
+    /// `(`
     LeftParen,
+    /// `)`
     RightParen,
-    LeftSlimArrow,
-    RightSlimArrow,
-    RightFatArrow,
-    LeftShift,
-    LeftShiftEqual,
-    RightShift,
-    RightShiftEqual,
+    /// `[`
+    LeftBracket,
+    /// `]`
+    RightBracket,
+    /// `{`
+    LeftBrace,
+    /// `}`
+    RightBrace,
+    /// `&`
     And,
+    /// `&&`
     AndAnd,
+    /// `&&=`
     AndAndEqual,
+    /// `&=`
     AndEqual,
     Bang,
     BangEqual,
+    BangEqualEqual,
     Colon,
     ColonColon,
     Comma,
     Dot,
+    DotDot,
+    DotDotEqual,
+    /// `..<`
+    DotDotLeft,
     Equal,
     EqualEqual,
+    EqualEqualEqual,
+    Hash,
+    HashBang,
     Hat,
     HatEqual,
+    /// `<`
+    LeftAngle,
+    /// `<=`
+    LeftEqual,
+    /// `<=>`
+    LeftEqualRight,
+    /// `<<`
+    LeftLeft,
+    /// `<<=`
+    LeftLeftEqual,
+    /// `<-`
+    LeftSlimArrow,
     Minus,
     MinusEqual,
+    MinusMinus,
     Percent,
     PercentEqual,
     Pipe,
     PipeEqual,
     PipePipe,
     PipePipeEqual,
+    /// `|>`
     PipeRight,
     Plus,
     PlusEqual,
+    PlusPlus,
+    Question,
+    /// `>`
+    RightAngle,
+    /// `>=`
+    RightEqual,
+    /// `=>`
+    RightFatArrow,
+    /// `->`
+    RightSlimArrow,
+    /// `>>`
+    RightRight,
+    /// `>>=`
+    RightRightEqual,
+    /// `;`
     Semi,
     Slash,
     SlashEqual,
     Star,
     StarEqual,
+    StarStar,
+    StarStarEqual,
 }
 
 impl Default for TokenKind {

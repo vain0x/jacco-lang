@@ -802,6 +802,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
+            PUnaryOp::DerefDeref => {
+                let deref = emit_unary_op(KPrim::Deref, arg_opt, location.clone(), gx);
+
+                let result = gx.fresh_symbol("deref", location);
+                gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
+                KTerm::Name(result)
+            }
             PUnaryOp::Ref => {
                 let k_mut = gen_mut(mut_opt.as_ref(), gx);
                 gen_expr_lval(*arg_opt.unwrap(), k_mut, location, gx)

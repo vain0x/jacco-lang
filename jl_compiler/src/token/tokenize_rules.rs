@@ -159,19 +159,22 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         '}' => Some((TokenKind::RightBrace, 1)),
         '<' => match tx.nth(1) {
             '<' => match tx.nth(2) {
-                '=' => Some((TokenKind::LeftShiftEqual, 3)),
-                _ => Some((TokenKind::LeftShift, 2)),
+                '=' => Some((TokenKind::LeftLeftEqual, 3)),
+                _ => Some((TokenKind::LeftLeft, 2)),
             },
             '-' => Some((TokenKind::LeftSlimArrow, 2)),
-            '=' => Some((TokenKind::LeftAngleEqual, 2)),
+            '=' => match tx.nth(2) {
+                '>' => Some((TokenKind::LeftEqualRight, 3)),
+                _ => Some((TokenKind::LeftEqual, 2)),
+            },
             _ => Some((TokenKind::LeftAngle, 1)),
         },
         '>' => match tx.nth(1) {
             '>' => match tx.nth(2) {
-                '=' => Some((TokenKind::RightShiftEqual, 3)),
-                _ => Some((TokenKind::RightShift, 2)),
+                '=' => Some((TokenKind::RightRightEqual, 3)),
+                _ => Some((TokenKind::RightRight, 2)),
             },
-            '=' => Some((TokenKind::RightAngleEqual, 2)),
+            '=' => Some((TokenKind::RightEqual, 2)),
             _ => Some((TokenKind::RightAngle, 1)),
         },
         '&' => match tx.nth(1) {
@@ -183,7 +186,10 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             _ => Some((TokenKind::And, 1)),
         },
         '!' => match tx.nth(1) {
-            '=' => Some((TokenKind::BangEqual, 2)),
+            '=' => match tx.nth(2) {
+                '=' => Some((TokenKind::BangEqualEqual, 3)),
+                _ => Some((TokenKind::BangEqual, 2)),
+            },
             _ => Some((TokenKind::Bang, 1)),
         },
         ':' => match tx.nth(1) {
@@ -191,11 +197,25 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             _ => Some((TokenKind::Colon, 1)),
         },
         ',' => Some((TokenKind::Comma, 1)),
-        '.' => Some((TokenKind::Dot, 1)),
+        '.' => match tx.nth(2) {
+            '.' => match tx.nth(3) {
+                '=' => Some((TokenKind::DotDotEqual, 3)),
+                '<' => Some((TokenKind::DotDotLeft, 3)),
+                _ => Some((TokenKind::DotDot, 2)),
+            },
+            _ => Some((TokenKind::Dot, 1)),
+        },
         '=' => match tx.nth(1) {
             '>' => Some((TokenKind::RightFatArrow, 2)),
-            '=' => Some((TokenKind::EqualEqual, 2)),
+            '=' => match tx.nth(2) {
+                '=' => Some((TokenKind::EqualEqualEqual, 3)),
+                _ => Some((TokenKind::EqualEqual, 2)),
+            },
             _ => Some((TokenKind::Equal, 1)),
+        },
+        '#' => match tx.nth(1) {
+            '!' => Some((TokenKind::HashBang, 2)),
+            _ => Some((TokenKind::Hash, 1)),
         },
         '^' => match tx.nth(1) {
             '=' => Some((TokenKind::HatEqual, 2)),
@@ -203,6 +223,7 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         },
         '-' => match tx.nth(1) {
             '=' => Some((TokenKind::MinusEqual, 2)),
+            '-' => Some((TokenKind::MinusMinus, 2)),
             '>' => Some((TokenKind::RightSlimArrow, 2)),
             _ => Some((TokenKind::Minus, 1)),
         },
@@ -221,14 +242,20 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
         },
         '+' => match tx.nth(1) {
             '=' => Some((TokenKind::PlusEqual, 2)),
+            '+' => Some((TokenKind::PlusPlus, 2)),
             _ => Some((TokenKind::Plus, 1)),
         },
+        '?' => Some((TokenKind::Question, 1)),
         ';' => Some((TokenKind::Semi, 1)),
         '/' => match tx.nth(1) {
             '=' => Some((TokenKind::SlashEqual, 2)),
             _ => Some((TokenKind::Slash, 1)),
         },
         '*' => match tx.nth(1) {
+            '*' => match tx.nth(2) {
+                '=' => Some((TokenKind::StarStarEqual, 3)),
+                _ => Some((TokenKind::StarStar, 2)),
+            },
             '=' => Some((TokenKind::StarEqual, 2)),
             _ => Some((TokenKind::Star, 1)),
         },

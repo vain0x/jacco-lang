@@ -181,6 +181,7 @@ fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         TokenKind::Bang => PUnaryOp::Not,
         TokenKind::Minus => PUnaryOp::Minus,
         TokenKind::Star => PUnaryOp::Deref,
+        TokenKind::StarStar => PUnaryOp::DerefDeref,
         _ => return parse_as_expr(allow_struct, px),
     };
 
@@ -247,8 +248,8 @@ fn parse_bit(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             TokenKind::And => PBinaryOp::BitAnd,
             TokenKind::Pipe => PBinaryOp::BitOr,
             TokenKind::Hat => PBinaryOp::BitXor,
-            TokenKind::LeftShift => PBinaryOp::LeftShift,
-            TokenKind::RightShift => PBinaryOp::RightShift,
+            TokenKind::LeftLeft => PBinaryOp::LeftShift,
+            TokenKind::RightRight => PBinaryOp::RightShift,
             _ => return Some(left),
         };
 
@@ -271,9 +272,9 @@ fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             TokenKind::EqualEqual => PBinaryOp::Eq,
             TokenKind::BangEqual => PBinaryOp::Ne,
             TokenKind::LeftAngle => PBinaryOp::Lt,
-            TokenKind::LeftAngleEqual => PBinaryOp::Le,
+            TokenKind::LeftEqual => PBinaryOp::Le,
             TokenKind::RightAngle => PBinaryOp::Gt,
-            TokenKind::RightAngleEqual => PBinaryOp::Ge,
+            TokenKind::RightEqual => PBinaryOp::Ge,
             _ => return Some(left),
         };
 
@@ -319,8 +320,8 @@ fn parse_pipe_or_assign(
     loop {
         let assign_op = match (px.next(), allow_assign) {
             (TokenKind::Equal, AllowAssign::True) => PBinaryOp::Assign,
-            (TokenKind::LeftShiftEqual, AllowAssign::True) => PBinaryOp::LeftShiftAssign,
-            (TokenKind::RightShiftEqual, AllowAssign::True) => PBinaryOp::RightShiftAssign,
+            (TokenKind::LeftLeftEqual, AllowAssign::True) => PBinaryOp::LeftShiftAssign,
+            (TokenKind::RightRightEqual, AllowAssign::True) => PBinaryOp::RightShiftAssign,
             (TokenKind::AndEqual, AllowAssign::True) => PBinaryOp::BitAndAssign,
             (TokenKind::HatEqual, AllowAssign::True) => PBinaryOp::BitXorAssign,
             (TokenKind::MinusEqual, AllowAssign::True) => PBinaryOp::SubAssign,
