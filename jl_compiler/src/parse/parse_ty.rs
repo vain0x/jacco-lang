@@ -13,7 +13,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
     let ty = match px.next() {
         TokenKind::Ident => {
             let name = parse_name(px).unwrap();
-            PTy::Name(PNameTy(name))
+            PTy::Name(name)
         }
         TokenKind::LeftParen => {
             let left_paren = px.bump();

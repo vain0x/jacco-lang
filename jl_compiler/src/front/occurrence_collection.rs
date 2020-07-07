@@ -56,8 +56,8 @@ fn resolve_name_use(p_name: &PName, cx: &mut Cx) {
     }
 }
 
-fn resolve_ty_name(ty_name: &PNameTy, cx: &mut Cx) {
-    resolve_name_use(&ty_name.0, cx);
+fn resolve_ty_name(ty_name: &PName, cx: &mut Cx) {
+    resolve_name_use(&ty_name, cx);
 }
 
 fn resolve_ty(ty: &PTy, cx: &mut Cx) {

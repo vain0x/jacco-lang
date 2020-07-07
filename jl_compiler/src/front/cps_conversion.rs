@@ -240,9 +240,8 @@ fn gen_mut(p_mut: Option<&PMut>, _gx: &mut Gx) -> KMut {
     }
 }
 
-fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
-    let mut name = ty_name.0;
-    let n_name = take(&mut name.info_opt).unwrap();
+fn gen_ty_name(mut p_name: PName, _gx: &mut Gx) -> KTy {
+    let n_name = take(&mut p_name.info_opt).unwrap();
 
     match n_name {
         NName::I8 => KTy::I8,
@@ -263,7 +262,7 @@ fn gen_ty_name(ty_name: PNameTy, _gx: &mut Gx) -> KTy {
         NName::Bool => KTy::Bool,
         NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
         NName::Struct(struct_id) => KTy::Struct(KStruct::new(struct_id)),
-        _ => unreachable!("expected type name but {:?}", name),
+        _ => unreachable!("expected type name but {:?}", p_name),
     }
 }
 
@@ -636,13 +635,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             mut fields,
             ..
         }) => {
-            let k_struct = match take(&mut name.0.info_opt) {
+            let k_struct = match take(&mut name.info_opt) {
                 Some(NName::Const(_)) => todo!(),
                 Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
                 n_name => unreachable!("{:?}", n_name),
             };
 
-            let (name, location) = name.0.decompose();
+            let (name, location) = name.decompose();
             let result = gx.fresh_symbol(&name, location.clone());
 
             let field_count = k_struct.fields(&gx.outlines.structs).len();
@@ -927,9 +926,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 KTerm::Name(result)
             }
             _ => {
-                gx.logger.error(&pipe, "|> の右辺は関数呼び出しでなければいけません");
+                gx.logger
+                    .error(&pipe, "|> の右辺は関数呼び出しでなければいけません");
                 new_never_term(pipe.location())
-            },
+            }
         },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
         PExpr::Break(PBreakExpr {

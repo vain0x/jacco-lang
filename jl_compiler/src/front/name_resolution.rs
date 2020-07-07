@@ -241,9 +241,7 @@ fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
     resolve_name_def(name, NName::LocalVar(local_var_id), nx);
 }
 
-fn resolve_ty_name(ty_name: &mut PNameTy, nx: &mut Nx) {
-    let name = &mut ty_name.0;
-
+fn resolve_ty_name(name: &mut PName, nx: &mut Nx) {
     // 環境から探して、なければ組み込み型の名前とみなす。
     let name_info = find_value_name(&name.full_name(), nx)
         .or_else(|| parse_known_ty_name(name.text()))

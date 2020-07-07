@@ -91,7 +91,7 @@ fn parse_record_expr(name: PName, px: &mut Px) -> PExpr {
     let fields = parse_field_exprs(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
     PExpr::Record(PRecordExpr {
-        name: PNameTy(name),
+        name,
         left_brace,
         fields,
         right_brace_opt,

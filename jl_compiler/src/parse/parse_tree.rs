@@ -86,13 +86,6 @@ impl PNode for PName {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PNameTy(pub(crate) PName);
-
-impl PNode for PNameTy {
-    impl_node_seq! { 0 }
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct PNeverTy {
     pub(crate) bang: TokenData,
 }
@@ -124,7 +117,7 @@ impl PNode for PPtrTy {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PTy {
-    Name(PNameTy),
+    Name(PName),
     Never(PNeverTy),
     Unit(PUnitTy),
     Ptr(PPtrTy),
@@ -415,7 +408,7 @@ impl PNode for PFieldExpr {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PRecordExpr {
-    pub(crate) name: PNameTy,
+    pub(crate) name: PName,
     pub(crate) left_brace: TokenData,
     pub(crate) fields: Vec<PFieldExpr>,
     pub(crate) right_brace_opt: Option<TokenData>,
