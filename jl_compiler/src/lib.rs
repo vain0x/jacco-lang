@@ -8,13 +8,13 @@ pub mod rust_api {
 
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     use log::{error, trace};
-    use std::rc::Rc;
+    use std::{rc::Rc, sync::Arc};
 
     trace!("source_path = {:?}", source_path);
 
     let logs = logs::Logs::new();
 
-    let source_path = Rc::new(std::path::PathBuf::from(source_path));
+    let source_path = Arc::new(std::path::PathBuf::from(source_path));
     let source_file = source::SourceFile { source_path };
     let token_source = token::TokenSource::File(source_file);
     let source_code = Rc::new(source_code.to_string());

@@ -2,12 +2,12 @@ use std::{
     fmt::{self, Debug},
     io,
     path::{Component, Path, PathBuf},
-    rc::Rc,
+    sync::Arc,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct SourceFile {
-    pub(crate) source_path: Rc<PathBuf>,
+    pub(crate) source_path: Arc<PathBuf>,
 }
 
 impl Debug for SourceFile {

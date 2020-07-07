@@ -12,6 +12,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     rc::Rc,
+    sync::Arc,
 };
 
 pub type Source = usize;
@@ -41,7 +42,7 @@ struct Cps {
 struct AnalysisCache {
     version: i64,
     text: Rc<String>,
-    source_path: Rc<PathBuf>,
+    source_path: Arc<PathBuf>,
     syntax_opt: Option<Syntax>,
     symbols_opt: Option<Symbols>,
     cps_opt: Option<Cps>,
@@ -196,7 +197,7 @@ impl LangService {
                 version,
                 text,
                 // FIXME: 引数でもらう
-                source_path: Rc::new(PathBuf::from("main.jacco")),
+                source_path: PathBuf::from("main.jacco").into(),
                 syntax_opt: None,
                 symbols_opt: None,
                 cps_opt: None,
