@@ -614,12 +614,16 @@ fn gen_node(mut node: KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, ty_env, cx),
         KPrim::Div => gen_binary_op(CBinaryOp::Div, args, results, conts, ty_env, cx),
         KPrim::Modulo => gen_binary_op(CBinaryOp::Modulo, args, results, conts, ty_env, cx),
-        KPrim::Eq => gen_binary_op(CBinaryOp::Eq, args, results, conts, ty_env, cx),
-        KPrim::Ne => gen_binary_op(CBinaryOp::Ne, args, results, conts, ty_env, cx),
-        KPrim::Lt => gen_binary_op(CBinaryOp::Lt, args, results, conts, ty_env, cx),
-        KPrim::Le => gen_binary_op(CBinaryOp::Le, args, results, conts, ty_env, cx),
-        KPrim::Gt => gen_binary_op(CBinaryOp::Gt, args, results, conts, ty_env, cx),
-        KPrim::Ge => gen_binary_op(CBinaryOp::Ge, args, results, conts, ty_env, cx),
+        KPrim::Equal => gen_binary_op(CBinaryOp::Equal, args, results, conts, ty_env, cx),
+        KPrim::NotEqual => gen_binary_op(CBinaryOp::NotEqual, args, results, conts, ty_env, cx),
+        KPrim::LessThan => gen_binary_op(CBinaryOp::LessThan, args, results, conts, ty_env, cx),
+        KPrim::LessEqual => gen_binary_op(CBinaryOp::LessEqual, args, results, conts, ty_env, cx),
+        KPrim::GreaterThan => {
+            gen_binary_op(CBinaryOp::GreaterThan, args, results, conts, ty_env, cx)
+        }
+        KPrim::GreaterEqual => {
+            gen_binary_op(CBinaryOp::GreaterEqual, args, results, conts, ty_env, cx)
+        }
         KPrim::BitAnd => gen_binary_op(CBinaryOp::BitAnd, args, results, conts, ty_env, cx),
         KPrim::BitOr => gen_binary_op(CBinaryOp::BitOr, args, results, conts, ty_env, cx),
         KPrim::BitXor => gen_binary_op(CBinaryOp::BitXor, args, results, conts, ty_env, cx),

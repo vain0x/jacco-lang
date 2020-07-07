@@ -7,14 +7,14 @@ int main() {
     unsigned char const* add_1 = s_1 + 1ULL;
     unsigned char deref_1 = *add_1;
     unsigned char e_1 = deref_1;
-    int eq_1 = e_1 == 'e';
+    int equal_1 = e_1 == 'e';
     // call_result_1 is killed.
-    assert_ok(eq_1);
+    assert_ok(equal_1);
     unsigned char const* indexed_ptr_1 = s_1 + 4ULL;
     unsigned char index_result_1 = *indexed_ptr_1;
     unsigned char o_1 = index_result_1;
-    int eq_2 = o_1 == 'o';
+    int equal_2 = o_1 == 'o';
     // call_result_2 is killed.
-    assert_ok(eq_2);
+    assert_ok(equal_2);
     return 0;
 }

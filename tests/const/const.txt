@@ -4,21 +4,21 @@ int main();
 
 int main() {
     int if_result_1;
-    int eq_1 = 42 == 42;
+    int equal_1 = 42 == 42;
     // call_result_1 is killed.
-    assert(eq_1);
-    int eq_2 = 84 == 84;
+    assert(equal_1);
+    int equal_2 = 84 == 84;
     // call_result_2 is killed.
-    assert(eq_2);
-    int eq_3 = 126 == 126;
+    assert(equal_2);
+    int equal_3 = 126 == 126;
     // call_result_3 is killed.
-    assert(eq_3);
-    int ne_1 = 9223372036854775807LL != 0LL;
+    assert(equal_3);
+    int notequal_1 = 9223372036854775807LL != 0LL;
     // call_result_4 is killed.
-    assert(ne_1);
-    int ne_2 = 18446744073709551615ULL != 0ULL;
+    assert(notequal_1);
+    int notequal_2 = 18446744073709551615ULL != 0ULL;
     // call_result_5 is killed.
-    assert(ne_2);
+    assert(notequal_2);
     if (1) {
         int not_1 = !0;
         if_result_1 = not_1;
@@ -31,8 +31,8 @@ int main() {
 next_1:;
     // call_result_6 is killed.
     assert(if_result_1);
-    int eq_4 = 9223372036854775807LL == 9223372036854775807LL;
+    int equal_4 = 9223372036854775807LL == 9223372036854775807LL;
     // call_result_7 is killed.
-    assert(eq_4);
+    assert(equal_4);
     return 0;
 }

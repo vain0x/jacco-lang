@@ -24,17 +24,17 @@ void perform_failible_operation_1(int err_1) {
 
 int main() {
     int call_result_1 = fresh_id_1();
-    int eq_1 = call_result_1 == 1;
+    int equal_1 = call_result_1 == 1;
     // call_result_2 is killed.
-    assert(eq_1);
+    assert(equal_1);
     int call_result_3 = fresh_id_1();
-    int eq_2 = call_result_3 == 2;
+    int equal_2 = call_result_3 == 2;
     // call_result_4 is killed.
-    assert(eq_2);
+    assert(equal_2);
     // call_result_5 is killed.
     perform_failible_operation_1(127);
-    int eq_3 = ERR_NO_1 == 127;
+    int equal_3 = ERR_NO_1 == 127;
     // call_result_6 is killed.
-    assert(eq_3);
+    assert(equal_3);
     return 0;
 }

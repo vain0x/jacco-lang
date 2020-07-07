@@ -881,12 +881,18 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             PBinaryOp::RightShift => {
                 emit_binary_op(KPrim::RightShift, *left, right_opt, location, gx)
             }
-            PBinaryOp::Eq => emit_binary_op(KPrim::Eq, *left, right_opt, location, gx),
-            PBinaryOp::Ne => emit_binary_op(KPrim::Ne, *left, right_opt, location, gx),
-            PBinaryOp::Lt => emit_binary_op(KPrim::Lt, *left, right_opt, location, gx),
-            PBinaryOp::Le => emit_binary_op(KPrim::Le, *left, right_opt, location, gx),
-            PBinaryOp::Gt => emit_binary_op(KPrim::Gt, *left, right_opt, location, gx),
-            PBinaryOp::Ge => emit_binary_op(KPrim::Ge, *left, right_opt, location, gx),
+            PBinaryOp::Equal => emit_binary_op(KPrim::Equal, *left, right_opt, location, gx),
+            PBinaryOp::NotEqual => emit_binary_op(KPrim::NotEqual, *left, right_opt, location, gx),
+            PBinaryOp::LessThan => emit_binary_op(KPrim::LessThan, *left, right_opt, location, gx),
+            PBinaryOp::LessEqual => {
+                emit_binary_op(KPrim::LessEqual, *left, right_opt, location, gx)
+            }
+            PBinaryOp::GreaterThan => {
+                emit_binary_op(KPrim::GreaterThan, *left, right_opt, location, gx)
+            }
+            PBinaryOp::GreaterEqual => {
+                emit_binary_op(KPrim::GreaterEqual, *left, right_opt, location, gx)
+            }
             PBinaryOp::LogAnd => {
                 let false_term = new_false_term(location.clone());
                 emit_if(

@@ -4,9 +4,9 @@ int main() {
     int f_1 = 0;
     int t_1 = 1;
     int anno_1 = t_1;
-    int ne_1 = 1 != 0;
-    int eq_1 = ne_1;
-    int lt_1 = 0 < 1;
-    int ord_1 = lt_1;
+    int notequal_1 = 1 != 0;
+    int eq_1 = notequal_1;
+    int lessthan_1 = 0 < 1;
+    int ord_1 = lessthan_1;
     return 0;
 }

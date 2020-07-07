@@ -512,7 +512,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::Eq | KPrim::Ne | KPrim::Lt | KPrim::Le | KPrim::Gt | KPrim::Ge => {
+        KPrim::Equal
+        | KPrim::NotEqual
+        | KPrim::LessThan
+        | KPrim::LessEqual
+        | KPrim::GreaterThan
+        | KPrim::GreaterEqual => {
             match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
                 ([left, right], [result]) => {
                     let left_ty = resolve_term(left, tx);

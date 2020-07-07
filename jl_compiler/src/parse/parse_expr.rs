@@ -269,12 +269,12 @@ fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
 
     loop {
         let op = match px.next() {
-            TokenKind::EqualEqual => PBinaryOp::Eq,
-            TokenKind::BangEqual => PBinaryOp::Ne,
-            TokenKind::LeftAngle => PBinaryOp::Lt,
-            TokenKind::LeftEqual => PBinaryOp::Le,
-            TokenKind::RightAngle => PBinaryOp::Gt,
-            TokenKind::RightEqual => PBinaryOp::Ge,
+            TokenKind::EqualEqual => PBinaryOp::Equal,
+            TokenKind::BangEqual => PBinaryOp::NotEqual,
+            TokenKind::LeftAngle => PBinaryOp::LessThan,
+            TokenKind::LeftEqual => PBinaryOp::LessEqual,
+            TokenKind::RightAngle => PBinaryOp::GreaterThan,
+            TokenKind::RightEqual => PBinaryOp::GreaterEqual,
             _ => return Some(left),
         };
 
