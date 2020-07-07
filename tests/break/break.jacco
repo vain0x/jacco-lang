@@ -1,5 +1,5 @@
 fn break_from_while() {
-    while (true) {
+    while true {
         break;
     }
 }

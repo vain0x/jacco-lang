@@ -1,5 +1,5 @@
 pub fn main() -> i32 {
-    while (false) {
+    while false {
         let a = 1;
     }
     0

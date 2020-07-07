@@ -35,6 +35,7 @@ impl Range {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn ahead(self) -> Range {
         Range {
             start: self.start,

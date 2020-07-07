@@ -31,6 +31,7 @@ impl Location {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn ahead(self) -> Location {
         Location {
             range: self.range.ahead(),

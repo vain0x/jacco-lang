@@ -70,3 +70,4 @@ fi
 
 # 差分の量を表示する。
 git --no-pager diff --stat --relative -- 'tests/*/*.txt'
+echo 'FINISH'

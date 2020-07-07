@@ -612,9 +612,7 @@ impl PNode for PReturnExpr {
 #[derive(Clone, Debug)]
 pub(crate) struct PIfExpr {
     pub(crate) keyword: TokenData,
-    pub(crate) left_paren_opt: Option<TokenData>,
     pub(crate) cond_opt: Option<Box<PExpr>>,
-    pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) body_opt: Option<PBlock>,
     pub(crate) else_opt: Option<TokenData>,
     pub(crate) alt_opt: Option<Box<PExpr>>,
@@ -623,9 +621,7 @@ pub(crate) struct PIfExpr {
 impl PNode for PIfExpr {
     impl_node_seq! {
         keyword,
-        left_paren_opt,
         cond_opt,
-        right_paren_opt,
         body_opt,
         else_opt,
         alt_opt,
@@ -647,9 +643,7 @@ impl PNode for PArm {
 #[derive(Clone, Debug)]
 pub(crate) struct PMatchExpr {
     pub(crate) keyword: TokenData,
-    pub(crate) left_paren_opt: Option<TokenData>,
     pub(crate) cond_opt: Option<Box<PExpr>>,
-    pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) left_brace_opt: Option<TokenData>,
     pub(crate) arms: Vec<PArm>,
     pub(crate) right_brace_opt: Option<TokenData>,
@@ -657,19 +651,17 @@ pub(crate) struct PMatchExpr {
 
 impl PNode for PMatchExpr {
     fn len(&self) -> usize {
-        self.arms.len() + 6
+        self.arms.len() + 4
     }
 
     fn get(&self, mut i: usize) -> Option<PElementRef> {
         match i {
             0 => return try_as_element_ref(&self.keyword),
-            1 => return try_as_element_ref(&self.left_paren_opt),
-            2 => return try_as_element_ref(&self.cond_opt),
-            3 => return try_as_element_ref(&self.right_paren_opt),
-            4 => return try_as_element_ref(&self.left_brace_opt),
+            1 => return try_as_element_ref(&self.cond_opt),
+            2 => return try_as_element_ref(&self.left_brace_opt),
             _ => {}
         }
-        i -= 5;
+        i -= 3;
 
         let arm_count = self.arms.len();
         if let Some(arm) = self.arms.get(i) {
@@ -687,13 +679,11 @@ impl PNode for PMatchExpr {
     fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
         match i {
             0 => return try_as_element_mut(&mut self.keyword),
-            1 => return try_as_element_mut(&mut self.left_paren_opt),
-            2 => return try_as_element_mut(&mut self.cond_opt),
-            3 => return try_as_element_mut(&mut self.right_paren_opt),
-            4 => return try_as_element_mut(&mut self.left_brace_opt),
+            1 => return try_as_element_mut(&mut self.cond_opt),
+            2 => return try_as_element_mut(&mut self.left_brace_opt),
             _ => {}
         }
-        i -= 5;
+        i -= 3;
 
         let arm_count = self.arms.len();
         if let Some(arm) = self.arms.get_mut(i) {
@@ -712,15 +702,13 @@ impl PNode for PMatchExpr {
 #[derive(Clone, Debug)]
 pub(crate) struct PWhileExpr {
     pub(crate) keyword: TokenData,
-    pub(crate) left_paren_opt: Option<TokenData>,
     pub(crate) cond_opt: Option<Box<PExpr>>,
-    pub(crate) right_paren_opt: Option<TokenData>,
     pub(crate) body_opt: Option<PBlock>,
     pub(crate) loop_id_opt: Option<usize>,
 }
 
 impl PNode for PWhileExpr {
-    impl_node_seq! { keyword, left_paren_opt, cond_opt, right_paren_opt, body_opt }
+    impl_node_seq! { keyword, cond_opt, body_opt }
 }
 
 #[derive(Clone, Debug)]

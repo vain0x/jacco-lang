@@ -1,10 +1,10 @@
 pub fn main() -> i32 {
-    if (true) {}
-    if (true) {}
+    if true {}
+    if true {}
 
-    if (true) {
+    if true {
         let body3 = 30;
-    } else if (true) {
+    } else if true {
         let alt31 = 31;
     } else {
         let alt32 = 32;

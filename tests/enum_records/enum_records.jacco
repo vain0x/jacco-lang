@@ -17,7 +17,7 @@ pub fn main() -> i32 {
         status_code: 403,
     };
 
-    let status_code = match (err) {
+    let status_code = match err {
         Response::Text { .. } => 200,
         Response::Err { .. } => err.Err.status_code,
     };

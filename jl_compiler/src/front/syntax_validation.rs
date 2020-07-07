@@ -107,54 +107,6 @@ fn validate_pat(pat: &PPat, vx: &Vx) {
     }
 }
 
-fn validate_cond(
-    left_paren_opt: Option<&TokenData>,
-    cond_opt: Option<&PExpr>,
-    right_paren_opt: Option<&TokenData>,
-    get_location: impl Fn() -> Location,
-    vx: &Vx,
-) {
-    match (left_paren_opt, cond_opt, right_paren_opt) {
-        (Some(_), Some(cond), Some(_)) => {
-            validate_expr(cond, vx);
-        }
-        (None, None, None) | (Some(_), None, Some(_)) => {
-            vx.logger.error(&get_location(), "maybe missed condition?");
-        }
-        (None, Some(cond), None) => {
-            vx.logger.error(
-                cond,
-                "maybe missed a pair of parenthesis around the condition?",
-            );
-            validate_expr(cond, vx);
-        }
-        (Some(_), Some(cond), None) => {
-            vx.logger
-                .error(&cond.location().behind(), "maybe missed a right paren?");
-            validate_expr(cond, vx);
-        }
-        (None, Some(cond), Some(_)) => {
-            vx.logger.error(
-                &cond.location().ahead(),
-                "maybe missed a left paren in front of the condition?",
-            );
-            validate_expr(cond, vx);
-        }
-        (None, None, Some(paren)) => {
-            vx.logger.error(
-                &paren.location().ahead(),
-                "maybe missed a left paren and condition?",
-            );
-        }
-        (Some(paren), None, None) => {
-            vx.logger.error(
-                &paren.location().behind(),
-                "maybe missed a condition and a right paren?",
-            );
-        }
-    }
-}
-
 fn validate_block(block: &PBlock, vx: &Vx) {
     for (i, decl) in block.decls.iter().enumerate() {
         let semi_required = {
@@ -281,20 +233,17 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }
         PExpr::If(PIfExpr {
             keyword,
-            left_paren_opt,
             cond_opt,
-            right_paren_opt,
             body_opt,
             else_opt,
             alt_opt,
         }) => {
-            validate_cond(
-                left_paren_opt.as_ref(),
-                cond_opt.as_deref(),
-                right_paren_opt.as_ref(),
-                || keyword.location().clone(),
-                vx,
-            );
+            match cond_opt {
+                Some(cond) => validate_expr(cond, vx),
+                None => vx
+                    .logger
+                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+            }
 
             match body_opt {
                 Some(body) => validate_block(body, vx),
@@ -316,20 +265,17 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }
         PExpr::Match(PMatchExpr {
             keyword,
-            left_paren_opt,
             cond_opt,
-            right_paren_opt,
             left_brace_opt,
             arms,
             right_brace_opt,
         }) => {
-            validate_cond(
-                left_paren_opt.as_ref(),
-                cond_opt.as_deref(),
-                right_paren_opt.as_ref(),
-                || keyword.location().clone(),
-                vx,
-            );
+            match cond_opt {
+                Some(cond) => validate_expr(cond, vx),
+                None => vx
+                    .logger
+                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+            }
 
             for (i, arm) in arms.iter().enumerate() {
                 validate_pat(&arm.pat, vx);
@@ -362,19 +308,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }
         PExpr::While(PWhileExpr {
             keyword,
-            left_paren_opt,
             cond_opt,
-            right_paren_opt,
             body_opt,
             ..
         }) => {
-            validate_cond(
-                left_paren_opt.as_ref(),
-                cond_opt.as_deref(),
-                right_paren_opt.as_ref(),
-                || keyword.location().clone(),
-                vx,
-            );
+            match cond_opt {
+                Some(cond) => validate_expr(cond, vx),
+                None => vx
+                    .logger
+                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+            }
 
             match body_opt {
                 Some(body) => validate_block(body, vx),

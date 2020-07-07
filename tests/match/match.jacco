@@ -5,7 +5,7 @@ extern fn print_i32(value: i32);
 const ANSWER: i32 = 42;
 
 pub fn main() -> i32 {
-    match (42) {
+    match 42 {
         ANSWER => print_str("ok"),
         x => print_i32(x),
     }
