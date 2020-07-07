@@ -135,8 +135,8 @@ impl AnalysisCache {
 
             let logs = Logs::new();
             let mut root = front::cps_conversion(
-                syntax.root.clone(),
-                symbols.name_resolution_opt.take().unwrap(),
+                &syntax.root,
+                symbols.name_resolution_opt.as_ref().unwrap(),
                 logs.logger(),
             );
 

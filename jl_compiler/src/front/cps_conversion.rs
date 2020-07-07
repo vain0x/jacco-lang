@@ -42,7 +42,7 @@ impl Gx {
         }
     }
 
-    fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
+    fn fresh_symbol(&mut self, hint: &str, location: &Location) -> KSymbol {
         let name = hint.to_string();
         let ty = KTy::default();
 
@@ -53,10 +53,13 @@ impl Gx {
             is_alive: true,
         });
 
-        KSymbol { local, location }
+        KSymbol {
+            local,
+            location: location.clone(),
+        }
     }
 
-    fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
+    fn fresh_label(&mut self, hint: &str, _location: &Location) -> KLabel {
         let name = hint.to_string();
 
         let id = self.current_labels.len();
@@ -102,7 +105,7 @@ impl Gx {
             args: once(KTerm::Label(label)).chain(args).collect(),
             result_opt: None,
             cont_count,
-            // FIXME: location を持たせる
+            // FIXME: &Location を持たせる
             location: Default::default(),
         });
     }
@@ -141,15 +144,10 @@ fn new_never_term(location: Location) -> KTerm {
     KTerm::Unit { location }
 }
 
-fn emit_unary_op(
-    prim: KPrim,
-    arg_opt: Option<Box<PExpr>>,
-    location: Location,
-    gx: &mut Gx,
-) -> KTerm {
+fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: &Location, gx: &mut Gx) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
 
-    let arg = gen_expr(*arg_opt.unwrap(), gx);
+    let arg = gen_expr(arg_opt.unwrap(), gx);
 
     gx.push_prim_1(prim, vec![arg], result.clone());
 
@@ -158,13 +156,13 @@ fn emit_unary_op(
 
 fn emit_compound_assign(
     prim: KPrim,
-    left: PExpr,
-    right_opt: Option<Box<PExpr>>,
-    location: Location,
+    left: &PExpr,
+    right_opt: Option<&PExpr>,
+    location: &Location,
     gx: &mut Gx,
 ) -> KTerm {
-    let left = gen_expr_lval(left, KMut::Mut, location.clone(), gx);
-    let right = gen_expr(*right_opt.unwrap(), gx);
+    let left = gen_expr_lval(left, KMut::Mut, location, gx);
+    let right = gen_expr(right_opt.unwrap(), gx);
 
     gx.push(KCommand::Node {
         prim,
@@ -175,20 +173,20 @@ fn emit_compound_assign(
         location: location.clone(),
     });
 
-    new_unit_term(location)
+    new_unit_term(location.clone())
 }
 
 fn emit_binary_op(
     prim: KPrim,
-    left: PExpr,
-    right_opt: Option<Box<PExpr>>,
-    location: Location,
+    left: &PExpr,
+    right_opt: Option<&PExpr>,
+    location: &Location,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
 
     let left = gen_expr(left, gx);
-    let right = gen_expr(*right_opt.unwrap(), gx);
+    let right = gen_expr(right_opt.unwrap(), gx);
 
     gx.push_prim_1(prim, vec![left, right], result.clone());
 
@@ -196,14 +194,14 @@ fn emit_binary_op(
 }
 
 fn emit_if(
-    cond: PExpr,
+    cond: &PExpr,
     gen_body: impl FnOnce(&mut Gx) -> KTerm,
     gen_alt: impl FnOnce(&mut Gx) -> KTerm,
-    location: Location,
+    location: &Location,
     gx: &mut Gx,
 ) -> KTerm {
-    let result = gx.fresh_symbol("if_result", location.clone());
-    let next_label = gx.fresh_label("next", location.clone());
+    let result = gx.fresh_symbol("if_result", location);
+    let next_label = gx.fresh_label("next", location);
 
     let k_cond = gen_expr(cond, gx);
 
@@ -213,7 +211,7 @@ fn emit_if(
         args: vec![k_cond],
         result_opt: None,
         cont_count: 2,
-        location,
+        location: location.clone(),
     });
 
     // body
@@ -240,8 +238,8 @@ fn gen_mut(p_mut: Option<&PMut>, _gx: &mut Gx) -> KMut {
     }
 }
 
-fn gen_ty_name(mut p_name: PName, _gx: &mut Gx) -> KTy {
-    let n_name = take(&mut p_name.info_opt).unwrap();
+fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
+    let n_name = p_name.info_opt.clone().unwrap();
 
     match n_name {
         NName::I8 => KTy::I8,
@@ -266,7 +264,7 @@ fn gen_ty_name(mut p_name: PName, _gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
+fn gen_ty(ty: &PTy, gx: &mut Gx) -> KTy {
     match ty {
         PTy::Name(name) => gen_ty_name(name, gx),
         PTy::Never(_) => KTy::Never,
@@ -275,14 +273,14 @@ fn gen_ty(ty: PTy, gx: &mut Gx) -> KTy {
             ty_opt, mut_opt, ..
         }) => {
             let k_mut = gen_mut(mut_opt.as_ref(), gx);
-            gen_ty(*ty_opt.unwrap(), gx).into_ptr(k_mut)
+            gen_ty(ty_opt.as_deref().unwrap(), gx).into_ptr(k_mut)
         }
     }
 }
 
-fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
-    let n_name = take(&mut name.info_opt).unwrap();
-    let (name, location) = name.decompose();
+fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
+    let n_name = name.info_opt.unwrap();
+    let (name, location) = name.clone().decompose();
 
     match n_name {
         NName::LocalVar(local_var_id) => {
@@ -341,7 +339,7 @@ fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
         | NName::Struct(_) => {
             gx.logger.error(&location, "型の名前です。");
             // FIXME: 適切にハンドル？
-            KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
+            KSymbolExt::Symbol(gx.fresh_symbol(&name, &location))
         }
         NName::Unresolved => {
             // Unresolved ならエラーなのでコード生成には来ないはず。
@@ -350,8 +348,8 @@ fn gen_name(mut name: PName, gx: &mut Gx) -> KSymbolExt {
     }
 }
 
-fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
-    let ty = match param.ty_opt {
+fn gen_param(param: &PParam, gx: &mut Gx) -> KSymbol {
+    let ty = match &param.ty_opt {
         Some(ty) => gen_ty(ty, gx),
         None => {
             gx.logger.error(&param.name, "param type is mandatory");
@@ -359,7 +357,7 @@ fn gen_param(param: PParam, gx: &mut Gx) -> KSymbol {
         }
     };
 
-    let symbol = gen_name(param.name, gx).expect_symbol();
+    let symbol = gen_name(&param.name, gx).expect_symbol();
 
     let old_ty = replace(&mut gx.current_locals[symbol.local.id()].ty, ty);
     assert!(old_ty.is_unresolved());
@@ -376,16 +374,16 @@ struct GenFnSigResult {
 
 fn gen_fn_sig(
     n_name: NName,
-    name_opt: Option<PName>,
-    param_list_opt: Option<PParamList>,
-    result_ty_opt: Option<PTy>,
+    name_opt: Option<&PName>,
+    param_list_opt: Option<&PParamList>,
+    result_ty_opt: Option<&PTy>,
     gx: &mut Gx,
 ) -> GenFnSigResult {
     let fn_name = {
-        let mut name = name_opt.unwrap();
+        let name = name_opt.unwrap();
 
         // assert
-        match (n_name, take(&mut name.info_opt)) {
+        match (n_name, name.info_opt) {
             (NName::Fn(expected), Some(NName::Fn(actual)))
             | (NName::ExternFn(expected), Some(NName::ExternFn(actual))) => {
                 assert_eq!(expected, actual);
@@ -393,12 +391,12 @@ fn gen_fn_sig(
             _ => unreachable!(),
         }
 
-        name.token.into_text()
+        name.token.text().to_string()
     };
     let params = param_list_opt
         .unwrap()
         .params
-        .into_iter()
+        .iter()
         .map(|param| gen_param(param, gx))
         .collect::<Vec<_>>();
     let param_tys = params
@@ -417,7 +415,7 @@ fn gen_fn_sig(
     }
 }
 
-fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
+fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
     fn strip_suffix<'a>(s: &'a str, suffix: &'static str) -> Option<&'a str> {
         if s.ends_with(suffix) {
             Some(&s[..s.len() - suffix.len()])
@@ -428,7 +426,7 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
 
     match expr {
         PExpr::Int(PIntExpr { token }) => {
-            let text = &token.into_text().replace("_", "");
+            let text = &token.text().replace("_", "");
             strip_suffix(text, "i32")
                 .and_then(|text| text.parse::<i32>().ok().map(KConstValue::I32))
                 .or_else(|| {
@@ -442,7 +440,7 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
                 .or_else(|| text.parse::<i32>().ok().map(KConstValue::I32))
         }
         PExpr::Float(PFloatExpr { token }) => token
-            .into_text()
+            .text()
             .replace("_", "")
             .parse::<f64>()
             .ok()
@@ -455,36 +453,34 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
         },
         _ => {
             // FIXME: 実装
-            gx.logger.error(&expr, "unimplemented");
+            gx.logger.error(expr, "unimplemented");
             None
         }
     }
 }
 
 fn gen_const_variant(
-    decl: PConstVariantDecl,
+    decl: &PConstVariantDecl,
     parent_enum_opt: Option<KEnum>,
     value_slot: &mut usize,
     gx: &mut Gx,
 ) -> KConst {
     let PConstVariantDecl {
-        mut name,
-        value_opt,
-        ..
+        name, value_opt, ..
     } = decl;
 
     let (name, k_const) = {
-        let k_const = match take(&mut name.info_opt) {
+        let k_const = match name.info_opt {
             Some(NName::Const(const_id)) => KConst::new(const_id),
             _ => unreachable!(),
         };
-        let (name, _) = name.decompose();
+        let (name, _) = name.clone().decompose();
         (name, k_const)
     };
 
-    if let Some(value) = value_opt {
+    if let Some(value) = value_opt.as_deref() {
         let location = value.location();
-        match gen_constant(*value, gx) {
+        match gen_constant(value, gx) {
             Some(value) => {
                 // FIXME: 値を設定できるのはすべてのバリアントが const なときだけ
                 *value_slot = value.cast_as_usize()
@@ -502,26 +498,27 @@ fn gen_const_variant(
 }
 
 fn gen_record_variant(
-    decl: PRecordVariantDecl,
+    decl: &PRecordVariantDecl,
     parent_enum_opt: Option<KEnum>,
     gx: &mut Gx,
 ) -> KStruct {
-    let PRecordVariantDecl {
-        mut name, fields, ..
-    } = decl;
+    let PRecordVariantDecl { name, fields, .. } = decl;
 
-    let k_struct = match take(&mut name.info_opt) {
+    let k_struct = match name.info_opt {
         Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
-    let (name, location) = name.decompose();
+    let (name, location) = name.clone().decompose();
 
     let fields = fields
         .into_iter()
         .map(|field| {
             let k_field = KField::new(field.field_id_opt.unwrap());
-            let (name, location) = field.name.decompose();
-            let field_ty = field.ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
+            let (name, location) = field.name.clone().decompose();
+            let field_ty = match &field.ty_opt {
+                Some(ty) => gen_ty(ty, gx),
+                None => KTy::Unresolved,
+            };
             gx.outlines.fields[k_field.id()] = KFieldOutline {
                 name,
                 ty: field_ty,
@@ -543,7 +540,7 @@ fn gen_record_variant(
 }
 
 fn gen_variant(
-    decl: PVariantDecl,
+    decl: &PVariantDecl,
     parent_enum_opt: Option<KEnum>,
     value_slot: &mut usize,
     gx: &mut Gx,
@@ -559,12 +556,11 @@ fn gen_variant(
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
-fn gen_expr_lval(expr: PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> KTerm {
+fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: &Location, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Tuple(PTupleExpr { mut arg_list }) if !arg_list.is_tuple() => {
-            let args = take(&mut arg_list.args);
-            let mut arg = args.into_iter().next().unwrap();
-            gen_expr_lval(take(&mut arg.expr), k_mut, location, gx)
+        PExpr::Tuple(PTupleExpr { arg_list }) if !arg_list.is_tuple() => {
+            let arg = &arg_list.args[0];
+            gen_expr_lval(&arg.expr, k_mut, location, gx)
         }
         PExpr::UnaryOp(PUnaryOpExpr {
             op: PUnaryOp::Deref,
@@ -572,15 +568,18 @@ fn gen_expr_lval(expr: PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> K
             ..
         }) => {
             // &*x ==> x
-            gen_expr(*arg, gx)
+            gen_expr(arg.as_ref(), gx)
         }
         PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
             // x.foo は `&(&x)->foo` のような形にコンパイルする。
-            let (_, name, location) = name_opt.unwrap().decompose();
-            let result = gx.fresh_symbol(&format!("{}_ptr", name), location.clone());
+            let (_, name, location) = name_opt.clone().unwrap().decompose();
+            let result = gx.fresh_symbol(&format!("{}_ptr", name), &location);
 
-            let left = gen_expr_lval(*left, k_mut, location.clone(), gx);
-            let field = KTerm::FieldTag(KFieldTag { name, location });
+            let left = gen_expr_lval(left.as_ref(), k_mut, &location, gx);
+            let field = KTerm::FieldTag(KFieldTag {
+                name,
+                location: location.clone(),
+            });
 
             let get_field_prim = match k_mut {
                 KMut::Const => KPrim::GetField,
@@ -595,19 +594,19 @@ fn gen_expr_lval(expr: PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> K
                 KMut::Const => KPrim::Ref,
                 KMut::Mut => KPrim::RefMut,
             };
-            emit_unary_op(prim, Some(Box::new(expr)), location, gx)
+            emit_unary_op(prim, Some(expr), location, gx)
         }
     }
 }
 
-fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
+fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Int(PIntExpr { token }) => KTerm::Int(token, KTy::Unresolved),
-        PExpr::Float(PFloatExpr { token }) => KTerm::Float(token),
-        PExpr::Char(PCharExpr { token }) => KTerm::Char(token),
-        PExpr::Str(PStrExpr { token }) => KTerm::Str(token),
-        PExpr::True(PTrueExpr(token)) => KTerm::True(token),
-        PExpr::False(PFalseExpr(token)) => KTerm::False(token),
+        PExpr::Int(PIntExpr { token }) => KTerm::Int(token.clone(), KTy::Unresolved),
+        PExpr::Float(PFloatExpr { token }) => KTerm::Float(token.clone()),
+        PExpr::Char(PCharExpr { token }) => KTerm::Char(token.clone()),
+        PExpr::Str(PStrExpr { token }) => KTerm::Str(token.clone()),
+        PExpr::True(PTrueExpr(token)) => KTerm::True(token.clone()),
+        PExpr::False(PFalseExpr(token)) => KTerm::False(token.clone()),
         PExpr::Name(name) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Const(k_const) => KTerm::Const(k_const),
@@ -617,7 +616,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
                 let ty = KTy::Struct(k_struct);
                 let name = k_struct.name(&gx.outlines.structs).to_string();
-                let result = gx.fresh_symbol(&name, location.clone());
+                let result = gx.fresh_symbol(&name, &location);
                 gx.push(KCommand::Node {
                     prim: KPrim::Record,
                     tys: vec![ty],
@@ -630,26 +629,26 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
         },
         PExpr::Record(PRecordExpr {
-            mut name,
+            name,
             left_brace,
-            mut fields,
+            fields,
             ..
         }) => {
-            let k_struct = match take(&mut name.info_opt) {
+            let k_struct = match name.info_opt {
                 Some(NName::Const(_)) => todo!(),
                 Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
                 n_name => unreachable!("{:?}", n_name),
             };
 
-            let (name, location) = name.decompose();
-            let result = gx.fresh_symbol(&name, location.clone());
+            let (name, location) = name.clone().decompose();
+            let result = gx.fresh_symbol(&name, &location);
 
             let field_count = k_struct.fields(&gx.outlines.structs).len();
             let mut args = vec![KTerm::default(); field_count];
             let mut arg_freq = vec![0_u8; field_count];
 
-            for field in &mut fields {
-                let term = gen_expr(field.value_opt.take().unwrap(), gx);
+            for field in fields {
+                let term = gen_expr(field.value_opt.as_ref().unwrap(), gx);
 
                 match (0..field_count).find(|&i| {
                     field.name.text()
@@ -678,7 +677,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
 
             if !duped.is_empty() {
-                for field_expr in &fields {
+                for field_expr in fields {
                     if duped.contains(&field_expr.name.text()) {
                         gx.logger.error(field_expr, "duplicated");
                     }
@@ -687,7 +686,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             if !missed.is_empty() {
                 gx.logger.error(
-                    &left_brace,
+                    left_brace,
                     format!("missed some fields: '{}'", missed.join("', '")),
                 );
             }
@@ -698,27 +697,21 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location,
+                location: location.clone(),
             });
 
             KTerm::Name(result)
         }
-        PExpr::Tuple(PTupleExpr { mut arg_list }) => {
-            let is_tuple = arg_list.is_tuple();
-            match arg_list.args.as_mut_slice() {
-                [] => {
-                    let location = arg_list.location();
-                    new_unit_term(location)
-                }
-                [arg] if !is_tuple => gen_expr(take(&mut arg.expr), gx),
-                _ => {
-                    gx.logger.error(&arg_list, "tuple literal is unimplemented");
-                    new_never_term(arg_list.location())
-                }
+        PExpr::Tuple(PTupleExpr { arg_list }) => match arg_list.args.as_slice() {
+            [] => new_unit_term(arg_list.location()),
+            [arg] if !arg_list.is_tuple() => gen_expr(&arg.expr, gx),
+            _ => {
+                gx.logger.error(arg_list, "tuple literal is unimplemented");
+                new_never_term(arg_list.location())
             }
-        }
+        },
         PExpr::DotField(..) => {
-            let (_, text, location) = match &expr {
+            let (_, text, location) = match expr {
                 PExpr::DotField(PDotFieldExpr {
                     name_opt: Some(name),
                     ..
@@ -726,23 +719,23 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 _ => unreachable!(),
             };
 
-            // FIXME: location
-            let result1 = gen_expr_lval(expr, KMut::Const, location.clone(), gx);
-            let result2 = gx.fresh_symbol(&text, location);
+            // FIXME: &Location
+            let result1 = gen_expr_lval(expr, KMut::Const, &location, gx);
+            let result2 = gx.fresh_symbol(&text, &location);
 
             gx.push_prim_1(KPrim::Deref, vec![result1], result2.clone());
 
             KTerm::Name(result2)
         }
         PExpr::Call(PCallExpr { left, arg_list }) => {
-            let location = arg_list.left_paren.into_location();
-            let result = gx.fresh_symbol("call_result", location.clone());
+            let location = &arg_list.left_paren.location();
+            let result = gx.fresh_symbol("call_result", location);
 
-            let k_left = gen_expr(*left, gx);
+            let k_left = gen_expr(&left, gx);
 
             let mut k_args = vec![k_left];
-            for p_arg in arg_list.args {
-                let k_arg = gen_expr(p_arg.expr, gx);
+            for p_arg in &arg_list.args {
+                let k_arg = gen_expr(&p_arg.expr, gx);
                 k_args.push(k_arg);
             }
 
@@ -753,9 +746,9 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Index(PIndexExpr { left, arg_list }) => {
             // a[i] ==> *(a + i)
 
-            let location = arg_list.left_paren.into_location();
-            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location.clone());
-            let result = gx.fresh_symbol("index_result", location.clone());
+            let location = arg_list.left_paren.location();
+            let indexed_ptr = gx.fresh_symbol("indexed_ptr", &location);
+            let result = gx.fresh_symbol("index_result", &location);
 
             if arg_list.args.len() != 1 {
                 gx.logger.error(
@@ -765,8 +758,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 return new_never_term(location);
             }
 
-            let k_left = gen_expr(*left, gx);
-            let k_arg = gen_expr(arg_list.args.into_iter().next().unwrap().expr, gx);
+            let k_left = gen_expr(&left, gx);
+            let k_arg = gen_expr(&arg_list.args[0].expr, gx);
             gx.push_prim_1(KPrim::Add, vec![k_left, k_arg], indexed_ptr.clone());
             gx.push_prim_1(KPrim::Deref, vec![KTerm::Name(indexed_ptr)], result.clone());
 
@@ -778,11 +771,11 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             ty_opt,
             ..
         }) => {
-            let location = keyword.location();
-            let result = gx.fresh_symbol("cast", location.clone());
+            let location = &keyword.location();
+            let result = gx.fresh_symbol("cast", location);
 
-            let left = gen_expr(*left, gx);
-            let ty = gen_ty(ty_opt.unwrap(), gx);
+            let left = gen_expr(&left, gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
 
             gx.push(KCommand::Node {
                 prim: KPrim::Cast,
@@ -790,7 +783,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![left],
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location,
+                location: location.clone(),
             });
 
             KTerm::Name(result)
@@ -801,9 +794,9 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             arg_opt,
             location,
         }) => match op {
-            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt, location, gx),
+            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx),
             PUnaryOp::DerefDeref => {
-                let deref = emit_unary_op(KPrim::Deref, arg_opt, location.clone(), gx);
+                let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx);
 
                 let result = gx.fresh_symbol("deref", location);
                 gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
@@ -811,10 +804,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
             PUnaryOp::Ref => {
                 let k_mut = gen_mut(mut_opt.as_ref(), gx);
-                gen_expr_lval(*arg_opt.unwrap(), k_mut, location, gx)
+                gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, location, gx)
             }
-            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt, location, gx),
-            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt, location, gx),
+            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), location, gx),
+            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), location, gx),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
             op,
@@ -823,8 +816,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PBinaryOp::Assign => {
-                let left = gen_expr_lval(*left, KMut::Mut, location.clone(), gx);
-                let right = gen_expr(*right_opt.unwrap(), gx);
+                let left = gen_expr_lval(&left, KMut::Mut, location, gx);
+                let right = gen_expr(right_opt.as_ref().unwrap(), gx);
 
                 gx.push(KCommand::Node {
                     prim: KPrim::Assign,
@@ -835,69 +828,107 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     location: location.clone(),
                 });
 
-                new_unit_term(location)
+                new_unit_term(location.clone())
             }
             PBinaryOp::AddAssign => {
-                emit_compound_assign(KPrim::AddAssign, *left, right_opt, location, gx)
+                emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), location, gx)
             }
             PBinaryOp::SubAssign => {
-                emit_compound_assign(KPrim::SubAssign, *left, right_opt, location, gx)
+                emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), location, gx)
             }
             PBinaryOp::MulAssign => {
-                emit_compound_assign(KPrim::MulAssign, *left, right_opt, location, gx)
+                emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), location, gx)
             }
             PBinaryOp::DivAssign => {
-                emit_compound_assign(KPrim::DivAssign, *left, right_opt, location, gx)
+                emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::ModuloAssign => {
-                emit_compound_assign(KPrim::ModuloAssign, *left, right_opt, location, gx)
-            }
-            PBinaryOp::BitAndAssign => {
-                emit_compound_assign(KPrim::BitAndAssign, *left, right_opt, location, gx)
-            }
+            PBinaryOp::ModuloAssign => emit_compound_assign(
+                KPrim::ModuloAssign,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
+            PBinaryOp::BitAndAssign => emit_compound_assign(
+                KPrim::BitAndAssign,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
             PBinaryOp::BitOrAssign => {
-                emit_compound_assign(KPrim::BitOrAssign, *left, right_opt, location, gx)
+                emit_compound_assign(KPrim::BitOrAssign, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::BitXorAssign => {
-                emit_compound_assign(KPrim::BitXorAssign, *left, right_opt, location, gx)
+            PBinaryOp::BitXorAssign => emit_compound_assign(
+                KPrim::BitXorAssign,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
+            PBinaryOp::LeftShiftAssign => emit_compound_assign(
+                KPrim::LeftShiftAssign,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
+            PBinaryOp::RightShiftAssign => emit_compound_assign(
+                KPrim::RightShiftAssign,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
+            PBinaryOp::Add => emit_binary_op(KPrim::Add, left, right_opt.as_deref(), location, gx),
+            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), location, gx),
+            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), location, gx),
+            PBinaryOp::Div => emit_binary_op(KPrim::Div, left, right_opt.as_deref(), location, gx),
+            PBinaryOp::Modulo => {
+                emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::LeftShiftAssign => {
-                emit_compound_assign(KPrim::LeftShiftAssign, *left, right_opt, location, gx)
+            PBinaryOp::BitAnd => {
+                emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::RightShiftAssign => {
-                emit_compound_assign(KPrim::RightShiftAssign, *left, right_opt, location, gx)
+            PBinaryOp::BitOr => {
+                emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::Add => emit_binary_op(KPrim::Add, *left, right_opt, location, gx),
-            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, *left, right_opt, location, gx),
-            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, *left, right_opt, location, gx),
-            PBinaryOp::Div => emit_binary_op(KPrim::Div, *left, right_opt, location, gx),
-            PBinaryOp::Modulo => emit_binary_op(KPrim::Modulo, *left, right_opt, location, gx),
-            PBinaryOp::BitAnd => emit_binary_op(KPrim::BitAnd, *left, right_opt, location, gx),
-            PBinaryOp::BitOr => emit_binary_op(KPrim::BitOr, *left, right_opt, location, gx),
-            PBinaryOp::BitXor => emit_binary_op(KPrim::BitXor, *left, right_opt, location, gx),
+            PBinaryOp::BitXor => {
+                emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), location, gx)
+            }
             PBinaryOp::LeftShift => {
-                emit_binary_op(KPrim::LeftShift, *left, right_opt, location, gx)
+                emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), location, gx)
             }
             PBinaryOp::RightShift => {
-                emit_binary_op(KPrim::RightShift, *left, right_opt, location, gx)
+                emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::Equal => emit_binary_op(KPrim::Equal, *left, right_opt, location, gx),
-            PBinaryOp::NotEqual => emit_binary_op(KPrim::NotEqual, *left, right_opt, location, gx),
-            PBinaryOp::LessThan => emit_binary_op(KPrim::LessThan, *left, right_opt, location, gx),
+            PBinaryOp::Equal => {
+                emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), location, gx)
+            }
+            PBinaryOp::NotEqual => {
+                emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), location, gx)
+            }
+            PBinaryOp::LessThan => {
+                emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), location, gx)
+            }
             PBinaryOp::LessEqual => {
-                emit_binary_op(KPrim::LessEqual, *left, right_opt, location, gx)
+                emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), location, gx)
             }
             PBinaryOp::GreaterThan => {
-                emit_binary_op(KPrim::GreaterThan, *left, right_opt, location, gx)
+                emit_binary_op(KPrim::GreaterThan, left, right_opt.as_deref(), location, gx)
             }
-            PBinaryOp::GreaterEqual => {
-                emit_binary_op(KPrim::GreaterEqual, *left, right_opt, location, gx)
-            }
+            PBinaryOp::GreaterEqual => emit_binary_op(
+                KPrim::GreaterEqual,
+                left,
+                right_opt.as_deref(),
+                location,
+                gx,
+            ),
             PBinaryOp::LogAnd => {
                 let false_term = new_false_term(location.clone());
                 emit_if(
-                    *left,
-                    |gx| gen_expr(*right_opt.unwrap(), gx),
+                    &left,
+                    |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
                     move |_| false_term,
                     location,
                     gx,
@@ -906,9 +937,9 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             PBinaryOp::LogOr => {
                 let true_term = new_true_term(location.clone());
                 emit_if(
-                    *left,
+                    &left,
                     move |_| true_term,
-                    |gx| gen_expr(*right_opt.unwrap(), gx),
+                    |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
                     location,
                     gx,
                 )
@@ -918,20 +949,17 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             left: arg,
             pipe,
             right_opt,
-        }) => match right_opt.map(|b| *b) {
+        }) => match right_opt.as_deref() {
             Some(PExpr::Call(PCallExpr { left, arg_list })) => {
                 // FIXME: call expr の生成と共通化
-                let result = {
-                    let location = pipe.into_location();
-                    gx.fresh_symbol("call_result", location.clone())
-                };
+                let result = gx.fresh_symbol("call_result", &pipe.location());
 
-                let k_arg = gen_expr(*arg, gx);
-                let k_left = gen_expr(*left, gx);
+                let k_arg = gen_expr(&arg, gx);
+                let k_left = gen_expr(&left, gx);
 
                 let mut k_args = vec![k_left, k_arg];
-                for p_arg in arg_list.args {
-                    let k_arg = gen_expr(p_arg.expr, gx);
+                for p_arg in &arg_list.args {
+                    let k_arg = gen_expr(&p_arg.expr, gx);
                     k_args.push(k_arg);
                 }
 
@@ -940,7 +968,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             }
             _ => {
                 gx.logger
-                    .error(&pipe, "|> の右辺は関数呼び出しでなければいけません");
+                    .error(pipe, "|> の右辺は関数呼び出しでなければいけません");
                 new_never_term(pipe.location())
             }
         },
@@ -950,11 +978,11 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             arg_opt,
             loop_id_opt,
         }) => {
-            let location = keyword.into_location();
+            let location = keyword.location();
 
             let label = gx.current_loops[loop_id_opt.unwrap()].break_label;
             let arg = match arg_opt {
-                Some(arg) => gen_expr(*arg, gx),
+                Some(arg) => gen_expr(&arg, gx),
                 None => new_unit_term(location.clone()),
             };
             gx.push_jump_with_cont(label, vec![arg]);
@@ -965,7 +993,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             keyword,
             loop_id_opt,
         }) => {
-            let location = keyword.into_location();
+            let location = keyword.location();
 
             let label = gx.current_loops[loop_id_opt.unwrap()].continue_label;
             gx.push_jump_with_cont(label, vec![]);
@@ -977,13 +1005,13 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             arg_opt,
             fn_id_opt,
         }) => {
-            let location = keyword.into_location();
+            let location = keyword.location();
             let k_fn = KFn::new(fn_id_opt.unwrap());
 
             let args = {
                 let return_term = KTerm::Return(k_fn);
                 let arg = match arg_opt {
-                    Some(arg) => gen_expr(*arg, gx),
+                    Some(arg) => gen_expr(&arg, gx),
                     None => new_unit_term(location.clone()),
                 };
                 vec![return_term, arg]
@@ -1006,16 +1034,16 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             alt_opt,
             ..
         }) => {
-            let location = keyword.into_location();
+            let location = keyword.location();
             let location1 = location.clone();
             emit_if(
-                *cond_opt.unwrap(),
-                |gx| gen_block(body_opt.unwrap(), gx),
+                &cond_opt.as_ref().unwrap(),
+                |gx| gen_block(body_opt.as_ref().unwrap(), gx),
                 move |gx| match alt_opt {
-                    Some(alt) => gen_expr(*alt, gx),
+                    Some(alt) => gen_expr(&alt, gx),
                     None => new_unit_term(location),
                 },
-                location1,
+                &location1,
                 gx,
             )
         }
@@ -1025,21 +1053,21 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             arms,
             ..
         }) => {
-            let location = keyword.into_location();
-            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
+            let location = keyword.location();
+            let k_cond = gen_expr(cond_opt.as_ref().unwrap(), gx);
             if arms.is_empty() {
                 return new_never_term(location).clone();
             }
 
-            let result = gx.fresh_symbol("match_result", location.clone());
-            let next_label = gx.fresh_label("match_next", location.clone());
+            let result = gx.fresh_symbol("match_result", &location);
+            let next_label = gx.fresh_label("match_next", &location);
 
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
                         NName::Const(const_id) => KTerm::Const(KConst::new(*const_id)),
                         NName::LocalVar(_) => {
-                            let symbol = gen_name(name.clone(), gx).expect_symbol();
+                            let symbol = gen_name(name, gx).expect_symbol();
                             KTerm::Name(symbol)
                         }
                         _ => {
@@ -1072,11 +1100,11 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             });
 
             for arm in arms {
-                match arm.pat {
+                match &arm.pat {
                     PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
                         NName::Const(_) => {}
                         NName::LocalVar(_) => {
-                            let name = gen_name(name.clone(), gx).expect_symbol();
+                            let name = gen_name(name, gx).expect_symbol();
                             gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
                         }
                         _ => error!("unimplemented pat {:?}", name),
@@ -1084,7 +1112,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     PPat::Record(_) => {}
                 }
 
-                let body = gen_expr(*arm.body_opt.unwrap(), gx);
+                let body = gen_expr(arm.body_opt.as_deref().unwrap(), gx);
                 gx.push_jump(next_label, vec![body]);
             }
 
@@ -1098,8 +1126,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.into_location();
-            let result = gx.fresh_symbol("while_result", location.clone());
+            let location = keyword.location();
+            let result = gx.fresh_symbol("while_result", &location);
             let unit_term = new_unit_term(location.clone());
             let KLoopData {
                 break_label: next_label,
@@ -1110,7 +1138,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
 
             gx.push_label(continue_label, vec![]);
 
-            let k_cond = gen_expr(*cond_opt.unwrap(), gx);
+            let k_cond = gen_expr(cond_opt.as_ref().unwrap(), gx);
 
             gx.push(KCommand::Node {
                 prim: KPrim::If,
@@ -1122,7 +1150,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             });
 
             // body:
-            gen_block(body_opt.unwrap(), gx);
+            gen_block(body_opt.as_ref().unwrap(), gx);
 
             gx.push_jump(continue_label, vec![]);
 
@@ -1139,8 +1167,8 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             body_opt,
             loop_id_opt,
         }) => {
-            let location = keyword.into_location();
-            let result = gx.fresh_symbol("loop_result", location.clone());
+            let location = keyword.location();
+            let result = gx.fresh_symbol("loop_result", &location);
             let KLoopData {
                 break_label: next_label,
                 continue_label,
@@ -1151,7 +1179,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
             gx.push_label(continue_label.clone(), vec![]);
 
             // body:
-            gen_block(body_opt.unwrap(), gx);
+            gen_block(body_opt.as_ref().unwrap(), gx);
 
             gx.push_jump(continue_label.clone(), vec![]);
 
@@ -1163,7 +1191,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
     }
 }
 
-fn gen_decl(decl: PDecl, gx: &mut Gx) {
+fn gen_decl(decl: &PDecl, gx: &mut Gx) {
     match decl {
         PDecl::Expr(PExprDecl { expr, .. }) => {
             gen_expr(expr, gx);
@@ -1174,10 +1202,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let ty = ty_opt.map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
+            let ty = ty_opt.as_ref().map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
 
-            let k_init = gen_expr(init_opt.unwrap(), gx);
-            let mut result = gen_name(name_opt.unwrap(), gx).expect_symbol();
+            let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
+            let mut result = gen_name(name_opt.as_ref().unwrap(), gx).expect_symbol();
             *result.ty_mut(&mut gx.current_locals) = ty;
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
@@ -1190,22 +1218,22 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let (name, k_const) = {
-                let mut name = name_opt.unwrap();
-                let k_const = match take(&mut name.info_opt) {
+                let name = name_opt.clone().unwrap();
+                let k_const = match name.info_opt {
                     Some(NName::Const(const_id)) => KConst::new(const_id),
                     _ => unreachable!(),
                 };
-                let (name, _) = name.decompose();
+                let (name, _) = name.clone().decompose();
                 (name, k_const)
             };
-            let ty = gen_ty(ty_opt.unwrap(), gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
 
             if !ty.is_primitive() {
                 gx.logger
-                    .error(&keyword, "constant must be of primitive type");
+                    .error(keyword, "constant must be of primitive type");
             }
 
-            let init = init_opt.unwrap();
+            let init = init_opt.as_ref().unwrap();
             let init_location = init.location();
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
@@ -1230,22 +1258,22 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             ..
         }) => {
             let (name, static_var) = {
-                let mut name = name_opt.unwrap();
-                let static_var = match take(&mut name.info_opt) {
+                let name = name_opt.clone().unwrap();
+                let static_var = match name.info_opt {
                     Some(NName::StaticVar(static_var_id)) => KStaticVar::new(static_var_id),
                     _ => unreachable!(),
                 };
-                let (name, _) = name.decompose();
+                let (name, _) = name.clone().decompose();
                 (name, static_var)
             };
-            let ty = gen_ty(ty_opt.unwrap(), gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
 
             if !ty.is_primitive() {
                 gx.logger
-                    .error(&keyword, "static var must be of primitive type");
+                    .error(keyword, "static var must be of primitive type");
             }
 
-            let init = init_opt.unwrap();
+            let init = init_opt.as_ref().unwrap();
             let init_location = init.location();
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
@@ -1273,10 +1301,10 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
             fn_id_opt,
             ..
         }) => {
-            let location = keyword.into_location();
+            let location = keyword.location();
             let k_fn = KFn::new(fn_id_opt.unwrap());
 
-            let vis_opt = vis_opt.map(|(vis, _)| vis);
+            let vis_opt = vis_opt.as_ref().map(|(vis, _)| *vis);
 
             let parent_local_vars = {
                 let local_vars = take(&mut gx.fns[k_fn.id()].locals);
@@ -1290,9 +1318,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 result_ty,
             } = gen_fn_sig(
                 NName::Fn(k_fn.id()),
-                name_opt,
-                param_list_opt,
-                result_ty_opt,
+                name_opt.as_ref(),
+                param_list_opt.as_ref(),
+                result_ty_opt.as_ref(),
                 gx,
             );
 
@@ -1305,8 +1333,8 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     .into_iter()
                     .map(|loop_data| {
                         let location = loop_data.location;
-                        let continue_label = gx.fresh_label("continue_", location.clone());
-                        let break_label = gx.fresh_label("next", location);
+                        let continue_label = gx.fresh_label("continue_", &location);
+                        let break_label = gx.fresh_label("next", &location);
                         KLoopData {
                             break_label,
                             continue_label,
@@ -1314,7 +1342,7 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                     })
                     .collect();
 
-                let result = gen_block(block_opt.unwrap(), gx);
+                let result = gen_block(block_opt.as_ref().unwrap(), gx);
                 gx.push(KCommand::Node {
                     prim: KPrim::Jump,
                     tys: vec![],
@@ -1374,9 +1402,9 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
                 result_ty,
             } = gen_fn_sig(
                 NName::ExternFn(extern_fn.id()),
-                name_opt,
-                param_list_opt,
-                result_ty_opt,
+                name_opt.as_ref(),
+                param_list_opt.as_ref(),
+                result_ty_opt.as_ref(),
                 gx,
             );
 
@@ -1393,12 +1421,12 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
         PDecl::Enum(PEnumDecl {
             name_opt, variants, ..
         }) => {
-            let mut name = name_opt.unwrap();
-            let k_enum = match take(&mut name.info_opt) {
+            let name = name_opt.as_ref().unwrap();
+            let k_enum = match name.info_opt {
                 Some(NName::Enum(enum_id)) => KEnum::new(enum_id),
                 n_name_opt => unreachable!("{:?}", n_name_opt),
             };
-            let (name, location) = name.decompose();
+            let (name, location) = name.clone().decompose();
 
             let mut next_value = 0_usize;
             let k_variants = variants
@@ -1427,29 +1455,29 @@ fn gen_decl(decl: PDecl, gx: &mut Gx) {
     }
 }
 
-fn gen_block(block: PBlock, gx: &mut Gx) -> KTerm {
-    for decl in block.decls {
+fn gen_block(block: &PBlock, gx: &mut Gx) -> KTerm {
+    for decl in &block.decls {
         gen_decl(decl, gx);
     }
 
-    match block.last_opt {
-        Some(last) => gen_expr(*last, gx),
+    match &block.last_opt {
+        Some(last) => gen_expr(last, gx),
         None => {
-            let location = block.left_brace.into_location();
+            let location = block.left_brace.location();
             new_unit_term(location)
         }
     }
 }
 
-fn gen_root(root: PRoot, gx: &mut Gx) {
-    for decl in root.decls {
+fn gen_root(root: &PRoot, gx: &mut Gx) {
+    for decl in &root.decls {
         gen_decl(decl, gx);
     }
 }
 
 pub(crate) fn cps_conversion(
-    p_root: PRoot,
-    name_resolution: NameResolution,
+    p_root: &PRoot,
+    name_resolution: &NameResolution,
     logger: Logger,
 ) -> KRoot {
     let k_root = {
@@ -1458,11 +1486,11 @@ pub(crate) fn cps_conversion(
         let static_var_count = name_resolution.static_vars.len();
 
         // 関数の ID, 名前ID の対応表を構築する。
-        let mut n_fns = name_resolution.fns;
+        let n_fns = &name_resolution.fns;
         let fn_count = n_fns.len();
         let fn_loops = n_fns
-            .iter_mut()
-            .map(|fn_data| take(&mut fn_data.loops))
+            .iter()
+            .map(|fn_data| fn_data.loops.clone())
             .collect::<Vec<_>>();
         let fns = n_fns
             .iter()
@@ -1473,7 +1501,7 @@ pub(crate) fn cps_conversion(
             .collect();
 
         // 外部関数の ID, 名前ID の対応表を構築する。
-        let n_extern_fns = name_resolution.extern_fns;
+        let n_extern_fns = &name_resolution.extern_fns;
         let extern_fn_count = n_extern_fns.len();
         let k_extern_fns = n_extern_fns
             .iter()

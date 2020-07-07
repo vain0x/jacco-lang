@@ -8,7 +8,7 @@ use std::{
     mem::{replace, take},
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct NLoopData {
     pub(crate) location: Location,
 }

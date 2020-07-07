@@ -33,7 +33,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         std::process::exit(1);
     }
 
-    let mut k_root = front::cps_conversion(p_root, name_resolution, logs.logger());
+    let mut k_root = front::cps_conversion(&p_root, &name_resolution, logs.logger());
     cps::resolve_types(&mut k_root, logs.logger());
     trace!("k_root (gen) = {:#?}\n", k_root);
 
