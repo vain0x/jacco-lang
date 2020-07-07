@@ -1,63 +1,54 @@
+use super::Doc;
+use fmt::Display;
+use log::error;
+use once_cell::sync::Lazy;
 use std::{
+    collections::HashMap,
     fmt::{self, Debug},
-    io,
-    path::{Component, Path, PathBuf},
-    sync::Arc,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct SourceFile {
-    pub(crate) source_path: Arc<PathBuf>,
+    pub(crate) doc: Doc,
+}
+
+/// For debug.
+static SOURCE_FILE_PATHS: Lazy<Mutex<HashMap<SourceFile, Arc<PathBuf>>>> =
+    Lazy::new(Mutex::default);
+
+impl SourceFile {
+    pub(crate) fn set_path(source_file: SourceFile, source_path: &Path) {
+        let mut map = match SOURCE_FILE_PATHS.try_lock() {
+            Ok(map) => map,
+            Err(err) => {
+                error!("couldn't lock mutex {:?}", err);
+                return;
+            }
+        };
+
+        map.insert(source_file, source_path.to_path_buf().into());
+    }
+
+    pub(crate) fn get_path(source_file: SourceFile) -> Option<Arc<PathBuf>> {
+        let map = match SOURCE_FILE_PATHS.try_lock() {
+            Ok(map) => map,
+            Err(err) => {
+                error!("couldn't lock mutex {:?}", err);
+                return None;
+            }
+        };
+
+        map.get(&source_file).cloned()
+    }
 }
 
 impl Debug for SourceFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // ワークスペースのルートからの相対パスを出力する。
-
-        fn segments(path: &Path) -> io::Result<Vec<String>> {
-            Ok(path
-                .canonicalize()?
-                .components()
-                .filter_map(|c| match c {
-                    Component::Normal(name) => Some(name.to_string_lossy().to_string()),
-                    _ => None,
-                })
-                .collect())
+        match SourceFile::get_path(*self) {
+            Some(path) => Display::fmt(&path.to_string_lossy(), f),
+            None => Debug::fmt(&self.doc, f),
         }
-
-        fn make_relative_path(dest_path: &Path, base_path: &Path) -> io::Result<PathBuf> {
-            let dest = segments(dest_path)?;
-            let base = segments(base_path)?;
-
-            let common_prefix_len = dest
-                .iter()
-                .zip(base.iter())
-                .take_while(|(dest_name, base_name)| dest_name == base_name)
-                .count();
-
-            let mut out = PathBuf::new();
-            for _ in 0..base.len() - common_prefix_len {
-                out.push("..".to_string());
-            }
-            for name in &dest[common_prefix_len..] {
-                out.push(name);
-            }
-            Ok(out)
-        }
-
-        let manifest_dir: &str = env!("CARGO_MANIFEST_DIR");
-
-        let mut base_dir = PathBuf::from(manifest_dir);
-        base_dir.pop();
-
-        let short_path =
-            make_relative_path(&self.source_path, &base_dir).unwrap_or(PathBuf::default());
-        write!(f, "{}", short_path.to_string_lossy())
-    }
-}
-
-impl fmt::Display for SourceFile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.source_path.to_string_lossy())
     }
 }

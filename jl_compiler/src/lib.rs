@@ -8,16 +8,67 @@ pub mod rust_api {
     pub use super::source::{pos::Pos, range::Range};
 }
 
+/// ワークスペースのルートからの相対パスを計算する。
+pub(crate) fn make_path_relative_to_manifest_dir(path: &std::path::Path) -> std::path::PathBuf {
+    use std::{
+        io,
+        path::{Component, Path, PathBuf},
+    };
+
+    fn segments(path: &Path) -> io::Result<Vec<String>> {
+        Ok(path
+            .canonicalize()?
+            .components()
+            .filter_map(|c| match c {
+                Component::Normal(name) => Some(name.to_string_lossy().to_string()),
+                _ => None,
+            })
+            .collect())
+    }
+
+    fn make_relative_path(dest_path: &Path, base_path: &Path) -> io::Result<PathBuf> {
+        let dest = segments(dest_path)?;
+        let base = segments(base_path)?;
+
+        let common_prefix_len = dest
+            .iter()
+            .zip(base.iter())
+            .take_while(|(dest_name, base_name)| dest_name == base_name)
+            .count();
+
+        let mut out = PathBuf::new();
+        for _ in 0..base.len() - common_prefix_len {
+            out.push("..".to_string());
+        }
+        for name in &dest[common_prefix_len..] {
+            out.push(name);
+        }
+        Ok(out)
+    }
+
+    let manifest_dir: &str = env!("CARGO_MANIFEST_DIR");
+
+    let mut base_dir = PathBuf::from(manifest_dir);
+    base_dir.pop();
+
+    make_relative_path(path, &base_dir).unwrap_or_default()
+}
+
 pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
+    use crate::source::{Doc, SourceFile};
     use log::{error, trace};
-    use std::{rc::Rc, sync::Arc};
+    use std::rc::Rc;
 
     trace!("source_path = {:?}", source_path);
 
     let logs = logs::Logs::new();
 
-    let source_path = Arc::new(std::path::PathBuf::from(source_path));
-    let source_file = source::SourceFile { source_path };
+    let doc = Doc::new(1);
+    let source_file = SourceFile { doc };
+
+    let source_path = make_path_relative_to_manifest_dir(source_path);
+    SourceFile::set_path(source_file, &source_path);
+
     let token_source = token::TokenSource::File(source_file);
     let source_code = Rc::new(source_code.to_string());
     let tokens = token::tokenize(token_source, source_code);
