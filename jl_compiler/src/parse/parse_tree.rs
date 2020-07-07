@@ -402,13 +402,6 @@ impl PNode for PFalseExpr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PNameExpr(pub(crate) PName);
-
-impl PNode for PNameExpr {
-    impl_node_seq! { 0 }
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct PFieldExpr {
     pub(crate) name: PName,
     pub(crate) colon_opt: Option<TokenData>,
@@ -730,7 +723,7 @@ pub(crate) enum PExpr {
     Str(PStrExpr),
     True(PTrueExpr),
     False(PFalseExpr),
-    Name(PNameExpr),
+    Name(PName),
     Record(PRecordExpr),
     Tuple(PTupleExpr),
     DotField(PDotFieldExpr),

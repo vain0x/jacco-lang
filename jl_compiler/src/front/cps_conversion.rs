@@ -450,7 +450,7 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
             .map(KConstValue::F64),
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
-        PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
+        PExpr::Name(name) => match gen_name(name, gx) {
             KSymbolExt::Const(k_const) => k_const.value_opt(&gx.outlines.consts).cloned(),
             _ => None,
         },
@@ -605,7 +605,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token),
         PExpr::False(PFalseExpr(token)) => KTerm::False(token),
-        PExpr::Name(PNameExpr(name)) => match gen_name(name, gx) {
+        PExpr::Name(name) => match gen_name(name, gx) {
             KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
             KSymbolExt::Const(k_const) => KTerm::Const(k_const),
             KSymbolExt::StaticVar(static_var) => KTerm::StaticVar(static_var),

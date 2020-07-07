@@ -298,7 +298,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         | PExpr::Str(_)
         | PExpr::True(_)
         | PExpr::False(_) => {}
-        PExpr::Name(PNameExpr(name)) => {
+        PExpr::Name(name) => {
             resolve_name_use(name, nx);
         }
         PExpr::Record(PRecordExpr { name, fields, .. }) => {

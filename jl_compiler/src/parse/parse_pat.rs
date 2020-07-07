@@ -6,6 +6,7 @@ fn parse_record_pat(name: PName, left_brace: TokenData, px: &mut Px) -> PRecordP
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace | TokenKind::RightBracket => break,
             _ => {
+                // FIXME: フィールドパターン
                 let _ = px.bump();
             }
         }

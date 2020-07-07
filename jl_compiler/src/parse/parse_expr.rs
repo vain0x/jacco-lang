@@ -111,7 +111,7 @@ fn parse_record_expr(px: &mut Px) -> PExpr {
         });
     }
 
-    PExpr::Name(PNameExpr(name))
+    PExpr::Name(name)
 }
 
 fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
@@ -124,7 +124,7 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         TokenKind::False => PExpr::False(PFalseExpr(px.bump())),
         TokenKind::Ident => match allow_struct {
             AllowStruct::True => parse_record_expr(px),
-            AllowStruct::False => PExpr::Name(PNameExpr(parse_name(px).unwrap())),
+            AllowStruct::False => PExpr::Name(parse_name(px).unwrap()),
         },
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_tuple_arg_list(px),
