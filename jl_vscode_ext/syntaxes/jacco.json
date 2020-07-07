@@ -55,7 +55,7 @@
         {
             "comment": "キーワード (予約語)",
             "name": "invalid.deprecated.jacco",
-            "match": "\\b(async|await|box|case|class|crate|default|defer|do|dyn|enum|export|from|impl|import|inline|into|macro|mod|move|not|raw|ref|of|safe|self|super|throw|trait|try|to|type|union|unless|unsafe|until|use|val|void|with|when|where|yield)\\b"
+            "match": "\\b(async|await|box|case|cl|crate|default|defer|do|dyn|ensures|enum|export|from|impl|import|inline|into|macro|mod|move|not|out|raw|requires|ref|of|safe|self|super|then|throw|trait|try|to|type|union|unless|unsafe|until|use|val|void|with|when|where|yield)\\b"
         },
         {
             "comment": "キーワード (制御構文)",
