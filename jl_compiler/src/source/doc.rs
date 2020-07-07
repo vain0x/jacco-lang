@@ -35,18 +35,24 @@ impl From<usize> for Doc {
 
 mod debug_info {
     use super::Doc;
-    use log::error;
-    use once_cell::sync::Lazy;
     use std::{
-        collections::HashMap,
         path::{Path, PathBuf},
-        sync::{Arc, Mutex},
+        sync::Arc,
+    };
+
+    #[cfg(debug_assertions)]
+    use {
+        log::error,
+        once_cell::sync::Lazy,
+        std::{collections::HashMap, sync::Mutex},
     };
 
     /// For debug.
+    #[cfg(debug_assertions)]
     static DOC_PATHS: Lazy<Mutex<HashMap<Doc, Arc<PathBuf>>>> = Lazy::new(Mutex::default);
 
     impl Doc {
+        #[allow(unused)]
         pub(crate) fn set_path(doc: Doc, source_path: &Path) {
             #[cfg(debug_assertions)]
             {
@@ -62,16 +68,25 @@ mod debug_info {
             }
         }
 
+        #[allow(unused)]
         pub(crate) fn get_path(doc: Doc) -> Option<Arc<PathBuf>> {
-            let map = match DOC_PATHS.try_lock() {
-                Ok(map) => map,
-                Err(err) => {
-                    error!("couldn't lock mutex {:?}", err);
-                    return None;
-                }
-            };
+            #[cfg(debug_assertions)]
+            {
+                let map = match DOC_PATHS.try_lock() {
+                    Ok(map) => map,
+                    Err(err) => {
+                        error!("couldn't lock mutex {:?}", err);
+                        return None;
+                    }
+                };
 
-            map.get(&doc).cloned()
+                map.get(&doc).cloned()
+            }
+
+            #[cfg(not(debug_assertions))]
+            {
+                None
+            }
         }
     }
 }

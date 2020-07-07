@@ -70,7 +70,6 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     let logs = Logs::new();
 
     let doc = Doc::new(1);
-
     let source_path = make_path_relative_to_manifest_dir(source_path);
     Doc::set_path(doc, &source_path);
 
