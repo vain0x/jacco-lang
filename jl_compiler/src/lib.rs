@@ -188,7 +188,7 @@ mod parse {
         cps::KMut,
         token::{HaveLocation, Location, TokenData, TokenKind},
     };
-    use parse_context::{p_error, Px};
+    use parse_context::Px;
     use parse_decl::parse_semi;
     use parse_expr::{parse_block, parse_expr, parse_name};
     use parse_ty::{parse_ty, parse_ty_ascription};

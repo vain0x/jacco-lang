@@ -22,11 +22,7 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
     let mut left = px.eat(TokenKind::Ident)?;
     let mut quals = vec![];
 
-    loop {
-        if px.next() != TokenKind::ColonColon {
-            break;
-        }
-
+    while let TokenKind::ColonColon = px.next() {
         if px.nth(1) != TokenKind::Ident {
             px.skip();
             break;
@@ -67,11 +63,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<PFieldExpr> {
 
     loop {
         match px.next() {
-            TokenKind::Eof
-            | TokenKind::Semi
-            | TokenKind::RightParen
-            | TokenKind::RightBracket
-            | TokenKind::RightBrace => {
+            TokenKind::Eof | TokenKind::RightBrace => {
                 break;
             }
             TokenKind::Ident => {
@@ -83,35 +75,27 @@ fn parse_field_exprs(px: &mut Px) -> Vec<PFieldExpr> {
                     break;
                 }
             }
-            _ => {
-                // FIXME: recovery
-                p_error("expected a field (`name: expr,`)", px);
-                px.skip();
-                continue;
-            }
+            _ => px.skip(),
         }
     }
 
     fields
 }
 
-fn parse_record_expr(px: &mut Px) -> PExpr {
-    assert_eq!(px.next(), TokenKind::Ident);
+fn parse_record_expr(name: PName, px: &mut Px) -> PExpr {
+    let left_brace = match px.eat(TokenKind::LeftBrace) {
+        Some(left_brace) => left_brace,
+        None => return PExpr::Name(name),
+    };
 
-    let name = parse_name(px).unwrap();
-
-    if let Some(left_brace) = px.eat(TokenKind::LeftBrace) {
-        let fields = parse_field_exprs(px);
-        let right_brace_opt = px.eat(TokenKind::RightBrace);
-        return PExpr::Record(PRecordExpr {
-            name: PNameTy(name),
-            left_brace,
-            fields,
-            right_brace_opt,
-        });
-    }
-
-    PExpr::Name(name)
+    let fields = parse_field_exprs(px);
+    let right_brace_opt = px.eat(TokenKind::RightBrace);
+    PExpr::Record(PRecordExpr {
+        name: PNameTy(name),
+        left_brace,
+        fields,
+        right_brace_opt,
+    })
 }
 
 fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
@@ -122,10 +106,13 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         TokenKind::Str => PExpr::Str(PStrExpr { token: px.bump() }),
         TokenKind::True => PExpr::True(PTrueExpr(px.bump())),
         TokenKind::False => PExpr::False(PFalseExpr(px.bump())),
-        TokenKind::Ident => match allow_struct {
-            AllowStruct::True => parse_record_expr(px),
-            AllowStruct::False => PExpr::Name(parse_name(px).unwrap()),
-        },
+        TokenKind::Ident => {
+            let name = parse_name(px).unwrap();
+            match allow_struct {
+                AllowStruct::True => parse_record_expr(name, px),
+                AllowStruct::False => PExpr::Name(name),
+            }
+        }
         TokenKind::LeftParen => PExpr::Tuple(PTupleExpr {
             arg_list: parse_tuple_arg_list(px),
         }),
@@ -174,164 +161,151 @@ fn parse_as_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     let mut left = parse_suffix_expr(allow_struct, px)?;
 
     loop {
-        match px.next() {
-            TokenKind::As => {
-                let keyword = px.bump();
-                let ty_opt = parse_ty(px);
-                left = PExpr::As(PAsExpr {
-                    left: Box::new(left),
-                    keyword,
-                    ty_opt,
-                });
-            }
+        let keyword = match px.next() {
+            TokenKind::As => px.bump(),
             _ => return Some(left),
-        }
+        };
+
+        let ty_opt = parse_ty(px);
+        left = PExpr::As(PAsExpr {
+            left: Box::new(left),
+            keyword,
+            ty_opt,
+        });
     }
 }
 
 fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op: PUnaryOp, px: &mut Px| {
-        let op_token = px.bump();
-        let mut_opt = if op.allow_mut() { parse_mut(px) } else { None };
-        let arg_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
-        let location = op_token.into_location();
-        Some(PExpr::UnaryOp(PUnaryOpExpr {
-            op,
-            mut_opt,
-            arg_opt,
-            location,
-        }))
+    let op = match px.next() {
+        TokenKind::And => PUnaryOp::Ref,
+        TokenKind::Bang => PUnaryOp::Not,
+        TokenKind::Minus => PUnaryOp::Minus,
+        TokenKind::Star => PUnaryOp::Deref,
+        _ => return parse_as_expr(allow_struct, px),
     };
 
-    match px.next() {
-        TokenKind::And => parse_right(PUnaryOp::Ref, px),
-        TokenKind::Bang => parse_right(PUnaryOp::Not, px),
-        TokenKind::Minus => parse_right(PUnaryOp::Minus, px),
-        TokenKind::Star => parse_right(PUnaryOp::Deref, px),
-        _ => parse_as_expr(allow_struct, px),
-    }
+    let op_token = px.bump();
+    let mut_opt = if op.allow_mut() { parse_mut(px) } else { None };
+    let arg_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
+    let location = op_token.into_location();
+    Some(PExpr::UnaryOp(PUnaryOpExpr {
+        op,
+        mut_opt,
+        arg_opt,
+        location,
+    }))
 }
 
 fn parse_mul(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, left, px: &mut Px| {
+    let mut left = parse_prefix_expr(allow_struct, px)?;
+
+    loop {
+        let op = match px.next() {
+            TokenKind::Star => PBinaryOp::Mul,
+            TokenKind::Slash => PBinaryOp::Div,
+            TokenKind::Percent => PBinaryOp::Modulo,
+            _ => return Some(left),
+        };
+
         let op_token = px.bump();
         let right_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
-        PExpr::BinaryOp(PBinaryOpExpr {
+        left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        })
-    };
-
-    let mut left = parse_prefix_expr(allow_struct, px)?;
-
-    loop {
-        match px.next() {
-            TokenKind::Star => left = parse_right(PBinaryOp::Mul, left, px),
-            TokenKind::Slash => left = parse_right(PBinaryOp::Div, left, px),
-            TokenKind::Percent => left = parse_right(PBinaryOp::Modulo, left, px),
-            _ => return Some(left),
-        }
+        });
     }
 }
 
 fn parse_add(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, left, px: &mut Px| {
+    let mut left = parse_mul(allow_struct, px)?;
+
+    loop {
+        let op = match px.next() {
+            TokenKind::Plus => PBinaryOp::Add,
+            TokenKind::Minus => PBinaryOp::Sub,
+            _ => return Some(left),
+        };
+
         let op_token = px.bump();
         let right_opt = parse_mul(allow_struct, px).map(Box::new);
-        PExpr::BinaryOp(PBinaryOpExpr {
+        left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        })
-    };
-
-    let mut left = parse_mul(allow_struct, px)?;
-
-    loop {
-        match px.next() {
-            TokenKind::Plus => left = parse_right(PBinaryOp::Add, left, px),
-            TokenKind::Minus => left = parse_right(PBinaryOp::Sub, left, px),
-            _ => return Some(left),
-        }
+        });
     }
 }
 
 fn parse_bit(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, left, px: &mut Px| {
+    let mut left = parse_add(allow_struct, px)?;
+
+    loop {
+        let op = match px.next() {
+            TokenKind::And => PBinaryOp::BitAnd,
+            TokenKind::Pipe => PBinaryOp::BitOr,
+            TokenKind::Hat => PBinaryOp::BitXor,
+            TokenKind::LeftShift => PBinaryOp::LeftShift,
+            TokenKind::RightShift => PBinaryOp::RightShift,
+            _ => return Some(left),
+        };
+
         let op_token = px.bump();
         let right_opt = parse_add(allow_struct, px).map(Box::new);
-        PExpr::BinaryOp(PBinaryOpExpr {
+        left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        })
-    };
-
-    let mut left = parse_add(allow_struct, px)?;
-
-    loop {
-        match px.next() {
-            TokenKind::And => left = parse_right(PBinaryOp::BitAnd, left, px),
-            TokenKind::Pipe => left = parse_right(PBinaryOp::BitOr, left, px),
-            TokenKind::Hat => left = parse_right(PBinaryOp::BitXor, left, px),
-            TokenKind::LeftShift => left = parse_right(PBinaryOp::LeftShift, left, px),
-            TokenKind::RightShift => left = parse_right(PBinaryOp::RightShift, left, px),
-            _ => return Some(left),
-        }
+        });
     }
 }
 
 fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, left, px: &mut Px| {
+    let mut left = parse_bit(allow_struct, px)?;
+
+    loop {
+        let op = match px.next() {
+            TokenKind::EqualEqual => PBinaryOp::Eq,
+            TokenKind::BangEqual => PBinaryOp::Ne,
+            TokenKind::LeftAngle => PBinaryOp::Lt,
+            TokenKind::LeftAngleEqual => PBinaryOp::Le,
+            TokenKind::RightAngle => PBinaryOp::Gt,
+            TokenKind::RightAngleEqual => PBinaryOp::Ge,
+            _ => return Some(left),
+        };
+
         let op_token = px.bump();
         let right_opt = parse_bit(allow_struct, px).map(Box::new);
-        PExpr::BinaryOp(PBinaryOpExpr {
+        left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        })
-    };
-
-    let mut left = parse_bit(allow_struct, px)?;
-
-    loop {
-        match px.next() {
-            TokenKind::EqualEqual => left = parse_right(PBinaryOp::Eq, left, px),
-            TokenKind::BangEqual => left = parse_right(PBinaryOp::Ne, left, px),
-            TokenKind::LeftAngle => left = parse_right(PBinaryOp::Lt, left, px),
-            TokenKind::LeftAngleEqual => left = parse_right(PBinaryOp::Le, left, px),
-            TokenKind::RightAngle => left = parse_right(PBinaryOp::Gt, left, px),
-            TokenKind::RightAngleEqual => left = parse_right(PBinaryOp::Ge, left, px),
-            _ => return Some(left),
-        }
+        });
     }
 }
 
 fn parse_logical(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
-    let parse_right = |op, left, px: &mut Px| {
+    let mut left = parse_comparison(allow_struct, px)?;
+
+    loop {
+        let op = match px.next() {
+            TokenKind::AndAnd => PBinaryOp::LogAnd,
+            TokenKind::PipePipe => PBinaryOp::LogOr,
+            _ => return Some(left),
+        };
+
         let op_token = px.bump();
         let right_opt = parse_comparison(allow_struct, px).map(Box::new);
-        PExpr::BinaryOp(PBinaryOpExpr {
+        left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
             left: Box::new(left),
             right_opt,
             location: op_token.into_location(),
-        })
-    };
-
-    let mut left = parse_comparison(allow_struct, px)?;
-
-    loop {
-        match px.next() {
-            TokenKind::AndAnd => left = parse_right(PBinaryOp::LogAnd, left, px),
-            TokenKind::PipePipe => left = parse_right(PBinaryOp::LogOr, left, px),
-            _ => return Some(left),
-        }
+        });
     }
 }
 
@@ -385,16 +359,12 @@ fn parse_pipe_or_assign(
 
 pub(crate) fn parse_cond(px: &mut Px) -> Option<PExpr> {
     // 構造体リテラルは if/match/while の本体を表す {...} と衝突するので、許可しない。
-    let expr_opt = parse_pipe_or_assign(AllowStruct::False, AllowAssign::False, px);
-
-    expr_opt
+    parse_pipe_or_assign(AllowStruct::False, AllowAssign::False, px)
 }
 
 pub(crate) fn parse_block(px: &mut Px) -> Option<PBlock> {
     let left_brace = px.eat(TokenKind::LeftBrace)?;
-
     let (decls, last_opt) = parse_semi(px);
-
     let right_brace_opt = px.eat(TokenKind::RightBrace);
 
     Some(PBlock {
@@ -453,10 +423,7 @@ fn parse_if_expr(px: &mut Px) -> PIfExpr {
         match px.next() {
             TokenKind::LeftBrace => Some(Box::new(PExpr::Block(parse_block_expr(px)))),
             TokenKind::If => Some(Box::new(PExpr::If(parse_if_expr(px)))),
-            _ => {
-                p_error("expected 'if' or '{ ... }'", px);
-                None
-            }
+            _ => None,
         }
     } else {
         None
@@ -495,12 +462,13 @@ fn parse_match_expr(px: &mut Px) -> PMatchExpr {
     if left_brace_opt.is_some() {
         loop {
             match px.next() {
-                TokenKind::Eof | TokenKind::RightBrace | TokenKind::Semi => break,
-                TokenKind::Comma => px.skip(),
-                _ => match parse_arm(px) {
-                    Some(arm) => arms.push(arm),
-                    None => px.skip(),
-                },
+                TokenKind::Eof | TokenKind::RightBrace => break,
+                _ => {}
+            }
+
+            match parse_arm(px) {
+                Some(arm) => arms.push(arm),
+                None => px.skip(),
             }
         }
     }
@@ -565,26 +533,26 @@ pub(crate) fn parse_args(args: &mut Vec<PArg>, px: &mut Px) {
             TokenKind::Eof
             | TokenKind::RightParen
             | TokenKind::RightBracket
-            | TokenKind::RightBrace => break,
-            _ => {
-                let expr = match parse_expr(px) {
-                    None => {
-                        p_error("expected argument", px);
-                        px.skip();
-                        continue;
-                    }
-                    Some(expr) => expr,
-                };
+            | TokenKind::RightBrace
+            | TokenKind::Semi => break,
+            _ => {}
+        }
 
-                let comma_opt = px.eat(TokenKind::Comma);
-                let can_continue = comma_opt.is_some();
-
-                args.push(PArg { expr, comma_opt });
-
-                if !can_continue {
-                    break;
-                }
+        let expr = match parse_expr(px) {
+            Some(expr) => expr,
+            None => {
+                px.skip();
+                continue;
             }
+        };
+
+        let comma_opt = px.eat(TokenKind::Comma);
+        let can_continue = comma_opt.is_some();
+
+        args.push(PArg { expr, comma_opt });
+
+        if !can_continue {
+            break;
         }
     }
 }

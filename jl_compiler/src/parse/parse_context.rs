@@ -69,7 +69,3 @@ impl Px {
         (eof, self.skipped)
     }
 }
-
-pub(crate) fn p_error(message: impl Into<String>, px: &mut Px) {
-    px.logger().error(px.nth_data(0).unwrap(), message);
-}

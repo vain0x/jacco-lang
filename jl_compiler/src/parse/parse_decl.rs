@@ -213,9 +213,7 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
 
     loop {
         match px.next() {
-            TokenKind::Eof | TokenKind::Semi | TokenKind::RightBrace => {
-                break;
-            }
+            TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Ident => {
                 let field = parse_field_decl(px);
                 let can_continue = field.comma_opt.is_some();
@@ -225,12 +223,7 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
                     break;
                 }
             }
-            _ => {
-                // FIXME: recovery
-                p_error("expected a field (`name: ty,`)", px);
-                px.skip();
-                continue;
-            }
+            _ => px.skip(),
         }
     }
 
@@ -273,11 +266,13 @@ fn parse_variants(px: &mut Px) -> Vec<PVariantDecl> {
 
     loop {
         match px.next() {
-            TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
-            _ => match parse_variant_decl(px) {
-                Some(variant_decl) => variants.push(variant_decl),
-                None => px.skip(),
-            },
+            TokenKind::Eof | TokenKind::RightBrace => break,
+            _ => {}
+        }
+
+        match parse_variant_decl(px) {
+            Some(variant_decl) => variants.push(variant_decl),
+            None => px.skip(),
         }
     }
 
@@ -362,8 +357,8 @@ fn do_parse_decls(decls: &mut Vec<PDecl>, px: &mut Px) {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Semi => {
-                // Empty declaration.
-                px.skip();
+                // 空宣言
+                let _ = px.bump();
                 continue;
             }
             _ => {}
@@ -371,30 +366,28 @@ fn do_parse_decls(decls: &mut Vec<PDecl>, px: &mut Px) {
 
         match parse_decl(px) {
             Some(decl) => decls.push(decl),
-            None => {
-                p_error("expected decl", px);
-                px.skip();
-            }
+            None => px.skip(),
         }
     }
 }
 
 pub(crate) fn parse_semi(px: &mut Px) -> (Vec<PDecl>, Option<PExpr>) {
     let mut decls = vec![];
-    let mut last_opt = None;
 
     do_parse_decls(&mut decls, px);
 
-    match decls.pop() {
+    // 末尾が式文で、セミコロンで終始していなければ、それは最後の式とみなす。
+    let last_opt = match decls.pop() {
         Some(PDecl::Expr(PExprDecl {
             expr: last,
             semi_opt: None,
-        })) => {
-            last_opt = Some(last);
+        })) => Some(last),
+        Some(last) => {
+            decls.push(last);
+            None
         }
-        Some(last) => decls.push(last),
-        None => {}
-    }
+        None => None,
+    };
 
     (decls, last_opt)
 }
@@ -407,9 +400,7 @@ fn parse_root(px: &mut Px) -> Vec<PDecl> {
 
         match px.next() {
             TokenKind::Eof => break,
-            _ => {
-                px.skip();
-            }
+            _ => px.skip(),
         }
     }
 

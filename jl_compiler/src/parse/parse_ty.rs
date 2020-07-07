@@ -10,35 +10,36 @@ pub(crate) fn parse_mut(px: &mut Px) -> Option<PMut> {
 }
 
 pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
-    match px.next() {
+    let ty = match px.next() {
         TokenKind::Ident => {
             let name = parse_name(px).unwrap();
-            Some(PTy::Name(PNameTy(name)))
+            PTy::Name(PNameTy(name))
         }
         TokenKind::LeftParen => {
             let left_paren = px.bump();
             let right_paren_opt = px.eat(TokenKind::RightParen);
-            Some(PTy::Unit(PUnitTy {
+            PTy::Unit(PUnitTy {
                 left_paren,
                 right_paren_opt,
-            }))
+            })
         }
         TokenKind::Bang => {
             let bang = px.bump();
-            Some(PTy::Never(PNeverTy { bang }))
+            PTy::Never(PNeverTy { bang })
         }
         TokenKind::Star => {
             let star = px.bump();
             let mut_opt = parse_mut(px);
             let ty_opt = parse_ty(px).map(Box::new);
-            Some(PTy::Ptr(PPtrTy {
+            PTy::Ptr(PPtrTy {
                 star,
                 mut_opt,
                 ty_opt,
-            }))
+            })
         }
-        _ => None,
-    }
+        _ => return None,
+    };
+    Some(ty)
 }
 
 /// 型注釈 (`: ty`) のパース

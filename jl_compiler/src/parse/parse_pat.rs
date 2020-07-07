@@ -4,7 +4,7 @@ use crate::token::{TokenData, TokenKind};
 fn parse_record_pat(name: PName, left_brace: TokenData, px: &mut Px) -> PRecordPat {
     loop {
         match px.next() {
-            TokenKind::Eof | TokenKind::RightBrace | TokenKind::RightBracket => break,
+            TokenKind::Eof | TokenKind::RightBrace => break,
             _ => {
                 // FIXME: フィールドパターン
                 let _ = px.bump();
