@@ -23,7 +23,7 @@ fn parse_param_list(px: &mut Px) -> Option<PParamList> {
                     comma_opt,
                 })
             }
-            _ => unimplemented!(),
+            _ => px.skip(),
         }
     }
 

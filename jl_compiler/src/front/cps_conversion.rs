@@ -454,7 +454,11 @@ fn gen_constant(expr: PExpr, gx: &mut Gx) -> Option<KConstValue> {
             KSymbolExt::Const(k_const) => k_const.value_opt(&gx.outlines.consts).cloned(),
             _ => None,
         },
-        _ => unimplemented!(),
+        _ => {
+            // FIXME: 実装
+            gx.logger.error(&expr, "unimplemented");
+            None
+        }
     }
 }
 
@@ -708,7 +712,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     new_unit_term(location)
                 }
                 [arg] if !is_tuple => gen_expr(take(&mut arg.expr), gx),
-                _ => unimplemented!("tuple literal is not supported yet"),
+                _ => {
+                    gx.logger.error(&arg_list, "tuple literal is unimplemented");
+                    new_never_term(arg_list.location())
+                }
             }
         }
         PExpr::DotField(..) => {
@@ -717,7 +724,7 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                     name_opt: Some(name),
                     ..
                 }) => name.clone().decompose(),
-                _ => unimplemented!(),
+                _ => unreachable!(),
             };
 
             // FIXME: location
@@ -919,7 +926,10 @@ fn gen_expr(expr: PExpr, gx: &mut Gx) -> KTerm {
                 gx.push_prim_1(KPrim::CallDirect, k_args, result.clone());
                 KTerm::Name(result)
             }
-            _ => unimplemented!(),
+            _ => {
+                gx.logger.error(&pipe, "|> の右辺は関数呼び出しでなければいけません");
+                new_never_term(pipe.location())
+            },
         },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
         PExpr::Break(PBreakExpr {
