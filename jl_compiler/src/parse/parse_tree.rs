@@ -1,17 +1,12 @@
 //! Jacco 言語の構文木の定義
 
 use super::*;
-use crate::front::NName;
-use crate::{impl_node_choice, impl_node_seq};
+use crate::{front::NName, source::Range, token::TokenSource};
 
 #[derive(Clone, Debug)]
 pub(crate) struct PNameQual {
     pub(crate) name: TokenData,
     pub(crate) colon_colon: TokenData,
-}
-
-impl PNode for PNameQual {
-    impl_node_seq! { name, colon_colon }
 }
 
 #[derive(Clone, Debug)]
@@ -51,47 +46,9 @@ impl PName {
     }
 }
 
-impl PNode for PName {
-    fn len(&self) -> usize {
-        self.quals.len()
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        let qual_len = self.quals.len();
-        if let Some(qual) = self.quals.get(i) {
-            return try_as_element_ref(qual);
-        }
-        i -= qual_len;
-
-        if i == 0 {
-            return try_as_element_ref(&self.token);
-        }
-
-        unreachable!();
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        let qual_len = self.quals.len();
-        if let Some(qual) = self.quals.get_mut(i) {
-            return try_as_element_mut(qual);
-        }
-        i -= qual_len;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.token);
-        }
-
-        unreachable!();
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PNeverTy {
     pub(crate) bang: TokenData,
-}
-
-impl PNode for PNeverTy {
-    impl_node_seq! { bang }
 }
 
 #[derive(Clone, Debug)]
@@ -100,19 +57,11 @@ pub(crate) struct PUnitTy {
     pub(crate) right_paren_opt: Option<TokenData>,
 }
 
-impl PNode for PUnitTy {
-    impl_node_seq! { left_paren, right_paren_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PPtrTy {
     pub(crate) star: TokenData,
     pub(crate) mut_opt: Option<PMut>,
     pub(crate) ty_opt: Option<Box<PTy>>,
-}
-
-impl PNode for PPtrTy {
-    impl_node_seq! { star, mut_opt, ty_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -123,15 +72,6 @@ pub(crate) enum PTy {
     Ptr(PPtrTy),
 }
 
-impl PNode for PTy {
-    impl_node_choice! {
-        PTy::Name,
-        PTy::Never,
-        PTy::Unit,
-        PTy::Ptr,
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PRecordPat {
     pub(crate) name: PName,
@@ -140,21 +80,10 @@ pub(crate) struct PRecordPat {
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PRecordPat {
-    impl_node_seq! { name, left_brace, right_brace_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) enum PPat {
     Name(PName),
     Record(PRecordPat),
-}
-
-impl PNode for PPat {
-    impl_node_choice! {
-        PPat::Name,
-        PPat::Record,
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -165,10 +94,6 @@ pub(crate) struct PParam {
     pub(crate) comma_opt: Option<TokenData>,
 }
 
-impl PNode for PParam {
-    impl_node_seq! { name, colon_opt, ty_opt, comma_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PParamList {
     pub(crate) left_paren: TokenData,
@@ -176,57 +101,10 @@ pub(crate) struct PParamList {
     pub(crate) right_paren_opt: Option<TokenData>,
 }
 
-impl PNode for PParamList {
-    fn len(&self) -> usize {
-        self.params.len() + 2
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if i == 0 {
-            return try_as_element_ref(&self.left_paren);
-        }
-        i -= 1;
-
-        if let Some(param) = self.params.get(i) {
-            return try_as_element_ref(param);
-        }
-        i -= self.params.len();
-
-        if i == 0 {
-            return try_as_element_ref(&self.right_paren_opt);
-        }
-
-        unreachable!();
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        if i == 0 {
-            return try_as_element_mut(&mut self.left_paren);
-        }
-        i -= 1;
-
-        let param_count = self.params.len();
-        if let Some(param) = self.params.get_mut(i) {
-            return try_as_element_mut(param);
-        }
-        i -= param_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.right_paren_opt);
-        }
-
-        unreachable!();
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PArg {
     pub(crate) expr: PExpr,
     pub(crate) comma_opt: Option<TokenData>,
-}
-
-impl PNode for PArg {
-    impl_node_seq! { expr, comma_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -250,49 +128,6 @@ impl PArgList {
     }
 }
 
-impl PNode for PArgList {
-    fn len(&self) -> usize {
-        self.args.len() + 2
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if i == 0 {
-            return try_as_element_ref(&self.left_paren);
-        }
-        i -= 1;
-
-        if let Some(arg) = self.args.get(i) {
-            return try_as_element_ref(arg);
-        }
-        i -= self.args.len();
-
-        if i == 0 {
-            return try_as_element_ref(&self.right_paren_opt);
-        }
-
-        unreachable!();
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        if i == 0 {
-            return try_as_element_mut(&mut self.left_paren);
-        }
-        i -= 1;
-
-        let arg_count = self.args.len();
-        if let Some(arg) = self.args.get_mut(i) {
-            return try_as_element_mut(arg);
-        }
-        i -= arg_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.right_paren_opt);
-        }
-
-        unreachable!();
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PBlock {
     pub(crate) left_brace: TokenData,
@@ -301,56 +136,9 @@ pub(crate) struct PBlock {
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PBlock {
-    fn len(&self) -> usize {
-        self.decls.len() + 3
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if i == 0 {
-            return try_as_element_ref(&self.left_brace);
-        }
-        i -= 1;
-
-        if let Some(decl) = self.decls.get(i) {
-            return try_as_element_ref(decl);
-        }
-        i -= self.decls.len();
-
-        match i {
-            0 => try_as_element_ref(&self.last_opt),
-            1 => try_as_element_ref(&self.right_brace_opt),
-            _ => unreachable!(),
-        }
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        if i == 0 {
-            return try_as_element_mut(&mut self.left_brace);
-        }
-        i -= 1;
-
-        let decl_count = self.decls.len();
-        if let Some(decl) = self.decls.get_mut(i) {
-            return try_as_element_mut(decl);
-        }
-        i -= decl_count;
-
-        match i {
-            0 => try_as_element_mut(&mut self.last_opt),
-            1 => try_as_element_mut(&mut self.right_brace_opt),
-            _ => unreachable!(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PIntExpr {
     pub(crate) token: TokenData,
-}
-
-impl PNode for PIntExpr {
-    impl_node_seq! { token }
 }
 
 #[derive(Clone, Debug)]
@@ -358,17 +146,9 @@ pub(crate) struct PFloatExpr {
     pub(crate) token: TokenData,
 }
 
-impl PNode for PFloatExpr {
-    impl_node_seq! { token }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PCharExpr {
     pub(crate) token: TokenData,
-}
-
-impl PNode for PCharExpr {
-    impl_node_seq! { token }
 }
 
 #[derive(Clone, Debug)]
@@ -376,23 +156,11 @@ pub(crate) struct PStrExpr {
     pub(crate) token: TokenData,
 }
 
-impl PNode for PStrExpr {
-    impl_node_seq! { token }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PTrueExpr(pub(crate) TokenData);
 
-impl PNode for PTrueExpr {
-    impl_node_seq! { 0 }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PFalseExpr(pub(crate) TokenData);
-
-impl PNode for PFalseExpr {
-    impl_node_seq! { 0 }
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct PFieldExpr {
@@ -400,10 +168,6 @@ pub(crate) struct PFieldExpr {
     pub(crate) colon_opt: Option<TokenData>,
     pub(crate) value_opt: Option<PExpr>,
     pub(crate) comma_opt: Option<TokenData>,
-}
-
-impl PNode for PFieldExpr {
-    impl_node_seq! { name, colon_opt, value_opt, comma_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -414,67 +178,9 @@ pub(crate) struct PRecordExpr {
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PRecordExpr {
-    fn len(&self) -> usize {
-        self.fields.len() + 3
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if i == 0 {
-            return try_as_element_ref(&self.name);
-        }
-        i -= 1;
-
-        if i == 0 {
-            return try_as_element_ref(&self.left_brace);
-        }
-        i -= 1;
-
-        let field_count = self.fields.len();
-        if let Some(field) = self.fields.get(i) {
-            return try_as_element_ref(field);
-        }
-        i -= field_count;
-
-        if i == 0 {
-            return try_as_element_ref(&self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        if i == 0 {
-            return try_as_element_mut(&mut self.name);
-        }
-        i -= 1;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.left_brace);
-        }
-        i -= 1;
-
-        let field_count = self.fields.len();
-        if let Some(field) = self.fields.get_mut(i) {
-            return try_as_element_mut(field);
-        }
-        i -= field_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PTupleExpr {
     pub(crate) arg_list: PArgList,
-}
-
-impl PNode for PTupleExpr {
-    impl_node_seq! { arg_list }
 }
 
 #[derive(Clone, Debug)]
@@ -484,18 +190,10 @@ pub(crate) struct PDotFieldExpr {
     pub(crate) name_opt: Option<TokenData>,
 }
 
-impl PNode for PDotFieldExpr {
-    impl_node_seq! { left, dot, name_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PCallExpr {
     pub(crate) left: Box<PExpr>,
     pub(crate) arg_list: PArgList,
-}
-
-impl PNode for PCallExpr {
-    impl_node_seq! { left, arg_list }
 }
 
 #[derive(Clone, Debug)]
@@ -504,19 +202,11 @@ pub(crate) struct PIndexExpr {
     pub(crate) arg_list: PArgList,
 }
 
-impl PNode for PIndexExpr {
-    impl_node_seq! { left, arg_list }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PAsExpr {
     pub(crate) left: Box<PExpr>,
     pub(crate) keyword: TokenData,
     pub(crate) ty_opt: Option<PTy>,
-}
-
-impl PNode for PAsExpr {
-    impl_node_seq! { left, keyword, ty_opt }
 }
 
 // FIXME: 演算子のトークンを持つ
@@ -528,10 +218,6 @@ pub(crate) struct PUnaryOpExpr {
     pub(crate) location: Location,
 }
 
-impl PNode for PUnaryOpExpr {
-    impl_node_seq! { mut_opt, arg_opt }
-}
-
 // FIXME: 演算子のトークンを持つ
 #[derive(Clone, Debug)]
 pub(crate) struct PBinaryOpExpr {
@@ -541,10 +227,6 @@ pub(crate) struct PBinaryOpExpr {
     pub(crate) location: Location,
 }
 
-impl PNode for PBinaryOpExpr {
-    impl_node_seq! { left, right_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PPipeExpr {
     pub(crate) left: Box<PExpr>,
@@ -552,16 +234,8 @@ pub(crate) struct PPipeExpr {
     pub(crate) right_opt: Option<Box<PExpr>>,
 }
 
-impl PNode for PPipeExpr {
-    impl_node_seq! { left, pipe, right_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PBlockExpr(pub(crate) PBlock);
-
-impl PNode for PBlockExpr {
-    impl_node_seq! { 0 }
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct PBreakExpr {
@@ -570,18 +244,10 @@ pub(crate) struct PBreakExpr {
     pub(crate) loop_id_opt: Option<usize>,
 }
 
-impl PNode for PBreakExpr {
-    impl_node_seq! { keyword, arg_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PContinueExpr {
     pub(crate) keyword: TokenData,
     pub(crate) loop_id_opt: Option<usize>,
-}
-
-impl PNode for PContinueExpr {
-    impl_node_seq! { keyword }
 }
 
 #[derive(Clone, Debug)]
@@ -589,10 +255,6 @@ pub(crate) struct PReturnExpr {
     pub(crate) keyword: TokenData,
     pub(crate) arg_opt: Option<Box<PExpr>>,
     pub(crate) fn_id_opt: Option<usize>,
-}
-
-impl PNode for PReturnExpr {
-    impl_node_seq! { keyword, arg_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -604,26 +266,12 @@ pub(crate) struct PIfExpr {
     pub(crate) alt_opt: Option<Box<PExpr>>,
 }
 
-impl PNode for PIfExpr {
-    impl_node_seq! {
-        keyword,
-        cond_opt,
-        body_opt,
-        else_opt,
-        alt_opt,
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PArm {
     pub(crate) pat: PPat,
     pub(crate) arrow_opt: Option<TokenData>,
     pub(crate) body_opt: Option<Box<PExpr>>,
     pub(crate) comma_opt: Option<TokenData>,
-}
-
-impl PNode for PArm {
-    impl_node_seq! { pat, arrow_opt, body_opt, comma_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -635,56 +283,6 @@ pub(crate) struct PMatchExpr {
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PMatchExpr {
-    fn len(&self) -> usize {
-        self.arms.len() + 4
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        match i {
-            0 => return try_as_element_ref(&self.keyword),
-            1 => return try_as_element_ref(&self.cond_opt),
-            2 => return try_as_element_ref(&self.left_brace_opt),
-            _ => {}
-        }
-        i -= 3;
-
-        let arm_count = self.arms.len();
-        if let Some(arm) = self.arms.get(i) {
-            return try_as_element_ref(arm);
-        }
-        i -= arm_count;
-
-        if i == 0 {
-            return try_as_element_ref(&self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        match i {
-            0 => return try_as_element_mut(&mut self.keyword),
-            1 => return try_as_element_mut(&mut self.cond_opt),
-            2 => return try_as_element_mut(&mut self.left_brace_opt),
-            _ => {}
-        }
-        i -= 3;
-
-        let arm_count = self.arms.len();
-        if let Some(arm) = self.arms.get_mut(i) {
-            return try_as_element_mut(arm);
-        }
-        i -= arm_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PWhileExpr {
     pub(crate) keyword: TokenData,
@@ -693,19 +291,11 @@ pub(crate) struct PWhileExpr {
     pub(crate) loop_id_opt: Option<usize>,
 }
 
-impl PNode for PWhileExpr {
-    impl_node_seq! { keyword, cond_opt, body_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PLoopExpr {
     pub(crate) keyword: TokenData,
     pub(crate) body_opt: Option<PBlock>,
     pub(crate) loop_id_opt: Option<usize>,
-}
-
-impl PNode for PLoopExpr {
-    impl_node_seq! { keyword, body_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -744,43 +334,10 @@ impl Default for PExpr {
     }
 }
 
-impl PNode for PExpr {
-    impl_node_choice! {
-        PExpr::Int,
-        PExpr::Float,
-        PExpr::Char,
-        PExpr::Str,
-        PExpr::Name,
-        PExpr::True,
-        PExpr::False,
-        PExpr::Record,
-        PExpr::Tuple,
-        PExpr::DotField,
-        PExpr::Call,
-        PExpr::Index,
-        PExpr::As,
-        PExpr::UnaryOp,
-        PExpr::BinaryOp,
-        PExpr::Pipe,
-        PExpr::Block,
-        PExpr::Break,
-        PExpr::Continue,
-        PExpr::Return,
-        PExpr::If,
-        PExpr::Match,
-        PExpr::While,
-        PExpr::Loop,
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PExprDecl {
     pub(crate) expr: PExpr,
     pub(crate) semi_opt: Option<TokenData>,
-}
-
-impl PNode for PExprDecl {
-    impl_node_seq! { expr, semi_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -794,10 +351,6 @@ pub(crate) struct PLetDecl {
     pub(crate) semi_opt: Option<TokenData>,
 }
 
-impl PNode for PLetDecl {
-    impl_node_seq! { keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PConstDecl {
     pub(crate) keyword: TokenData,
@@ -809,10 +362,6 @@ pub(crate) struct PConstDecl {
     pub(crate) semi_opt: Option<TokenData>,
 }
 
-impl PNode for PConstDecl {
-    impl_node_seq! { keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PStaticDecl {
     pub(crate) keyword: TokenData,
@@ -822,10 +371,6 @@ pub(crate) struct PStaticDecl {
     pub(crate) equal_opt: Option<TokenData>,
     pub(crate) init_opt: Option<PExpr>,
     pub(crate) semi_opt: Option<TokenData>,
-}
-
-impl PNode for PStaticDecl {
-    impl_node_seq! { keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -842,10 +387,6 @@ pub(crate) struct PFnDecl {
     pub(crate) fn_id_opt: Option<usize>,
 }
 
-impl PNode for PFnDecl {
-    impl_node_seq! { vis_opt, keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, block_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PExternFnDecl {
     pub(crate) extern_keyword: TokenData,
@@ -860,10 +401,6 @@ pub(crate) struct PExternFnDecl {
     pub(crate) extern_fn_id_opt: Option<usize>,
 }
 
-impl PNode for PExternFnDecl {
-    impl_node_seq! { extern_keyword, fn_keyword, name_opt, param_list_opt, arrow_opt, result_ty_opt, semi_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PConstVariantDecl {
     pub(crate) name: PName,
@@ -873,10 +410,6 @@ pub(crate) struct PConstVariantDecl {
 
     // 名前解決用
     pub(crate) const_variant_id_opt: Option<usize>,
-}
-
-impl PNode for PConstVariantDecl {
-    impl_node_seq! { name, equal_opt, value_opt, comma_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -890,10 +423,6 @@ pub(crate) struct PFieldDecl {
     pub(crate) field_id_opt: Option<usize>,
 }
 
-impl PNode for PFieldDecl {
-    impl_node_seq! { name, colon_opt, ty_opt, comma_opt }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PRecordVariantDecl {
     pub(crate) name: PName,
@@ -903,65 +432,10 @@ pub(crate) struct PRecordVariantDecl {
     pub(crate) comma_opt: Option<TokenData>,
 }
 
-impl PNode for PRecordVariantDecl {
-    fn len(&self) -> usize {
-        self.fields.len() + 4
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        match i {
-            0 => return try_as_element_ref(&self.name),
-            1 => return try_as_element_ref(&self.left_brace),
-            _ => {}
-        }
-        i -= 2;
-
-        let field_count = self.fields.len();
-        if let Some(field) = self.fields.get(i) {
-            return try_as_element_ref(field);
-        }
-        i -= field_count;
-
-        match i {
-            0 => try_as_element_ref(&self.right_brace_opt),
-            1 => try_as_element_ref(&self.comma_opt),
-            _ => unreachable!(),
-        }
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        match i {
-            0 => return try_as_element_mut(&mut self.name),
-            1 => return try_as_element_mut(&mut self.left_brace),
-            _ => {}
-        }
-        i -= 2;
-
-        let field_count = self.fields.len();
-        if let Some(field) = self.fields.get_mut(i) {
-            return try_as_element_mut(field);
-        }
-        i -= field_count;
-
-        match i {
-            0 => try_as_element_mut(&mut self.right_brace_opt),
-            1 => try_as_element_mut(&mut self.comma_opt),
-            _ => unreachable!(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) enum PVariantDecl {
     Const(PConstVariantDecl),
     Record(PRecordVariantDecl),
-}
-
-impl PNode for PVariantDecl {
-    impl_node_choice! {
-        PVariantDecl::Const,
-        PVariantDecl::Record,
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -974,66 +448,11 @@ pub(crate) struct PEnumDecl {
     pub(crate) right_brace_opt: Option<TokenData>,
 }
 
-impl PNode for PEnumDecl {
-    fn len(&self) -> usize {
-        self.variants.len() + 6
-    }
-
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        match i {
-            0 => return try_as_element_ref(&self.vis_opt),
-            1 => return try_as_element_ref(&self.keyword),
-            2 => return try_as_element_ref(&self.name_opt),
-            3 => return try_as_element_ref(&self.left_brace_opt),
-            _ => {}
-        }
-        i -= 4;
-
-        let variant_count = self.variants.len();
-        if let Some(variant) = self.variants.get(i) {
-            return try_as_element_ref(variant);
-        }
-        i -= variant_count;
-
-        if i == 0 {
-            return try_as_element_ref(&self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        match i {
-            0 => return try_as_element_mut(&mut self.keyword),
-            1 => return try_as_element_mut(&mut self.name_opt),
-            2 => return try_as_element_mut(&mut self.left_brace_opt),
-            _ => {}
-        }
-        i -= 3;
-
-        let variant_count = self.variants.len();
-        if let Some(variant) = self.variants.get_mut(i) {
-            return try_as_element_mut(variant);
-        }
-        i -= variant_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.right_brace_opt);
-        }
-
-        unreachable!()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PStructDecl {
     pub(crate) keyword: TokenData,
     pub(crate) variant_opt: Option<PVariantDecl>,
     pub(crate) semi_opt: Option<TokenData>,
-}
-
-impl PNode for PStructDecl {
-    impl_node_seq! { keyword, variant_opt, semi_opt }
 }
 
 #[derive(Clone, Debug)]
@@ -1048,19 +467,6 @@ pub(crate) enum PDecl {
     Struct(PStructDecl),
 }
 
-impl PNode for PDecl {
-    impl_node_choice! {
-        PDecl::Expr,
-        PDecl::Let,
-        PDecl::Const,
-        PDecl::Static,
-        PDecl::Fn,
-        PDecl::ExternFn,
-        PDecl::Enum,
-        PDecl::Struct,
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PRoot {
     pub(crate) decls: Vec<PDecl>,
@@ -1068,35 +474,79 @@ pub(crate) struct PRoot {
     pub(crate) skipped: Vec<TokenData>,
 }
 
-impl PNode for PRoot {
-    fn len(&self) -> usize {
-        self.decls.len() + 1
-    }
+// FIXME: hot fix
+macro_rules! impl_node {
+    ($($node_ty:ty),* $(,)?) => {
+        $(
+            impl HaveLocation for $node_ty {
+                fn location(&self) -> Location {
+                    Location::new(TokenSource::Special(stringify!($node_ty)), Range::default())
+                }
+            }
 
-    fn get(&self, mut i: usize) -> Option<PElementRef> {
-        if let Some(decl) = self.decls.get(i) {
-            return try_as_element_ref(decl);
-        }
+            impl $node_ty {
+                #[allow(unused)]
+                pub(crate) fn ends_with_block(&self) -> bool {
+                    // セミコロン抜けのエラーを防ぐ
+                    true
+                }
+            }
+        )*
+    };
+}
 
-        i -= self.decls.len();
-        if i == 0 {
-            return try_as_element_ref(&self.eof);
-        }
-
-        unreachable!()
-    }
-
-    fn get_mut(&mut self, mut i: usize) -> Option<PElementMut> {
-        let decl_count = self.decls.len();
-        if let Some(decl) = self.decls.get_mut(i) {
-            return try_as_element_mut(decl);
-        }
-        i -= decl_count;
-
-        if i == 0 {
-            return try_as_element_mut(&mut self.eof);
-        }
-
-        unreachable!()
-    }
+impl_node! {
+    PNameQual,
+    PName,
+    PNeverTy,
+    PUnitTy,
+    PPtrTy,
+    PRecordPat,
+    PParam,
+    PParamList,
+    PArg,
+    PArgList,
+    PBlock,
+    PIntExpr,
+    PFloatExpr,
+    PCharExpr,
+    PStrExpr,
+    PTrueExpr,
+    PFalseExpr,
+    PFieldExpr,
+    PRecordExpr,
+    PTupleExpr,
+    PDotFieldExpr,
+    PCallExpr,
+    PIndexExpr,
+    PAsExpr,
+    PUnaryOpExpr,
+    PBinaryOpExpr,
+    PPipeExpr,
+    PBlockExpr,
+    PBreakExpr,
+    PContinueExpr,
+    PReturnExpr,
+    PIfExpr,
+    PArm,
+    PMatchExpr,
+    PWhileExpr,
+    PLoopExpr,
+    PExprDecl,
+    PLetDecl,
+    PConstDecl,
+    PStaticDecl,
+    PFnDecl,
+    PExternFnDecl,
+    PConstVariantDecl,
+    PFieldDecl,
+    PRecordVariantDecl,
+    PEnumDecl,
+    PStructDecl,
+    PRoot,
+    PTy,
+    PPat,
+    PExpr,
+    PVariantDecl,
+    PDecl,
 }

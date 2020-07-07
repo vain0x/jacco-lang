@@ -208,7 +208,6 @@ mod parse {
     //! 構文木・構文解析
 
     mod p_binary_op;
-    mod p_element;
     mod p_unary_op;
     mod p_vis;
     mod parse_context;
@@ -218,12 +217,7 @@ mod parse {
     mod parse_tree;
     mod parse_ty;
 
-    #[macro_use]
-    mod p_node;
-
     pub(crate) use p_binary_op::PBinaryOp;
-    pub(crate) use p_element::{PElementMut, PElementRef};
-    pub(crate) use p_node::{try_as_element_mut, try_as_element_ref, PNode};
     pub(crate) use p_unary_op::PUnaryOp;
     pub(crate) use p_vis::PVis;
     pub(crate) use parse_decl::parse_tokens;
