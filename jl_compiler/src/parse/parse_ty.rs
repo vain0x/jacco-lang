@@ -43,7 +43,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
 }
 
 /// 型注釈 (`: ty`) のパース
-pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<TokenData>, Option<PTy>) {
+pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<PTy>) {
     let colon_opt = px.eat(TokenKind::Colon);
 
     let ty_opt = if colon_opt.is_some() {

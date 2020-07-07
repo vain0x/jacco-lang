@@ -34,14 +34,6 @@ impl TokenData {
     pub(crate) fn as_location(&self) -> &Location {
         &self.location
     }
-
-    pub(crate) fn into_location(self) -> Location {
-        self.location
-    }
-
-    pub(crate) fn decompose(self) -> (TokenKind, String, Location) {
-        (self.kind, self.text, self.location)
-    }
 }
 
 impl TakeOut for TokenData {

@@ -1,7 +1,7 @@
-use super::{parse_context::Px, parse_expr::parse_name, PName, PPat, PRecordPat};
-use crate::token::{TokenData, TokenKind};
+use super::{parse_context::Px, parse_expr::parse_name, PName, PPat, PRecordPat, PToken};
+use crate::token::TokenKind;
 
-fn parse_record_pat(name: PName, left_brace: TokenData, px: &mut Px) -> PRecordPat {
+fn parse_record_pat(name: PName, left_brace: PToken, px: &mut Px) -> PRecordPat {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,

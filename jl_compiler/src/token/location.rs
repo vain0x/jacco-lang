@@ -70,6 +70,18 @@ pub(crate) trait HaveLocation {
     fn location(&self) -> Location;
 }
 
+impl<'a, T: HaveLocation> HaveLocation for &'a T {
+    fn location(&self) -> Location {
+        T::location(*self)
+    }
+}
+
+impl<'a, T: HaveLocation> HaveLocation for &'a mut T {
+    fn location(&self) -> Location {
+        T::location(*self)
+    }
+}
+
 impl HaveLocation for Location {
     fn location(&self) -> Location {
         self.clone()

@@ -188,7 +188,7 @@ fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     let op_token = px.bump();
     let mut_opt = if op.allow_mut() { parse_mut(px) } else { None };
     let arg_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
-    let location = op_token.into_location();
+    let location = op_token.location(px.tokens());
     Some(PExpr::UnaryOp(PUnaryOpExpr {
         op,
         mut_opt,
@@ -214,7 +214,7 @@ fn parse_mul(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             op,
             left: Box::new(left),
             right_opt,
-            location: op_token.into_location(),
+            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -235,7 +235,7 @@ fn parse_add(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             op,
             left: Box::new(left),
             right_opt,
-            location: op_token.into_location(),
+            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -259,7 +259,7 @@ fn parse_bit(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             op,
             left: Box::new(left),
             right_opt,
-            location: op_token.into_location(),
+            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -284,7 +284,7 @@ fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             op,
             left: Box::new(left),
             right_opt,
-            location: op_token.into_location(),
+            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -305,7 +305,7 @@ fn parse_logical(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
             op,
             left: Box::new(left),
             right_opt,
-            location: op_token.into_location(),
+            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -352,7 +352,7 @@ fn parse_pipe_or_assign(
             op: assign_op,
             left: Box::new(left),
             right_opt,
-            location: op.into_location(),
+            location: op.location(px.tokens()),
         });
         return Some(left);
     }

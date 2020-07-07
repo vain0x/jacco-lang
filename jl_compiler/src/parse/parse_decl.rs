@@ -37,7 +37,7 @@ fn parse_param_list(px: &mut Px) -> Option<PParamList> {
 }
 
 /// 結果型注釈 (`-> T`) のパース
-fn parse_result_ty(px: &mut Px) -> (Option<TokenData>, Option<PTy>) {
+fn parse_result_ty(px: &mut Px) -> (Option<PToken>, Option<PTy>) {
     let arrow_opt = px.eat(TokenKind::RightSlimArrow);
     let ty_opt = if arrow_opt.is_some() {
         parse_ty(px)
@@ -230,11 +230,7 @@ fn parse_field_decls(px: &mut Px) -> Vec<PFieldDecl> {
     fields
 }
 
-fn parse_record_variant_decl(
-    name: PName,
-    left_brace: TokenData,
-    px: &mut Px,
-) -> PRecordVariantDecl {
+fn parse_record_variant_decl(name: PName, left_brace: PToken, px: &mut Px) -> PRecordVariantDecl {
     let fields = parse_field_decls(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
     let comma_opt = px.eat(TokenKind::Comma);
@@ -325,7 +321,8 @@ fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
         TokenKind::Fn => PDecl::Fn(parse_fn_decl(Some(vis), px)),
         TokenKind::Enum => PDecl::Enum(parse_enum_decl(Some(vis), px)),
         _ => {
-            px.logger().error(&vis.1, "unexpected visibility");
+            px.logger()
+                .error(&vis.1.location(px.tokens()), "unexpected visibility");
             return None;
         }
     };
@@ -420,12 +417,13 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
-    let (eof, skipped) = px.finish();
+    let (eof, skipped, tokens) = px.finish();
 
     PRoot {
         decls,
         eof,
         skipped,
+        tokens,
     }
 }
 

@@ -6,6 +6,7 @@ use log::trace;
 use std::{
     collections::HashMap,
     mem::{replace, take},
+    rc::Rc,
 };
 
 #[derive(Clone, Default)]
@@ -94,6 +95,7 @@ impl Default for NName {
 /// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {
+    tokens: Rc<PTokens>,
     local_env: HashMap<String, NName>,
     // global_env: HashMap<String, NName>,
     parent_loop: Option<usize>,
@@ -105,11 +107,16 @@ struct Nx {
 }
 
 impl Nx {
-    fn new(logger: Logger) -> Self {
+    fn new(tokens: Rc<PTokens>, logger: Logger) -> Self {
         Self {
+            tokens,
             logger,
             ..Self::default()
         }
+    }
+
+    fn tokens(&self) -> &PTokens {
+        &self.tokens
     }
 
     // fn import_global(&mut self, name: String, n_name: NName) {
@@ -197,8 +204,8 @@ fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
 }
 
 fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
-    let name_info = find_value_name(&name.full_name(), nx).unwrap_or_else(|| {
-        nx.logger.error(name, "undefined value");
+    let name_info = find_value_name(&name.full_name(nx.tokens()), nx).unwrap_or_else(|| {
+        nx.logger.error(&name, "undefined value");
         NName::Unresolved
     });
 
@@ -208,8 +215,8 @@ fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
 fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
     p_name.info_opt = Some(n_name);
 
-    if !p_name.is_underscore() {
-        nx.import_local(p_name.full_name(), n_name);
+    if !p_name.is_underscore(nx.tokens()) {
+        nx.import_local(p_name.full_name(nx.tokens()), n_name);
     }
 }
 
@@ -221,13 +228,13 @@ fn resolve_qualified_name_def(
 ) {
     p_name.info_opt = Some(n_name);
 
-    if !p_name.is_underscore() {
+    if !p_name.is_underscore(nx.tokens()) {
         let full_name = match parent_name_opt {
             Some(parent_name) => {
                 // PName::full_name と同じエンコーディング
-                format!("{}::{}", parent_name, p_name.full_name())
+                format!("{}::{}", parent_name, p_name.full_name(nx.tokens()))
             }
-            _ => p_name.full_name(),
+            _ => p_name.full_name(nx.tokens()),
         };
         nx.import_local(full_name, n_name);
     }
@@ -243,10 +250,10 @@ fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
 
 fn resolve_ty_name(name: &mut PName, nx: &mut Nx) {
     // 環境から探して、なければ組み込み型の名前とみなす。
-    let name_info = find_value_name(&name.full_name(), nx)
-        .or_else(|| parse_known_ty_name(name.text()))
+    let name_info = find_value_name(&name.full_name(nx.tokens()), nx)
+        .or_else(|| parse_known_ty_name(name.text(nx.tokens())))
         .unwrap_or_else(|| {
-            nx.logger.error(name, "undefined type");
+            nx.logger.error(&name, "undefined type");
             NName::Unresolved
         });
 
@@ -271,7 +278,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 
 fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
     match pat {
-        PPat::Name(name) => match find_value_name(&name.full_name(), nx) {
+        PPat::Name(name) => match find_value_name(&name.full_name(nx.tokens()), nx) {
             Some(NName::Const(_)) => {
                 resolve_name_use(name, nx);
             }
@@ -353,7 +360,8 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             *loop_id_opt = nx.parent_loop;
             if loop_id_opt.is_none() {
-                nx.logger.error(keyword, "break out of loop");
+                nx.logger
+                    .error(keyword.location(nx.tokens()), "break out of loop");
             }
         }
         PExpr::Continue(PContinueExpr {
@@ -362,7 +370,8 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             *loop_id_opt = nx.parent_loop;
             if loop_id_opt.is_none() {
-                nx.logger.error(keyword, "continue out of loop");
+                nx.logger
+                    .error(keyword.location(nx.tokens()), "continue out of loop");
             }
         }
         PExpr::Return(PReturnExpr {
@@ -374,7 +383,8 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             *fn_id_opt = nx.parent_fn;
             if fn_id_opt.is_none() {
-                nx.logger.error(keyword, "return out of function");
+                nx.logger
+                    .error(keyword.location(nx.tokens()), "return out of function");
             }
         }
         PExpr::If(PIfExpr {
@@ -404,7 +414,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.location();
+            let location = keyword.location(nx.tokens());
 
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
 
@@ -419,7 +429,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.location();
+            let location = keyword.location(nx.tokens());
 
             nx.enter_loop(location, |nx, loop_id| {
                 *loop_id_opt = Some(loop_id);
@@ -523,15 +533,15 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     NName::Enum(enum_id)
                 };
 
-                let mut parent_name = "__anonymous_enum";
+                let mut parent_name = "__anonymous_enum".to_string();
 
                 if let Some(name) = name_opt {
                     resolve_name_def(name, k_enum, nx);
-                    parent_name = name.text();
+                    parent_name = name.text(nx.tokens()).to_string();
                 }
 
                 for variant in variants {
-                    resolve_variant(variant, Some(parent_name), nx);
+                    resolve_variant(variant, Some(&parent_name), nx);
                 }
             }
             PDecl::Struct(PStructDecl { variant_opt, .. }) => {
@@ -661,9 +671,13 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
 }
 
 pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution {
-    let mut nx = Nx::new(logger);
+    let mut nx = {
+        let tokens = Rc::new(take(&mut p_root.tokens));
+        Nx::new(tokens, logger)
+    };
 
     resolve_decls(&mut p_root.decls, &mut nx);
 
+    p_root.tokens = Rc::try_unwrap(nx.tokens).unwrap();
     nx.res
 }

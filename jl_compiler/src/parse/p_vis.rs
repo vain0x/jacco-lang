@@ -1,3 +1,4 @@
-use crate::{cps::KVis, token::TokenData};
+use super::PToken;
+use crate::cps::KVis;
 
-pub(crate) type PVis = (KVis, TokenData);
+pub(crate) type PVis = (KVis, PToken);

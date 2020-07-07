@@ -2,44 +2,52 @@ use super::*;
 
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
-    tokens: Vec<TokenData>,
-    skipped: Vec<TokenData>,
+    tokens: PTokens,
+    current: usize,
+    skipped: Vec<PToken>,
     logger: Logger,
 }
 
 impl Px {
-    pub(crate) fn new(mut tokens: Vec<TokenData>, logger: Logger) -> Self {
-        tokens.reverse();
+    pub(crate) fn new(tokens: Vec<TokenData>, logger: Logger) -> Self {
+        assert_eq!(tokens.last().map(TokenData::kind), Some(TokenKind::Eof));
 
         Px {
-            tokens,
+            tokens: PTokens::new(tokens),
+            current: 0,
             skipped: vec![],
             logger,
         }
+    }
+
+    pub(crate) fn tokens(&self) -> &PTokens {
+        &self.tokens
     }
 
     pub(crate) fn logger(&self) -> &Logger {
         &self.logger
     }
 
-    fn nth_data(&self, offset: usize) -> Option<&TokenData> {
-        assert!(offset < self.tokens.len());
+    fn nth_data(&self, offset: usize) -> &TokenData {
+        assert!(self.current + offset < self.tokens.len());
 
-        self.tokens.get(self.tokens.len() - offset - 1)
+        &self.tokens[(self.current + offset).min(self.tokens.len() - 1)]
     }
 
     pub(crate) fn nth(&self, offset: usize) -> TokenKind {
-        self.nth_data(offset).map_or(TokenKind::Eof, |t| t.kind())
+        self.nth_data(offset).kind()
     }
 
     pub(crate) fn next(&self) -> TokenKind {
         self.nth(0)
     }
 
-    pub(crate) fn bump(&mut self) -> TokenData {
-        assert!(!self.tokens.is_empty());
+    pub(crate) fn bump(&mut self) -> PToken {
+        assert!(self.current < self.tokens.len());
 
-        self.tokens.pop().unwrap()
+        let p_token = PToken::new(self.current);
+        self.current += 1;
+        p_token
     }
 
     pub(crate) fn skip(&mut self) {
@@ -48,13 +56,13 @@ impl Px {
         self.skipped.push(token);
     }
 
-    pub(crate) fn expect(&mut self, kind: TokenKind) -> TokenData {
+    pub(crate) fn expect(&mut self, kind: TokenKind) -> PToken {
         assert_eq!(self.next(), kind);
 
         self.bump()
     }
 
-    pub(crate) fn eat(&mut self, kind: TokenKind) -> Option<TokenData> {
+    pub(crate) fn eat(&mut self, kind: TokenKind) -> Option<PToken> {
         if self.next() == kind {
             Some(self.bump())
         } else {
@@ -62,10 +70,10 @@ impl Px {
         }
     }
 
-    pub(crate) fn finish(mut self) -> (TokenData, Vec<TokenData>) {
-        assert_eq!(self.tokens.len(), 1);
+    pub(crate) fn finish(mut self) -> (PToken, Vec<PToken>, PTokens) {
+        assert_eq!(self.current + 1, self.tokens.len());
 
         let eof = self.expect(TokenKind::Eof);
-        (eof, self.skipped)
+        (eof, self.skipped, self.tokens)
     }
 }

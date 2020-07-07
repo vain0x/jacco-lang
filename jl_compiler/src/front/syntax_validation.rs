@@ -1,30 +1,54 @@
 use super::*;
+use std::rc::Rc;
 
-enum IsRequired<'a> {
-    True(&'a Location),
+enum IsRequired {
+    True(Location),
     False,
 }
 
 struct Vx {
+    tokens: Rc<PTokens>,
     logger: Logger,
 }
 
 impl Vx {
-    fn new(logger: Logger) -> Self {
-        Vx { logger }
+    fn new(tokens: Rc<PTokens>, logger: Logger) -> Self {
+        Vx { tokens, logger }
+    }
+
+    fn tokens(&self) -> &PTokens {
+        &self.tokens
     }
 }
 
-fn validate_brace_matching(left: &TokenData, right_opt: Option<&TokenData>, vx: &Vx) {
+fn error_node(have_location: impl HaveLocation, message: impl Into<String>, vx: &Vx) {
+    vx.logger.error(&have_location.location(), message);
+}
+
+fn error_behind_node(have_location: impl HaveLocation, message: impl Into<String>, vx: &Vx) {
+    vx.logger.error(&have_location.location().behind(), message);
+}
+
+fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
+    let location = token.location(&vx.tokens);
+    vx.logger.error(&location, message);
+}
+
+fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
+    let location = token.location(vx.tokens());
+    vx.logger.error(&location, message)
+}
+
+fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {
     if right_opt.is_none() {
-        vx.logger.error(left, "maybe missed a right brace?");
+        error_token(left, "maybe missed a right brace?", vx);
     }
 }
 
 fn validate_param(param: &PParam, vx: &Vx) {
     match (&param.colon_opt, &param.ty_opt) {
         (Some(_), Some(ty)) => validate_ty(&ty, vx),
-        _ => vx.logger.error(param, "maybe missed type ascription?"),
+        _ => error_behind_node(param, "maybe missed type ascription?", vx),
     }
 }
 
@@ -34,19 +58,19 @@ fn validate_param_list(param_list: &PParamList, vx: &Vx) {
 
         let is_last = i + 1 == param_list.params.len();
         if !is_last && param.comma_opt.is_none() {
-            vx.logger.error(param, "maybe missing following comma?");
+            error_node(param, "maybe missing following comma?", vx);
         }
     }
 
     if param_list.right_paren_opt.is_none() {
-        vx.logger.error(param_list, "maybe missing closing paren?");
+        error_node(param_list, "maybe missing closing paren?", vx);
     }
 }
 
-fn validate_result(arrow_opt: Option<&TokenData>, ty_opt: Option<&PTy>, vx: &Vx) {
+fn validate_result(arrow_opt: Option<PToken>, ty_opt: Option<&PTy>, vx: &Vx) {
     match (arrow_opt, ty_opt) {
         (Some(_), Some(ty)) => validate_ty(ty, vx),
-        (Some(arrow), None) => vx.logger.error(arrow, "missed the type of result?"),
+        (Some(arrow), None) => error_token(arrow, "missed the type of result?", vx),
         (None, Some(_)) | (None, None) => {}
     }
 }
@@ -61,12 +85,12 @@ fn validate_arg_list(arg_list: &PArgList, vx: &Vx) {
 
         let is_last = i + 1 == arg_list.args.len();
         if !is_last && arg.comma_opt.is_none() {
-            vx.logger.error(arg, "maybe missed following comma?");
+            error_node(arg, "maybe missed following comma?", vx);
         }
     }
 
     if arg_list.right_paren_opt.is_none() {
-        vx.logger.error(arg_list, "maybe missed closing paren?");
+        error_node(arg_list, "maybe missed closing paren?", vx);
     }
 }
 
@@ -77,12 +101,12 @@ fn validate_ty(ty: &PTy, vx: &Vx) {
             right_paren_opt, ..
         }) => {
             if right_paren_opt.is_none() {
-                vx.logger.error(ty, "maybe missed closing paren?");
+                error_node(ty, "maybe missed closing paren?", vx);
             }
         }
         PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             if ty_opt.is_none() {
-                vx.logger.error(ty, "maybe missed following type?");
+                error_node(ty, "maybe missed following type?", vx);
             }
         }
     }
@@ -102,7 +126,7 @@ fn validate_pat(pat: &PPat, vx: &Vx) {
             right_brace_opt,
             ..
         }) => {
-            validate_brace_matching(left_brace, right_brace_opt.as_ref(), vx);
+            validate_brace_matching(*left_brace, *right_brace_opt, vx);
         }
     }
 }
@@ -117,7 +141,7 @@ fn validate_block(block: &PBlock, vx: &Vx) {
         validate_decl(decl, vx, Placement::Local, semi_required);
     }
 
-    validate_brace_matching(&block.left_brace, block.right_brace_opt.as_ref(), vx);
+    validate_brace_matching(block.left_brace, block.right_brace_opt, vx);
 }
 
 fn validate_expr(expr: &PExpr, vx: &Vx) {
@@ -133,18 +157,16 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             fields,
             right_brace_opt,
         }) => {
-            validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
+            validate_brace_matching(*left_brace, *right_brace_opt, vx);
 
             for (i, field) in fields.iter().enumerate() {
                 match &field.colon_opt {
                     Some(colon) => validate_expr_opt(
                         field.value_opt.as_ref(),
-                        IsRequired::True(colon.as_location()),
+                        IsRequired::True(colon.location(vx.tokens())),
                         vx,
                     ),
-                    None => vx
-                        .logger
-                        .error(&field.name.location().behind(), "missed a colon?"),
+                    None => error_behind_node(&field.name, "missed a colon?", vx),
                 }
 
                 let comma_is_required = {
@@ -152,8 +174,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                     !is_last
                 };
                 if comma_is_required && field.comma_opt.is_none() {
-                    vx.logger
-                        .error(&field.location().behind(), "missed a comma?");
+                    error_behind_node(field, "missed a comma?", vx);
                 }
             }
         }
@@ -166,8 +187,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_expr(&left, vx);
 
             if name_opt.is_none() {
-                vx.logger
-                    .error(&dot.location().behind(), "missed field name?");
+                error_behind_token(*dot, "missed field name?", vx);
             }
         }
         PExpr::Call(PCallExpr { left, arg_list }) | PExpr::Index(PIndexExpr { left, arg_list }) => {
@@ -183,16 +203,18 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_ty_opt(ty_opt.as_ref(), vx);
 
             if ty_opt.is_none() {
-                vx.logger.error(keyword, "maybe missed a type?");
+                error_token(*keyword, "maybe missed a type?", vx);
             }
         }
         PExpr::UnaryOp(PUnaryOpExpr {
             arg_opt, location, ..
         }) => match arg_opt.as_deref() {
             Some(arg) => validate_expr(arg, vx),
-            None => vx
-                .logger
-                .error(location, "maybe missed the argument of the unary operator?"),
+            None => error_node(
+                location,
+                "maybe missed the argument of the unary operator?",
+                vx,
+            ),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
             left,
@@ -204,9 +226,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 
             match right_opt {
                 Some(right) => validate_expr(right, vx),
-                None => vx
-                    .logger
-                    .error(location, "maybe missed the right-hand side?"),
+                None => error_node(location, "maybe missed the right-hand side?", vx),
             }
         }
         PExpr::Pipe(PPipeExpr {
@@ -218,7 +238,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 
             match right_opt.as_deref() {
                 Some(right @ PExpr::Call(_)) => validate_expr(right, vx),
-                _ => vx.logger.error(pipe, "expected call expr here"),
+                _ => error_token(*pipe, "expected call expr here", vx),
             }
         }
         PExpr::Block(PBlockExpr(block)) => {
@@ -240,27 +260,22 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }) => {
             match cond_opt {
                 Some(cond) => validate_expr(cond, vx),
-                None => vx
-                    .logger
-                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+                None => error_behind_token(*keyword, "maybe missed an expression?", vx),
             }
 
             match body_opt {
                 Some(body) => validate_block(body, vx),
-                None => vx
-                    .logger
-                    .error(keyword, "maybe missed body of the if expression?"),
+                None => error_token(*keyword, "maybe missed body of the if expression?", vx),
             }
 
             match (else_opt, alt_opt) {
                 (Some(_), Some(alt)) => validate_expr(alt, vx),
-                (Some(else_keyword), None) => vx
-                    .logger
-                    .error(else_keyword, "maybe missed the body of the else clause?"),
-                (None, Some(_)) => {
-                    // unreachable
-                }
-                (None, None) => {}
+                (Some(else_keyword), None) => error_behind_token(
+                    *else_keyword,
+                    "maybe missed the body of the else clause?",
+                    vx,
+                ),
+                _ => {}
             }
         }
         PExpr::Match(PMatchExpr {
@@ -272,9 +287,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }) => {
             match cond_opt {
                 Some(cond) => validate_expr(cond, vx),
-                None => vx
-                    .logger
-                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+                None => error_behind_token(*keyword, "maybe missed an expression?", vx),
             }
 
             for (i, arm) in arms.iter().enumerate() {
@@ -283,27 +296,23 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                 match &arm.arrow_opt {
                     Some(arrow) => validate_expr_opt(
                         arm.body_opt.as_deref(),
-                        IsRequired::True(arrow.as_location()),
+                        IsRequired::True(arrow.location(vx.tokens())),
                         vx,
                     ),
-                    None => vx.logger.error(
-                        &arm.pat.location().behind(),
-                        "maybe missed an => arrow here?",
-                    ),
+                    None => error_behind_node(&arm.pat, "maybe missed an => arrow here?", vx),
                 }
 
                 if i + 1 != arms.len() && arm.comma_opt.is_none() {
-                    vx.logger
-                        .error(&arm.location().behind(), "maybe missed a comma?");
+                    error_behind_node(arm, "maybe missed a comma?", vx);
                 }
             }
 
             match (left_brace_opt, right_brace_opt) {
                 (Some(_), Some(_)) => {}
                 (Some(left_brace), None) => {
-                    vx.logger.error(left_brace, "maybe missed right brace?")
+                    error_token(*left_brace, "maybe missed right brace?", vx)
                 }
-                _ => vx.logger.error(keyword, "maybe missed body of match?"),
+                _ => error_token(*keyword, "maybe missed body of match?", vx),
             }
         }
         PExpr::While(PWhileExpr {
@@ -314,25 +323,21 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
         }) => {
             match cond_opt {
                 Some(cond) => validate_expr(cond, vx),
-                None => vx
-                    .logger
-                    .error(&keyword.location().behind(), "maybe missed an expression?"),
+                None => error_behind_token(*keyword, "maybe missed an expression?", vx),
             }
 
             match body_opt {
                 Some(body) => validate_block(body, vx),
-                None => vx
-                    .logger
-                    .error(keyword, "maybe missed the body of the while expression?"),
+                None => {
+                    error_behind_node(expr, "maybe missed the body of the while expression?", vx)
+                }
             }
         }
         PExpr::Loop(PLoopExpr {
             keyword, body_opt, ..
         }) => match body_opt {
             Some(body) => validate_block(body, vx),
-            None => vx
-                .logger
-                .error(keyword, "maybe missed body of the if expression?"),
+            None => error_behind_token(*keyword, "maybe missed body of the if expression?", vx),
         },
     }
 }
@@ -341,7 +346,7 @@ fn validate_expr_opt(expr_opt: Option<&PExpr>, is_required: IsRequired, vx: &Vx)
     match (expr_opt, is_required) {
         (Some(expr), _) => validate_expr(expr, vx),
         (None, IsRequired::True(location)) => {
-            vx.logger.error(location, "maybe missed an expression?")
+            error_node(location, "maybe missed an expression?", vx)
         }
         (None, IsRequired::False) => {}
     }
@@ -357,7 +362,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             if let Some(equal) = equal_opt {
                 validate_expr_opt(
                     value_opt.as_deref(),
-                    IsRequired::True(equal.as_location()),
+                    IsRequired::True(equal.location(vx.tokens())),
                     vx,
                 );
             }
@@ -369,16 +374,15 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             right_brace_opt,
             comma_opt: _,
         }) => {
-            validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx);
+            validate_brace_matching(*left_brace, *right_brace_opt, vx);
 
             for (i, field) in fields.iter().enumerate() {
                 if field.colon_opt.is_none() {
-                    vx.logger
-                        .error(&field.name.location().behind(), "maybe missed a colon?");
+                    error_behind_node(&field.name, "maybe missed a colon?", vx);
                 }
 
                 if field.ty_opt.is_none() {
-                    vx.logger.error(field, "maybe missed a type?");
+                    error_node(field, "maybe missed a type?", vx);
                 }
 
                 let comma_is_required = {
@@ -386,8 +390,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
                     !is_last
                 };
                 if comma_is_required && field.comma_opt.is_none() {
-                    vx.logger
-                        .error(&field.location().behind(), "maybe missed a comma?");
+                    error_behind_node(field, "maybe missed a comma?", vx);
                 }
             }
         }
@@ -397,7 +400,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
 fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: bool) {
     match (decl, placement) {
         (PDecl::Expr { .. }, Placement::Global) | (PDecl::Let { .. }, Placement::Global) => {
-            vx.logger.error(decl, "not allowed");
+            error_node(decl, "not allowed", vx);
         }
         _ => {}
     }
@@ -407,8 +410,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             validate_expr(expr, vx);
 
             if semi_required && semi_opt.is_none() && !expr.ends_with_block() {
-                vx.logger
-                    .error(&decl.location().behind(), "missed a semicolon?");
+                error_behind_node(decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Let(PLetDecl {
@@ -421,15 +423,15 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             ..
         }) => {
             if name_opt.is_none() {
-                vx.logger.error(keyword, "missed variable name?");
+                error_behind_token(*keyword, "missed variable name?", vx);
             }
 
             validate_ty_opt(ty_opt.as_ref(), vx);
 
             match (equal_opt, init_opt) {
                 (Some(_), Some(init)) => validate_expr(init, vx),
-                (Some(equal), None) => vx.logger.error(equal, "missed an expression?"),
-                (None, Some(_)) | (None, None) => {}
+                (Some(equal), None) => error_behind_token(*equal, "missed an expression?", vx),
+                _ => {}
             }
 
             if semi_required
@@ -438,8 +440,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                vx.logger
-                    .error(&decl.location().behind(), "missed a semicolon?");
+                error_behind_node(&decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Const(PConstDecl {
@@ -452,20 +453,21 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             semi_opt,
         }) => {
             if name_opt.is_none() {
-                vx.logger.error(keyword, "missed constant name?");
+                error_token(*keyword, "missed constant name?", vx);
             }
 
             match (colon_opt, ty_opt) {
                 (Some(_), Some(ty)) => validate_ty(ty, vx),
-                _ => vx.logger.error(
-                    keyword,
+                _ => error_token(
+                    *keyword,
                     "maybe missed type of constant? (hint: that's required unlike let)",
+                    vx,
                 ),
             }
 
             match (equal_opt, init_opt) {
                 (Some(_), Some(init)) => validate_expr(init, vx),
-                _ => vx.logger.error(keyword, "maybe missed value of constant?"),
+                _ => error_token(*keyword, "maybe missed value of constant?", vx),
             }
 
             if semi_required
@@ -474,8 +476,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                vx.logger
-                    .error(&decl.location().behind(), "missed a semicolon?");
+                error_node(&decl.location().behind(), "missed a semicolon?", vx);
             }
         }
         PDecl::Static(PStaticDecl {
@@ -488,22 +489,21 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             semi_opt,
         }) => {
             if name_opt.is_none() {
-                vx.logger.error(keyword, "missed static var name?");
+                error_token(*keyword, "missed static var name?", vx);
             }
 
             match (colon_opt, ty_opt) {
                 (Some(_), Some(ty)) => validate_ty(ty, vx),
-                _ => vx.logger.error(
-                    keyword,
+                _ => error_token(
+                    *keyword,
                     "maybe missed type of static var? (hint: that's required unlike let)",
+                    vx,
                 ),
             }
 
             match (equal_opt, init_opt) {
                 (Some(_), Some(init)) => validate_expr(init, vx),
-                (Some(_), None) => vx
-                    .logger
-                    .error(keyword, "maybe missed value of static var?"),
+                (Some(_), None) => error_token(*keyword, "maybe missed value of static var?", vx),
                 (None, _) => {}
             }
 
@@ -513,8 +513,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                vx.logger
-                    .error(&decl.location().behind(), "missed a semicolon?");
+                error_node(&decl.location().behind(), "missed a semicolon?", vx);
             }
         }
         PDecl::Fn(PFnDecl {
@@ -527,19 +526,19 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             ..
         }) => {
             if name_opt.is_none() {
-                vx.logger.error(keyword, "missed the function name?");
+                error_token(*keyword, "missed the function name?", vx);
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => vx.logger.error(keyword, "missed param list?"),
+                None => error_token(*keyword, "missed param list?", vx),
             }
 
-            validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
+            validate_result(*arrow_opt, result_ty_opt.as_ref(), vx);
 
             match block_opt {
                 Some(block) => validate_block(block, vx),
-                None => vx.logger.error(keyword, "missed the body?"),
+                None => error_token(*keyword, "missed the body?", vx),
             }
         }
         PDecl::ExternFn(PExternFnDecl {
@@ -553,24 +552,23 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             ..
         }) => {
             let location = extern_keyword
-                .location()
+                .location(vx.tokens())
                 .clone()
-                .unite(&fn_keyword.location());
+                .unite(&fn_keyword.location(vx.tokens()));
 
             if name_opt.is_none() {
-                vx.logger.error(&location, "missed the function name?");
+                error_behind_node(&location, "missed the function name?", vx);
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => vx.logger.error(&location, "missed param list?"),
+                None => error_node(&location, "missed param list?", vx),
             }
 
-            validate_result(arrow_opt.as_ref(), result_ty_opt.as_ref(), vx);
+            validate_result(*arrow_opt, result_ty_opt.as_ref(), vx);
 
             if semi_required && semi_opt.is_none() {
-                vx.logger
-                    .error(&decl.location().behind(), "missed a semicolon?");
+                error_behind_node(decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Enum(PEnumDecl {
@@ -583,7 +581,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             right_brace_opt,
         }) => {
             if name_opt.is_none() {
-                vx.logger.error(keyword, "missed enum name?");
+                error_token(*keyword, "missed enum name?", vx);
             }
 
             for variant in variants {
@@ -591,10 +589,8 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             }
 
             match left_brace_opt {
-                Some(left_brace) => {
-                    validate_brace_matching(&left_brace, right_brace_opt.as_ref(), vx)
-                }
-                None => vx.logger.error(keyword, "maybe missed left brace?"),
+                Some(left_brace) => validate_brace_matching(*left_brace, *right_brace_opt, vx),
+                None => error_token(*keyword, "maybe missed left brace?", vx),
             }
         }
         PDecl::Struct(PStructDecl {
@@ -604,13 +600,12 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
         }) => {
             match variant_opt {
                 Some(variant) => validate_variant(variant, vx),
-                None => vx.logger.error(keyword, "maybe missed struct name?"),
+                None => error_token(*keyword, "maybe missed struct name?", vx),
             }
 
             let ends_with_block = || variant_opt.iter().all(|variant| variant.ends_with_block());
             if semi_required && semi_opt.is_none() && !ends_with_block() {
-                vx.logger
-                    .error(&decl.location().behind(), "maybe missed a semicolon?");
+                error_behind_node(decl, "maybe missed a semicolon?", vx);
             }
         }
     }
@@ -624,11 +619,13 @@ fn validate_root(root: &PRoot, vx: &Vx) {
     }
 
     for token in &root.skipped {
-        vx.logger.error(token, "this token is ignored");
+        error_token(*token, "this token is ignored", vx);
     }
 }
 
 pub(crate) fn validate_syntax(root: &PRoot, logger: Logger) {
-    let vx = Vx::new(logger);
+    // FIXME: clone しない
+    let tokens = Rc::new(root.tokens.clone());
+    let vx = Vx::new(tokens, logger);
     validate_root(root, &vx);
 }

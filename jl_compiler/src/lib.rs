@@ -193,7 +193,7 @@ mod front {
 
     use crate::logs::Logger;
     use crate::parse::*;
-    use crate::token::{HaveLocation, Location, TokenData};
+    use crate::token::{HaveLocation, Location};
 }
 
 mod lang_service {
@@ -218,10 +218,8 @@ mod parse {
     mod parse_tree;
     mod parse_ty;
 
-    #[allow(unused)]
-    pub(crate) use p_token::PToken;
-
     pub(crate) use p_binary_op::PBinaryOp;
+    pub(crate) use p_token::{PToken, PTokens};
     pub(crate) use p_unary_op::PUnaryOp;
     pub(crate) use p_vis::PVis;
     pub(crate) use parse_decl::parse_tokens;
@@ -237,7 +235,7 @@ mod parse {
     use parse_expr::{parse_block, parse_expr, parse_name};
     use parse_ty::{parse_ty, parse_ty_ascription};
 
-    pub(crate) type PMut = (KMut, TokenData);
+    pub(crate) type PMut = (KMut, PToken);
 
     /// 関数の中か外か。
     /// FIXME: より適切な名前？

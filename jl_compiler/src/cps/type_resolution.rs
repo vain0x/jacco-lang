@@ -452,12 +452,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // Skip.
                 } else if !tx.ty_env.is_primitive(&arg_ty) {
                     tx.logger.error(
-                        node,
+                        &node,
                         format!("can't cast from non-primitive type {:?}", arg_ty),
                     );
                 } else if !tx.ty_env.is_primitive(ty) {
                     let msg = format!("can't cast to non-primitive type {:?}", ty);
-                    tx.logger.error(node, msg);
+                    tx.logger.error(&node, msg);
                 }
             }
             _ => unimplemented!(),

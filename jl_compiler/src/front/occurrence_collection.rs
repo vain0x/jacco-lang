@@ -12,6 +12,7 @@ pub(crate) struct Occurrences {
 
 /// Collecting context.
 struct Cx {
+    tokens: Rc<PTokens>,
     #[allow(unused)]
     res: Rc<NameResolution>,
     parent_fn: NName,
@@ -19,12 +20,17 @@ struct Cx {
 }
 
 impl Cx {
-    fn new(res: Rc<NameResolution>) -> Self {
+    fn new(tokens: Rc<PTokens>, res: Rc<NameResolution>) -> Self {
         Self {
+            tokens,
             res,
             parent_fn: NName::Unresolved,
             occurrences: Occurrences::default(),
         }
+    }
+
+    fn tokens(&self) -> &PTokens {
+        &self.tokens
     }
 }
 
@@ -105,9 +111,11 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
             resolve_ty_name(name, cx);
 
             for field in fields {
-                cx.occurrences
-                    .field_uses
-                    .push((field.name.text().to_string(), field.location()));
+                let field_use = (
+                    field.name.text(cx.tokens()).to_string(),
+                    field.name.token.location(cx.tokens()),
+                );
+                cx.occurrences.field_uses.push(field_use);
 
                 resolve_expr_opt(field.value_opt.as_ref(), cx);
             }
@@ -121,9 +129,11 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
             resolve_expr(left, cx);
 
             if let Some(field) = name_opt {
-                cx.occurrences
-                    .field_uses
-                    .push((field.text().to_string(), field.location()));
+                let field_use = (
+                    field.text(cx.tokens()).to_string(),
+                    field.location(cx.tokens()),
+                );
+                cx.occurrences.field_uses.push(field_use);
             }
         }
         PExpr::Call(PCallExpr { left, arg_list }) | PExpr::Index(PIndexExpr { left, arg_list }) => {
@@ -359,7 +369,9 @@ fn resolve_block_opt(block_opt: Option<&PBlock>, cx: &mut Cx) {
 }
 
 pub(crate) fn collect_occurrences(p_root: &PRoot, res: Rc<NameResolution>) -> Occurrences {
-    let mut cx = Cx::new(res);
+    // FIXME: clone しない
+    let tokens = Rc::new(p_root.tokens.clone());
+    let mut cx = Cx::new(tokens, res);
 
     resolve_decls(&p_root.decls, &mut cx);
 
