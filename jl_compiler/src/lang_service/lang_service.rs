@@ -15,10 +15,8 @@ use std::{
     sync::Arc,
 };
 
-pub type Source = usize;
-
 pub struct Location {
-    source: Source,
+    doc: Doc,
     range: Range,
 }
 
@@ -159,8 +157,8 @@ impl AnalysisCache {
 
 #[derive(Default)]
 pub struct LangService {
-    sources: HashMap<Source, AnalysisCache>,
-    dirty_sources: HashSet<Source>,
+    docs: HashMap<Doc, AnalysisCache>,
+    dirty_sources: HashSet<Doc>,
 }
 
 impl LangService {
@@ -172,27 +170,21 @@ impl LangService {
 
     pub fn shutdown(&mut self) {}
 
-    fn request_syntax(&mut self, source: Source) -> Option<&mut Syntax> {
-        self.sources
-            .get_mut(&source)
-            .map(|cache| cache.request_syntax())
+    fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
+        self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    fn request_symbols(&mut self, source: Source) -> Option<&mut Symbols> {
-        self.sources
-            .get_mut(&source)
-            .map(|cache| cache.request_symbols())
+    fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
+        self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
-    fn request_cps(&mut self, source: Source) -> Option<&mut Cps> {
-        self.sources
-            .get_mut(&source)
-            .map(|cache| cache.request_cps())
+    fn request_cps(&mut self, doc: Doc) -> Option<&mut Cps> {
+        self.docs.get_mut(&doc).map(|cache| cache.request_cps())
     }
 
-    pub fn open_doc(&mut self, source: Source, version: i64, text: Rc<String>) {
-        self.sources.insert(
-            source,
+    pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
+        self.docs.insert(
+            doc,
             AnalysisCache {
                 version,
                 text,
@@ -203,35 +195,31 @@ impl LangService {
                 cps_opt: None,
             },
         );
-        self.dirty_sources.insert(source);
+        self.dirty_sources.insert(doc);
     }
 
-    pub fn change_doc(&mut self, source: Source, version: i64, text: Rc<String>) {
-        if let Some(analysis) = self.sources.get_mut(&source) {
+    pub fn change_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
+        if let Some(analysis) = self.docs.get_mut(&doc) {
             analysis.set_text(version, text);
-            self.dirty_sources.insert(source);
+            self.dirty_sources.insert(doc);
         }
     }
 
-    pub fn close_doc(&mut self, source: Source) {
-        self.sources.remove(&source);
-        self.dirty_sources.remove(&source);
+    pub fn close_doc(&mut self, doc: Doc) {
+        self.docs.remove(&doc);
+        self.dirty_sources.remove(&doc);
     }
 
-    pub fn completion(&mut self, source: Source, pos: Pos) -> Vec<()> {
+    pub fn completion(&mut self, doc: Doc, pos: Pos) -> Vec<()> {
         vec![]
     }
 
-    pub fn definitions(&mut self, source: Source, pos: Pos) -> Vec<Location> {
+    pub fn definitions(&mut self, doc: Doc, pos: Pos) -> Vec<Location> {
         vec![]
     }
 
-    pub fn document_highlight(
-        &mut self,
-        source: Source,
-        pos: Pos,
-    ) -> Option<(Vec<Range>, Vec<Range>)> {
-        let symbols = self.request_symbols(source)?;
+    pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<Range>, Vec<Range>)> {
+        let symbols = self.request_symbols(doc)?;
 
         let name = symbols
             .occurrences
@@ -268,9 +256,9 @@ impl LangService {
         Some((def_sites, use_sites))
     }
 
-    pub fn hover(&mut self, source: Source, pos: Pos) -> Option<String> {
+    pub fn hover(&mut self, doc: Doc, pos: Pos) -> Option<String> {
         let name = {
-            let symbols = self.request_symbols(source)?;
+            let symbols = self.request_symbols(doc)?;
             symbols
                 .occurrences
                 .def_sites
@@ -288,7 +276,7 @@ impl LangService {
                 })?
         };
 
-        let cps = self.request_cps(source)?;
+        let cps = self.request_cps(doc)?;
 
         match name {
             (NName::Fn(n_fn), NName::LocalVar(n_local_var)) => {
@@ -303,26 +291,21 @@ impl LangService {
         }
     }
 
-    pub fn references(
-        &mut self,
-        source: Source,
-        pos: Pos,
-        include_definition: bool,
-    ) -> Vec<Location> {
+    pub fn references(&mut self, doc: Doc, pos: Pos, include_definition: bool) -> Vec<Location> {
         vec![]
     }
 
-    pub fn prepare_rename(&mut self, source: Source, pos: Pos) -> Option<()> {
+    pub fn prepare_rename(&mut self, doc: Doc, pos: Pos) -> Option<()> {
         None
     }
 
-    pub fn rename(&mut self, source: Source, pos: Pos, new_name: String) -> Option<()> {
+    pub fn rename(&mut self, doc: Doc, pos: Pos, new_name: String) -> Option<()> {
         None
     }
 
-    pub fn validate(&mut self, source: Source) -> (Option<i64>, Vec<(Range, String)>) {
-        self.sources
-            .get_mut(&source)
+    pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(Range, String)>) {
+        self.docs
+            .get_mut(&doc)
             .map(|analysis| {
                 let version_opt = Some(analysis.version);
 
@@ -342,42 +325,42 @@ impl LangService {
 
 #[cfg(test)]
 mod tests {
-    use super::{LangService, Source};
+    use super::{Doc, LangService};
 
-    const SOURCE: Source = 1;
+    const DOC: Doc = Doc::new(1);
 
     fn new_service_from_str(s: &str) -> LangService {
         let mut it = LangService::new();
         it.did_initialize();
-        it.open_doc(SOURCE, 1, s.to_string().into());
+        it.open_doc(DOC, 1, s.to_string().into());
         it
     }
 
     #[test]
     fn test_validate_good() {
         let mut lang_service = new_service_from_str("pub fn main() -> i32 { 0 }");
-        let (_, errors) = lang_service.validate(SOURCE);
+        let (_, errors) = lang_service.validate(DOC);
         assert_eq!(errors.len(), 0);
     }
 
     #[test]
     fn test_validate_syntax_errors() {
         let mut lang_service = new_service_from_str("fn f() { bad!! syntax!! }");
-        let (_, errors) = lang_service.validate(SOURCE);
+        let (_, errors) = lang_service.validate(DOC);
         assert_ne!(errors.len(), 0);
     }
 
     #[test]
     fn test_validate_name_resolution_errors() {
         let mut lang_service = new_service_from_str("fn f() { g(); }");
-        let (_, errors) = lang_service.validate(SOURCE);
+        let (_, errors) = lang_service.validate(DOC);
         assert_ne!(errors.len(), 0);
     }
 
     #[test]
     fn test_validate_type_errors() {
         let mut lang_service = new_service_from_str("fn f() { 2_i32 + 3_f64 }");
-        let (_, errors) = lang_service.validate(SOURCE);
+        let (_, errors) = lang_service.validate(DOC);
         assert_ne!(errors.len(), 0);
     }
 }

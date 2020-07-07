@@ -4,16 +4,16 @@ use std::fmt::{self, Debug, Display, Formatter};
 ///
 /// テキストドキュメント: ファイルやエディターのタブなど、ソースコードの出処となるもの
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub(crate) struct Doc {
+pub struct Doc {
     id: u32,
 }
 
 impl Doc {
-    pub(crate) fn new(id: usize) -> Self {
+    pub(crate) const fn new(id: usize) -> Self {
         Self { id: id as u32 }
     }
 
-    pub(crate) fn id(self) -> usize {
+    pub(crate) const fn id(self) -> usize {
         self.id as usize
     }
 }
@@ -24,6 +24,12 @@ impl Debug for Doc {
             Some(path) => Display::fmt(&path.to_string_lossy(), f),
             None => write!(f, "doc#{}", self.id()),
         }
+    }
+}
+
+impl From<usize> for Doc {
+    fn from(value: usize) -> Self {
+        Self::new(value)
     }
 }
 
