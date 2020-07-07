@@ -36,8 +36,8 @@ struct Cps {
     errors: Vec<(Range, String)>,
 }
 
-#[derive(Default)]
 struct AnalysisCache {
+    doc: Doc,
     version: i64,
     text: Rc<String>,
     source_path: Arc<PathBuf>,
@@ -61,10 +61,8 @@ impl AnalysisCache {
         }
 
         let tokens = {
-            // FIXME: doc (source) を引数からもらう
-            let doc = Doc::new(1);
-            Doc::set_path(doc, &self.source_path);
-            let token_source = TokenSource::File(doc);
+            Doc::set_path(self.doc, &self.source_path);
+            let token_source = TokenSource::File(self.doc);
             let source_code = self.text.clone();
             token::tokenize(token_source, source_code)
         };
@@ -186,6 +184,7 @@ impl LangService {
         self.docs.insert(
             doc,
             AnalysisCache {
+                doc,
                 version,
                 text,
                 // FIXME: 引数でもらう
