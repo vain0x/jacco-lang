@@ -49,23 +49,32 @@ cargo build
 | alt   | alternative   | 代替 (else の式) |
 | arg   | argument      | 実引数 |
 | attr  | attribute     | 属性 |
+| cl    | closure       | クロージャ |
 | cond  | condition     | 条件 |
 | cont  | continuation  | 継続 |
 | decl  | declaration   | 宣言 |
+| div   | division      | 除算 |
+| deref | dereference   | 脱参照 (参照を辿る操作) |
+| env   | environment   | 環境 |
 | expr  | expression    | 式 |
+| fn    | function      | 関数 |
 | gen   | generation    | 生成 |
 | ident | identifier    | 識別子 |
 | init  | initialization| 初期化 |
 | lit   | literal       | リテラル |
 | mod   | module        | モジュール |
+| mul   | multiplication| 乗算 |
+| mut   | mutable       | 可変 |
 | op    | operation     | 演算 |
 | op    | operator      | 演算子 |
 | opt   | optional      | 省略可能 |
 | param | parameter     | 仮引数 |
 | prim  | primitive     | プリミティブ |
 | qual  | qualifier     | 修飾子 |
+| ref   | reference     | 参照 |
 | semi  | semicolon     | セミコロン |
 | sig   | signature     | シグネチャ |
+| sub   | subtraction   | 減算 |
 | ty    | type          | (静的) 型 |
 
 - Gx, Tx など
