@@ -5,7 +5,7 @@ mod logs;
 /// API for Rust.
 pub mod rust_api {
     pub use super::lang_service::lang_service::LangService;
-    pub use super::source::{doc::Doc, doc::Doc as Source, pos::Pos, range::Range};
+    pub use super::source::{doc::Doc, pos::Pos, range::Range};
 }
 
 /// ワークスペースのルートからの相対パスを計算する。

@@ -1,6 +1,6 @@
 use super::uri::Uri;
 use fs::OpenOptions;
-use jl_compiler::rust_api::Source;
+use jl_compiler::rust_api::Doc;
 use notify::{DebouncedEvent, RecommendedWatcher};
 use std::{
     collections::{HashMap, HashSet},
@@ -19,21 +19,21 @@ type TextDocumentVersion = i64;
 pub(crate) const NO_VERSION: i64 = 1;
 
 pub(crate) enum DocChange {
-    Opened { source: Source, text: Rc<String> },
-    Changed { source: Source, text: Rc<String> },
-    Closed { source: Source },
+    Opened { doc: Doc, text: Rc<String> },
+    Changed { doc: Doc, text: Rc<String> },
+    Closed { doc: Doc },
 }
 
 /// テキストドキュメントを管理するもの。
 #[derive(Default)]
 pub(crate) struct Watcher {
-    last_source: usize,
-    source_to_uri: HashMap<Source, Uri>,
-    uri_to_source: HashMap<Uri, Source>,
-    source_versions: HashMap<Source, TextDocumentVersion>,
+    last_doc: usize,
+    doc_to_uri_map: HashMap<Doc, Uri>,
+    uri_to_doc_map: HashMap<Uri, Doc>,
+    doc_versions: HashMap<Doc, TextDocumentVersion>,
     file_watcher: Option<RecommendedWatcher>,
     file_event_rx: Option<Receiver<DebouncedEvent>>,
-    source_changes: Vec<DocChange>,
+    doc_changes: Vec<DocChange>,
     temp_buf: Vec<u8>,
 }
 
@@ -42,36 +42,36 @@ impl Watcher {
         Default::default()
     }
 
-    pub(crate) fn fresh_source(&mut self) -> Source {
+    pub(crate) fn fresh_doc(&mut self) -> Doc {
         todo!()
     }
 
-    fn resolve_uri(&mut self, uri: Uri) -> Source {
-        match self.uri_to_source.get(&uri) {
-            Some(&source) => source,
+    fn resolve_uri(&mut self, uri: Uri) -> Doc {
+        match self.uri_to_doc_map.get(&uri) {
+            Some(&doc) => doc,
             None => {
-                let source = self.fresh_source();
-                self.source_to_uri.insert(source, uri.clone());
-                self.uri_to_source.insert(uri, source);
-                source
+                let doc = self.fresh_doc();
+                self.doc_to_uri_map.insert(doc, uri.clone());
+                self.uri_to_doc_map.insert(uri, doc);
+                doc
             }
         }
     }
 
-    pub(crate) fn find_by_uri(&self, uri: &Uri) -> Option<Source> {
-        self.uri_to_source.get(uri).cloned()
+    pub(crate) fn find_by_uri(&self, uri: &Uri) -> Option<Doc> {
+        self.uri_to_doc_map.get(uri).cloned()
     }
 
-    pub(crate) fn get_uri(&self, source: Source) -> Option<&Uri> {
-        self.source_to_uri.get(&source)
+    pub(crate) fn get_uri(&self, doc: Doc) -> Option<&Uri> {
+        self.doc_to_uri_map.get(&doc)
     }
 
-    pub(crate) fn get_version(&self, source: Source) -> Option<TextDocumentVersion> {
-        self.source_versions.get(&source).copied()
+    pub(crate) fn get_version(&self, doc: Doc) -> Option<TextDocumentVersion> {
+        self.doc_versions.get(&doc).copied()
     }
 
     pub(crate) fn drain_doc_changes(&mut self, changes: &mut Vec<DocChange>) {
-        changes.extend(self.source_changes.drain(..));
+        changes.extend(self.doc_changes.drain(..));
     }
 
     pub(crate) fn did_initialize(&mut self) {
@@ -99,30 +99,29 @@ impl Watcher {
         self.shutdown_file_watcher();
     }
 
-    fn do_open_doc(&mut self, uri: Uri, version: i64, text: Rc<String>) -> Source {
-        let source = self.resolve_uri(uri);
+    fn do_open_doc(&mut self, uri: Uri, version: i64, text: Rc<String>) -> Doc {
+        let doc = self.resolve_uri(uri);
 
-        self.source_versions.insert(source, version);
-        self.source_changes.push(DocChange::Opened { source, text });
+        self.doc_versions.insert(doc, version);
+        self.doc_changes.push(DocChange::Opened { doc, text });
 
-        source
+        doc
     }
 
     fn do_change_doc(&mut self, uri: Uri, version: i64, text: Rc<String>) {
-        let source = self.resolve_uri(uri);
-        self.source_versions.insert(source, version);
-        self.source_changes
-            .push(DocChange::Changed { source, text });
+        let doc = self.resolve_uri(uri);
+        self.doc_versions.insert(doc, version);
+        self.doc_changes.push(DocChange::Changed { doc, text });
     }
 
     fn do_close_doc(&mut self, uri: Uri) {
-        if let Some(&source) = self.uri_to_source.get(&uri) {
-            self.source_to_uri.remove(&source);
-            self.source_versions.remove(&source);
-            self.source_changes.push(DocChange::Closed { source })
+        if let Some(&doc) = self.uri_to_doc_map.get(&uri) {
+            self.doc_to_uri_map.remove(&doc);
+            self.doc_versions.remove(&doc);
+            self.doc_changes.push(DocChange::Closed { doc })
         }
 
-        self.uri_to_source.remove(&uri);
+        self.uri_to_doc_map.remove(&uri);
     }
 
     pub(crate) fn open_doc(&mut self, uri: Uri, version: i64, text: String) {}

@@ -1,8 +1,8 @@
 use super::{
     lsp_receiver::LspReceiver, lsp_sender::LspSender, LspMessageOpaque, LspNotification, LspRequest,
 };
-use crate::sources::{SourceChange, Sources};
-use jl_compiler::rust_api::{LangService, Source};
+use crate::docs::{DocChange, Docs};
+use jl_compiler::rust_api::{Doc, LangService};
 use log::trace;
 use lsp_types::request::*;
 use lsp_types::*;
@@ -47,9 +47,9 @@ fn to_lsp_range(range: jl_compiler::rust_api::Range) -> Range {
 pub(crate) struct LspHandler<W: Write> {
     sender: LspSender<W>,
     service: LangService,
-    sources: Sources,
-    dirty_sources: HashSet<Source>,
-    source_changes: Vec<SourceChange>,
+    docs: Docs,
+    dirty_docs: HashSet<Doc>,
+    doc_changes: Vec<DocChange>,
 }
 
 impl<W: Write> LspHandler<W> {
@@ -57,53 +57,49 @@ impl<W: Write> LspHandler<W> {
         Self {
             sender,
             service,
-            sources: Sources::new(),
-            dirty_sources: HashSet::new(),
-            source_changes: vec![],
+            docs: Docs::new(),
+            dirty_docs: HashSet::new(),
+            doc_changes: vec![],
         }
     }
 
-    fn notify_source_changes(&mut self) {
-        let mut dirty_sources = take(&mut self.dirty_sources);
+    fn notify_doc_changes(&mut self) {
+        let mut dirty_docs = take(&mut self.dirty_docs);
 
-        self.sources.drain_changes(&mut self.source_changes);
-        trace!("source_changes={:?}", self.source_changes);
+        self.docs.drain_changes(&mut self.doc_changes);
+        trace!("doc_changes={:?}", self.doc_changes);
 
-        for change in self.source_changes.drain(..) {
+        for change in self.doc_changes.drain(..) {
             match change {
-                SourceChange::DidOpen {
-                    source,
+                DocChange::DidOpen {
+                    doc,
                     version,
                     text,
                     path,
                 } => {
-                    self.service.open_doc(source, version, text);
-                    dirty_sources.insert(source);
+                    self.service.open_doc(doc, version, text);
+                    dirty_docs.insert(doc);
                 }
-                SourceChange::DidChange {
-                    source,
-                    version,
-                    text,
-                } => {
-                    self.service.change_doc(source, version, text);
-                    dirty_sources.insert(source);
+                DocChange::DidChange { doc, version, text } => {
+                    self.service.change_doc(doc, version, text);
+                    dirty_docs.insert(doc);
                 }
-                SourceChange::DidClose { source } => {
-                    self.service.close_doc(source);
-                    dirty_sources.remove(&source);
+                DocChange::DidClose { doc } => {
+                    self.service.close_doc(doc);
+                    dirty_docs.remove(&doc);
                 }
             }
         }
 
         let mut diagnostics = vec![];
 
-        for source in dirty_sources.drain() {
-            let url = match self.sources.source_to_url(source) {
+        for doc in dirty_docs.drain() {
+            let url = match self.docs.doc_to_url(doc) {
                 Some(url) => url,
                 None => continue,
             };
 
-            let (version_opt, errors) = self.service.validate(source);
+            let (version_opt, errors) = self.service.validate(doc);
 
             for (range, message) in errors {
                 diagnostics.push(Diagnostic {
@@ -118,7 +114,7 @@ impl<W: Write> LspHandler<W> {
             self.send_publish_diagnostics(url, version_opt, diagnostics.split_off(0));
         }
 
-        self.dirty_sources = dirty_sources;
+        self.dirty_docs = dirty_docs;
     }
 
     fn initialize<'a>(&'a mut self, _params: InitializeParams) -> InitializeResult {
@@ -186,9 +182,8 @@ impl<W: Write> LspHandler<W> {
         let doc = params.text_document;
         let url = doc.uri;
 
-        self.sources
-            .doc_did_open(url, doc.version, Rc::new(doc.text));
-        self.notify_source_changes();
+        self.docs.doc_did_open(url, doc.version, Rc::new(doc.text));
+        self.notify_doc_changes();
     }
 
     fn text_document_did_change(&mut self, mut params: DidChangeTextDocumentParams) {
@@ -201,15 +196,15 @@ impl<W: Write> LspHandler<W> {
         let url = doc.uri;
         let version = doc.version.unwrap_or(0);
 
-        self.sources.doc_did_change(url, version, Rc::new(text));
-        self.notify_source_changes();
+        self.docs.doc_did_change(url, version, Rc::new(text));
+        self.notify_doc_changes();
     }
 
     fn text_document_did_close(&mut self, params: DidCloseTextDocumentParams) {
         let url = params.text_document.uri;
 
-        self.sources.doc_did_close(url);
-        self.notify_source_changes();
+        self.docs.doc_did_close(url);
+        self.notify_doc_changes();
     }
 
     // fn text_document_completion(&mut self, params: CompletionParams) -> CompletionList {
@@ -247,9 +242,9 @@ impl<W: Write> LspHandler<W> {
 
         (|| {
             let uri = doc.uri.clone();
-            let source = self.sources.url_to_source(&doc.uri)?;
+            let doc = self.docs.url_to_doc(&doc.uri)?;
 
-            let (def_sites, use_sites) = self.service.document_highlight(source, pos)?;
+            let (def_sites, use_sites) = self.service.document_highlight(doc, pos)?;
 
             let def_highlights = def_sites.into_iter().map(|range| {
                 let range = to_lsp_range(range);
@@ -272,8 +267,8 @@ impl<W: Write> LspHandler<W> {
         let url = doc.uri;
         let pos = from_lsp_pos(params.position);
 
-        let source = self.sources.url_to_source(&url)?;
-        let text = self.service.hover(source, pos)?;
+        let doc = self.docs.url_to_doc(&url)?;
+        let text = self.service.hover(doc, pos)?;
         let hover = Hover {
             contents: HoverContents::Scalar(MarkedString::String(text)),
             range: None,

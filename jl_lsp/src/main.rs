@@ -1,7 +1,7 @@
 #![allow(unused)]
 
+mod docs;
 mod lsp_server;
-mod sources;
 
 mod utils {
     mod uri;
