@@ -10,3 +10,7 @@ edition = "2018"
 # ログ出力 API の基本になるもの。
 # <https://github.com/rust-lang/log>
 log = "0.4"
+
+# 安全にグローバル変数を扱うためのもの。
+# <https://github.com/matklad/once_cell>
+once_cell = "1"
