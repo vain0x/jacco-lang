@@ -108,6 +108,7 @@ fn write_param_list(params: &[(String, CTy)], dx: &mut Dx<impl Write>) -> io::Re
 fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match expr {
         CExpr::Other(text) => write!(dx, "{}", text),
+        CExpr::BoolLit(text) => write!(dx, "{}", text),
         CExpr::IntLit(value) => write!(dx, "{}", value),
         CExpr::LongLongLit(value) => write!(dx, "{}LL", value),
         CExpr::UnsignedLongLongLit(value) => write!(dx, "{}ULL", value),

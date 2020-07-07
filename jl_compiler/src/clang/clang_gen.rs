@@ -179,13 +179,13 @@ fn gen_constant_value(value: &KConstValue) -> CExpr {
         KConstValue::I64(value) => CExpr::LongLongLit(value.to_string()),
         KConstValue::Usize(value) => CExpr::UnsignedLongLongLit(value.to_string()),
         KConstValue::F64(value) => CExpr::DoubleLit(value.to_string()),
-        KConstValue::Bool(true) => CExpr::IntLit("1".to_string()),
-        KConstValue::Bool(false) => CExpr::IntLit("0".to_string()),
+        KConstValue::Bool(true) => CExpr::BoolLit("1"),
+        KConstValue::Bool(false) => CExpr::BoolLit("0"),
     }
 }
 
 fn gen_invalid_constant_value() -> CExpr {
-    CExpr::IntLit("/* invalid const */ 0".to_string())
+    CExpr::Other("/* invalid const */ 0")
 }
 
 fn gen_record_tag(k_struct: KStruct, structs: &[KStructOutline]) -> CExpr {
@@ -258,7 +258,7 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => {
             // FIXME: error!
-            CExpr::IntLit("(void)0".to_string())
+            CExpr::Other("(void)0")
         }
         KTerm::Int(token, KTy::I64) | KTerm::Int(token, KTy::Isize) => CExpr::LongLongLit(
             token
@@ -283,8 +283,8 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
             ty: CTy::UnsignedChar.into_const().into_ptr(),
             arg: Box::new(CExpr::StrLit(token.into_text())),
         },
-        KTerm::True(_) => CExpr::IntLit("1".to_string()),
-        KTerm::False(_) => CExpr::IntLit("0".to_string()),
+        KTerm::True(_) => CExpr::BoolLit("1"),
+        KTerm::False(_) => CExpr::BoolLit("0"),
         KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
             Some(value) => gen_constant_value(value),
             None => gen_invalid_constant_value(),
@@ -294,14 +294,14 @@ fn gen_term(term: KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Label(label) => CExpr::Name(unique_label_name(label, cx)),
         KTerm::Return(k_fn) => {
             error!("can't gen return term to c {}", unique_fn_name(k_fn, cx));
-            CExpr::IntLit("/* error */ 0".to_string())
+            CExpr::Other("/* error */ 0")
         }
         KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::RecordTag(k_struct) => gen_record_tag(k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
-            CExpr::IntLit("/* error */ 0".to_string())
+            CExpr::Other("/* error */ 0")
         }
     }
 }
