@@ -2,7 +2,7 @@ use crate::source::Doc;
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// 字句のもとになるもの
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TokenSource {
     /// コンパイラ側で生成された字句などの出処となるもの。
     Special(&'static str),
