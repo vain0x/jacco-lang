@@ -7,14 +7,16 @@ use std::fmt::{self, Debug, Display, Formatter};
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TRange {
     /// 開始位置
-    pub(crate) start: TPos,
+    start: TPos,
 
     /// 終了位置 (終端は範囲外)
-    pub(crate) end: TPos,
+    end: TPos,
 }
 
 impl TRange {
     pub fn new(start: TPos, end: TPos) -> Self {
+        assert!(start <= end);
+
         Self { start, end }
     }
 
