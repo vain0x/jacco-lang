@@ -1,3 +1,4 @@
+use super::TPos;
 use std::{
     fmt::{self, Debug, Display, Formatter},
     iter::Sum,
@@ -67,6 +68,13 @@ impl From<char> for Pos {
 impl From<&'_ str> for Pos {
     fn from(s: &str) -> Pos {
         s.chars().map(Pos::from).sum::<Pos>()
+    }
+}
+
+impl From<TPos> for Pos {
+    fn from(t_pos: TPos) -> Self {
+        let (line, character) = t_pos.as_pos16();
+        Pos::new(line, character, t_pos.index())
     }
 }
 
