@@ -66,6 +66,8 @@ pub(crate) struct PTokens {
 
 impl PTokens {
     pub(crate) fn new(tokens: Vec<TokenData>) -> Self {
+        assert_eq!(tokens.last().map(TokenData::kind), Some(TokenKind::Eof));
+
         PTokens { tokens }
     }
 

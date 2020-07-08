@@ -413,6 +413,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
         TokenKind::Space | TokenKind::Comment => false,
         _ => true,
     });
+    let tokens = PTokens::new(tokens);
 
     let mut px = Px::new(tokens, logger);
 

@@ -9,11 +9,9 @@ pub(crate) struct Px {
 }
 
 impl Px {
-    pub(crate) fn new(tokens: Vec<TokenData>, logger: Logger) -> Self {
-        assert_eq!(tokens.last().map(TokenData::kind), Some(TokenKind::Eof));
-
+    pub(crate) fn new(tokens: PTokens, logger: Logger) -> Self {
         Px {
-            tokens: PTokens::new(tokens),
+            tokens,
             current: 0,
             skipped: vec![],
             logger,
