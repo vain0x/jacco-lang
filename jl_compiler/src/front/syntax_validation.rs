@@ -476,7 +476,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                error_node(&decl.location().behind(), "missed a semicolon?", vx);
+                error_behind_node(decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Static(PStaticDecl {
@@ -513,7 +513,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                error_node(&decl.location().behind(), "missed a semicolon?", vx);
+                error_behind_node(decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Fn(PFnDecl {
