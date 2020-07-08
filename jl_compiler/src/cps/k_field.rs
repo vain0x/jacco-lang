@@ -30,7 +30,7 @@ impl KField {
     }
 
     pub(crate) fn location(self, fields: &[KFieldOutline]) -> Location {
-        fields[self.id].location.clone()
+        fields[self.id].location
     }
 }
 

@@ -44,7 +44,7 @@ impl Gx {
         }
     }
 
-    fn fresh_symbol(&mut self, hint: &str, location: &Location) -> KSymbol {
+    fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
         let name = hint.to_string();
         let ty = KTy::default();
 
@@ -57,11 +57,11 @@ impl Gx {
 
         KSymbol {
             local,
-            location: location.clone(),
+            location: location,
         }
     }
 
-    fn fresh_label(&mut self, hint: &str, _location: &Location) -> KLabel {
+    fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
         let name = hint.to_string();
 
         let id = self.current_labels.len();
@@ -84,7 +84,7 @@ impl Gx {
 
     // ちょうど1つの継続を持つプリミティブノードを生成する。
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
-        let location = result.location.clone();
+        let location = result.location;
         self.push(KCommand::Node {
             prim,
             tys: vec![],
@@ -146,7 +146,7 @@ fn new_never_term(location: Location) -> KTerm {
     KTerm::Unit { location }
 }
 
-fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: &Location, gx: &mut Gx) -> KTerm {
+fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: Location, gx: &mut Gx) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
 
     let arg = gen_expr(arg_opt.unwrap(), gx);
@@ -160,7 +160,7 @@ fn emit_compound_assign(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: &Location,
+    location: Location,
     gx: &mut Gx,
 ) -> KTerm {
     let left = gen_expr_lval(left, KMut::Mut, location, gx);
@@ -172,17 +172,17 @@ fn emit_compound_assign(
         args: vec![left, right],
         result_opt: None,
         cont_count: 1,
-        location: location.clone(),
+        location: location,
     });
 
-    new_unit_term(location.clone())
+    new_unit_term(location)
 }
 
 fn emit_binary_op(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: &Location,
+    location: Location,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
@@ -199,7 +199,7 @@ fn emit_if(
     cond: &PExpr,
     gen_body: impl FnOnce(&mut Gx) -> KTerm,
     gen_alt: impl FnOnce(&mut Gx) -> KTerm,
-    location: &Location,
+    location: Location,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol("if_result", location);
@@ -213,7 +213,7 @@ fn emit_if(
         args: vec![k_cond],
         result_opt: None,
         cont_count: 2,
-        location: location.clone(),
+        location: location,
     });
 
     // body
@@ -339,13 +339,13 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
         | NName::Bool
         | NName::Enum(_)
         | NName::Struct(_) => {
-            gx.logger.error(&location, "型の名前です。");
+            gx.logger.error(location, "型の名前です。");
             // FIXME: 適切にハンドル？
-            KSymbolExt::Symbol(gx.fresh_symbol(&name, &location))
+            KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
         }
         NName::Unresolved => {
             // Unresolved ならエラーなのでコード生成には来ないはず。
-            unreachable!("{:?}", (&name, &location, n_name))
+            unreachable!("{:?}", (&name, location, n_name))
         }
     }
 }
@@ -487,7 +487,7 @@ fn gen_const_variant(
                 // FIXME: 値を設定できるのはすべてのバリアントが const なときだけ
                 *value_slot = value.cast_as_usize()
             }
-            None => gx.logger.error(&location, "invalid constant expression"),
+            None => gx.logger.error(location, "invalid constant expression"),
         }
     }
 
@@ -561,7 +561,7 @@ fn gen_variant(
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
-fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: &Location, gx: &mut Gx) -> KTerm {
+fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Tuple(PTupleExpr { arg_list }) if !arg_list.is_tuple() => {
             let arg = &arg_list.args[0];
@@ -581,12 +581,12 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: &Location, gx: &mut Gx) ->
                 .as_ref()
                 .map(|name| (name.text(&gx.tokens).to_string(), name.location(&gx.tokens)))
                 .unwrap();
-            let result = gx.fresh_symbol(&format!("{}_ptr", name), &location);
+            let result = gx.fresh_symbol(&format!("{}_ptr", name), location);
 
-            let left = gen_expr_lval(left.as_ref(), k_mut, &location, gx);
+            let left = gen_expr_lval(left.as_ref(), k_mut, location, gx);
             let field = KTerm::FieldTag(KFieldTag {
                 name,
-                location: location.clone(),
+                location: location,
             });
 
             let get_field_prim = match k_mut {
@@ -624,7 +624,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             KSymbolExt::UnitLikeStruct { k_struct, location } => {
                 let ty = KTy::Struct(k_struct);
                 let name = k_struct.name(&gx.outlines.structs).to_string();
-                let result = gx.fresh_symbol(&name, &location);
+                let result = gx.fresh_symbol(&name, location);
                 gx.push(KCommand::Node {
                     prim: KPrim::Record,
                     tys: vec![ty],
@@ -649,7 +649,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             };
 
             let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
-            let result = gx.fresh_symbol(&name, &location);
+            let result = gx.fresh_symbol(&name, location);
 
             let field_count = k_struct.fields(&gx.outlines.structs).len();
             let mut args = vec![KTerm::default(); field_count];
@@ -705,7 +705,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location: location.clone(),
+                location: location,
             });
 
             KTerm::Name(result)
@@ -727,9 +727,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 _ => unreachable!(),
             };
 
-            // FIXME: &Location
-            let result1 = gen_expr_lval(expr, KMut::Const, &location, gx);
-            let result2 = gx.fresh_symbol(&text, &location);
+            // FIXME: Location
+            let result1 = gen_expr_lval(expr, KMut::Const, location, gx);
+            let result2 = gx.fresh_symbol(&text, location);
 
             gx.push_prim_1(KPrim::Deref, vec![result1], result2.clone());
 
@@ -737,7 +737,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         }
         PExpr::Call(PCallExpr { left, arg_list }) => {
             let location = arg_list.left_paren.location(&gx.tokens);
-            let result = gx.fresh_symbol("call_result", &location);
+            let result = gx.fresh_symbol("call_result", location);
 
             let k_left = gen_expr(&left, gx);
 
@@ -755,12 +755,12 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             // a[i] ==> *(a + i)
 
             let location = arg_list.left_paren.location(&gx.tokens);
-            let indexed_ptr = gx.fresh_symbol("indexed_ptr", &location);
-            let result = gx.fresh_symbol("index_result", &location);
+            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location);
+            let result = gx.fresh_symbol("index_result", location);
 
             if arg_list.args.len() != 1 {
                 gx.logger.error(
-                    &location,
+                    location,
                     "zero or multiple arguments of indexing is unimplemented",
                 );
                 return new_never_term(location);
@@ -780,7 +780,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("cast", &location);
+            let result = gx.fresh_symbol("cast", location);
 
             let left = gen_expr(&left, gx);
             let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
@@ -791,7 +791,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![left],
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location: location.clone(),
+                location: location,
             });
 
             KTerm::Name(result)
@@ -802,20 +802,20 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             arg_opt,
             location,
         }) => match op {
-            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx),
+            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), *location, gx),
             PUnaryOp::DerefDeref => {
-                let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx);
+                let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), *location, gx);
 
-                let result = gx.fresh_symbol("deref", location);
+                let result = gx.fresh_symbol("deref", *location);
                 gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
                 KTerm::Name(result)
             }
             PUnaryOp::Ref => {
                 let k_mut = gen_mut(mut_opt.as_ref(), gx);
-                gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, location, gx)
+                gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, *location, gx)
             }
-            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), location, gx),
-            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), location, gx),
+            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), *location, gx),
+            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), *location, gx),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
             op,
@@ -824,7 +824,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             location,
         }) => match op {
             PBinaryOp::Assign => {
-                let left = gen_expr_lval(&left, KMut::Mut, location, gx);
+                let left = gen_expr_lval(&left, KMut::Mut, *location, gx);
                 let right = gen_expr(right_opt.as_ref().unwrap(), gx);
 
                 gx.push(KCommand::Node {
@@ -833,122 +833,130 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                     args: vec![left, right],
                     result_opt: None,
                     cont_count: 1,
-                    location: location.clone(),
+                    location: *location,
                 });
 
-                new_unit_term(location.clone())
+                new_unit_term(*location)
             }
             PBinaryOp::AddAssign => {
-                emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), location, gx)
+                emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::SubAssign => {
-                emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), location, gx)
+                emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::MulAssign => {
-                emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), location, gx)
+                emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::DivAssign => {
-                emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), location, gx)
+                emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::ModuloAssign => emit_compound_assign(
                 KPrim::ModuloAssign,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
             PBinaryOp::BitAndAssign => emit_compound_assign(
                 KPrim::BitAndAssign,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
-            PBinaryOp::BitOrAssign => {
-                emit_compound_assign(KPrim::BitOrAssign, left, right_opt.as_deref(), location, gx)
-            }
+            PBinaryOp::BitOrAssign => emit_compound_assign(
+                KPrim::BitOrAssign,
+                left,
+                right_opt.as_deref(),
+                *location,
+                gx,
+            ),
             PBinaryOp::BitXorAssign => emit_compound_assign(
                 KPrim::BitXorAssign,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
             PBinaryOp::LeftShiftAssign => emit_compound_assign(
                 KPrim::LeftShiftAssign,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
             PBinaryOp::RightShiftAssign => emit_compound_assign(
                 KPrim::RightShiftAssign,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
-            PBinaryOp::Add => emit_binary_op(KPrim::Add, left, right_opt.as_deref(), location, gx),
-            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), location, gx),
-            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), location, gx),
-            PBinaryOp::Div => emit_binary_op(KPrim::Div, left, right_opt.as_deref(), location, gx),
+            PBinaryOp::Add => emit_binary_op(KPrim::Add, left, right_opt.as_deref(), *location, gx),
+            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), *location, gx),
+            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), *location, gx),
+            PBinaryOp::Div => emit_binary_op(KPrim::Div, left, right_opt.as_deref(), *location, gx),
             PBinaryOp::Modulo => {
-                emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::BitAnd => {
-                emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::BitOr => {
-                emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::BitXor => {
-                emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::LeftShift => {
-                emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::RightShift => {
-                emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::Equal => {
-                emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::NotEqual => {
-                emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::LessThan => {
-                emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), *location, gx)
             }
             PBinaryOp::LessEqual => {
-                emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), location, gx)
+                emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), *location, gx)
             }
-            PBinaryOp::GreaterThan => {
-                emit_binary_op(KPrim::GreaterThan, left, right_opt.as_deref(), location, gx)
-            }
+            PBinaryOp::GreaterThan => emit_binary_op(
+                KPrim::GreaterThan,
+                left,
+                right_opt.as_deref(),
+                *location,
+                gx,
+            ),
             PBinaryOp::GreaterEqual => emit_binary_op(
                 KPrim::GreaterEqual,
                 left,
                 right_opt.as_deref(),
-                location,
+                *location,
                 gx,
             ),
             PBinaryOp::LogAnd => {
-                let false_term = new_false_term(location.clone());
+                let false_term = new_false_term(*location);
                 emit_if(
                     &left,
                     |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
                     move |_| false_term,
-                    location,
+                    *location,
                     gx,
                 )
             }
             PBinaryOp::LogOr => {
-                let true_term = new_true_term(location.clone());
+                let true_term = new_true_term(*location);
                 emit_if(
                     &left,
                     move |_| true_term,
                     |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
-                    location,
+                    *location,
                     gx,
                 )
             }
@@ -962,7 +970,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 // FIXME: call expr の生成と共通化
                 let result = {
                     let location = pipe.location(&gx.tokens);
-                    gx.fresh_symbol("call_result", &location)
+                    gx.fresh_symbol("call_result", location)
                 };
 
                 let k_arg = gen_expr(&arg, gx);
@@ -980,7 +988,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             _ => {
                 let location = pipe.location(&gx.tokens);
                 gx.logger
-                    .error(&location, "|> の右辺は関数呼び出しでなければいけません");
+                    .error(location, "|> の右辺は関数呼び出しでなければいけません");
                 new_never_term(location)
             }
         },
@@ -995,7 +1003,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let label = gx.current_loops[loop_id_opt.unwrap()].break_label;
             let arg = match arg_opt {
                 Some(arg) => gen_expr(&arg, gx),
-                None => new_unit_term(location.clone()),
+                None => new_unit_term(location),
             };
             gx.push_jump_with_cont(label, vec![arg]);
 
@@ -1024,7 +1032,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 let return_term = KTerm::Return(k_fn);
                 let arg = match arg_opt {
                     Some(arg) => gen_expr(&arg, gx),
-                    None => new_unit_term(location.clone()),
+                    None => new_unit_term(location),
                 };
                 vec![return_term, arg]
             };
@@ -1034,7 +1042,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: None,
                 cont_count: 1,
-                location: location.clone(),
+                location: location,
             });
 
             new_never_term(location)
@@ -1047,7 +1055,6 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
-            let location1 = location.clone();
             emit_if(
                 &cond_opt.as_ref().unwrap(),
                 |gx| gen_block(body_opt.as_ref().unwrap(), gx),
@@ -1055,7 +1062,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                     Some(alt) => gen_expr(&alt, gx),
                     None => new_unit_term(location),
                 },
-                &location1,
+                location,
                 gx,
             )
         }
@@ -1071,8 +1078,8 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 return new_never_term(location).clone();
             }
 
-            let result = gx.fresh_symbol("match_result", &location);
-            let next_label = gx.fresh_label("match_next", &location);
+            let result = gx.fresh_symbol("match_result", location);
+            let next_label = gx.fresh_label("match_next", location);
 
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
@@ -1085,7 +1092,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                         _ => {
                             error!("unimplemented pat {:?}", arm);
                             KTerm::Unit {
-                                location: arm.location().clone(),
+                                location: arm.location(),
                             }
                         }
                     },
@@ -1139,8 +1146,8 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("while_result", &location);
-            let unit_term = new_unit_term(location.clone());
+            let result = gx.fresh_symbol("while_result", location);
+            let unit_term = new_unit_term(location);
             let KLoopData {
                 break_label: next_label,
                 continue_label,
@@ -1180,7 +1187,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("loop_result", &location);
+            let result = gx.fresh_symbol("loop_result", location);
             let KLoopData {
                 break_label: next_label,
                 continue_label,
@@ -1349,8 +1356,8 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                     .into_iter()
                     .map(|loop_data| {
                         let location = loop_data.location;
-                        let continue_label = gx.fresh_label("continue_", &location);
-                        let break_label = gx.fresh_label("next", &location);
+                        let continue_label = gx.fresh_label("continue_", location);
+                        let break_label = gx.fresh_label("next", location);
                         KLoopData {
                             break_label,
                             continue_label,
@@ -1365,7 +1372,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                     args: vec![KTerm::Return(k_fn), result],
                     result_opt: None,
                     cont_count: 1,
-                    location: location.clone(),
+                    location: location,
                 });
 
                 let commands = replace(&mut gx.current_commands, parent_commands);
@@ -1412,7 +1419,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             let location = extern_keyword
                 .location(&gx.tokens)
-                .unite(&fn_keyword.location(&gx.tokens));
+                .unite(fn_keyword.location(&gx.tokens));
             let GenFnSigResult {
                 fn_name,
                 params,

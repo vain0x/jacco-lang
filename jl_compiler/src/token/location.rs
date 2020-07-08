@@ -25,7 +25,7 @@ impl Location {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn unite(self, other: &Location) -> Location {
+    pub(crate) fn unite(self, other: Location) -> Location {
         Location {
             range: self.range.unite(other.range),
             ..self
@@ -56,7 +56,7 @@ impl Debug for Location {
 
 impl TakeOut for Location {
     fn take_out(&mut self) -> Self {
-        self.clone()
+        *self
     }
 }
 
@@ -78,12 +78,12 @@ impl<'a, T: HaveLocation> HaveLocation for &'a mut T {
 
 impl HaveLocation for Location {
     fn location(&self) -> Location {
-        self.clone()
+        *self
     }
 }
 
 impl HaveLocation for TokenData {
     fn location(&self) -> Location {
-        self.as_location().clone()
+        TokenData::location(self)
     }
 }

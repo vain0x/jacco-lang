@@ -27,8 +27,8 @@ impl TokenData {
         &self.text
     }
 
-    pub(crate) fn as_location(&self) -> &Location {
-        &self.location
+    pub(crate) fn location(&self) -> Location {
+        self.location
     }
 }
 

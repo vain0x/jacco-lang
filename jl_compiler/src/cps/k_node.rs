@@ -83,6 +83,6 @@ impl Default for KNode {
 
 impl HaveLocation for KNode {
     fn location(&self) -> Location {
-        self.location.clone()
+        self.location
     }
 }

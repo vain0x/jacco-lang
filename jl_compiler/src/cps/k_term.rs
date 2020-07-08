@@ -56,15 +56,15 @@ impl KTerm {
 
     pub(crate) fn location(&self, _outlines: &KOutlines) -> Location {
         match self {
-            KTerm::Unit { location } => location.clone(),
+            KTerm::Unit { location } => *location,
             KTerm::Int(token, _) => token.location(),
             KTerm::Float(token) => token.location(),
             KTerm::Char(token) => token.location(),
             KTerm::Str(token) => token.location(),
             KTerm::True(token) => token.location(),
             KTerm::False(token) => token.location(),
-            KTerm::Name(KSymbol { location, .. }) => location.clone(),
-            KTerm::FieldTag(KFieldTag { location, .. }) => location.clone(),
+            KTerm::Name(KSymbol { location, .. }) => *location,
+            KTerm::FieldTag(KFieldTag { location, .. }) => *location,
             _ => {
                 // FIXME: no location info
                 trace!("no location for {:?}", self);

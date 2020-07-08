@@ -32,7 +32,7 @@ impl Default for KSymbol {
 
 impl HaveLocation for KSymbol {
     fn location(&self) -> Location {
-        self.location.clone()
+        self.location
     }
 }
 

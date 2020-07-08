@@ -36,7 +36,7 @@ impl<'a> Tx<'a> {
     }
 }
 
-fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
+fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
     match (left, right) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
@@ -152,7 +152,7 @@ fn do_unify(left: &KTy, right: &KTy, location: &Location, tx: &Tx) {
 /// left, right の型が一致するように型変数を決定する。
 /// (right 型の値を left 型の引数に代入する状況を想定する。)
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
-    do_unify(&left, &right, &location, tx);
+    do_unify(&left, &right, location, tx);
 }
 
 fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
@@ -168,7 +168,7 @@ fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &
 
     if let Some(expected_ty) = expected_ty_opt {
         let symbol_ty = symbol.ty(&tx.locals);
-        do_unify(&symbol_ty, expected_ty, &symbol.location, tx);
+        do_unify(&symbol_ty, expected_ty, symbol.location, tx);
     }
 }
 
@@ -246,7 +246,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     result_ty: Box::new(KTy::Never),
                 };
 
-                unify(def_fn_ty, use_fn_ty, node.location.clone(), tx);
+                unify(def_fn_ty, use_fn_ty, node.location, tx);
             }
             _ => unimplemented!(),
         },
@@ -261,7 +261,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     result_ty: Box::new(result.ty(&tx.locals).to_owned()),
                 };
 
-                unify(def_fn_ty, use_fn_ty, node.location.clone(), tx);
+                unify(def_fn_ty, use_fn_ty, node.location, tx);
             }
             _ => unimplemented!(),
         },
@@ -291,7 +291,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify(
                         field.ty(&tx.outlines.fields).clone(),
                         arg_ty,
-                        node.location.clone(),
+                        node.location,
                         tx,
                     );
                 }
@@ -390,7 +390,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::If => match node.args.as_mut_slice() {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);
-                unify(KTy::Bool, cond_ty, node.location.clone(), tx);
+                unify(KTy::Bool, cond_ty, node.location, tx);
             }
             _ => unimplemented!(),
         },
@@ -484,10 +484,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let right_ty = resolve_term(right, tx);
 
                 if tx.ty_env.is_ptr(&left_ty) {
-                    unify(KTy::Usize, right_ty.clone(), node.location.clone(), tx);
+                    unify(KTy::Usize, right_ty.clone(), node.location, tx);
                 } else {
                     // FIXME: iNN or uNN
-                    unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                    unify(left_ty.clone(), right_ty, node.location, tx);
                 }
 
                 resolve_symbol_def(result, Some(&left_ty), tx);
@@ -506,7 +506,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 // FIXME: iNN or uNN
-                unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                unify(left_ty.clone(), right_ty, node.location, tx);
 
                 resolve_symbol_def(result, Some(&left_ty), tx);
             }
@@ -523,7 +523,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let left_ty = resolve_term(left, tx);
                     let right_ty = resolve_term(right, tx);
                     // FIXME: Eq/Ord only
-                    unify(left_ty, right_ty, node.location.clone(), tx);
+                    unify(left_ty, right_ty, node.location, tx);
 
                     resolve_symbol_def(result, Some(&KTy::Bool), tx);
                 }
@@ -546,7 +546,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     None => KTy::Never,
                 };
 
-                unify(left_ty, right_ty, node.location.clone(), tx);
+                unify(left_ty, right_ty, node.location, tx);
             }
             _ => unimplemented!(),
         },
@@ -565,10 +565,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // FIXME: add/sub と同じ
                     if tx.ty_env.is_ptr(&left_ty) {
-                        unify(KTy::Usize, right_ty.clone(), node.location.clone(), tx);
+                        unify(KTy::Usize, right_ty.clone(), node.location, tx);
                     } else {
                         // FIXME: iNN or uNN
-                        unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                        unify(left_ty.clone(), right_ty, node.location, tx);
                     }
                 }
                 _ => unimplemented!(),
@@ -596,7 +596,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // FIXME: mul/div/etc. と同じ
                     // FIXME: iNN or uNN
-                    unify(left_ty.clone(), right_ty, node.location.clone(), tx);
+                    unify(left_ty.clone(), right_ty, node.location, tx);
                 }
                 _ => unimplemented!(),
             }

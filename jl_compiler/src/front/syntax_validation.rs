@@ -31,12 +31,12 @@ fn error_behind_node(have_location: impl HaveLocation, message: impl Into<String
 
 fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
     let location = token.location(&vx.tokens);
-    vx.logger.error(&location, message);
+    vx.logger.error(location, message);
 }
 
 fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
     let location = token.location(vx.tokens());
-    vx.logger.error(&location, message)
+    vx.logger.error(location, message)
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {
@@ -553,16 +553,15 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
         }) => {
             let location = extern_keyword
                 .location(vx.tokens())
-                .clone()
-                .unite(&fn_keyword.location(vx.tokens()));
+                .unite(fn_keyword.location(vx.tokens()));
 
             if name_opt.is_none() {
-                error_behind_node(&location, "missed the function name?", vx);
+                error_behind_node(location, "missed the function name?", vx);
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => error_node(&location, "missed param list?", vx),
+                None => error_node(location, "missed param list?", vx),
             }
 
             validate_result(*arrow_opt, result_ty_opt.as_ref(), vx);

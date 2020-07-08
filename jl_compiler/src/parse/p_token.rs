@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use crate::{
-    token::{Location, TokenData, TokenKind},
+    token::{HaveLocation, Location, TokenData, TokenKind},
     utils::TakeOut,
 };
 use std::{
@@ -37,7 +37,7 @@ impl PToken {
     }
 
     pub(crate) fn location(self, tokens: &PTokens) -> Location {
-        tokens.tokens[self.id()].as_location().clone()
+        tokens.tokens[self.id()].location()
     }
 
     pub(crate) fn take_out(self, tokens: &mut PTokens) -> TokenData {
