@@ -38,17 +38,11 @@ impl TRange {
     }
 
     pub(crate) fn ahead(self) -> TRange {
-        TRange {
-            start: self.start,
-            end: self.start,
-        }
+        self.start.to_empty_range()
     }
 
     pub(crate) fn behind(self) -> TRange {
-        TRange {
-            start: self.end,
-            end: self.end,
-        }
+        self.end.to_empty_range()
     }
 }
 

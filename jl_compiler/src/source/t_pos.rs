@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use super::TRange;
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Display, Formatter},
@@ -77,6 +78,10 @@ impl TPos {
 
     pub(crate) fn as_pos16(&self) -> (usize, usize) {
         (self.row(), self.column16())
+    }
+
+    pub(crate) fn to_empty_range(&self) -> TRange {
+        TRange::new(*self, *self)
     }
 
     /// 2つの位置の同値性に関する整合性を確認する。
