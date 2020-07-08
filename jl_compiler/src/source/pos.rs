@@ -14,16 +14,23 @@ pub struct Pos {
     /// 列番号。0 から始まる。UTF-16 でエンコードしたときのバイト数で表す。
     /// テキスト中の最後の改行より後にある文字列の長さに等しい。
     pub(crate) character: usize,
+
+    pub(crate) len: u32,
 }
 
 impl Pos {
     pub const ZERO: Pos = Pos {
         line: 0,
         character: 0,
+        len: 0,
     };
 
-    pub fn new(line: usize, character: usize) -> Pos {
-        Pos { line, character }
+    pub fn new(line: usize, character: usize, len: usize) -> Pos {
+        Pos {
+            line,
+            character,
+            len: len as u32,
+        }
     }
 
     pub fn line(self) -> usize {
@@ -33,6 +40,10 @@ impl Pos {
     pub fn character(self) -> usize {
         self.character
     }
+
+    pub fn len(self) -> usize {
+        self.len as usize
+    }
 }
 
 impl From<char> for Pos {
@@ -41,11 +52,13 @@ impl From<char> for Pos {
             Pos {
                 line: 1,
                 character: 0,
+                len: 1,
             }
         } else {
             Pos {
                 line: 0,
                 character: c.len_utf16(),
+                len: c.len_utf8() as u32,
             }
         }
     }
@@ -65,6 +78,7 @@ impl AddAssign for Pos {
 
         self.line += other.line;
         self.character += other.character;
+        self.len += other.len;
     }
 }
 

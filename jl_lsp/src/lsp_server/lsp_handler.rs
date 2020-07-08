@@ -27,7 +27,7 @@ fn lsp_display_name() -> String {
 }
 
 fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::Pos {
-    jl_compiler::rust_api::Pos::new(position.line as usize, position.character as usize)
+    jl_compiler::rust_api::Pos::new(position.line as usize, position.character as usize, 0)
 }
 
 fn to_lsp_pos(pos: jl_compiler::rust_api::Pos) -> Position {

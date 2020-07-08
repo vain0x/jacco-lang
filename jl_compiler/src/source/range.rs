@@ -9,11 +9,22 @@ pub struct Range {
 
     /// 終了位置 (終端は範囲外)
     pub(crate) end: Pos,
+
+    /// 開始位置 (UTF-8)
+    pub(crate) start_index: u32,
+
+    /// 終了位置 (UTF-8)
+    pub(crate) end_index: u32,
 }
 
 impl Range {
     pub fn new(start: Pos, end: Pos) -> Range {
-        Range { start, end }
+        Range {
+            start,
+            end,
+            start_index: start.len() as u32,
+            end_index: end.len() as u32,
+        }
     }
 
     pub fn start(&self) -> Pos {
@@ -32,6 +43,8 @@ impl Range {
         Range {
             start: self.start.min(other.start),
             end: self.start.max(other.end),
+            start_index: self.start_index.min(other.start_index),
+            end_index: self.end_index.max(other.end_index),
         }
     }
 
@@ -40,6 +53,8 @@ impl Range {
         Range {
             start: self.start,
             end: self.start,
+            start_index: self.start_index,
+            end_index: self.start_index,
         }
     }
 
@@ -47,6 +62,8 @@ impl Range {
         Range {
             start: self.end,
             end: self.end,
+            start_index: self.end_index,
+            end_index: self.end_index,
         }
     }
 }
