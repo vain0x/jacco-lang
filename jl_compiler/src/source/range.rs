@@ -35,6 +35,16 @@ impl Range {
         self.end
     }
 
+    #[allow(unused)]
+    pub(crate) fn start_index(&self) -> usize {
+        self.start_index as usize
+    }
+
+    #[allow(unused)]
+    pub(crate) fn end_index(&self) -> usize {
+        self.end_index as usize
+    }
+
     pub fn contains_loosely(self, pos: Pos) -> bool {
         self.start <= pos && pos <= self.end
     }
