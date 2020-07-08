@@ -3,7 +3,7 @@ use crate::{
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
-    source::{Doc, Pos, Range},
+    source::{Doc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
 use front::NName;
@@ -72,11 +72,7 @@ impl AnalysisCache {
             let root = parse::parse_tokens(tokens, logs.logger());
             validate_syntax(&root, logs.logger());
 
-            let log_items = logs.finish();
-            let errors = log_items
-                .into_iter()
-                .map(|log_item| (log_item.location.range(), log_item.message))
-                .collect();
+            let errors = logs_into_errors(&self.text, logs);
 
             Syntax { root, errors }
         };
@@ -103,11 +99,7 @@ impl AnalysisCache {
             };
             let res = Rc::try_unwrap(res).ok().unwrap();
 
-            let log_items = logs.finish();
-            let errors = log_items
-                .into_iter()
-                .map(|log_item| (log_item.location.range(), log_item.message))
-                .collect();
+            let errors = logs_into_errors(&self.text, logs);
 
             Symbols {
                 name_resolution_opt: Some(res),
@@ -139,11 +131,7 @@ impl AnalysisCache {
 
             cps::resolve_types(&mut root, logs.logger());
 
-            let log_items = logs.finish();
-            let errors = log_items
-                .into_iter()
-                .map(|log_item| (log_item.location.range(), log_item.message))
-                .collect();
+            let errors = logs_into_errors(&self.text, logs);
 
             Cps { root, errors }
         };
@@ -320,6 +308,22 @@ impl LangService {
             })
             .unwrap_or((None, vec![]))
     }
+}
+
+fn logs_into_errors(doc_text: &str, logs: Logs) -> Vec<(Range, String)> {
+    logs.finish()
+        .into_iter()
+        .map(|item| {
+            let t_range = {
+                // 累積和を取っておくと効率がいい。
+                let range = item.location.range;
+                let start = TPos::from(&doc_text[..range.start_index()]);
+                let end = start + TPos::from(&doc_text[range.start_index()..range.end_index()]);
+                TRange::new(start, end)
+            };
+            (Range::from(t_range), item.message)
+        })
+        .collect()
 }
 
 #[cfg(test)]
