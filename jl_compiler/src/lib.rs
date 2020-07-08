@@ -318,10 +318,14 @@ mod source {
     pub(crate) mod doc;
     pub(crate) mod pos;
     pub(crate) mod range;
+    pub(crate) mod t_pos;
 
     pub(crate) use doc::Doc;
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
+
+    #[allow(unused)]
+    pub(crate) use t_pos::TPos;
 
     pub(crate) type SourceCode = String;
 }
