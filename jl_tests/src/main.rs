@@ -9,7 +9,13 @@ use std::{env, fs, path::PathBuf};
 
 fn init_log() {
     let env = env_logger::Env::default().default_filter_or("trace");
-    env_logger::from_env(env).init();
+    let mut builder = env_logger::from_env(env);
+
+    if let Some("off") = std::env::var("RUST_LOG_TIMESTAMP").ok().as_deref() {
+        builder.format_timestamp(None);
+    }
+
+    builder.init();
 }
 
 fn main() {

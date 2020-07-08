@@ -28,7 +28,8 @@ expect_compile_err() {
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
-    RUST_LOG=info cargo --quiet run --bin jl_tests "$SRC" \
+    RUST_LOG='info' RUST_LOG_TIMESTAMP='off' \
+        cargo --quiet run --bin jl_tests "$SRC" \
         1> >(tee -a test_stdout.md >&2) \
         2> >(tee "$ERR" | grep -E 'Compiling|panicked' 1>&2) \
         || :
