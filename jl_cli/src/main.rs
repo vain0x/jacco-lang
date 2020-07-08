@@ -1,5 +1,5 @@
 use env_logger::Env;
-use jl_compiler::compile;
+use jl_compiler::rust_api::compile;
 use std::{
     env::{self, ArgsOs},
     ffi::OsString,

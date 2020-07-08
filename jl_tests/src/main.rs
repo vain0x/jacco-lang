@@ -4,7 +4,7 @@
 //!
 //! `foo.jacco` をコンパイルした結果を `foo.txt` に出力する。
 
-use jl_compiler::compile;
+use jl_compiler::rust_api::compile;
 use std::{env, fs, path::PathBuf};
 
 fn init_log() {
