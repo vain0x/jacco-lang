@@ -57,13 +57,32 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
         clang::clang_dump,
         cps::{eliminate_unit, resolve_types, KEnumOutline},
         front::{cps_conversion, resolve_name, validate_syntax},
-        logs::Logs,
+        logs::{LogItem, Logs},
         parse::parse_tokens,
-        source::Doc,
+        source::{Doc, TPos, TRange},
         token::{tokenize, TokenSource},
     };
     use log::{error, trace};
     use std::{process, rc::Rc};
+
+    fn report_logs(doc_text: &str, logs: &[LogItem]) {
+        for item in logs {
+            let doc = match item.location.source {
+                TokenSource::Special(name) => name.to_string(),
+                TokenSource::File(doc) => format!("{:?}", doc),
+            };
+
+            let t_range = {
+                // 累積和を取っておくと効率がいい。
+                let range = item.location.range;
+                let start = TPos::from(&doc_text[..range.start_index()]);
+                let end = start + TPos::from(&doc_text[range.start_index()..range.end_index()]);
+                TRange::new(start, end)
+            };
+
+            error!("{}:{:?} {}", doc, t_range, item.message);
+        }
+    }
 
     trace!("source_path = {:?}", source_path);
 
@@ -75,7 +94,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
 
     let token_source = TokenSource::File(doc);
     let source_code = Rc::new(source_code.to_string());
-    let tokens = tokenize(token_source, source_code);
+    let tokens = tokenize(token_source, source_code.clone());
     trace!("tokens = {:#?}\n", tokens);
 
     let mut p_root = parse_tokens(tokens, logs.logger());
@@ -84,9 +103,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     trace!("p_root = {:#?}\n", p_root);
 
     if logs.is_fatal() {
-        for item in logs.finish() {
-            error!("{:?} {}", item.location, item.message);
-        }
+        report_logs(&source_code, &logs.finish());
         process::exit(1);
     }
 
@@ -97,9 +114,7 @@ pub fn compile(source_path: &std::path::Path, source_code: &str) -> String {
     eliminate_unit(&mut k_root);
     trace!("k_root (elim) = {:#?}\n", k_root);
 
-    for item in logs.finish() {
-        error!("{:?} {}", item.location, item.message);
-    }
+    report_logs(&source_code, &logs.finish());
 
     KEnumOutline::determine_tags(
         &mut k_root.outlines.consts,
