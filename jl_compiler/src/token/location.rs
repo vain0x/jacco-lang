@@ -3,7 +3,7 @@ use crate::utils::TakeOut;
 use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Location {
     pub(crate) source: TokenSource,
     pub(crate) range: Range,
