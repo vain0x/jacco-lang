@@ -12,6 +12,14 @@ use std::{
 pub(crate) struct RawId(NonZeroU32);
 
 impl RawId {
+    pub(super) unsafe fn new_unchecked(value: u32) -> Self {
+        Self(unsafe { NonZeroU32::new_unchecked(value) })
+    }
+
+    pub(super) const fn inner(self) -> NonZeroU32 {
+        self.0
+    }
+
     pub(crate) const fn from_index(index: usize) -> Self {
         let id: u32 = (index + 1) as u32;
         let id: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(id) };
