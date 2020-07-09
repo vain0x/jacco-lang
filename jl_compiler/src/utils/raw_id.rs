@@ -15,7 +15,7 @@ pub(crate) struct RawId(NonZeroU32);
 
 impl RawId {
     pub(super) unsafe fn new_unchecked(value: u32) -> Self {
-        Self(unsafe { NonZeroU32::new_unchecked(value) })
+        Self(NonZeroU32::new_unchecked(value))
     }
 
     pub(super) const fn inner(self) -> NonZeroU32 {
