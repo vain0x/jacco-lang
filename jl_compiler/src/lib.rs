@@ -255,8 +255,10 @@ mod token {
 
 mod utils {
     mod id_provider;
+    mod raw_id;
     mod take_out;
 
     pub(crate) use id_provider::IdProvider;
+    pub(crate) use raw_id::RawId;
     pub(crate) use take_out::TakeOut;
 }
