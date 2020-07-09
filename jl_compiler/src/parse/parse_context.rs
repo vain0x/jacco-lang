@@ -29,7 +29,8 @@ impl Px {
     fn nth_data(&self, offset: usize) -> &TokenData {
         assert!(self.current + offset < self.tokens.len());
 
-        &self.tokens[(self.current + offset).min(self.tokens.len() - 1)]
+        let index = (self.current + offset).min(self.tokens.len() - 1);
+        &self.tokens[PToken::from_index(index)]
     }
 
     pub(crate) fn nth(&self, offset: usize) -> TokenKind {
@@ -43,7 +44,7 @@ impl Px {
     pub(crate) fn bump(&mut self) -> PToken {
         assert!(self.current < self.tokens.len());
 
-        let p_token = PToken::new(self.current);
+        let p_token = PToken::from_index(self.current);
         self.current += 1;
         p_token
     }

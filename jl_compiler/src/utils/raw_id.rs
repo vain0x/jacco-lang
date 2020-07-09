@@ -14,10 +14,13 @@ use std::{
 pub(crate) struct RawId(NonZeroU32);
 
 impl RawId {
+    pub(crate) const MAX: RawId = RawId(unsafe { NonZeroU32::new_unchecked(u32::MAX) });
+
     pub(super) unsafe fn new_unchecked(value: u32) -> Self {
         Self(NonZeroU32::new_unchecked(value))
     }
 
+    #[allow(unused)]
     pub(super) const fn inner(self) -> NonZeroU32 {
         self.0
     }

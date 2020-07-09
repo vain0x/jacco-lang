@@ -36,6 +36,18 @@ impl<T: VecArenaItem> VecArenaId<T> for T::Id {}
 #[macro_export]
 macro_rules! impl_vec_arena_id {
     ($id_ty:ty, $data_ty:ty) => {
+        #[allow(unused)]
+        impl $id_ty {
+            pub(crate) fn from_index(index: usize) -> Self {
+                $crate::utils::RawId::from_index(index).into()
+            }
+
+            pub(crate) fn to_index(self) -> usize {
+                let raw_id: $crate::utils::RawId = self.into();
+                raw_id.to_index()
+            }
+        }
+
         impl From<$crate::utils::RawId> for $id_ty {
             fn from(id: $crate::utils::RawId) -> Self {
                 Self(id)
@@ -48,7 +60,7 @@ macro_rules! impl_vec_arena_id {
             }
         }
 
-        impl $crate::utils::vec_arena::VecArenaItem for $data_ty {
+        impl $crate::utils::VecArenaItem for $data_ty {
             type Id = $id_ty;
         }
     };
@@ -64,36 +76,57 @@ impl<T> VecArena<T> {
         Self { inner: vec![] }
     }
 
+    pub(crate) const fn from_vec(inner: Vec<T>) -> Self {
+        Self { inner }
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.inner.len()
     }
 
+    #[allow(unused)]
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.inner.iter()
     }
 
+    #[allow(unused)]
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.inner.iter_mut()
     }
 
+    #[allow(unused)]
     fn has_raw(&self, id: RawId) -> bool {
         id.to_index() < self.inner.len()
     }
 
+    #[allow(unused)]
     fn alloc_raw(&mut self, value: T) -> RawId {
         let id = RawId::from_index(self.inner.len());
         self.inner.push(value);
         id
     }
 
-    fn get_raw(&self, id: RawId) -> &T {
+    #[allow(unused)]
+    fn index_raw(&self, id: RawId) -> &T {
         &self.inner[id.to_index()]
     }
 
-    fn get_raw_mut(&mut self, id: RawId) -> &mut T {
+    #[allow(unused)]
+    fn index_raw_mut(&mut self, id: RawId) -> &mut T {
         &mut self.inner[id.to_index()]
     }
 
+    #[allow(unused)]
+    fn get_raw(&self, id: RawId) -> Option<&T> {
+        self.inner.get(id.to_index())
+    }
+
+    #[allow(unused)]
+    fn get_raw_mut(&mut self, id: RawId) -> Option<&mut T> {
+        self.inner.get_mut(id.to_index())
+    }
+
+    #[allow(unused)]
     fn keys_raw(&self) -> impl Iterator<Item = RawId> {
         (1..=self.inner.len() as u32).map(|id| unsafe { RawId::new_unchecked(id) })
     }
@@ -104,18 +137,27 @@ impl<T> VecArena<T> {
 }
 
 impl<T: VecArenaItem> VecArena<T> {
+    #[allow(unused)]
     pub(crate) fn has(&self, id: T::Id) -> bool {
         self.has_raw(id.into())
     }
 
+    #[allow(unused)]
     pub(crate) fn alloc(&mut self, value: T) -> T::Id {
         self.alloc_raw(value).into()
     }
 
+    #[allow(unused)]
+    pub(crate) fn get(&self, id: T::Id) -> Option<&T> {
+        self.get_raw(id.into())
+    }
+
+    #[allow(unused)]
     pub(crate) fn keys(&self) -> impl Iterator<Item = T::Id> {
         self.keys_raw().map(Into::into)
     }
 
+    #[allow(unused)]
     pub(crate) fn enumerate(&self) -> impl Iterator<Item = (T::Id, &T)> {
         self.keys().zip(&self.inner)
     }
@@ -139,14 +181,20 @@ impl<T: VecArenaItem> Index<T::Id> for VecArena<T> {
 
     fn index(&self, index: T::Id) -> &T {
         let id: RawId = index.into();
-        &self.inner[id.to_index()]
+        let index = id.to_index();
+
+        debug_assert!(index < self.len());
+        unsafe { self.inner.get_unchecked(index) }
     }
 }
 
 impl<T: VecArenaItem> IndexMut<T::Id> for VecArena<T> {
     fn index_mut(&mut self, index: T::Id) -> &mut T {
         let id: RawId = index.into();
-        &mut self.inner[id.to_index()]
+        let index = id.to_index();
+
+        debug_assert!(index < self.len());
+        unsafe { self.inner.get_unchecked_mut(index) }
     }
 }
 
