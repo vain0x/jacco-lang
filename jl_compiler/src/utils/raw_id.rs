@@ -6,6 +6,8 @@ use std::{
 
 /// 配列のインデックスを表す整数値。
 ///
+/// ## 意図
+///
 /// 64ビット環境で usize は8バイトだが、要素数が 2^32 (約40億) に至らないのであれば、インデックスは4バイトで十分。
 /// `RawId` および `Option<RawId>` は4バイトに収まって、メモリの節約になる。
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
