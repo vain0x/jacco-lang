@@ -26,6 +26,41 @@ where
 
 impl<T: VecArenaItem> VecArenaId<T> for T::Id {}
 
+/// `VecArena` の ID の型に以下のトレイトを実装させる。
+///
+/// - `From<RawId>`
+/// - `Into<RawId>`
+/// - `Debug`
+/// - `VecArenaId`
+///
+/// 使用例: `impl_vec_arena_id { User, UserData }`
+#[macro_export]
+macro_rules! impl_vec_arena_id {
+    ($id_ty:ty, $data_ty:ty) => {
+        impl From<$crate::utils::RawId> for $id_ty {
+            fn from(id: $crate::utils::RawId) -> Self {
+                Self(id)
+            }
+        }
+
+        impl From<$id_ty> for $crate::utils::RawId {
+            fn from(id: $id_ty) -> Self {
+                id.0
+            }
+        }
+
+        impl std::fmt::Debug for $id_ty {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        impl $crate::utils::vec_arena::VecArenaItem for $data_ty {
+            type Id = $id_ty;
+        }
+    };
+}
+
 #[derive(Clone)]
 pub(crate) struct VecArena<T> {
     inner: Vec<T>,
@@ -130,23 +165,7 @@ mod tests {
     #[derive(Copy, Clone)]
     struct User(RawId);
 
-    impl Debug for User {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            Debug::fmt(&self.0, f)
-        }
-    }
-
-    impl From<RawId> for User {
-        fn from(id: RawId) -> Self {
-            Self(id)
-        }
-    }
-
-    impl From<User> for RawId {
-        fn from(user: User) -> Self {
-            user.0
-        }
-    }
+    impl_vec_arena_id! { User, UserData }
 
     struct UserData {
         name: &'static str,
@@ -162,10 +181,6 @@ mod tests {
         fn from(name: &'static str) -> Self {
             Self { name }
         }
-    }
-
-    impl VecArenaItem for UserData {
-        type Id = User;
     }
 
     #[test]
