@@ -38,6 +38,10 @@ macro_rules! impl_vec_arena_id {
     ($id_ty:ty, $data_ty:ty) => {
         #[allow(unused)]
         impl $id_ty {
+            pub(crate) fn new(id: $crate::utils::RawId) -> Self {
+                Self(id)
+            }
+
             pub(crate) fn from_index(index: usize) -> Self {
                 $crate::utils::RawId::from_index(index).into()
             }
@@ -82,6 +86,12 @@ impl<T> VecArena<T> {
 
     pub(crate) fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub(crate) fn resize_with(&mut self, new_len: usize, default_fn: impl Fn() -> T) {
+        let additional = new_len.saturating_sub(self.inner.len());
+        self.inner.reserve_exact(additional);
+        self.inner.resize_with(new_len, default_fn);
     }
 
     #[allow(unused)]

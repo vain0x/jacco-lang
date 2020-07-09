@@ -1,5 +1,5 @@
 use super::*;
-use crate::{source::Range, token::TokenSource};
+use crate::{source::Range, token::TokenSource, utils::VecArenaId};
 use std::fmt::{self, Debug};
 
 /// CPS 原子項
@@ -38,7 +38,7 @@ impl KTerm {
             KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
             KTerm::True(_) | KTerm::False(_) => KTy::Bool,
             KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
-            KTerm::Const(k_const) => k_const.ty(&outlines.consts).clone(),
+            KTerm::Const(k_const) => (*k_const).of(&outlines.consts).ty.clone(),
             KTerm::StaticVar(static_var) => static_var.ty(&outlines.static_vars).clone(),
             KTerm::Fn(k_fn) => k_fn.ty(&outlines.fns),
             KTerm::Label(label) => label.ty(labels),
@@ -85,7 +85,7 @@ impl Debug for KTerm {
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => Debug::fmt(symbol, f),
-            KTerm::Const(k_const) => write!(f, "const#{}", k_const.id()),
+            KTerm::Const(k_const) => write!(f, "const#{}", k_const.to_index()),
             KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.id()),
             KTerm::Fn(k_fn) => {
                 // FIXME: name

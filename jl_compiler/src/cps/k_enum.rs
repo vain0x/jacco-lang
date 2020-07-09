@@ -1,5 +1,8 @@
 use super::{KConst, KConstData, KConstValue, KStruct, KStructOutline, KTy};
-use crate::token::{Location, TokenSource};
+use crate::{
+    token::{Location, TokenSource},
+    utils::{VecArena, VecArenaId},
+};
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KVariant {
@@ -20,7 +23,7 @@ impl KVariant {
         self.as_const().is_some()
     }
 
-    pub(crate) fn is_const_zero(self, consts: &[KConstData]) -> bool {
+    pub(crate) fn is_const_zero(self, consts: &VecArena<KConstData>) -> bool {
         self.as_const()
             .map_or(false, |k_const| k_const.is_zero(consts))
     }
@@ -98,7 +101,7 @@ pub(crate) enum KEnumRepr {
 }
 
 impl KEnumRepr {
-    pub(crate) fn determine(variants: &[KVariant], consts: &[KConstData]) -> KEnumRepr {
+    pub(crate) fn determine(variants: &[KVariant], consts: &VecArena<KConstData>) -> KEnumRepr {
         match variants {
             [] => KEnumRepr::Never,
             [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
@@ -150,7 +153,7 @@ impl KEnumOutline {
     }
 
     pub(crate) fn determine_tags(
-        consts: &mut [KConstData],
+        consts: &mut VecArena<KConstData>,
         enums: &mut [KEnumOutline],
         structs: &mut [KStructOutline],
     ) {
@@ -165,7 +168,7 @@ impl KEnumOutline {
 
                 match variant {
                     KVariant::Const(k_const) => {
-                        let old_value = k_const.value_opt_mut(consts).replace(tag);
+                        let old_value = (*k_const).of_mut(consts).value_opt.replace(tag);
 
                         // 構造体バリアントを持つ enum の const バリアントへの値の指定は許可されていないため
                         assert_eq!(old_value, None);

@@ -7,6 +7,7 @@ use crate::{
     front::NameResolution,
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind, TokenSource},
+    utils::VecArenaId,
 };
 use log::{error, trace};
 use std::{
@@ -305,7 +306,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
         }
         NName::Const(const_id) => {
             assert!(const_id < gx.outlines.consts.len());
-            KSymbolExt::Const(KConst::new(const_id))
+            KSymbolExt::Const(KConst::new(const_id.into()))
         }
         NName::StaticVar(static_var_id) => {
             assert!(static_var_id < gx.outlines.static_vars.len());
@@ -450,7 +451,7 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
         PExpr::Name(name) => match gen_name(name, gx) {
-            KSymbolExt::Const(k_const) => k_const.value_opt(&gx.outlines.consts).cloned(),
+            KSymbolExt::Const(k_const) => k_const.of(&gx.outlines.consts).value_opt.clone(),
             _ => None,
         },
         _ => {
@@ -473,7 +474,7 @@ fn gen_const_variant(
 
     let (name, k_const) = {
         let k_const = match name.info_opt {
-            Some(NName::Const(const_id)) => KConst::new(const_id),
+            Some(NName::Const(const_id)) => KConst::new(const_id.into()),
             _ => unreachable!(),
         };
         let name = name.text(&gx.tokens).to_string();
@@ -491,7 +492,7 @@ fn gen_const_variant(
         }
     }
 
-    gx.outlines.consts[k_const.id()] = KConstData {
+    gx.outlines.consts[k_const] = KConstData {
         name,
         ty: parent_enum_opt.map_or(KTy::Usize, KTy::Enum),
         value_opt: Some(KConstValue::Usize(*value_slot)),
@@ -1084,7 +1085,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
-                        NName::Const(const_id) => KTerm::Const(KConst::new(*const_id)),
+                        NName::Const(const_id) => KTerm::Const(KConst::new((*const_id).into())),
                         NName::LocalVar(_) => {
                             let symbol = gen_name(name, gx).expect_symbol();
                             KTerm::Name(symbol)
@@ -1239,7 +1240,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let (name, k_const) = {
                 let name = name_opt.clone().unwrap();
                 let k_const = match name.info_opt {
-                    Some(NName::Const(const_id)) => KConst::new(const_id),
+                    Some(NName::Const(const_id)) => KConst::new(const_id.into()),
                     _ => unreachable!(),
                 };
                 let name = name.text(&gx.tokens).to_string();
@@ -1265,7 +1266,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            gx.outlines.consts[k_const.id()] = KConstData {
+            gx.outlines.consts[k_const] = KConstData {
                 name,
                 ty,
                 value_opt,

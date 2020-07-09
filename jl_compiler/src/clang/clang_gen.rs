@@ -1,6 +1,7 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
+use crate::utils::VecArenaId;
 use c_stmt::CStorageModifier;
 use std::{
     collections::HashMap,
@@ -282,7 +283,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         },
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
-        KTerm::Const(k_const) => match k_const.value_opt(&cx.outlines.consts) {
+        KTerm::Const(k_const) => match &(*k_const).of(&cx.outlines.consts).value_opt {
             Some(value) => gen_constant_value(value),
             None => gen_invalid_constant_value(),
         },
