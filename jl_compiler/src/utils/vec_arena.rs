@@ -30,7 +30,6 @@ impl<T: VecArenaItem> VecArenaId<T> for T::Id {}
 ///
 /// - `From<RawId>`
 /// - `Into<RawId>`
-/// - `Debug`
 /// - `VecArenaId`
 ///
 /// 使用例: `impl_vec_arena_id { User, UserData }`
@@ -46,12 +45,6 @@ macro_rules! impl_vec_arena_id {
         impl From<$id_ty> for $crate::utils::RawId {
             fn from(id: $id_ty) -> Self {
                 id.0
-            }
-        }
-
-        impl std::fmt::Debug for $id_ty {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Debug::fmt(&self.0, f)
             }
         }
 
@@ -166,6 +159,12 @@ mod tests {
     struct User(RawId);
 
     impl_vec_arena_id! { User, UserData }
+
+    impl Debug for User {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            Debug::fmt(&self.0, f)
+        }
+    }
 
     struct UserData {
         name: &'static str,
