@@ -2,26 +2,27 @@
 
 use crate::{
     token::{HaveLocation, Location, TokenData, TokenKind},
-    utils::TakeOut,
+    utils::{RawId, TakeOut},
 };
 use std::{
     fmt::{self, Debug, Formatter},
+    num::NonZeroU32,
     ops::Index,
 };
 
 /// 構文解析フェイズから見たトークン
 #[derive(Copy, Clone)]
 pub(crate) struct PToken {
-    id: u32,
+    raw_id: RawId,
 }
 
 impl PToken {
     pub(crate) fn new(id: usize) -> Self {
-        Self { id: id as u32 }
+        Self { raw_id: id.into() }
     }
 
     pub(crate) fn id(self) -> usize {
-        self.id as usize
+        self.raw_id.into()
     }
 
     pub(crate) fn get(&self, tokens: &PTokens) -> TokenData {
@@ -54,7 +55,7 @@ impl TakeOut<TokenData> for (PToken, &'_ mut PTokens) {
 
 impl Debug for PToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "token#{}", self.id)
+        write!(f, "token#{}", self.id())
     }
 }
 

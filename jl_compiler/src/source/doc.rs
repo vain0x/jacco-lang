@@ -1,3 +1,4 @@
+use crate::utils::RawId;
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// テキストドキュメントの ID
@@ -5,16 +6,18 @@ use std::fmt::{self, Debug, Display, Formatter};
 /// テキストドキュメント: ファイルやエディターのタブなど、ソースコードの出処となるもの
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Doc {
-    id: u32,
+    raw_id: RawId,
 }
 
 impl Doc {
     pub(crate) const fn new(id: usize) -> Self {
-        Self { id: id as u32 }
+        Self {
+            raw_id: RawId::from_index(id),
+        }
     }
 
-    pub(crate) const fn id(self) -> usize {
-        self.id as usize
+    pub(crate) fn id(self) -> usize {
+        self.raw_id.to_index()
     }
 }
 
