@@ -1,0 +1,17 @@
+//! C Compiler written in Jacco
+
+extern fn jacco_std_io_write(str: *c8) -> bool;
+
+fn writeln(str: *c8) {
+    jacco_std_io_write(str);
+    jacco_std_io_write("\n");
+}
+
+pub fn cc_main() {
+    writeln(".intel_syntax noprefix");
+    writeln(".globl main");
+    writeln("");
+    writeln("main:");
+    writeln("    mov rax, 42");
+    writeln("    ret");
+}

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -eu
+
+JACCO_BIN=${JACCO_BIN:-'../../target/debug/jacco'}
+
+NAME=$(basename $(pwd))
+
+CFLAGS='-std=c11 -Wall -Wno-unused-variable -Wno-unused-but-set-variable'
+SRCS="$NAME.jacco.c $NAME.c"
+
+RUST_LOG=warn "$JACCO_BIN" build "$NAME.jacco" >"$NAME.jacco.c"
+
+gcc $CFLAGS $SRCS -o "./$NAME"
+"./$NAME" >"$NAME.s"
+
+gcc "$NAME.s" -o a.out
+./a.out && echo 'OK' || echo "\$?=$?" >&2
