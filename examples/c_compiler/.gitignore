@@ -1,4 +1,6 @@
 a.out
+actual.out
+actual.s
 c_compiler
 c_compiler.jacco.c
 c_compiler.s

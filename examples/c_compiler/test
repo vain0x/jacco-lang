@@ -12,15 +12,31 @@ SRCS="$NAME.jacco.c $NAME.c"
 RUST_LOG=warn "$JACCO_BIN" build "$NAME.jacco" >"$NAME.jacco.c"
 
 gcc $CFLAGS $SRCS -o "./$NAME"
-"./$NAME" "$@" >"$NAME.s" || {
-    echo "\$?=$? ($NAME)" >&2
-    exit 1
+
+assert() {
+    EXPECTED="$1"
+    INPUT="$2"
+
+    "./$NAME" "$INPUT" >actual.s || {
+        echo "\$?=$? (actual.s)" >&2
+        exit 1
+    }
+
+    gcc actual.s -o actual.out || {
+        echo "\$=$? (actual.out)" >&2
+        exit 1
+    }
+    ./actual.out && ACTUAL=$? || ACTUAL=$?
+    echo "$INPUT => $ACTUAL"
+
+    if test $ACTUAL -ne $EXPECTED
+    then
+        echo "$INPUT => $EXPECTED expected, but got $ACTUAL" >&2
+        exit 1
+    fi
 }
 
-gcc "$NAME.s" -o a.out
-./a.out || {
-    echo "\$?=$? (a.out)" >&2
-    exit 1
-}
+assert 0 0
+assert 42 42
 
-echo 'OK' >&2
+echo OK >&2
