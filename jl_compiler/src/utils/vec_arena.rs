@@ -1,87 +1,133 @@
 use super::RawId;
 use std::{
+    cmp::Ordering,
     fmt::{self, Debug, Formatter},
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    num::NonZeroU32,
     ops::{Index, IndexMut},
 };
 
-/// `VecArena` の要素に使える型を表すトレイト。
-pub(crate) trait VecArenaItem {
-    type Id: Clone + Copy + From<RawId> + Into<RawId>;
+/// `VecArena` の型つきの ID を表す。
+///
+/// `T` は値を区別するための幽霊型。
+pub(crate) struct VecArenaId<Tag> {
+    inner: NonZeroU32,
+    _phantom: PhantomData<*mut Tag>,
 }
 
-/// `VecArena` の ID に使う型を表すトレイト。
-/// `VecArenaItem` の実装から自動で生成されるので、これの実装を手で書く必要はない。
-pub(crate) trait VecArenaId<Item>: Clone + Copy + From<RawId> + Into<RawId> + Sized
-where
-    Item: VecArenaItem<Id = Self>,
-{
-    fn of(self, arena: &VecArena<Item>) -> &Item {
-        &arena[self]
+impl<Tag> VecArenaId<Tag> {
+    pub(crate) fn from_index(index: usize) -> Self {
+        RawId::from_index(index).into()
     }
 
-    fn of_mut(self, arena: &mut VecArena<Item>) -> &mut Item {
-        &mut arena[self]
+    pub(crate) fn to_index(self) -> usize {
+        RawId::from(self).to_index()
+    }
+
+    pub(crate) fn of<T>(self, arena: &VecArena<Tag, T>) -> &T {
+        &arena.inner[self.to_index()]
+    }
+
+    pub(crate) fn of_mut<T>(self, arena: &mut VecArena<Tag, T>) -> &mut T {
+        &mut arena.inner[self.to_index()]
     }
 }
 
-impl<T: VecArenaItem> VecArenaId<T> for T::Id {}
-
-/// `VecArena` の ID の型に以下のトレイトを実装させる。
-///
-/// - `From<RawId>`
-/// - `Into<RawId>`
-/// - `VecArenaId`
-///
-/// 使用例: `impl_vec_arena_id { User, UserData }`
-#[macro_export]
-macro_rules! impl_vec_arena_id {
-    ($id_ty:ty, $data_ty:ty) => {
-        #[allow(unused)]
-        impl $id_ty {
-            pub(crate) fn new(id: $crate::utils::RawId) -> Self {
-                Self(id)
-            }
-
-            pub(crate) fn from_index(index: usize) -> Self {
-                $crate::utils::RawId::from_index(index).into()
-            }
-
-            pub(crate) fn to_index(self) -> usize {
-                let raw_id: $crate::utils::RawId = self.into();
-                raw_id.to_index()
-            }
+// VecArenaId <--> NonZeroU32
+impl<T> From<NonZeroU32> for VecArenaId<T> {
+    fn from(inner: NonZeroU32) -> Self {
+        Self {
+            inner,
+            _phantom: PhantomData,
         }
-
-        impl From<$crate::utils::RawId> for $id_ty {
-            fn from(id: $crate::utils::RawId) -> Self {
-                Self(id)
-            }
-        }
-
-        impl From<$id_ty> for $crate::utils::RawId {
-            fn from(id: $id_ty) -> Self {
-                id.0
-            }
-        }
-
-        impl $crate::utils::VecArenaItem for $data_ty {
-            type Id = $id_ty;
-        }
-    };
+    }
 }
 
-#[derive(Clone)]
-pub(crate) struct VecArena<T> {
+impl<T> From<VecArenaId<T>> for NonZeroU32 {
+    fn from(id: VecArenaId<T>) -> Self {
+        id.inner
+    }
+}
+
+// VecArenaId <--> RawId
+impl<T> From<RawId> for VecArenaId<T> {
+    fn from(raw_id: RawId) -> Self {
+        Self {
+            inner: raw_id.into(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> From<VecArenaId<T>> for RawId {
+    fn from(id: VecArenaId<T>) -> RawId {
+        RawId::from(id.inner)
+    }
+}
+
+// Copy + Clone
+impl<Tag> Clone for VecArenaId<Tag> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<Tag> Copy for VecArenaId<Tag> {}
+
+impl<Tag> PartialEq for VecArenaId<Tag> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl<Tag> Eq for VecArenaId<Tag> {}
+
+impl<Tag> PartialOrd for VecArenaId<Tag> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+impl<Tag> Ord for VecArenaId<Tag> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.inner.cmp(&other.inner)
+    }
+}
+
+impl<Tag> Hash for VecArenaId<Tag> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&self.inner, state)
+    }
+}
+
+impl<Tag> Debug for VecArenaId<Tag> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.to_index(), f)
+    }
+}
+
+pub(crate) struct VecArena<Tag, T> {
     inner: Vec<T>,
+    _phantom: PhantomData<*mut Tag>,
 }
 
-impl<T> VecArena<T> {
+impl<Tag, T> VecArena<Tag, T> {
     pub(crate) const fn new() -> Self {
-        Self { inner: vec![] }
+        Self {
+            inner: vec![],
+            _phantom: PhantomData,
+        }
     }
 
     pub(crate) const fn from_vec(inner: Vec<T>) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            _phantom: PhantomData,
+        }
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -146,50 +192,59 @@ impl<T> VecArena<T> {
     }
 }
 
-impl<T: VecArenaItem> VecArena<T> {
+impl<Tag, T> VecArena<Tag, T> {
     #[allow(unused)]
-    pub(crate) fn has(&self, id: T::Id) -> bool {
+    pub(crate) fn has(&self, id: VecArenaId<Tag>) -> bool {
         self.has_raw(id.into())
     }
 
     #[allow(unused)]
-    pub(crate) fn alloc(&mut self, value: T) -> T::Id {
+    pub(crate) fn alloc(&mut self, value: T) -> VecArenaId<Tag> {
         self.alloc_raw(value).into()
     }
 
     #[allow(unused)]
-    pub(crate) fn get(&self, id: T::Id) -> Option<&T> {
+    pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {
         self.get_raw(id.into())
     }
 
     #[allow(unused)]
-    pub(crate) fn keys(&self) -> impl Iterator<Item = T::Id> {
+    pub(crate) fn keys(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
         self.keys_raw().map(Into::into)
     }
 
     #[allow(unused)]
-    pub(crate) fn enumerate(&self) -> impl Iterator<Item = (T::Id, &T)> {
+    pub(crate) fn enumerate(&self) -> impl Iterator<Item = (VecArenaId<Tag>, &T)> {
         self.keys().zip(&self.inner)
     }
 }
 
-impl<T: Debug> Debug for VecArena<T> {
+impl<Tag, T: Debug> Debug for VecArena<Tag, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.enumerate_raw()).finish()
     }
 }
 
-impl<T> Default for VecArena<T> {
+impl<Tag, T> Default for VecArena<Tag, T> {
     fn default() -> Self {
         VecArena::new()
     }
 }
 
+impl<Tag, T: Clone> Clone for VecArena<Tag, T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
 // NOTE: これと衝突するので、RawId を引数に取るインスタンスは宣言できない。
-impl<T: VecArenaItem> Index<T::Id> for VecArena<T> {
+impl<Tag, T> Index<VecArenaId<Tag>> for VecArena<Tag, T> {
     type Output = T;
 
-    fn index(&self, index: T::Id) -> &T {
+    fn index(&self, index: VecArenaId<Tag>) -> &T {
         let id: RawId = index.into();
         let index = id.to_index();
 
@@ -198,8 +253,8 @@ impl<T: VecArenaItem> Index<T::Id> for VecArena<T> {
     }
 }
 
-impl<T: VecArenaItem> IndexMut<T::Id> for VecArena<T> {
-    fn index_mut(&mut self, index: T::Id) -> &mut T {
+impl<Tag, T> IndexMut<VecArenaId<Tag>> for VecArena<Tag, T> {
+    fn index_mut(&mut self, index: VecArenaId<Tag>) -> &mut T {
         let id: RawId = index.into();
         let index = id.to_index();
 
@@ -212,17 +267,6 @@ impl<T: VecArenaItem> IndexMut<T::Id> for VecArena<T> {
 mod tests {
     use super::*;
     use std::fmt::Display;
-
-    #[derive(Copy, Clone)]
-    struct User(RawId);
-
-    impl_vec_arena_id! { User, UserData }
-
-    impl Debug for User {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            Debug::fmt(&self.0, f)
-        }
-    }
 
     struct UserData {
         name: &'static str,
@@ -240,9 +284,15 @@ mod tests {
         }
     }
 
+    struct UserTag;
+
+    type User = VecArenaId<UserTag>;
+
+    type UserArena = VecArena<UserTag, UserData>;
+
     #[test]
     fn test_typed_keys() {
-        let mut users: VecArena<UserData> = VecArena::new();
+        let mut users: UserArena = UserArena::new();
 
         // 生成
         let alice: User = users.alloc("Alice".into());
@@ -274,9 +324,11 @@ mod tests {
         assert!(!users.has(eve));
     }
 
+    type StrArena = VecArena<&'static str, &'static str>;
+
     #[test]
     fn test_debug() {
-        let mut arena = VecArena::new();
+        let mut arena = StrArena::new();
         arena.alloc_raw("Alice");
         arena.alloc_raw("Bob");
         arena.alloc_raw("Catherine");

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{source::Range, token::TokenSource, utils::VecArenaId};
+use crate::{source::Range, token::TokenSource};
 use std::fmt::{self, Debug};
 
 /// CPS 原子項

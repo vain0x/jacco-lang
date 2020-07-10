@@ -1,9 +1,8 @@
 #![allow(unused)]
 
 use crate::{
-    impl_vec_arena_id,
     token::{HaveLocation, Location, TokenData, TokenKind},
-    utils::{RawId, TakeOut, VecArena},
+    utils::{RawId, TakeOut, VecArena, VecArenaId},
 };
 use std::{
     fmt::{self, Debug, Formatter},
@@ -11,11 +10,10 @@ use std::{
     ops::Index,
 };
 
-/// 構文解析フェイズから見たトークン
-#[derive(Copy, Clone)]
-pub(crate) struct PToken(RawId);
+pub struct PTokenTag;
 
-impl_vec_arena_id! { PToken, TokenData }
+/// 構文解析フェイズから見たトークン
+pub(crate) type PToken = VecArenaId<PTokenTag>;
 
 impl PToken {
     pub(crate) fn get(self, tokens: &PTokens) -> TokenData {
@@ -46,10 +44,10 @@ impl TakeOut<TokenData> for (PToken, &'_ mut PTokens) {
     }
 }
 
-impl Debug for PToken {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "token#{:?}", self.0)
-    }
-}
+// impl Debug for PToken {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         write!(f, "token#{:?}", self.0)
+//     }
+// }
 
-pub(crate) type PTokens = VecArena<TokenData>;
+pub(crate) type PTokens = VecArena<PTokenTag, TokenData>;

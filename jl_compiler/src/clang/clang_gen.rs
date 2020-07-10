@@ -1,7 +1,6 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
-use crate::utils::VecArenaId;
 use c_stmt::CStorageModifier;
 use std::{
     collections::HashMap,

@@ -7,7 +7,6 @@ use crate::{
     front::NameResolution,
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind, TokenSource},
-    utils::VecArenaId,
 };
 use log::{error, trace};
 use std::{
@@ -303,7 +302,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
         }
         NName::Const(const_id) => {
             assert!(const_id < gx.outlines.consts.len());
-            KSymbolExt::Const(KConst::new(const_id.into()))
+            KSymbolExt::Const(KConst::from_index(const_id.into()))
         }
         NName::StaticVar(static_var_id) => {
             assert!(static_var_id < gx.outlines.static_vars.len());
@@ -471,7 +470,7 @@ fn gen_const_variant(
 
     let (name, k_const) = {
         let k_const = match name.info_opt {
-            Some(NName::Const(const_id)) => KConst::new(const_id.into()),
+            Some(NName::Const(const_id)) => KConst::from_index(const_id.into()),
             _ => unreachable!(),
         };
         let name = name.text(&gx.tokens).to_string();
@@ -1079,7 +1078,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
-                        NName::Const(const_id) => KTerm::Const(KConst::new((*const_id).into())),
+                        NName::Const(const_id) => {
+                            KTerm::Const(KConst::from_index((*const_id).into()))
+                        }
                         NName::LocalVar(_) => {
                             let symbol = gen_name(name, gx).expect_symbol();
                             KTerm::Name(symbol)
@@ -1234,7 +1235,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let (name, k_const) = {
                 let name = name_opt.clone().unwrap();
                 let k_const = match name.info_opt {
-                    Some(NName::Const(const_id)) => KConst::new(const_id.into()),
+                    Some(NName::Const(const_id)) => KConst::from_index(const_id.into()),
                     _ => unreachable!(),
                 };
                 let name = name.text(&gx.tokens).to_string();

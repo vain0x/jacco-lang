@@ -265,5 +265,5 @@ mod utils {
     pub(crate) use raw_id::RawId;
     pub(crate) use take_out::TakeOut;
 
-    pub(crate) use vec_arena::{VecArena, VecArenaId, VecArenaItem};
+    pub(crate) use vec_arena::{VecArena, VecArenaId};
 }

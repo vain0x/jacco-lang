@@ -20,11 +20,6 @@ impl RawId {
         Self(NonZeroU32::new_unchecked(value))
     }
 
-    #[allow(unused)]
-    pub(super) const fn inner(self) -> NonZeroU32 {
-        self.0
-    }
-
     pub(crate) const fn from_index(index: usize) -> Self {
         let id: u32 = (index + 1) as u32;
         let id: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(id) };
@@ -40,6 +35,18 @@ impl RawId {
         let id = self.0.get() + offset as u32;
         let id = unsafe { NonZeroU32::new_unchecked(id) };
         Self(id)
+    }
+}
+
+impl From<NonZeroU32> for RawId {
+    fn from(inner: NonZeroU32) -> Self {
+        Self(inner)
+    }
+}
+
+impl From<RawId> for NonZeroU32 {
+    fn from(id: RawId) -> Self {
+        id.0
     }
 }
 

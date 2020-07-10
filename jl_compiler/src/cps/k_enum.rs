@@ -1,8 +1,5 @@
-use super::{KConst, KConstData, KConstValue, KStruct, KStructOutline, KTy};
-use crate::{
-    token::{Location, TokenSource},
-    utils::{VecArena, VecArenaId},
-};
+use super::{k_const::KConstArena, KConst, KConstValue, KStruct, KStructOutline, KTy};
+use crate::token::{Location, TokenSource};
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KVariant {
@@ -23,7 +20,7 @@ impl KVariant {
         self.as_const().is_some()
     }
 
-    pub(crate) fn is_const_zero(self, consts: &VecArena<KConstData>) -> bool {
+    pub(crate) fn is_const_zero(self, consts: &KConstArena) -> bool {
         self.as_const()
             .map_or(false, |k_const| k_const.is_zero(consts))
     }
@@ -101,7 +98,7 @@ pub(crate) enum KEnumRepr {
 }
 
 impl KEnumRepr {
-    pub(crate) fn determine(variants: &[KVariant], consts: &VecArena<KConstData>) -> KEnumRepr {
+    pub(crate) fn determine(variants: &[KVariant], consts: &KConstArena) -> KEnumRepr {
         match variants {
             [] => KEnumRepr::Never,
             [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
@@ -153,7 +150,7 @@ impl KEnumOutline {
     }
 
     pub(crate) fn determine_tags(
-        consts: &mut VecArena<KConstData>,
+        consts: &mut KConstArena,
         enums: &mut [KEnumOutline],
         structs: &mut [KStructOutline],
     ) {

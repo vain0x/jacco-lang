@@ -1,16 +1,14 @@
 use super::KTy;
-use crate::{
-    impl_vec_arena_id,
-    utils::{RawId, VecArena},
-};
+use crate::utils::{VecArena, VecArenaId};
 
-impl_vec_arena_id! { KConst, KConstData }
+pub(crate) struct KConstTag;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KConst(RawId);
+pub(crate) type KConst = VecArenaId<KConstTag>;
+
+pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
 impl KConst {
-    pub(crate) fn is_zero(self, consts: &VecArena<KConstData>) -> bool {
+    pub(crate) fn is_zero(self, consts: &KConstArena) -> bool {
         match &consts[self].value_opt {
             Some(value) => value.is_zero(),
             None => true,

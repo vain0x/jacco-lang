@@ -1,7 +1,6 @@
 //! 型推論・型検査
 
 use super::*;
-use crate::utils::VecArenaId;
 use k_ty_env::KEnumOrStruct;
 use std::mem::{swap, take};
 
