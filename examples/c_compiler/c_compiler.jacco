@@ -7,6 +7,7 @@ extern fn strtol(nptr: *c8, endptr: **c8, base: i32) -> i32;
 // FIXME: printfn 的なものがないので、引数の種類だけ関数を用意しておく。
 extern fn print_s(value: *c8);
 extern fn print_d(value: i32);
+extern fn eprint_c(value: c8);
 extern fn eprint_s(value: *c8);
 
 fn print_sds(s1: *c8, d2: i32, s3: *c8) {
@@ -18,6 +19,12 @@ fn print_sds(s1: *c8, d2: i32, s3: *c8) {
 fn eprintln(str: *c8) {
     eprint_s(str);
     eprint_s("\n");
+}
+
+fn eprint_scs(s1: *c8, c2: c8, s3: *c8) {
+    eprint_s(s1);
+    eprint_c(c2);
+    eprint_s(s3);
 }
 
 // -----------------------------------------------
@@ -37,5 +44,23 @@ pub fn cc_main(argc: usize, argv: **c8) {
     print_s("\n");
     print_s("main:\n");
     print_sds("    mov rax, ", strtol(p, &mut p, 10), "\n");
+
+    while *p != '\0' {
+        if *p == '+' {
+            p += 1_usize;
+            print_sds("    add rax, ", strtol(p, &mut p, 10), "\n");
+            continue;
+        }
+
+        if *p == '-' {
+            p += 1_usize;
+            print_sds("    sub rax, ", strtol(p, &mut p, 10), "\n");
+            continue;
+        }
+
+        eprint_scs("予期しない文字です: ", *p, "\n");
+        exit(1);
+    }
+
     print_s("    ret\n");
 }
