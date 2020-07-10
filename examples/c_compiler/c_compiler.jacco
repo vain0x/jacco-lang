@@ -1,29 +1,28 @@
 //! C Compiler written in Jacco
 
-extern fn jacco_std_io_print(str: *c8) -> bool;
+extern fn exit(code: i32) -> !;
 
-extern fn jacco_std_io_eprint(str: *c8) -> bool;
+extern fn strtol(nptr: *c8, endptr: * *c8, base: i32) -> i32;
 
-extern fn jacco_std_process_exit(code: i32) -> !;
+// FIXME: printfn 的なものがないので、引数の種類だけ関数を用意しておく。
+extern fn print_s(value: *c8);
+extern fn print_d(value: i32);
+extern fn eprint_s(value: *c8);
 
-fn print3(first: *c8, second: *c8, third: *c8) {
-    jacco_std_io_print(first);
-    jacco_std_io_print(second);
-    jacco_std_io_print(third);
-}
-
-fn println(str: *c8) {
-    print3(str, "\n",  "");
+fn print_sds(s1: *c8, d2: i32, s3: *c8) {
+    print_s(s1);
+    print_d(d2);
+    print_s(s3);
 }
 
 fn eprintln(str: *c8) {
-    jacco_std_io_eprint(str);
-    jacco_std_io_eprint("\n");
+    eprint_s(str);
+    eprint_s("\n");
 }
 
-fn exit(code: i32) -> ! {
-    jacco_std_process_exit(code)
-}
+// -----------------------------------------------
+// compiler
+// -----------------------------------------------
 
 // FIXME: **c8 がポインタ型にパースされない
 pub fn cc_main(argc: usize, argv: * *c8) {
@@ -32,10 +31,12 @@ pub fn cc_main(argc: usize, argv: * *c8) {
         exit(1)
     }
 
-    println(".intel_syntax noprefix");
-    println(".globl main");
-    println("");
-    println("main:");
-    print3("    mov rax, ", argv[1_usize], "\n");
-    println("    ret");
+    let p = argv[1_usize];
+
+    print_s(".intel_syntax noprefix\n");
+    print_s(".globl main\n");
+    print_s("\n");
+    print_s("main:\n");
+    print_sds("    mov rax, ", strtol(p, &mut p, 10), "\n");
+    print_s("    ret\n");
 }

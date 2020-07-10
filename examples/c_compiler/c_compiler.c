@@ -5,19 +5,17 @@
 
 void cc_main();
 
-int jacco_std_io_print(unsigned char const *s) {
-    return fputs((char const *)s, stdout) != EOF;
-}
+typedef int i32;
+typedef unsigned long long usize;
+typedef unsigned char c8;
 
-int jacco_std_io_eprint(unsigned char const *s) {
-    return fputs((char const *)s, stderr) != EOF;
-}
+void print_s(c8 const* value) { fputs((char const *)value, stdout); }
 
-void jacco_std_process_exit(int code) {
-    exit(code);
-}
+void print_d(i32 value) { printf("%d", value); }
+
+void eprint_s(c8 const* s) { fputs((char const *)s, stderr); }
 
 int main(int argc, char **argv) {
-    cc_main((unsigned long long)argc, (unsigned char const *const *)argv);
+    cc_main((usize)argc, (c8 const* const *)argv);
     return 0;
 }
