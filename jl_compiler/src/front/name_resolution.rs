@@ -1,7 +1,10 @@
 //! 名前解決の処理
 
 use super::*;
-use crate::logs::Logger;
+use crate::{
+    logs::Logger,
+    utils::{VecArena, VecArenaId},
+};
 use log::trace;
 use std::{
     collections::HashMap,
@@ -32,9 +35,21 @@ pub(crate) struct NExternFnData {
 
 pub(crate) struct NEnumData;
 
+pub(crate) struct NStructTag;
+
+pub(crate) type NStruct = VecArenaId<NStructTag>;
+
+pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
+
 pub(crate) struct NStructData;
 
-#[derive(Default)]
+pub(crate) struct NFieldTag;
+
+#[allow(unused)]
+pub(crate) type NField = VecArenaId<NFieldTag>;
+
+pub(crate) type NFieldArena = VecArena<NFieldTag, NFieldData>;
+
 pub(crate) struct NFieldData;
 
 /// 名前解決の結果。
@@ -45,8 +60,8 @@ pub(crate) struct NameResolution {
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
     pub(crate) enums: Vec<NEnumData>,
-    pub(crate) structs: Vec<NStructData>,
-    pub(crate) fields: Vec<NFieldData>,
+    pub(crate) structs: NStructArena,
+    pub(crate) fields: NFieldArena,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -59,7 +74,7 @@ pub(crate) enum NName {
     Fn(usize),
     ExternFn(usize),
     Enum(usize),
-    Struct(usize),
+    Struct(NStruct),
     Bool,
     I8,
     I16,
@@ -79,9 +94,9 @@ pub(crate) enum NName {
 }
 
 impl NName {
-    pub(crate) fn as_struct(self) -> Option<usize> {
+    pub(crate) fn as_struct(self) -> Option<NStruct> {
         match self {
-            NName::Struct(struct_id) => Some(struct_id),
+            NName::Struct(n_struct) => Some(n_struct),
             _ => None,
         }
     }
@@ -467,19 +482,14 @@ fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
             // alloc struct
-            let k_struct = {
-                let struct_id = nx.res.structs.len();
-                nx.res.structs.push(NStructData);
-                NName::Struct(struct_id)
-            };
+            let n_struct = nx.res.structs.alloc(NStructData);
 
-            resolve_qualified_name_def(name, parent_name_opt, k_struct, nx);
+            resolve_qualified_name_def(name, parent_name_opt, NName::Struct(n_struct), nx);
 
             for field in fields {
                 // alloc field
-                let field_id = nx.res.fields.len();
-                nx.res.fields.push(NFieldData);
-                field.field_id_opt = Some(field_id);
+                let n_field = nx.res.fields.alloc(NFieldData);
+                field.field_id_opt = Some(n_field.to_index());
 
                 // resolve_name_def(&mut field.name, PNameKind::Field, nx);
                 resolve_ty_opt(field.ty_opt.as_mut(), nx);

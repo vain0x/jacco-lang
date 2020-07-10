@@ -258,7 +258,7 @@ fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
         NName::C32 => KTy::C32,
         NName::Bool => KTy::Bool,
         NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
-        NName::Struct(struct_id) => KTy::Struct(KStruct::new(struct_id)),
+        NName::Struct(n_struct) => KTy::Struct(KStruct::new(n_struct.to_index())),
         _ => unreachable!("expected type name but {:?}", p_name),
     }
 }
@@ -308,13 +308,13 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
             assert!(static_var_id < gx.outlines.static_vars.len());
             KSymbolExt::StaticVar(KStaticVar::new(static_var_id))
         }
-        NName::Struct(struct_id)
-            if KStruct::new(struct_id)
+        NName::Struct(n_struct)
+            if KStruct::new(n_struct.to_index())
                 .fields(&gx.outlines.structs)
                 .is_empty() =>
         {
             KSymbolExt::UnitLikeStruct {
-                k_struct: KStruct::new(struct_id),
+                k_struct: KStruct::new(n_struct.to_index()),
                 location,
             }
         }
@@ -504,7 +504,7 @@ fn gen_record_variant(
     let PRecordVariantDecl { name, fields, .. } = decl;
 
     let k_struct = match name.info_opt {
-        Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
+        Some(NName::Struct(n_struct)) => KStruct::new(n_struct.to_index()),
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
     let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
@@ -638,7 +638,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let k_struct = match name.info_opt {
                 Some(NName::Const(_)) => todo!(),
-                Some(NName::Struct(struct_id)) => KStruct::new(struct_id),
+                Some(NName::Struct(n_struct)) => KStruct::new(n_struct.to_index()),
                 n_name => unreachable!("{:?}", n_name),
             };
 
@@ -1097,7 +1097,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                             .info_opt
                             .unwrap()
                             .as_struct()
-                            .map(KStruct::new)
+                            .map(|n_struct| KStruct::new(n_struct.to_index()))
                             .unwrap();
                         KTerm::RecordTag(k_struct)
                     }
