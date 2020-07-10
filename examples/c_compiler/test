@@ -2,22 +2,13 @@
 
 set -eu
 
-JACCO_BIN=${JACCO_BIN:-'../../target/debug/jacco'}
-
-NAME=$(basename $(pwd))
-
-CFLAGS='-std=c11 -Wall -Wno-unused-variable -Wno-unused-but-set-variable'
-SRCS="$NAME.jacco.c $NAME.c"
-
-RUST_LOG=warn "$JACCO_BIN" build "$NAME.jacco" >"$NAME.jacco.c"
-
-gcc $CFLAGS $SRCS -o "./$NAME"
+test -x c_compiler
 
 assert() {
     EXPECTED="$1"
     INPUT="$2"
 
-    "./$NAME" "$INPUT" >actual.s || {
+    ./c_compiler "$INPUT" >actual.s || {
         echo "\$?=$? (actual.s)" >&2
         exit 1
     }
