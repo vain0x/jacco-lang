@@ -12,7 +12,15 @@ SRCS="$NAME.jacco.c $NAME.c"
 RUST_LOG=warn "$JACCO_BIN" build "$NAME.jacco" >"$NAME.jacco.c"
 
 gcc $CFLAGS $SRCS -o "./$NAME"
-"./$NAME" >"$NAME.s"
+"./$NAME" "$@" >"$NAME.s" || {
+    echo "\$?=$? ($NAME)" >&2
+    exit 1
+}
 
 gcc "$NAME.s" -o a.out
-./a.out && echo 'OK' || echo "\$?=$?" >&2
+./a.out || {
+    echo "\$?=$? (a.out)" >&2
+    exit 1
+}
+
+echo 'OK' >&2

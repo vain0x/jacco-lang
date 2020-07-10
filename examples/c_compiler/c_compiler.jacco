@@ -1,17 +1,41 @@
 //! C Compiler written in Jacco
 
-extern fn jacco_std_io_write(str: *c8) -> bool;
+extern fn jacco_std_io_print(str: *c8) -> bool;
 
-fn writeln(str: *c8) {
-    jacco_std_io_write(str);
-    jacco_std_io_write("\n");
+extern fn jacco_std_io_eprint(str: *c8) -> bool;
+
+extern fn jacco_std_process_exit(code: i32) -> !;
+
+fn print3(first: *c8, second: *c8, third: *c8) {
+    jacco_std_io_print(first);
+    jacco_std_io_print(second);
+    jacco_std_io_print(third);
 }
 
-pub fn cc_main() {
-    writeln(".intel_syntax noprefix");
-    writeln(".globl main");
-    writeln("");
-    writeln("main:");
-    writeln("    mov rax, 42");
-    writeln("    ret");
+fn println(str: *c8) {
+    print3(str, "\n",  "");
+}
+
+fn eprintln(str: *c8) {
+    jacco_std_io_eprint(str);
+    jacco_std_io_eprint("\n");
+}
+
+fn exit(code: i32) -> ! {
+    jacco_std_process_exit(code)
+}
+
+// FIXME: **c8 がポインタ型にパースされない
+pub fn cc_main(argc: usize, argv: * *c8) {
+    if argc != 2_usize {
+        eprintln("引数の個数が正しくありません\n");
+        exit(1)
+    }
+
+    println(".intel_syntax noprefix");
+    println(".globl main");
+    println("");
+    println("main:");
+    print3("    mov rax, ", argv[1_usize], "\n");
+    println("    ret");
 }
