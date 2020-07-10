@@ -2,7 +2,7 @@
 
 use crate::{
     token::{HaveLocation, Location, TokenData, TokenKind},
-    utils::{RawId, TakeOut, VecArena, VecArenaId},
+    utils::{TakeOut, VecArena, VecArenaId},
 };
 use std::{
     fmt::{self, Debug, Formatter},
@@ -43,11 +43,5 @@ impl TakeOut<TokenData> for (PToken, &'_ mut PTokens) {
         tokens[*token].take_out()
     }
 }
-
-// impl Debug for PToken {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-//         write!(f, "token#{:?}", self.0)
-//     }
-// }
 
 pub(crate) type PTokens = VecArena<PTokenTag, TokenData>;

@@ -1,7 +1,7 @@
 //! Jacco 言語の構文木の定義
 
 use super::*;
-use crate::{front::NName, source::Range, token::TokenSource, utils::RawId};
+use crate::{front::NName, source::Range, token::TokenSource};
 
 #[derive(Clone, Debug)]
 pub(crate) struct PNameQual {
@@ -323,9 +323,7 @@ pub(crate) enum PExpr {
 
 impl Default for PExpr {
     fn default() -> Self {
-        PExpr::Str(PStrExpr {
-            token: PToken::from(RawId::MAX),
-        })
+        PExpr::Str(PStrExpr { token: PToken::MAX })
     }
 }
 

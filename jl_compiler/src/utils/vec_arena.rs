@@ -1,28 +1,70 @@
-use super::RawId;
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     marker::PhantomData,
+    mem::size_of,
     num::NonZeroU32,
     ops::{Index, IndexMut},
 };
 
-/// `VecArena` の型つきの ID を表す。
+const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
+
+const fn id_from_index(index: usize) -> NonZeroU32 {
+    let value: u32 = (index + 1) as u32;
+    unsafe { NonZeroU32::new_unchecked(value) }
+}
+
+const fn id_to_index(id: NonZeroU32) -> usize {
+    (id.get() - 1) as usize
+}
+
+#[allow(unused)]
+const fn id_add_offset(id: NonZeroU32, offset: usize) -> NonZeroU32 {
+    let value: u32 = id.get() + offset as u32;
+    unsafe { NonZeroU32::new_unchecked(value) }
+}
+
+/// `VecArena` の型つきのインデックスを表す。
 ///
-/// `T` は値を区別するための幽霊型。
+/// `Tag` は値を区別するための幽霊型。
+///
+/// ## 意図
+///
+/// 型安全性: インデックスの不正な使い方を型検査により防ぐ。
+///
+/// サイズ: 64ビット環境で usize は8バイトだが、要素数が 2^32 (約40億) に至らないのであれば、インデックスは4バイトで十分。
+/// `VecArenaId` および `Option<VecArenaId>` は4バイトに収まって、メモリの節約になる。
 pub(crate) struct VecArenaId<Tag> {
     inner: NonZeroU32,
-    _phantom: PhantomData<*mut Tag>,
+    _phantom: PhantomData<Tag>,
 }
 
 impl<Tag> VecArenaId<Tag> {
-    pub(crate) fn from_index(index: usize) -> Self {
-        RawId::from_index(index).into()
+    pub(crate) const MAX: Self = Self::from_inner(ID_MAX);
+
+    const fn from_inner(inner: NonZeroU32) -> Self {
+        Self {
+            inner,
+            _phantom: PhantomData,
+        }
     }
 
-    pub(crate) fn to_index(self) -> usize {
-        RawId::from(self).to_index()
+    const unsafe fn new_unchecked(value: u32) -> Self {
+        Self::from_inner(NonZeroU32::new_unchecked(value))
+    }
+
+    pub(crate) const fn from_index(index: usize) -> Self {
+        Self::from_inner(id_from_index(index))
+    }
+
+    pub(crate) const fn to_index(self) -> usize {
+        id_to_index(self.inner)
+    }
+
+    #[allow(unused)]
+    pub(crate) const fn add_offset(self, offset: usize) -> VecArenaId<Tag> {
+        Self::from_inner(id_add_offset(self.inner, offset))
     }
 
     pub(crate) fn of<T>(self, arena: &VecArena<Tag, T>) -> &T {
@@ -50,23 +92,8 @@ impl<T> From<VecArenaId<T>> for NonZeroU32 {
     }
 }
 
-// VecArenaId <--> RawId
-impl<T> From<RawId> for VecArenaId<T> {
-    fn from(raw_id: RawId) -> Self {
-        Self {
-            inner: raw_id.into(),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<T> From<VecArenaId<T>> for RawId {
-    fn from(id: VecArenaId<T>) -> RawId {
-        RawId::from(id.inner)
-    }
-}
-
 // Copy + Clone
+// derive(Clone) だと Tag: Clone のときしか実装されない。
 impl<Tag> Clone for VecArenaId<Tag> {
     fn clone(&self) -> Self {
         Self {
@@ -110,24 +137,25 @@ impl<Tag> Debug for VecArenaId<Tag> {
     }
 }
 
+#[allow(dead_code)]
+const SIZE_OF_ID_OPTION_IS_4_BYTE: [(); 0] = [(); 4 - size_of::<Option<VecArenaId<()>>>()];
+
+/// 型つき ID によりインデックスアクセス可能な `Vec`
 pub(crate) struct VecArena<Tag, T> {
     inner: Vec<T>,
     _phantom: PhantomData<*mut Tag>,
 }
 
 impl<Tag, T> VecArena<Tag, T> {
-    pub(crate) const fn new() -> Self {
-        Self {
-            inner: vec![],
-            _phantom: PhantomData,
-        }
-    }
-
     pub(crate) const fn from_vec(inner: Vec<T>) -> Self {
         Self {
             inner,
             _phantom: PhantomData,
         }
+    }
+
+    pub(crate) const fn new() -> Self {
+        Self::from_vec(vec![])
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -149,68 +177,34 @@ impl<Tag, T> VecArena<Tag, T> {
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.inner.iter_mut()
     }
-
-    #[allow(unused)]
-    fn has_raw(&self, id: RawId) -> bool {
-        id.to_index() < self.inner.len()
-    }
-
-    #[allow(unused)]
-    fn alloc_raw(&mut self, value: T) -> RawId {
-        let id = RawId::from_index(self.inner.len());
-        self.inner.push(value);
-        id
-    }
-
-    #[allow(unused)]
-    fn index_raw(&self, id: RawId) -> &T {
-        &self.inner[id.to_index()]
-    }
-
-    #[allow(unused)]
-    fn index_raw_mut(&mut self, id: RawId) -> &mut T {
-        &mut self.inner[id.to_index()]
-    }
-
-    #[allow(unused)]
-    fn get_raw(&self, id: RawId) -> Option<&T> {
-        self.inner.get(id.to_index())
-    }
-
-    #[allow(unused)]
-    fn get_raw_mut(&mut self, id: RawId) -> Option<&mut T> {
-        self.inner.get_mut(id.to_index())
-    }
-
-    #[allow(unused)]
-    fn keys_raw(&self) -> impl Iterator<Item = RawId> {
-        (1..=self.inner.len() as u32).map(|id| unsafe { RawId::new_unchecked(id) })
-    }
-
-    fn enumerate_raw(&self) -> impl Iterator<Item = (RawId, &T)> {
-        self.keys_raw().zip(&self.inner)
-    }
 }
 
 impl<Tag, T> VecArena<Tag, T> {
     #[allow(unused)]
     pub(crate) fn has(&self, id: VecArenaId<Tag>) -> bool {
-        self.has_raw(id.into())
+        id.to_index() < self.inner.len()
     }
 
     #[allow(unused)]
     pub(crate) fn alloc(&mut self, value: T) -> VecArenaId<Tag> {
-        self.alloc_raw(value).into()
+        let id = id_from_index(self.inner.len()).into();
+        self.inner.push(value);
+        id
     }
 
     #[allow(unused)]
     pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {
-        self.get_raw(id.into())
+        self.inner.get(id.to_index())
+    }
+
+    #[allow(unused)]
+    pub(crate) fn get_mut(&mut self, id: VecArenaId<Tag>) -> Option<&mut T> {
+        self.inner.get_mut(id.to_index())
     }
 
     #[allow(unused)]
     pub(crate) fn keys(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
-        self.keys_raw().map(Into::into)
+        (1..=self.inner.len() as u32).map(|id| unsafe { VecArenaId::new_unchecked(id) })
     }
 
     #[allow(unused)]
@@ -221,7 +215,7 @@ impl<Tag, T> VecArena<Tag, T> {
 
 impl<Tag, T: Debug> Debug for VecArena<Tag, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_map().entries(self.enumerate_raw()).finish()
+        f.debug_map().entries(self.enumerate()).finish()
     }
 }
 
@@ -244,8 +238,7 @@ impl<Tag, T: Clone> Clone for VecArena<Tag, T> {
 impl<Tag, T> Index<VecArenaId<Tag>> for VecArena<Tag, T> {
     type Output = T;
 
-    fn index(&self, index: VecArenaId<Tag>) -> &T {
-        let id: RawId = index.into();
+    fn index(&self, id: VecArenaId<Tag>) -> &T {
         let index = id.to_index();
 
         debug_assert!(index < self.len());
@@ -254,14 +247,15 @@ impl<Tag, T> Index<VecArenaId<Tag>> for VecArena<Tag, T> {
 }
 
 impl<Tag, T> IndexMut<VecArenaId<Tag>> for VecArena<Tag, T> {
-    fn index_mut(&mut self, index: VecArenaId<Tag>) -> &mut T {
-        let id: RawId = index.into();
+    fn index_mut(&mut self, id: VecArenaId<Tag>) -> &mut T {
         let index = id.to_index();
 
         debug_assert!(index < self.len());
         unsafe { self.inner.get_unchecked_mut(index) }
     }
 }
+
+pub(crate) type RawId = VecArenaId<()>;
 
 #[cfg(test)]
 mod tests {
@@ -320,19 +314,19 @@ mod tests {
 
         // 範囲検査
         assert!(users.has(alice));
-        let eve = User::from(RawId::from_index(10000));
+        let eve = User::from_index(10000);
         assert!(!users.has(eve));
     }
 
-    type StrArena = VecArena<&'static str, &'static str>;
+    type StrArena = VecArena<(), &'static str>;
 
     #[test]
     fn test_debug() {
         let mut arena = StrArena::new();
-        arena.alloc_raw("Alice");
-        arena.alloc_raw("Bob");
-        arena.alloc_raw("Catherine");
-        arena.alloc_raw("Dave");
+        arena.alloc("Alice");
+        arena.alloc("Bob");
+        arena.alloc("Catherine");
+        arena.alloc("Dave");
 
         assert_eq!(
             format!("{:?}", arena),

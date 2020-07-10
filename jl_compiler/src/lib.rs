@@ -255,15 +255,13 @@ mod token {
 
 mod utils {
     mod id_provider;
-    mod raw_id;
     mod take_out;
 
     #[macro_use]
     mod vec_arena;
 
     pub(crate) use id_provider::IdProvider;
-    pub(crate) use raw_id::RawId;
     pub(crate) use take_out::TakeOut;
 
-    pub(crate) use vec_arena::{VecArena, VecArenaId};
+    pub(crate) use vec_arena::{RawId, VecArena, VecArenaId};
 }
