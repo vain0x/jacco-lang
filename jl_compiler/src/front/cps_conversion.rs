@@ -56,10 +56,7 @@ impl Gx {
             is_alive: true,
         });
 
-        KSymbol {
-            local,
-            location: location,
-        }
+        KSymbol { local, location }
     }
 
     fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
@@ -173,7 +170,7 @@ fn emit_compound_assign(
         args: vec![left, right],
         result_opt: None,
         cont_count: 1,
-        location: location,
+        location,
     });
 
     new_unit_term(location)
@@ -214,7 +211,7 @@ fn emit_if(
         args: vec![k_cond],
         result_opt: None,
         cont_count: 2,
-        location: location,
+        location,
     });
 
     // body
@@ -585,10 +582,7 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
             let result = gx.fresh_symbol(&format!("{}_ptr", name), location);
 
             let left = gen_expr_lval(left.as_ref(), k_mut, location, gx);
-            let field = KTerm::FieldTag(KFieldTag {
-                name,
-                location: location,
-            });
+            let field = KTerm::FieldTag(KFieldTag { name, location });
 
             let get_field_prim = match k_mut {
                 KMut::Const => KPrim::GetField,
@@ -706,7 +700,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location: location,
+                location,
             });
 
             KTerm::Name(result)
@@ -792,7 +786,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![left],
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location: location,
+                location,
             });
 
             KTerm::Name(result)
@@ -1043,7 +1037,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: None,
                 cont_count: 1,
-                location: location,
+                location,
             });
 
             new_never_term(location)
@@ -1373,7 +1367,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                     args: vec![KTerm::Return(k_fn), result],
                     result_opt: None,
                     cont_count: 1,
-                    location: location,
+                    location,
                 });
 
                 let commands = replace(&mut gx.current_commands, parent_commands);
