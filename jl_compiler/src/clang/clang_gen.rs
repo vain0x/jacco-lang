@@ -725,7 +725,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
         });
     }
 
-    for (extern_fn, extern_fn_data) in KExternFnData::iter(&root.extern_fns) {
+    for (extern_fn, extern_fn_data) in root.extern_fns.enumerate() {
         let params = extern_fn_data.params.as_slice();
         let locals = &extern_fn_data.locals;
 

@@ -101,7 +101,7 @@ impl Debug for KTerm {
             }
             KTerm::ExternFn(extern_fn) => {
                 // FIXME: name
-                write!(f, "extern_fn#{}", extern_fn.id())
+                write!(f, "extern_fn#{}", extern_fn.to_index())
             }
             KTerm::RecordTag(k_struct) => {
                 // FIXME: name

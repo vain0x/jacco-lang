@@ -674,7 +674,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
         prepare_struct(k_struct, tx);
     }
 
-    for (extern_fn, extern_fn_data) in KExternFnData::iter_mut(&mut root.extern_fns) {
+    for (extern_fn, extern_fn_data) in root.extern_fns.enumerate_mut() {
         swap(&mut tx.locals, &mut extern_fn_data.locals);
 
         prepare_extern_fn(extern_fn, extern_fn_data, tx);

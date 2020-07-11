@@ -220,6 +220,10 @@ impl<Tag, T> VecArena<Tag, T> {
     pub(crate) fn enumerate(&self) -> impl Iterator<Item = (VecArenaId<Tag>, &T)> {
         self.keys().zip(&self.inner)
     }
+
+    pub(crate) fn enumerate_mut(&mut self) -> impl Iterator<Item = (VecArenaId<Tag>, &mut T)> {
+        self.keys().zip(&mut self.inner)
+    }
 }
 
 impl<Tag, T: Debug> Debug for VecArena<Tag, T> {

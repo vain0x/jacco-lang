@@ -3,8 +3,8 @@
 use super::*;
 use crate::{
     cps::{
-        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KLocal, KLocalTag, KStaticVar,
-        KStaticVarTag, KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
+        KConst, KConstTag, KEnum, KEnumTag, KExternFn, KExternFnTag, KField, KFieldTag, KLocal,
+        KLocalTag, KStaticVar, KStaticVarTag, KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
     logs::Logger,
     utils::VecArena,
@@ -59,6 +59,8 @@ pub(crate) struct NFnData {
     pub(crate) loops: Vec<NLoopData>,
 }
 
+pub(crate) type NExternFnArena = VecArena<KExternFnTag, NExternFnData>;
+
 pub(crate) struct NExternFnData {
     pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
@@ -98,7 +100,7 @@ pub(crate) struct NameResolution {
     pub(crate) consts: NConstArena,
     pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: Vec<NFnData>,
-    pub(crate) extern_fns: Vec<NExternFnData>,
+    pub(crate) extern_fns: NExternFnArena,
     pub(crate) enums: NEnumArena,
     pub(crate) structs: NStructArena,
     pub(crate) fields: NFieldArena,
@@ -111,7 +113,7 @@ pub(crate) enum NName {
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(usize),
-    ExternFn(usize),
+    ExternFn(KExternFn),
     Enum(KEnum),
     Struct(KStruct),
     Bool,
@@ -653,20 +655,19 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     .unite(fn_keyword.location(nx.tokens()));
 
                 // alloc extern fn
-                let extern_fn_id = nx.res.extern_fns.len();
-                *extern_fn_id_opt = Some(extern_fn_id);
-                nx.res.extern_fns.push(NExternFnData {
+                let extern_fn = nx.res.extern_fns.alloc(NExternFnData {
                     name: Default::default(),
                     params: Default::default(),
                     result_ty: Default::default(),
                     location,
                     local_vars: Default::default(),
                 });
+                *extern_fn_id_opt = Some(extern_fn.to_index());
 
                 if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, NName::ExternFn(extern_fn_id), nx);
+                    resolve_name_def(name, NName::ExternFn(extern_fn), nx);
 
-                    nx.res.extern_fns[extern_fn_id].name = name.text(nx.tokens()).to_string();
+                    nx.res.extern_fns[extern_fn].name = name.text(nx.tokens()).to_string();
                 }
             }
             PDecl::Enum(PEnumDecl {
@@ -855,7 +856,8 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
             let local_vars = replace(&mut nx.parent_local_vars, parent_local_vars);
 
-            let mut extern_fn_data = &mut nx.res.extern_fns[extern_fn_id_opt.unwrap()];
+            let extern_fn = KExternFn::from_index(extern_fn_id_opt.unwrap());
+            let mut extern_fn_data = &mut nx.res.extern_fns[extern_fn];
             extern_fn_data.params = params;
             extern_fn_data.result_ty = result_ty;
             extern_fn_data.local_vars = local_vars;

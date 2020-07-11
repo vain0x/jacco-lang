@@ -33,7 +33,7 @@ struct Gx {
     current_labels: KLabelArena,
     fns: Vec<KFnData>,
     fn_loops: Vec<Vec<NLoopData>>,
-    extern_fns: Vec<KExternFnData>,
+    extern_fns: KExternFnArena,
     logger: Logger,
 }
 
@@ -289,10 +289,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
             assert!(fn_id < gx.fns.len());
             KSymbolExt::Fn(KFn::new(fn_id))
         }
-        NName::ExternFn(extern_fn_id) => {
-            assert!(extern_fn_id < gx.extern_fns.len());
-            KSymbolExt::ExternFn(KExternFn::new(extern_fn_id))
-        }
+        NName::ExternFn(extern_fn) => KSymbolExt::ExternFn(extern_fn),
         NName::Const(n_const) => KSymbolExt::Const(n_const),
         NName::StaticVar(n_static_var) => KSymbolExt::StaticVar(n_static_var),
         NName::Struct(n_struct) if n_struct.fields(&gx.outlines.structs).is_empty() => {
@@ -1395,8 +1392,8 @@ pub(crate) fn cps_conversion(
         gx.fn_loops = fn_loops;
         gx.outlines.fns = fn_outlines;
 
-        gx.extern_fns = k_extern_fns;
-        gx.outlines.extern_fns = extern_fn_outlines;
+        gx.extern_fns = VecArena::from_vec(k_extern_fns);
+        gx.outlines.extern_fns = VecArena::from_vec(extern_fn_outlines);
 
         gx.outlines.enums = VecArena::from_vec(k_enums);
 
