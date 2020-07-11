@@ -90,7 +90,7 @@ fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
 
 fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
     do_unique_name(
-        static_var.id(),
+        static_var.to_index(),
         static_var.name(&cx.outlines.static_vars),
         &mut cx.static_var_ident_ids,
         &mut cx.ident_map,
@@ -712,8 +712,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
         }
     }
 
-    for (i, static_var_data) in outlines.static_vars.iter().enumerate() {
-        let static_var = KStaticVar::new(i);
+    for (static_var, static_var_data) in outlines.static_vars.enumerate() {
         let name = unique_static_var_name(static_var, cx);
         let ty = gen_ty(&static_var_data.ty, &empty_ty_env, cx);
         let init_opt = static_var_data.value_opt.as_ref().map(gen_constant_value);

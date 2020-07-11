@@ -302,10 +302,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
             KSymbolExt::ExternFn(KExternFn::new(extern_fn_id))
         }
         NName::Const(n_const) => KSymbolExt::Const(n_const),
-        NName::StaticVar(static_var_id) => {
-            assert!(static_var_id < gx.outlines.static_vars.len());
-            KSymbolExt::StaticVar(KStaticVar::new(static_var_id))
-        }
+        NName::StaticVar(n_static_var) => KSymbolExt::StaticVar(n_static_var),
         NName::Struct(n_struct)
             if KStruct::new(n_struct.to_index())
                 .fields(&gx.outlines.structs)
@@ -1231,15 +1228,16 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let (name, static_var) = {
-                let name = name_opt.clone().unwrap();
-                let static_var = match name.info_opt {
-                    Some(NName::StaticVar(static_var_id)) => KStaticVar::new(static_var_id),
-                    _ => unreachable!(),
-                };
-                let name = name.text(&gx.tokens).to_string();
-                (name, static_var)
+            let name = name_opt.clone().unwrap();
+            let static_var = match name.info_opt {
+                Some(NName::StaticVar(n_static_var)) => n_static_var,
+                _ => unreachable!(),
             };
+            assert_eq!(
+                name.text(&gx.tokens),
+                static_var.name(&gx.outlines.static_vars)
+            );
+
             let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
 
             if !ty.is_primitive() {
@@ -1260,11 +1258,9 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            gx.outlines.static_vars[static_var.id()] = KStaticVarData {
-                name,
-                ty,
-                value_opt,
-            };
+            let data = &mut gx.outlines.static_vars[static_var];
+            data.ty = ty;
+            data.value_opt = value_opt;
         }
 
         PDecl::Fn(PFnDecl {
@@ -1464,14 +1460,35 @@ pub(crate) fn cps_conversion(
             .iter()
             .map(|n_const_data| KConstData {
                 name: n_const_data.name.to_string(),
-                value_ty: KTy::Unresolved,
-                value_opt: None,
+                value_ty: {
+                    // FIXME: resolve here?
+                    KTy::Unresolved
+                },
+                value_opt: {
+                    // FIXME: calc here?
+                    None
+                },
                 parent_opt: n_const_data.parent_enum_opt.map(KEnum::new),
                 location: n_const_data.location,
             })
             .collect();
 
-        let static_var_count = name_resolution.static_vars.len();
+        let static_vars = name_resolution
+            .static_vars
+            .iter()
+            .map(|n_static_var_data| KStaticVarData {
+                name: n_static_var_data.name.to_string(),
+                ty: {
+                    // FIXME: resolve here
+                    KTy::Unresolved
+                },
+                value_opt: {
+                    // FIXME: calc here?
+                    None
+                },
+                location: n_static_var_data.location,
+            })
+            .collect();
 
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = &name_resolution.fns;
@@ -1540,9 +1557,7 @@ pub(crate) fn cps_conversion(
 
         gx.outlines.consts = VecArena::from_vec(k_consts);
 
-        gx.outlines
-            .static_vars
-            .resize_with(static_var_count, Default::default);
+        gx.outlines.static_vars = VecArena::from_vec(static_vars);
 
         gx.fns = fns;
         gx.fn_loops = fn_loops;

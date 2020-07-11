@@ -31,7 +31,16 @@ pub(crate) struct NConstData {
     pub(crate) location: Location,
 }
 
-pub(crate) struct NStaticVarData;
+pub(crate) struct NStaticVarTag;
+
+pub(crate) type NStaticVar = VecArenaId<NStaticVarTag>;
+
+pub(crate) type NStaticVarArena = VecArena<NStaticVarTag, NStaticVarData>;
+
+pub(crate) struct NStaticVarData {
+    pub(crate) name: String,
+    pub(crate) location: Location,
+}
 
 pub(crate) struct NFnData {
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
@@ -73,7 +82,7 @@ pub(crate) struct NFieldData {
 #[derive(Default)]
 pub(crate) struct NameResolution {
     pub(crate) consts: NConstArena,
-    pub(crate) static_vars: Vec<NStaticVarData>,
+    pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
     pub(crate) enums: Vec<NEnumData>,
@@ -87,7 +96,7 @@ pub(crate) enum NName {
     /// ローカル変数や仮引数
     LocalVar(usize),
     Const(NConst),
-    StaticVar(usize),
+    StaticVar(NStaticVar),
     Fn(usize),
     ExternFn(usize),
     Enum(usize),
@@ -644,20 +653,25 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             }
         }
         PDecl::Static(PStaticDecl {
+            keyword,
             name_opt,
             ty_opt,
             init_opt,
             ..
         }) => {
             // alloc static var
-            let static_var_id = nx.res.static_vars.len();
-            nx.res.static_vars.push(NStaticVarData);
+            let n_static_var = nx.res.static_vars.alloc(NStaticVarData {
+                name: String::new(),
+                location: keyword.location(&nx.tokens()),
+            });
 
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, NName::StaticVar(static_var_id), nx);
+                resolve_name_def(name, NName::StaticVar(n_static_var), nx);
+
+                nx.res.static_vars[n_static_var].name = name.text(nx.tokens()).to_string();
             }
         }
         PDecl::Fn(PFnDecl {
