@@ -231,14 +231,15 @@ fn emit_if(
     KTerm::Name(result)
 }
 
-fn gen_mut(p_mut: Option<&PMut>, _gx: &mut Gx) -> KMut {
+fn gen_mut(p_mut: Option<&PMut>) -> KMut {
     match p_mut {
         Some(&(k_mut, _)) => k_mut,
         None => KMut::Const,
     }
 }
 
-fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
+// ローカル型環境を引数に取るかもしれない
+fn gen_ty_name(p_name: &PName) -> KTy {
     let n_name = p_name.info_opt.clone().unwrap();
 
     match n_name {
@@ -264,16 +265,16 @@ fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
     }
 }
 
-fn gen_ty(ty: &PTy, gx: &mut Gx) -> KTy {
+fn gen_ty(ty: &PTy) -> KTy {
     match ty {
-        PTy::Name(name) => gen_ty_name(name, gx),
+        PTy::Name(name) => gen_ty_name(name),
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
         PTy::Ptr(PPtrTy {
             ty_opt, mut_opt, ..
         }) => {
-            let k_mut = gen_mut(mut_opt.as_ref(), gx);
-            gen_ty(ty_opt.as_deref().unwrap(), gx).into_ptr(k_mut)
+            let k_mut = gen_mut(mut_opt.as_ref());
+            gen_ty(ty_opt.as_deref().unwrap()).into_ptr(k_mut)
         }
     }
 }
@@ -340,7 +341,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
 
 fn gen_param(param: &PParam, gx: &mut Gx) -> KSymbol {
     let ty = match &param.ty_opt {
-        Some(ty) => gen_ty(ty, gx),
+        Some(ty) => gen_ty(ty),
         None => {
             gx.logger.error(&param.name, "param type is mandatory");
             KTy::Never
@@ -394,7 +395,7 @@ fn gen_fn_sig(
         .map(|param| param.ty(&gx.current_locals))
         .collect();
     let result_ty = match result_ty_opt {
-        Some(ty) => gen_ty(ty, gx),
+        Some(ty) => gen_ty(ty),
         None => KTy::Unit,
     };
     GenFnSigResult {
@@ -497,7 +498,7 @@ fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
         );
 
         let field_ty = match &p_field.ty_opt {
-            Some(ty) => gen_ty(ty, gx),
+            Some(ty) => gen_ty(ty),
             None => KTy::Unresolved,
         };
         gx.outlines.fields[k_field].ty = field_ty;
@@ -733,7 +734,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("cast", location);
 
             let left = gen_expr(&left, gx);
-            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap());
 
             gx.push(KCommand::Node {
                 prim: KPrim::Cast,
@@ -761,7 +762,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 KTerm::Name(result)
             }
             PUnaryOp::Ref => {
-                let k_mut = gen_mut(mut_opt.as_ref(), gx);
+                let k_mut = gen_mut(mut_opt.as_ref());
                 gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, *location, gx)
             }
             PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), *location, gx),
@@ -1166,7 +1167,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let ty = ty_opt.as_ref().map_or(KTy::Unresolved, |ty| gen_ty(ty, gx));
+            let ty = ty_opt.as_ref().map_or(KTy::Unresolved, gen_ty);
 
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
             let mut result = gen_name(name_opt.as_ref().unwrap(), gx).expect_symbol();
@@ -1188,7 +1189,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             };
             assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
 
-            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap());
 
             if !ty.is_primitive() {
                 gx.logger.error(
@@ -1229,7 +1230,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 static_var.name(&gx.outlines.static_vars)
             );
 
-            let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
+            let ty = gen_ty(ty_opt.as_ref().unwrap());
 
             if !ty.is_primitive() {
                 gx.logger.error(
