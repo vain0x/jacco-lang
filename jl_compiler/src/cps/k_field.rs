@@ -1,22 +1,21 @@
 use super::KTy;
 use crate::{
-    front::NFieldTag,
     token::Location,
     utils::{VecArena, VecArenaId},
 };
 
 /// `foo.field` の `.field` のような形で出現している、
 /// 式の型に依存するいずれかの構造体のフィールドを表す。
-// NFieldTag と紛らわしい。
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
     pub(crate) location: Location,
 }
 
-pub(crate) type KField = VecArenaId<NFieldTag>;
+// とりあえず KFieldTag を使いまわしてる。
+pub(crate) type KField = VecArenaId<KFieldTag>;
 
-pub(crate) type KFieldArena = VecArena<NFieldTag, KFieldOutline>;
+pub(crate) type KFieldArena = VecArena<KFieldTag, KFieldOutline>;
 
 impl KField {
     pub(crate) fn name(self, fields: &KFieldArena) -> &str {

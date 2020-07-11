@@ -1,11 +1,15 @@
 use super::{k_const::KConstArena, k_struct::KStructArena, KConst, KConstValue, KStruct, KTy};
 use crate::{
-    front::{NEnumTag, NVariant},
     token::Location,
     utils::{VecArena, VecArenaId},
 };
+use std::fmt::{self, Debug, Formatter};
 
-pub(crate) type KVariant = NVariant;
+#[derive(Copy, Clone)]
+pub(crate) enum KVariant {
+    Const(KConst),
+    Record(KStruct),
+}
 
 impl KVariant {
     pub(crate) fn as_const(self) -> Option<KConst> {
@@ -38,9 +42,20 @@ impl KVariant {
     }
 }
 
-pub(crate) type KEnum = VecArenaId<NEnumTag>;
+impl Debug for KVariant {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            KVariant::Const(inner) => Debug::fmt(inner, f),
+            KVariant::Record(inner) => Debug::fmt(inner, f),
+        }
+    }
+}
 
-pub(crate) type KEnumArena = VecArena<NEnumTag, KEnumOutline>;
+pub(crate) struct KEnumTag;
+
+pub(crate) type KEnum = VecArenaId<KEnumTag>;
+
+pub(crate) type KEnumArena = VecArena<KEnumTag, KEnumOutline>;
 
 impl KEnum {
     pub(crate) fn name(self, enums: &KEnumArena) -> &str {

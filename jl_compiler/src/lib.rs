@@ -66,8 +66,8 @@ mod cps {
     pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_command::KCommand;
-    pub(crate) use k_const::{KConst, KConstData, KConstValue};
-    pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KVariant};
+    pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue};
+    pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumTag, KVariant};
     pub(crate) use k_extern_fn::{KExternFn, KExternFnData, KExternFnOutline};
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
     pub(crate) use k_fn::{KFn, KFnData, KFnOutline};
@@ -79,8 +79,8 @@ mod cps {
     pub(crate) use k_outlines::KOutlines;
     pub(crate) use k_prim::KPrim;
     pub(crate) use k_root::KRoot;
-    pub(crate) use k_static_var::{KStaticVar, KStaticVarData};
-    pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent};
+    pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarTag};
+    pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;
     pub(crate) use k_ty::KTy;
@@ -148,10 +148,7 @@ mod front {
     mod syntax_validation;
 
     pub(crate) use cps_conversion::cps_conversion;
-    pub(crate) use name_resolution::{
-        resolve_name, NConstTag, NEnumTag, NFieldTag, NName, NStaticVarTag, NStructTag, NVariant,
-        NameResolution,
-    };
+    pub(crate) use name_resolution::{resolve_name, NName, NameResolution};
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;
 

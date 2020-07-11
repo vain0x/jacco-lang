@@ -1,6 +1,5 @@
-use super::{k_enum::KEnumArena, KConstValue, KEnum,  KField, KTy};
+use super::{k_enum::KEnumArena, KConstValue, KEnum, KField, KTy};
 use crate::{
-    front::NStructTag,
     token::Location,
     utils::{VecArena, VecArenaId},
 };
@@ -26,9 +25,11 @@ impl KStructParent {
     }
 }
 
-pub(crate) type KStruct = VecArenaId<NStructTag>;
+pub(crate) struct KStructTag;
 
-pub(crate) type KStructArena = VecArena<NStructTag, KStructOutline>;
+pub(crate) type KStruct = VecArenaId<KStructTag>;
+
+pub(crate) type KStructArena = VecArena<KStructTag, KStructOutline>;
 
 impl KStruct {
     pub(crate) fn name(self, structs: &KStructArena) -> &str {

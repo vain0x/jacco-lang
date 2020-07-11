@@ -1,13 +1,14 @@
 use super::{KConstValue, KTy};
 use crate::{
-    front::NStaticVarTag,
     token::Location,
     utils::{VecArena, VecArenaId},
 };
 
-pub(crate) type KStaticVar = VecArenaId<NStaticVarTag>;
+pub(crate) struct KStaticVarTag;
 
-pub(crate) type KStaticVarArena = VecArena<NStaticVarTag, KStaticVarData>;
+pub(crate) type KStaticVar = VecArenaId<KStaticVarTag>;
+
+pub(crate) type KStaticVarArena = VecArena<KStaticVarTag, KStaticVarData>;
 
 impl KStaticVar {
     pub(crate) fn name(self, static_vars: &KStaticVarArena) -> &str {

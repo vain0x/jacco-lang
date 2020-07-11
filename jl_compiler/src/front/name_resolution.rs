@@ -2,13 +2,17 @@
 
 use super::*;
 use crate::{
+    cps::{
+        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KStaticVar, KStaticVarTag, KStruct,
+        KStructTag, KVariant,
+    },
     logs::Logger,
-    utils::{VecArena, VecArenaId},
+    utils::VecArena,
 };
 use log::trace;
 use std::{
     collections::HashMap,
-    fmt::{self, Debug, Formatter},
+    fmt::Debug,
     mem::{replace, take},
     rc::Rc,
 };
@@ -20,23 +24,15 @@ pub(crate) struct NLoopData {
 
 pub(crate) struct NLocalVarData;
 
-pub(crate) struct NConstTag;
-
-pub(crate) type NConst = VecArenaId<NConstTag>;
-
-pub(crate) type NConstArena = VecArena<NConstTag, NConstData>;
+pub(crate) type NConstArena = VecArena<KConstTag, NConstData>;
 
 pub(crate) struct NConstData {
     pub(crate) name: String,
-    pub(crate) parent_opt: Option<NEnum>,
+    pub(crate) parent_opt: Option<KEnum>,
     pub(crate) location: Location,
 }
 
-pub(crate) struct NStaticVarTag;
-
-pub(crate) type NStaticVar = VecArenaId<NStaticVarTag>;
-
-pub(crate) type NStaticVarArena = VecArena<NStaticVarTag, NStaticVarData>;
+pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
 
 pub(crate) struct NStaticVarData {
     pub(crate) name: String,
@@ -53,51 +49,24 @@ pub(crate) struct NExternFnData {
     pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
-#[derive(Copy, Clone)]
-pub(crate) enum NVariant {
-    Const(NConst),
-    Record(NStruct),
-}
-
-impl Debug for NVariant {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            NVariant::Const(inner) => Debug::fmt(inner, f),
-            NVariant::Record(inner) => Debug::fmt(inner, f),
-        }
-    }
-}
-
-pub(crate) struct NEnumTag;
-
-pub(crate) type NEnum = VecArenaId<NEnumTag>;
-
-pub(crate) type NEnumArena = VecArena<NEnumTag, NEnumData>;
+pub(crate) type NEnumArena = VecArena<KEnumTag, NEnumData>;
 
 pub(crate) struct NEnumData {
     pub(crate) name: String,
-    pub(crate) variants: Vec<NVariant>,
+    pub(crate) variants: Vec<KVariant>,
     pub(crate) location: Location,
 }
 
-pub(crate) struct NStructTag;
-
-pub(crate) type NStruct = VecArenaId<NStructTag>;
-
-pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
+pub(crate) type NStructArena = VecArena<KStructTag, NStructData>;
 
 pub(crate) struct NStructData {
     pub(crate) name: String,
-    pub(crate) fields: Vec<NField>,
-    pub(crate) parent_opt: Option<NEnum>,
+    pub(crate) fields: Vec<KField>,
+    pub(crate) parent_opt: Option<KEnum>,
     pub(crate) location: Location,
 }
 
-pub(crate) struct NFieldTag;
-
-pub(crate) type NField = VecArenaId<NFieldTag>;
-
-pub(crate) type NFieldArena = VecArena<NFieldTag, NFieldData>;
+pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
 
 pub(crate) struct NFieldData {
     pub(crate) name: String,
@@ -121,12 +90,12 @@ pub(crate) enum NName {
     Unresolved,
     /// ローカル変数や仮引数
     LocalVar(usize),
-    Const(NConst),
-    StaticVar(NStaticVar),
+    Const(KConst),
+    StaticVar(KStaticVar),
     Fn(usize),
     ExternFn(usize),
-    Enum(NEnum),
-    Struct(NStruct),
+    Enum(KEnum),
+    Struct(KStruct),
     Bool,
     I8,
     I16,
@@ -146,7 +115,7 @@ pub(crate) enum NName {
 }
 
 impl NName {
-    pub(crate) fn as_struct(self) -> Option<NStruct> {
+    pub(crate) fn as_struct(self) -> Option<KStruct> {
         match self {
             NName::Struct(n_struct) => Some(n_struct),
             _ => None,
@@ -519,10 +488,10 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
 
 fn resolve_variant(
     variant: &mut PVariantDecl,
-    parent_opt: Option<NEnum>,
+    parent_opt: Option<KEnum>,
     parent_name_opt: Option<&str>,
     nx: &mut Nx,
-) -> NVariant {
+) -> KVariant {
     match variant {
         PVariantDecl::Const(PConstVariantDecl {
             name, value_opt, ..
@@ -537,7 +506,7 @@ fn resolve_variant(
             resolve_qualified_name_def(name, parent_name_opt, NName::Const(n_const), nx);
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
 
-            NVariant::Const(n_const)
+            KVariant::Const(n_const)
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
             let mut n_fields = Vec::with_capacity(fields.len());
@@ -566,7 +535,7 @@ fn resolve_variant(
             }
 
             nx.res.structs[n_struct].fields = n_fields;
-            NVariant::Record(n_struct)
+            KVariant::Record(n_struct)
         }
     }
 }

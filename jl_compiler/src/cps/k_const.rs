@@ -1,13 +1,14 @@
 use super::{KEnum, KTy};
 use crate::{
-    front::NConstTag,
     token::Location,
     utils::{VecArena, VecArenaId},
 };
 
-pub(crate) type KConst = VecArenaId<NConstTag>;
+pub(crate) struct KConstTag;
 
-pub(crate) type KConstArena = VecArena<NConstTag, KConstData>;
+pub(crate) type KConst = VecArenaId<KConstTag>;
+
+pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
 impl KConst {
     /// 値の型、またはこの定数が属する enum の型
