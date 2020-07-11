@@ -31,8 +31,8 @@ struct Gx {
     current_locals: KLocalArena,
     current_loops: Vec<KLoopData>,
     current_labels: KLabelArena,
-    fns: Vec<KFnData>,
-    fn_loops: Vec<Vec<NLoopData>>,
+    fns: KFnArena,
+    fn_loops: VecArena<KFnTag, Vec<NLoopData>>,
     extern_fns: KExternFnArena,
     logger: Logger,
 }
@@ -285,10 +285,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
 
             KSymbolExt::Symbol(KSymbol { local, location })
         }
-        NName::Fn(fn_id) => {
-            assert!(fn_id < gx.fns.len());
-            KSymbolExt::Fn(KFn::new(fn_id))
-        }
+        NName::Fn(k_fn) => KSymbolExt::Fn(k_fn),
         NName::ExternFn(extern_fn) => KSymbolExt::ExternFn(extern_fn),
         NName::Const(n_const) => KSymbolExt::Const(n_const),
         NName::StaticVar(n_static_var) => KSymbolExt::StaticVar(n_static_var),
@@ -880,7 +877,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             fn_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
-            let k_fn = KFn::new(fn_id_opt.unwrap());
+            let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let args = {
                 let return_term = KTerm::Return(k_fn);
@@ -1135,10 +1132,10 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
-            let k_fn = KFn::new(fn_id_opt.unwrap());
+            let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let parent_local_vars = {
-                let local_vars = take(&mut gx.fns[k_fn.id()].locals);
+                let local_vars = take(&mut gx.fns[k_fn].locals);
                 replace(&mut gx.current_locals, local_vars)
             };
 
@@ -1147,7 +1144,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 let parent_labels = take(&mut gx.current_labels);
                 let parent_loops = take(&mut gx.current_loops);
 
-                gx.current_loops = take(&mut gx.fn_loops[k_fn.id()])
+                gx.current_loops = take(&mut gx.fn_loops[k_fn])
                     .into_iter()
                     .map(|loop_data| {
                         let location = loop_data.location;
@@ -1180,7 +1177,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             let locals = replace(&mut gx.current_locals, parent_local_vars);
 
-            let mut data = &mut gx.fns[k_fn.id()];
+            let mut data = &mut gx.fns[k_fn];
             data.body = body;
             data.locals = locals;
             data.labels = labels;
@@ -1308,7 +1305,10 @@ pub(crate) fn cps_conversion(
                         })
                         .collect(),
                 ),
-                ..KFnData::default()
+                body: Default::default(),
+                labels: Default::default(),
+                label_sigs: Default::default(),
+                ty_env: Default::default(),
             })
             .collect();
 
@@ -1388,9 +1388,9 @@ pub(crate) fn cps_conversion(
 
         gx.outlines.static_vars = VecArena::from_vec(static_vars);
 
-        gx.fns = fns;
-        gx.fn_loops = fn_loops;
-        gx.outlines.fns = fn_outlines;
+        gx.fns = VecArena::from_vec(fns);
+        gx.fn_loops = VecArena::from_vec(fn_loops);
+        gx.outlines.fns = VecArena::from_vec(fn_outlines);
 
         gx.extern_fns = VecArena::from_vec(k_extern_fns);
         gx.outlines.extern_fns = VecArena::from_vec(extern_fn_outlines);

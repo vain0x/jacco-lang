@@ -1,33 +1,31 @@
 use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KNode, KSymbol, KTy, KTyEnv, KVis};
-use crate::token::{Location, TokenSource};
+use crate::{
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KFn {
-    id: usize,
-}
+pub(crate) struct KFnTag;
+
+pub(crate) type KFn = VecArenaId<KFnTag>;
+
+pub(crate) type KFnOutlineArena = VecArena<KFnTag, KFnOutline>;
+
+pub(crate) type KFnArena = VecArena<KFnTag, KFnData>;
 
 impl KFn {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
+    pub(crate) fn name(self, fns: &KFnOutlineArena) -> &str {
+        &fns[self].name
     }
 
-    pub(crate) fn id(self) -> usize {
-        self.id
+    pub(crate) fn param_tys(self, fns: &KFnOutlineArena) -> &[KTy] {
+        &fns[self].param_tys
     }
 
-    pub(crate) fn name(self, fns: &[KFnOutline]) -> &str {
-        &fns[self.id].name
+    pub(crate) fn result_ty(self, fns: &KFnOutlineArena) -> &KTy {
+        &fns[self].result_ty
     }
 
-    pub(crate) fn param_tys(self, fns: &[KFnOutline]) -> &[KTy] {
-        &fns[self.id].param_tys
-    }
-
-    pub(crate) fn result_ty(self, fns: &[KFnOutline]) -> &KTy {
-        &fns[self.id].result_ty
-    }
-
-    pub(crate) fn return_ty(self, fns: &[KFnOutline]) -> KTy {
+    pub(crate) fn return_ty(self, fns: &KFnOutlineArena) -> KTy {
         let result_ty = self.result_ty(fns).clone();
         KTy::Fn {
             param_tys: vec![result_ty],
@@ -35,15 +33,15 @@ impl KFn {
         }
     }
 
-    pub(crate) fn ty(self, fns: &[KFnOutline]) -> KTy {
+    pub(crate) fn ty(self, fns: &KFnOutlineArena) -> KTy {
         KTy::Fn {
             param_tys: self.param_tys(fns).to_owned(),
             result_ty: Box::new(self.result_ty(fns).clone()),
         }
     }
 
-    pub(crate) fn is_pub(self, fns: &[KFnOutline]) -> bool {
-        fns[self.id].vis_opt.is_some()
+    pub(crate) fn is_pub(self, fns: &KFnOutlineArena) -> bool {
+        fns[self].vis_opt.is_some()
     }
 }
 
@@ -56,22 +54,7 @@ pub(crate) struct KFnOutline {
     pub(crate) location: Location,
 }
 
-impl Default for KFnOutline {
-    fn default() -> Self {
-        KFnOutline {
-            name: Default::default(),
-            vis_opt: Default::default(),
-            param_tys: Default::default(),
-            result_ty: Default::default(),
-            location: Location::new(
-                TokenSource::Special("<KFnOutline::default>"),
-                Default::default(),
-            ),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
@@ -79,18 +62,4 @@ pub(crate) struct KFnData {
     pub(crate) label_sigs: KLabelSigArena,
     pub(crate) locals: KLocalArena,
     pub(crate) ty_env: KTyEnv,
-}
-
-impl KFnData {
-    pub(crate) fn iter(fns: &[KFnData]) -> impl Iterator<Item = (KFn, &KFnData)> {
-        fns.iter()
-            .enumerate()
-            .map(|(i, fn_data)| (KFn::new(i), fn_data))
-    }
-
-    pub(crate) fn iter_mut(fns: &mut [KFnData]) -> impl Iterator<Item = (KFn, &mut KFnData)> {
-        fns.iter_mut()
-            .enumerate()
-            .map(|(i, fn_data)| (KFn::new(i), fn_data))
-    }
 }

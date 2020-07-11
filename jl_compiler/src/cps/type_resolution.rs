@@ -682,7 +682,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
         swap(&mut tx.locals, &mut extern_fn_data.locals);
     }
 
-    for (k_fn, fn_data) in KFnData::iter_mut(&mut root.fns) {
+    for (k_fn, fn_data) in root.fns.enumerate_mut() {
         swap(&mut tx.locals, &mut fn_data.locals);
 
         prepare_fn(k_fn, fn_data, tx);
@@ -691,7 +691,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     }
 
     // 項の型を解決する。
-    for (k_fn, fn_data) in KFnData::iter_mut(&mut root.fns) {
+    for (k_fn, fn_data) in root.fns.enumerate_mut() {
         tx.return_ty_opt = Some(k_fn.return_ty(&outlines.fns));
         swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);

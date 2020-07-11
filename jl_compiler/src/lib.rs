@@ -72,7 +72,7 @@ mod cps {
         KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnTag,
     };
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
-    pub(crate) use k_fn::{KFn, KFnData, KFnOutline};
+    pub(crate) use k_fn::{KFn, KFnArena, KFnData, KFnOutline, KFnTag};
     pub(crate) use k_label::{
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };

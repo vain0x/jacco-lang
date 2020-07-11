@@ -89,7 +89,7 @@ impl Debug for KTerm {
             KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.to_index()),
             KTerm::Fn(k_fn) => {
                 // FIXME: name
-                write!(f, "fn#{}", k_fn.id())
+                write!(f, "fn#{}", k_fn.to_index())
             }
             KTerm::Label(label) => {
                 // FIXME: name
@@ -97,7 +97,7 @@ impl Debug for KTerm {
             }
             KTerm::Return(k_fn) => {
                 // FIXME: name
-                write!(f, "return#{}", k_fn.id())
+                write!(f, "return#{}", k_fn.to_index())
             }
             KTerm::ExternFn(extern_fn) => {
                 // FIXME: name

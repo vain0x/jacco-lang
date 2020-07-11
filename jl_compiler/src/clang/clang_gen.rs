@@ -105,7 +105,7 @@ fn unique_fn_name(k_fn: KFn, cx: &mut Cx) -> String {
     }
 
     do_unique_name(
-        k_fn.id(),
+        k_fn.to_index(),
         k_fn.name(&cx.outlines.fns),
         &mut cx.fn_ident_ids,
         &mut cx.ident_map,
@@ -749,7 +749,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
     }
 
     // 関数宣言
-    for (k_fn, fn_data) in KFnData::iter(&root.fns) {
+    for (k_fn, fn_data) in root.fns.enumerate() {
         let name = unique_fn_name(k_fn, cx);
         let params = fn_data
             .params
@@ -770,7 +770,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
         });
     }
 
-    for (k_fn, fn_data) in KFnData::iter(&root.fns) {
+    for (k_fn, fn_data) in root.fns.enumerate() {
         let params = fn_data.params.as_slice();
         let locals = &fn_data.locals;
         let labels = &fn_data.labels;

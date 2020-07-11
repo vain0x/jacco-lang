@@ -3,8 +3,9 @@
 use super::*;
 use crate::{
     cps::{
-        KConst, KConstTag, KEnum, KEnumTag, KExternFn, KExternFnTag, KField, KFieldTag, KLocal,
-        KLocalTag, KStaticVar, KStaticVarTag, KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
+        KConst, KConstTag, KEnum, KEnumTag, KExternFn, KExternFnTag, KField, KFieldTag, KFn,
+        KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag, KStruct, KStructTag, KSymbol, KTy,
+        KVariant, KVis,
     },
     logs::Logger,
     utils::VecArena,
@@ -47,6 +48,8 @@ pub(crate) struct NStaticVarData {
     pub(crate) ty: KTy,
     pub(crate) location: Location,
 }
+
+pub(crate) type NFnArena = VecArena<KFnTag, NFnData>;
 
 pub(crate) struct NFnData {
     pub(crate) name: String,
@@ -99,7 +102,7 @@ pub(crate) struct NFieldData {
 pub(crate) struct NameResolution {
     pub(crate) consts: NConstArena,
     pub(crate) static_vars: NStaticVarArena,
-    pub(crate) fns: Vec<NFnData>,
+    pub(crate) fns: NFnArena,
     pub(crate) extern_fns: NExternFnArena,
     pub(crate) enums: NEnumArena,
     pub(crate) structs: NStructArena,
@@ -112,7 +115,7 @@ pub(crate) enum NName {
     LocalVar(KLocal),
     Const(KConst),
     StaticVar(KStaticVar),
-    Fn(usize),
+    Fn(KFn),
     ExternFn(KExternFn),
     Enum(KEnum),
     Struct(KStruct),
@@ -164,7 +167,7 @@ struct Nx {
     local_env: HashMap<String, NName>,
     // global_env: HashMap<String, NName>,
     parent_loop: Option<usize>,
-    parent_fn: Option<usize>,
+    parent_fn: Option<KFn>,
     parent_local_vars: NLocalVarArena,
     parent_loops: Vec<NLoopData>,
     res: NameResolution,
@@ -219,9 +222,9 @@ impl Nx {
         self.parent_loop = parent_loop;
     }
 
-    fn enter_fn(&mut self, fn_id: usize, do_resolve: impl FnOnce(&mut Nx)) {
+    fn enter_fn(&mut self, k_fn: KFn, do_resolve: impl FnOnce(&mut Nx)) {
         let parent_loop = take(&mut self.parent_loop);
-        let parent_fn = replace(&mut self.parent_fn, Some(fn_id));
+        let parent_fn = replace(&mut self.parent_fn, Some(k_fn));
         let parent_local_vars = take(&mut self.parent_local_vars);
         let parent_loops = take(&mut self.parent_loops);
 
@@ -232,7 +235,7 @@ impl Nx {
         let local_vars = replace(&mut self.parent_local_vars, parent_local_vars);
         let loops = replace(&mut self.parent_loops, parent_loops);
 
-        let mut fn_data = &mut self.res.fns[fn_id];
+        let mut fn_data = &mut self.res.fns[k_fn];
         fn_data.local_vars = local_vars;
         fn_data.loops = loops;
     }
@@ -452,7 +455,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
 
-            *fn_id_opt = nx.parent_fn;
+            *fn_id_opt = nx.parent_fn.map(KFn::to_index);
             if fn_id_opt.is_none() {
                 nx.logger
                     .error(keyword.location(nx.tokens()), "return out of function");
@@ -625,9 +628,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 let location = keyword.location(nx.tokens());
 
                 // alloc fn
-                let fn_id = nx.res.fns.len();
-                *fn_id_opt = Some(fn_id);
-                nx.res.fns.push(NFnData {
+                let k_fn = nx.res.fns.alloc(NFnData {
                     name: Default::default(),
                     vis_opt: Default::default(),
                     params: Default::default(),
@@ -636,11 +637,12 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     local_vars: Default::default(),
                     loops: Default::default(),
                 });
+                *fn_id_opt = Some(k_fn.to_index());
 
                 if let Some(name) = name_opt {
-                    resolve_name_def(name, NName::Fn(fn_id), nx);
+                    resolve_name_def(name, NName::Fn(k_fn), nx);
 
-                    nx.res.fns[fn_id].name = name.text(nx.tokens()).to_string();
+                    nx.res.fns[k_fn].name = name.text(nx.tokens()).to_string();
                 }
             }
             PDecl::ExternFn(PExternFnDecl {
@@ -816,13 +818,13 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             fn_id_opt,
             ..
         }) => {
-            let fn_id = fn_id_opt.unwrap();
+            let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let vis_opt = vis_opt.as_ref().map(|(vis, _)| *vis);
             let mut params = vec![];
             let mut result_ty = KTy::Unresolved;
 
-            nx.enter_fn(fn_id, |nx| {
+            nx.enter_fn(k_fn, |nx| {
                 nx.enter_scope(|nx| {
                     resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
@@ -832,7 +834,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 });
             });
 
-            let fn_data = &mut nx.res.fns[fn_id];
+            let fn_data = &mut nx.res.fns[k_fn];
             fn_data.vis_opt = vis_opt;
             fn_data.params = params;
             fn_data.result_ty = result_ty;

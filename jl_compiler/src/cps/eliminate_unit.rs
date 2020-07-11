@@ -64,7 +64,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
         fn_outline.param_tys.retain(|ty| !ty.is_unit());
     }
 
-    for fn_data in &mut k_root.fns {
+    for fn_data in k_root.fns.iter_mut() {
         swap(&mut ex.ty_env, &mut fn_data.ty_env);
         swap(&mut ex.locals, &mut fn_data.locals);
 
