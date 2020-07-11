@@ -509,33 +509,27 @@ fn gen_record_variant(
     };
     let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
 
-    let fields = fields
-        .into_iter()
-        .map(|field| {
-            let k_field = KField::new(field.field_id_opt.unwrap());
-            let (name, location) = (
-                field.name.text(&gx.tokens).to_string(),
-                field.name.location(),
-            );
-            let field_ty = match &field.ty_opt {
-                Some(ty) => gen_ty(ty, gx),
-                None => KTy::Unresolved,
-            };
-            gx.outlines.fields[k_field.id()] = KFieldOutline {
-                name,
-                ty: field_ty,
-                location,
-            };
+    let mut k_fields = Vec::with_capacity(fields.len());
+    for p_field in fields {
+        let k_field = KField::new(p_field.field_id_opt.unwrap());
+        k_fields.push(k_field);
 
-            k_field
-        })
-        .collect();
+        let name = p_field.name.text(&gx.tokens).to_string();
+        assert_eq!(&name, k_field.name(&gx.outlines.fields));
+
+        let field_ty = match &p_field.ty_opt {
+            Some(ty) => gen_ty(ty, gx),
+            None => KTy::Unresolved,
+        };
+        gx.outlines.fields[k_field.id()].ty = field_ty;
+    }
+
     let parent_opt = parent_enum_opt.map(KStructParent::new);
 
     gx.outlines.structs[k_struct.id()] = KStructOutline {
         name,
         parent_opt,
-        fields,
+        fields: k_fields,
         location,
     };
     k_struct
@@ -1536,7 +1530,18 @@ pub(crate) fn cps_conversion(
 
         let struct_count = name_resolution.structs.len();
 
-        let field_count = name_resolution.fields.len();
+        let k_fields = name_resolution
+            .fields
+            .iter()
+            .map(|n_field_data| KFieldOutline {
+                name: n_field_data.name.to_string(),
+                ty: {
+                    // FIXME: 型は注釈と名前解決の結果から計算できるので、このタイミングで確定できるはず
+                    KTy::Unresolved
+                },
+                location: n_field_data.location,
+            })
+            .collect();
 
         let mut gx = Gx::new(logger.clone());
         gx.tokens = Rc::new(p_root.tokens.clone());
@@ -1564,9 +1569,7 @@ pub(crate) fn cps_conversion(
             .structs
             .resize_with(struct_count, Default::default);
 
-        gx.outlines
-            .fields
-            .resize_with(field_count, Default::default);
+        gx.outlines.fields = k_fields;
 
         gen_root(p_root, &mut gx);
 

@@ -41,16 +41,23 @@ pub(crate) type NStruct = VecArenaId<NStructTag>;
 
 pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
 
-pub(crate) struct NStructData;
+#[allow(unused)]
+pub(crate) struct NStructData {
+    pub(crate) name: String,
+    pub(crate) fields: Vec<NField>,
+    pub(crate) location: Location,
+}
 
 pub(crate) struct NFieldTag;
 
-#[allow(unused)]
 pub(crate) type NField = VecArenaId<NFieldTag>;
 
 pub(crate) type NFieldArena = VecArena<NFieldTag, NFieldData>;
 
-pub(crate) struct NFieldData;
+pub(crate) struct NFieldData {
+    pub(crate) name: String,
+    pub(crate) location: Location,
+}
 
 /// 名前解決の結果。
 #[derive(Default)]
@@ -481,19 +488,31 @@ fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
+            let mut n_fields = Vec::with_capacity(fields.len());
+
             // alloc struct
-            let n_struct = nx.res.structs.alloc(NStructData);
+            let n_struct = nx.res.structs.alloc(NStructData {
+                name: name.text(nx.tokens()).to_string(),
+                fields: vec![],
+                location: name.location(),
+            });
 
             resolve_qualified_name_def(name, parent_name_opt, NName::Struct(n_struct), nx);
 
             for field in fields {
                 // alloc field
-                let n_field = nx.res.fields.alloc(NFieldData);
+                let n_field = nx.res.fields.alloc(NFieldData {
+                    name: field.name.text(nx.tokens()).to_string(),
+                    location: name.location(),
+                });
                 field.field_id_opt = Some(n_field.to_index());
+                n_fields.push(n_field);
 
                 // resolve_name_def(&mut field.name, PNameKind::Field, nx);
                 resolve_ty_opt(field.ty_opt.as_mut(), nx);
             }
+
+            nx.res.structs[n_struct].fields = n_fields;
         }
     }
 }
