@@ -472,9 +472,7 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
         }
     }
 
-    let data = &mut gx.outlines.consts[k_const];
-    data.value_ty = KTy::Usize;
-    data.value_opt = Some(KConstValue::Usize(*value_slot));
+    k_const.of_mut(&mut gx.outlines.consts).value_opt = Some(KConstValue::Usize(*value_slot));
 
     k_const
 }
