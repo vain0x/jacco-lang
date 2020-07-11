@@ -8,7 +8,7 @@ use crate::{
         KVariant, KVis,
     },
     logs::Logger,
-    utils::VecArena,
+    utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
 use log::trace;
@@ -18,6 +18,12 @@ use std::{
     mem::{replace, take},
     rc::Rc,
 };
+
+pub(crate) struct NLoopTag;
+
+pub(crate) type NLoop = VecArenaId<NLoopTag>;
+
+pub(crate) type NLoopArena = VecArena<NLoopTag, NLoopData>;
 
 #[derive(Clone)]
 pub(crate) struct NLoopData {
@@ -59,7 +65,7 @@ pub(crate) struct NFnData {
     pub(crate) location: Location,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: NLocalVarArena,
-    pub(crate) loops: Vec<NLoopData>,
+    pub(crate) loops: NLoopArena,
 }
 
 pub(crate) type NExternFnArena = VecArena<KExternFnTag, NExternFnData>;
@@ -166,10 +172,10 @@ struct Nx {
     tokens: Rc<PTokens>,
     local_env: HashMap<String, NName>,
     // global_env: HashMap<String, NName>,
-    parent_loop: Option<usize>,
+    parent_loop: Option<NLoop>,
     parent_fn: Option<KFn>,
     parent_local_vars: NLocalVarArena,
-    parent_loops: Vec<NLoopData>,
+    parent_loops: NLoopArena,
     res: NameResolution,
     logger: Logger,
 }
@@ -211,13 +217,12 @@ impl Nx {
         self.local_env = parent_env;
     }
 
-    fn enter_loop(&mut self, location: Location, do_resolve: impl FnOnce(&mut Nx, usize)) {
-        let loop_id = self.parent_loops.len();
-        self.parent_loops.push(NLoopData { location });
+    fn enter_loop(&mut self, location: Location, do_resolve: impl FnOnce(&mut Nx, NLoop)) {
+        let n_loop = self.parent_loops.alloc(NLoopData { location });
 
-        let parent_loop = replace(&mut self.parent_loop, Some(loop_id));
+        let parent_loop = replace(&mut self.parent_loop, Some(n_loop));
 
-        do_resolve(self, loop_id);
+        do_resolve(self, n_loop);
 
         self.parent_loop = parent_loop;
     }
@@ -432,7 +437,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
 
-            *loop_id_opt = nx.parent_loop;
+            *loop_id_opt = nx.parent_loop.map(NLoop::to_index);
             if loop_id_opt.is_none() {
                 nx.logger
                     .error(keyword.location(nx.tokens()), "break out of loop");
@@ -442,7 +447,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             keyword,
             loop_id_opt,
         }) => {
-            *loop_id_opt = nx.parent_loop;
+            *loop_id_opt = nx.parent_loop.map(NLoop::to_index);
             if loop_id_opt.is_none() {
                 nx.logger
                     .error(keyword.location(nx.tokens()), "continue out of loop");
@@ -492,8 +497,8 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
 
-            nx.enter_loop(location, |nx, loop_id| {
-                *loop_id_opt = Some(loop_id);
+            nx.enter_loop(location, |nx, n_loop| {
+                *loop_id_opt = Some(n_loop.to_index());
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
         }
@@ -505,8 +510,8 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             let location = keyword.location(nx.tokens());
 
-            nx.enter_loop(location, |nx, loop_id| {
-                *loop_id_opt = Some(loop_id);
+            nx.enter_loop(location, |nx, n_loop| {
+                *loop_id_opt = Some(n_loop.to_index());
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
         }

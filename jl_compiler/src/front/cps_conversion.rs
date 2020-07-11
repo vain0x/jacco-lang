@@ -1,6 +1,9 @@
 //! 構文木から CPS ノードのもとになる命令列を生成する処理
 
-use super::{name_resolution::NLoopData, NName};
+use super::{
+    name_resolution::{NLoop, NLoopArena, NLoopTag},
+    NName,
+};
 use crate::cps::*;
 use crate::parse::*;
 use crate::{
@@ -29,10 +32,10 @@ struct Gx {
     outlines: KOutlines,
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
-    current_loops: Vec<KLoopData>,
+    current_loops: VecArena<NLoopTag, KLoopData>,
     current_labels: KLabelArena,
     fns: KFnArena,
-    fn_loops: VecArena<KFnTag, Vec<NLoopData>>,
+    fn_loops: VecArena<KFnTag, NLoopArena>,
     extern_fns: KExternFnArena,
     logger: Logger,
 }
@@ -850,8 +853,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
+            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
 
-            let label = gx.current_loops[loop_id_opt.unwrap()].break_label;
+            let label = gx.current_loops[n_loop].break_label;
             let arg = match arg_opt {
                 Some(arg) => gen_expr(&arg, gx),
                 None => new_unit_term(location),
@@ -865,8 +869,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
+            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
 
-            let label = gx.current_loops[loop_id_opt.unwrap()].continue_label;
+            let label = gx.current_loops[n_loop].continue_label;
             gx.push_jump_with_cont(label, vec![]);
 
             new_never_term(location)
@@ -992,12 +997,13 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
+            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
             let result = gx.fresh_symbol("while_result", location);
             let unit_term = new_unit_term(location);
             let KLoopData {
                 break_label: next_label,
                 continue_label,
-            } = gx.current_loops[loop_id_opt.unwrap()].clone();
+            } = gx.current_loops[n_loop].clone();
 
             gx.push_jump(continue_label, vec![]);
 
@@ -1033,11 +1039,12 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
+            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
             let result = gx.fresh_symbol("loop_result", location);
             let KLoopData {
                 break_label: next_label,
                 continue_label,
-            } = gx.current_loops[loop_id_opt.unwrap()].clone();
+            } = gx.current_loops[n_loop].clone();
 
             gx.push_jump(continue_label.clone(), vec![]);
 
@@ -1144,18 +1151,20 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 let parent_labels = take(&mut gx.current_labels);
                 let parent_loops = take(&mut gx.current_loops);
 
-                gx.current_loops = take(&mut gx.fn_loops[k_fn])
-                    .into_iter()
-                    .map(|loop_data| {
-                        let location = loop_data.location;
-                        let continue_label = gx.fresh_label("continue_", location);
-                        let break_label = gx.fresh_label("next", location);
-                        KLoopData {
-                            break_label,
-                            continue_label,
-                        }
-                    })
-                    .collect();
+                gx.current_loops = VecArena::from_vec(
+                    take(&mut gx.fn_loops[k_fn])
+                        .iter()
+                        .map(|loop_data| {
+                            let location = loop_data.location;
+                            let continue_label = gx.fresh_label("continue_", location);
+                            let break_label = gx.fresh_label("next", location);
+                            KLoopData {
+                                break_label,
+                                continue_label,
+                            }
+                        })
+                        .collect(),
+                );
 
                 let result = gen_block(block_opt.as_ref().unwrap(), gx);
                 gx.push(KCommand::Node {
