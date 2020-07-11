@@ -11,7 +11,7 @@ struct Tx<'a> {
     // 現在の関数に含まれるローカル変数の情報
     locals: KLocalArena,
     // 現在の関数に含まれるラベルのシグネチャ情報
-    label_sigs: Vec<KLabelSig>,
+    label_sigs: KLabelSigArena,
     // 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
     outlines: &'a KOutlines,
@@ -216,7 +216,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Const(k_const) => k_const.ty(&tx.outlines.consts),
         KTerm::StaticVar(static_var) => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines.fns),
-        KTerm::Label(label) => tx.label_sigs[label.id()].ty(),
+        KTerm::Label(label) => label.ty(&tx.label_sigs),
         KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines.extern_fns),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
@@ -623,7 +623,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     // いまから生成するところなので空のはず。
     assert!(fn_data.label_sigs.is_empty());
 
-    for label_data in &mut fn_data.labels {
+    for label_data in fn_data.labels.iter_mut() {
         for param in &mut label_data.params {
             resolve_symbol_def(param, None, tx);
         }
@@ -637,7 +637,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
                 .collect();
             KLabelSig::new(name, param_tys)
         };
-        fn_data.label_sigs.push(label_sig);
+        fn_data.label_sigs.alloc(label_sig);
     }
 
     assert_eq!(fn_data.label_sigs.len(), fn_data.labels.len());
@@ -699,7 +699,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
 
         resolve_node(&mut fn_data.body, tx);
 
-        for label in &mut fn_data.labels {
+        for label in fn_data.labels.iter_mut() {
             resolve_node(&mut label.body, tx);
         }
 

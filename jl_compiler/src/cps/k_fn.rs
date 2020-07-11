@@ -1,4 +1,4 @@
-use super::{k_local::KLocalArena, KLabelData, KLabelSig, KNode, KSymbol, KTy, KTyEnv, KVis};
+use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KNode, KSymbol, KTy, KTyEnv, KVis};
 use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -75,8 +75,8 @@ impl Default for KFnOutline {
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
-    pub(crate) labels: Vec<KLabelData>,
-    pub(crate) label_sigs: Vec<KLabelSig>,
+    pub(crate) labels: KLabelArena,
+    pub(crate) label_sigs: KLabelSigArena,
     pub(crate) locals: KLocalArena,
     pub(crate) ty_env: KTyEnv,
 }

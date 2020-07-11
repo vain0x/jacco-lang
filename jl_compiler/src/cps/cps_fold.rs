@@ -6,7 +6,7 @@ use std::iter::repeat_with;
 /// Folding context.
 #[derive(Default)]
 struct Fx {
-    labels: Vec<KLabelData>,
+    labels: KLabelArena,
 }
 
 fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
@@ -36,7 +36,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
             KCommand::Label { label, params } => {
                 let body = do_fold(commands, fx);
 
-                let mut label_data = &mut fx.labels[label.id()];
+                let mut label_data = &mut fx.labels[label];
                 label_data.params = params;
                 label_data.body = body;
             }
@@ -46,10 +46,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
     KNode::default()
 }
 
-pub(crate) fn fold_block(
-    mut commands: Vec<KCommand>,
-    labels: Vec<KLabelData>,
-) -> (KNode, Vec<KLabelData>) {
+pub(crate) fn fold_block(mut commands: Vec<KCommand>, labels: KLabelArena) -> (KNode, KLabelArena) {
     let mut fx = Fx::default();
     fx.labels = labels;
 

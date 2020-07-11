@@ -1,21 +1,17 @@
 use super::{KNode, KSymbol, KTy};
+use crate::utils::{VecArena, VecArenaId};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KLabel {
-    id: usize,
-}
+pub(crate) struct KLabelTag;
+
+pub(crate) type KLabel = VecArenaId<KLabelTag>;
+
+pub(crate) type KLabelSigArena = VecArena<KLabelTag, KLabelSig>;
+
+pub(crate) type KLabelArena = VecArena<KLabelTag, KLabelData>;
 
 impl KLabel {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
-    }
-
-    pub(crate) fn id(self) -> usize {
-        self.id
-    }
-
-    pub(crate) fn ty(self, labels: &[KLabelSig]) -> KTy {
-        labels[self.id].ty()
+    pub(crate) fn ty(self, labels: &KLabelSigArena) -> KTy {
+        labels[self].ty()
     }
 }
 

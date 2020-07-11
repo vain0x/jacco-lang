@@ -20,8 +20,8 @@ struct Cx<'a> {
     struct_ident_ids: Vec<Option<usize>>,
     locals: KLocalArena,
     local_ident_ids: Vec<Option<usize>>,
-    label_raw_names: Vec<String>,
-    label_param_lists: Vec<Vec<KSymbol>>,
+    label_raw_names: VecArena<KLabelTag, String>,
+    label_param_lists: VecArena<KLabelTag, Vec<KSymbol>>,
     label_ident_ids: Vec<Option<usize>>,
     stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
@@ -146,8 +146,8 @@ fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
 
 fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
     do_unique_name(
-        label.id(),
-        &cx.label_raw_names[label.id()],
+        label.to_index(),
+        &cx.label_raw_names[label],
         &mut cx.label_ident_ids,
         &mut cx.ident_map,
     )
@@ -395,7 +395,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             ([KTerm::Label(label), args @ ..], []) => {
                 let name = unique_label_name(*label, cx);
-                let params = cx.label_param_lists[label.id()].to_owned();
+                let params = cx.label_param_lists[*label].to_owned();
 
                 for (param, arg) in params.into_iter().zip(args) {
                     let name = unique_name(&param, cx);
@@ -481,7 +481,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ([arg], [result], [cont]) => {
                 let k_enum = {
                     // FIXME: label_sigs
-                    let arg_ty = arg.ty(&cx.outlines, &[], &cx.locals);
+                    let arg_ty = arg.ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals);
                     ty_env.as_enum(&arg_ty).unwrap()
                 };
 
@@ -535,7 +535,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [cond, pats @ ..] => {
                 // FIXME: label_sigs
                 let is_tagged_union = ty_env
-                    .as_enum(&cond.ty(&cx.outlines, &[], &cx.locals))
+                    .as_enum(&cond.ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals))
                     .map_or(false, |k_enum| k_enum.is_tagged_union(&cx.outlines.enums));
 
                 let mut cond = gen_term(cond, cx);
@@ -773,7 +773,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
     for (k_fn, fn_data) in KFnData::iter(&root.fns) {
         let params = fn_data.params.as_slice();
         let locals = &fn_data.locals;
-        let labels = fn_data.labels.as_slice();
+        let labels = &fn_data.labels;
         let ty_env = &fn_data.ty_env;
 
         // FIXME: clone しない
@@ -782,31 +782,25 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let stmts = cx.enter_block(|cx| {
-            for id in 0..labels.len() {
-                let label = KLabel::new(id);
-                for i in 0..labels[label.id()].params.len() {
-                    let param = &labels[label.id()].params[i];
+            for label_data in labels.iter() {
+                for param in label_data.params.iter() {
                     emit_var_decl(param, None, &ty_env, cx);
                 }
             }
 
-            cx.label_raw_names.clear();
-            cx.label_raw_names
-                .extend(labels.iter().map(|label| label.name.to_string()));
-            cx.label_param_lists.clear();
-            cx.label_param_lists
-                .extend(labels.iter().map(|label| label.params.to_owned()));
+            cx.label_raw_names =
+                VecArena::from_iter(labels.iter().map(|label| label.name.to_string()));
+            cx.label_param_lists =
+                VecArena::from_iter(labels.iter().map(|label| label.params.to_owned()));
             cx.label_ident_ids.clear();
             cx.label_ident_ids.resize(labels.len(), None);
             gen_node(&fn_data.body, &ty_env, cx);
 
-            for id in 0..labels.len() {
-                let label = KLabel::new(id);
-
+            for (label, label_data) in labels.enumerate() {
                 let name = unique_label_name(label, cx);
                 cx.stmts.push(CStmt::Label { label: name });
 
-                let body = &labels[label.id()].body;
+                let body = &label_data.body;
                 gen_node(body, &ty_env, cx);
             }
         });

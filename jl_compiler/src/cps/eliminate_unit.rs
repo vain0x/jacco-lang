@@ -84,7 +84,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
         }
         on_node(&mut fn_data.body, &mut ex);
 
-        for label_data in &mut fn_data.labels {
+        for label_data in fn_data.labels.iter_mut() {
             // unit 型の引数は捨てる。
             label_data
                 .params

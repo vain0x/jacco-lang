@@ -27,7 +27,7 @@ impl KTerm {
     pub(crate) fn ty<'a>(
         &self,
         outlines: &KOutlines,
-        labels: &[KLabelSig],
+        labels: &KLabelSigArena,
         locals: &KLocalArena,
     ) -> KTy {
         match self {
@@ -93,7 +93,7 @@ impl Debug for KTerm {
             }
             KTerm::Label(label) => {
                 // FIXME: name
-                write!(f, "label#{}", label.id())
+                write!(f, "label#{}", label.to_index())
             }
             KTerm::Return(k_fn) => {
                 // FIXME: name

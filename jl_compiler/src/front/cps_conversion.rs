@@ -30,7 +30,7 @@ struct Gx {
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
     current_loops: Vec<KLoopData>,
-    current_labels: Vec<KLabelData>,
+    current_labels: KLabelArena,
     fns: Vec<KFnData>,
     fn_loops: Vec<Vec<NLoopData>>,
     extern_fns: Vec<KExternFnData>,
@@ -59,14 +59,11 @@ impl Gx {
     fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
         let name = hint.to_string();
 
-        let id = self.current_labels.len();
-        let label = KLabel::new(id);
-        self.current_labels.push(KLabelData {
+        self.current_labels.alloc(KLabelData {
             name,
             params: vec![],
             body: KNode::default(),
-        });
-        label
+        })
     }
 
     fn push(&mut self, command: KCommand) {
@@ -1284,7 +1281,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 body,
                 locals,
                 labels,
-                label_sigs: vec![],
+                label_sigs: Default::default(),
                 ty_env: Default::default(),
             };
         }

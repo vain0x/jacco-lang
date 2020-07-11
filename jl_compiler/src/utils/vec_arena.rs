@@ -154,8 +154,16 @@ impl<Tag, T> VecArena<Tag, T> {
         }
     }
 
+    pub(crate) fn from_iter(iter: impl IntoIterator<Item = T>) -> Self {
+        Self::from_vec(iter.into_iter().collect())
+    }
+
     pub(crate) const fn new() -> Self {
         Self::from_vec(vec![])
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
 
     pub(crate) fn len(&self) -> usize {
