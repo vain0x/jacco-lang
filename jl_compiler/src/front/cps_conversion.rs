@@ -330,73 +330,6 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
     }
 }
 
-fn gen_param(param: &PParam, gx: &mut Gx) -> KSymbol {
-    let ty = match &param.ty_opt {
-        Some(ty) => gen_ty(ty),
-        None => {
-            gx.logger.error(&param.name, "param type is mandatory");
-            KTy::Never
-        }
-    };
-
-    let symbol = gen_name(&param.name, gx).expect_symbol();
-
-    let old_ty = replace(&mut symbol.local.of_mut(&mut gx.current_locals).ty, ty);
-    assert!(old_ty.is_unresolved());
-
-    symbol
-}
-
-struct GenFnSigResult {
-    fn_name: String,
-    params: Vec<KSymbol>,
-    param_tys: Vec<KTy>,
-    result_ty: KTy,
-}
-
-fn gen_fn_sig(
-    n_name: NName,
-    name_opt: Option<&PName>,
-    param_list_opt: Option<&PParamList>,
-    result_ty_opt: Option<&PTy>,
-    gx: &mut Gx,
-) -> GenFnSigResult {
-    let fn_name = {
-        let name = name_opt.unwrap();
-
-        // assert
-        match (n_name, name.info_opt) {
-            (NName::Fn(expected), Some(NName::Fn(actual)))
-            | (NName::ExternFn(expected), Some(NName::ExternFn(actual))) => {
-                assert_eq!(expected, actual);
-            }
-            _ => unreachable!(),
-        }
-
-        name.token.text(&gx.tokens).to_string()
-    };
-    let params = param_list_opt
-        .unwrap()
-        .params
-        .iter()
-        .map(|param| gen_param(param, gx))
-        .collect::<Vec<_>>();
-    let param_tys = params
-        .iter()
-        .map(|param| param.ty(&gx.current_locals))
-        .collect();
-    let result_ty = match result_ty_opt {
-        Some(ty) => gen_ty(ty),
-        None => KTy::Unit,
-    };
-    GenFnSigResult {
-        fn_name,
-        params,
-        param_tys,
-        result_ty,
-    }
-}
-
 fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
     fn strip_suffix<'a>(s: &'a str, suffix: &'static str) -> Option<&'a str> {
         if s.ends_with(suffix) {
@@ -1199,11 +1132,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
         }
 
         PDecl::Fn(PFnDecl {
-            vis_opt,
             keyword,
-            name_opt,
-            param_list_opt,
-            result_ty_opt,
             block_opt,
             fn_id_opt,
             ..
@@ -1211,25 +1140,10 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let location = keyword.location(&gx.tokens);
             let k_fn = KFn::new(fn_id_opt.unwrap());
 
-            let vis_opt = vis_opt.as_ref().map(|(vis, _)| *vis);
-
             let parent_local_vars = {
                 let local_vars = take(&mut gx.fns[k_fn.id()].locals);
                 replace(&mut gx.current_locals, local_vars)
             };
-
-            let GenFnSigResult {
-                fn_name,
-                params,
-                param_tys,
-                result_ty,
-            } = gen_fn_sig(
-                NName::Fn(k_fn.id()),
-                name_opt.as_ref(),
-                param_list_opt.as_ref(),
-                result_ty_opt.as_ref(),
-                gx,
-            );
 
             let (commands, labels) = {
                 let parent_commands = take(&mut gx.current_commands);
@@ -1269,64 +1183,12 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             let locals = replace(&mut gx.current_locals, parent_local_vars);
 
-            gx.outlines.fns[k_fn.id()] = KFnOutline {
-                name: fn_name,
-                vis_opt,
-                param_tys,
-                result_ty,
-                location,
-            };
-            gx.fns[k_fn.id()] = KFnData {
-                params,
-                body,
-                locals,
-                labels,
-                label_sigs: Default::default(),
-                ty_env: Default::default(),
-            };
+            let mut data = &mut gx.fns[k_fn.id()];
+            data.body = body;
+            data.locals = locals;
+            data.labels = labels;
         }
-        PDecl::ExternFn(PExternFnDecl {
-            extern_keyword,
-            fn_keyword,
-            name_opt,
-            param_list_opt,
-            result_ty_opt,
-            extern_fn_id_opt,
-            ..
-        }) => {
-            let extern_fn = KExternFn::new(extern_fn_id_opt.unwrap());
-
-            let parent_local_vars = {
-                let local_vars = take(&mut gx.extern_fns[extern_fn.id()].locals);
-                replace(&mut gx.current_locals, local_vars)
-            };
-
-            let location = extern_keyword
-                .location(&gx.tokens)
-                .unite(fn_keyword.location(&gx.tokens));
-            let GenFnSigResult {
-                fn_name,
-                params,
-                param_tys,
-                result_ty,
-            } = gen_fn_sig(
-                NName::ExternFn(extern_fn.id()),
-                name_opt.as_ref(),
-                param_list_opt.as_ref(),
-                result_ty_opt.as_ref(),
-                gx,
-            );
-
-            let locals = replace(&mut gx.current_locals, parent_local_vars);
-
-            gx.outlines.extern_fns[extern_fn.id()] = KExternFnOutline {
-                name: fn_name,
-                param_tys,
-                result_ty,
-                location,
-            };
-            gx.extern_fns[extern_fn.id()] = KExternFnData { params, locals };
-        }
+        PDecl::ExternFn(_) => {}
         PDecl::Enum(PEnumDecl {
             name_opt, variants, ..
         }) => {
@@ -1415,21 +1277,35 @@ pub(crate) fn cps_conversion(
 
         // 関数の ID, 名前ID の対応表を構築する。
         let n_fns = &name_resolution.fns;
-        let fn_count = n_fns.len();
         let fn_loops = n_fns
             .iter()
             .map(|fn_data| fn_data.loops.clone())
             .collect::<Vec<_>>();
+        let fn_outlines = n_fns
+            .iter()
+            .map(|data| KFnOutline {
+                name: data.name.to_string(),
+                vis_opt: data.vis_opt,
+                param_tys: data
+                    .params
+                    .iter()
+                    .map(|symbol| symbol.local.of(&data.local_vars).ty.clone())
+                    .collect(),
+                result_ty: data.result_ty.clone(),
+                location: data.location,
+            })
+            .collect();
         let fns = n_fns
             .iter()
             .map(|fn_data| KFnData {
+                params: fn_data.params.clone(),
                 locals: KLocalArena::from_vec(
                     fn_data
                         .local_vars
                         .iter()
                         .map(|n_local_var_data| KLocalData {
                             name: n_local_var_data.name.to_string(),
-                            ty: KTy::Unresolved,
+                            ty: n_local_var_data.ty.clone(),
                             location: n_local_var_data.location,
                             is_alive: true,
                         })
@@ -1441,23 +1317,35 @@ pub(crate) fn cps_conversion(
 
         // 外部関数の ID, 名前ID の対応表を構築する。
         let n_extern_fns = &name_resolution.extern_fns;
-        let extern_fn_count = n_extern_fns.len();
+        let extern_fn_outlines = n_extern_fns
+            .iter()
+            .map(|data| KExternFnOutline {
+                name: data.name.to_string(),
+                param_tys: data
+                    .params
+                    .iter()
+                    .map(|symbol| symbol.local.of(&data.local_vars).ty.clone())
+                    .collect(),
+                result_ty: data.result_ty.clone(),
+                location: data.location,
+            })
+            .collect();
         let k_extern_fns = n_extern_fns
             .iter()
             .map(|extern_fn_data| KExternFnData {
+                params: extern_fn_data.params.clone(),
                 locals: KLocalArena::from_vec(
                     extern_fn_data
                         .local_vars
                         .iter()
                         .map(|n_local_var_data| KLocalData {
                             name: n_local_var_data.name.to_string(),
-                            ty: KTy::Unresolved,
+                            ty: n_local_var_data.ty.clone(),
                             location: n_local_var_data.location,
                             is_alive: true,
                         })
                         .collect(),
                 ),
-                ..KExternFnData::default()
             })
             .collect();
 
@@ -1505,12 +1393,10 @@ pub(crate) fn cps_conversion(
 
         gx.fns = fns;
         gx.fn_loops = fn_loops;
-        gx.outlines.fns.resize_with(fn_count, Default::default);
+        gx.outlines.fns = fn_outlines;
 
         gx.extern_fns = k_extern_fns;
-        gx.outlines
-            .extern_fns
-            .resize_with(extern_fn_count, Default::default);
+        gx.outlines.extern_fns = extern_fn_outlines;
 
         gx.outlines.enums = VecArena::from_vec(k_enums);
 

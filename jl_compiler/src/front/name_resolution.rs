@@ -4,7 +4,7 @@ use super::*;
 use crate::{
     cps::{
         KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KLocal, KLocalTag, KStaticVar,
-        KStaticVarTag, KStruct, KStructTag, KTy, KVariant,
+        KStaticVarTag, KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
     logs::Logger,
     utils::VecArena,
@@ -25,6 +25,7 @@ pub(crate) struct NLoopData {
 
 pub(crate) struct NLocalVarData {
     pub(crate) name: String,
+    pub(crate) ty: KTy,
     pub(crate) location: Location,
 }
 
@@ -48,12 +49,21 @@ pub(crate) struct NStaticVarData {
 }
 
 pub(crate) struct NFnData {
+    pub(crate) name: String,
+    pub(crate) vis_opt: Option<KVis>,
+    pub(crate) params: Vec<KSymbol>,
+    pub(crate) result_ty: KTy,
+    pub(crate) location: Location,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: NLocalVarArena,
     pub(crate) loops: Vec<NLoopData>,
 }
 
 pub(crate) struct NExternFnData {
+    pub(crate) name: String,
+    pub(crate) params: Vec<KSymbol>,
+    pub(crate) result_ty: KTy,
+    pub(crate) location: Location,
     pub(crate) local_vars: NLocalVarArena,
 }
 
@@ -293,14 +303,16 @@ fn resolve_qualified_name_def(
     }
 }
 
-fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
+fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) -> KLocal {
     // alloc local
     let local_var = nx.parent_local_vars.alloc(NLocalVarData {
         name: name.text(nx.tokens()).to_string(),
+        ty: KTy::Unresolved,
         location: name.location(),
     });
 
     resolve_name_def(name, NName::LocalVar(local_var), nx);
+    local_var
 }
 
 fn resolve_ty_name(name: &mut PName, nx: &mut Nx) {
@@ -337,7 +349,9 @@ fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
             Some(NName::Const(_)) => {
                 resolve_name_use(name, nx);
             }
-            _ => resolve_local_var_def(name, nx),
+            _ => {
+                resolve_local_var_def(name, nx);
+            }
         },
         PPat::Record(PRecordPat { name, .. }) => resolve_name_use(name, nx),
     }
@@ -494,13 +508,31 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     }
 }
 
-fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) {
+fn resolve_param_list_opt(
+    param_list_opt: Option<&mut PParamList>,
+    k_params: &mut Vec<KSymbol>,
+    nx: &mut Nx,
+) {
     let params = param_list_opt
         .into_iter()
         .flat_map(|param_list| param_list.params.iter_mut());
     for param in params {
-        resolve_local_var_def(&mut param.name, nx);
+        let local = resolve_local_var_def(&mut param.name, nx);
         resolve_ty_opt(param.ty_opt.as_mut(), nx);
+
+        let ty = match &param.ty_opt {
+            Some(ty) => gen_ty(ty),
+            None => {
+                nx.logger.error(&param.name, "param type is mandatory");
+                KTy::Unresolved
+            }
+        };
+        nx.parent_local_vars[local].ty = ty;
+
+        k_params.push(KSymbol {
+            local,
+            location: param.name.location(),
+        });
     }
 }
 
@@ -583,36 +615,58 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
     for decl in decls.iter_mut() {
         match decl {
             PDecl::Fn(PFnDecl {
+                keyword,
                 name_opt,
                 fn_id_opt,
                 ..
             }) => {
+                let location = keyword.location(nx.tokens());
+
                 // alloc fn
                 let fn_id = nx.res.fns.len();
                 *fn_id_opt = Some(fn_id);
                 nx.res.fns.push(NFnData {
+                    name: Default::default(),
+                    vis_opt: Default::default(),
+                    params: Default::default(),
+                    result_ty: Default::default(),
+                    location,
                     local_vars: Default::default(),
-                    loops: vec![],
+                    loops: Default::default(),
                 });
 
                 if let Some(name) = name_opt {
                     resolve_name_def(name, NName::Fn(fn_id), nx);
+
+                    nx.res.fns[fn_id].name = name.text(nx.tokens()).to_string();
                 }
             }
             PDecl::ExternFn(PExternFnDecl {
+                extern_keyword,
+                fn_keyword,
                 name_opt,
                 extern_fn_id_opt,
                 ..
             }) => {
+                let location = extern_keyword
+                    .location(nx.tokens())
+                    .unite(fn_keyword.location(nx.tokens()));
+
                 // alloc extern fn
                 let extern_fn_id = nx.res.extern_fns.len();
                 *extern_fn_id_opt = Some(extern_fn_id);
                 nx.res.extern_fns.push(NExternFnData {
+                    name: Default::default(),
+                    params: Default::default(),
+                    result_ty: Default::default(),
+                    location,
                     local_vars: Default::default(),
                 });
 
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, NName::ExternFn(extern_fn_id), nx);
+
+                    nx.res.extern_fns[extern_fn_id].name = name.text(nx.tokens()).to_string();
                 }
             }
             PDecl::Enum(PEnumDecl {
@@ -754,6 +808,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             n_static_var.of_mut(&mut nx.res.static_vars).ty = ty;
         }
         PDecl::Fn(PFnDecl {
+            vis_opt,
             param_list_opt,
             result_ty_opt,
             block_opt,
@@ -762,13 +817,24 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
         }) => {
             let fn_id = fn_id_opt.unwrap();
 
+            let vis_opt = vis_opt.as_ref().map(|(vis, _)| *vis);
+            let mut params = vec![];
+            let mut result_ty = KTy::Unresolved;
+
             nx.enter_fn(fn_id, |nx| {
                 nx.enter_scope(|nx| {
-                    resolve_param_list_opt(param_list_opt.as_mut(), nx);
+                    resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
+                    result_ty = result_ty_opt.as_ref().map_or(KTy::Unit, gen_ty);
+
                     resolve_block_opt(block_opt.as_mut(), nx);
                 });
             });
+
+            let fn_data = &mut nx.res.fns[fn_id];
+            fn_data.vis_opt = vis_opt;
+            fn_data.params = params;
+            fn_data.result_ty = result_ty;
         }
         PDecl::ExternFn(PExternFnDecl {
             param_list_opt,
@@ -777,15 +843,22 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             ..
         }) => {
             let parent_local_vars = take(&mut nx.parent_local_vars);
+            let mut params = vec![];
+            let mut result_ty = KTy::Unresolved;
 
             nx.enter_scope(|nx| {
-                resolve_param_list_opt(param_list_opt.as_mut(), nx);
+                resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);
                 resolve_ty_opt(result_ty_opt.as_mut(), nx);
+
+                result_ty = result_ty_opt.as_ref().map_or(KTy::Unit, gen_ty);
             });
 
             let local_vars = replace(&mut nx.parent_local_vars, parent_local_vars);
 
-            nx.res.extern_fns[extern_fn_id_opt.unwrap()].local_vars = local_vars;
+            let mut extern_fn_data = &mut nx.res.extern_fns[extern_fn_id_opt.unwrap()];
+            extern_fn_data.params = params;
+            extern_fn_data.result_ty = result_ty;
+            extern_fn_data.local_vars = local_vars;
         }
         PDecl::Enum(PEnumDecl { variants, .. }) => {
             for variant in variants {
