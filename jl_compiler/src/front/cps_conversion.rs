@@ -500,7 +500,7 @@ fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
             Some(ty) => gen_ty(ty, gx),
             None => KTy::Unresolved,
         };
-        gx.outlines.fields[k_field.id()].ty = field_ty;
+        gx.outlines.fields[k_field].ty = field_ty;
     }
 
     k_struct
@@ -1513,17 +1513,12 @@ pub(crate) fn cps_conversion(
             .structs
             .iter()
             .map(|n_struct_data| {
-                let k_fields = n_struct_data
-                    .fields
-                    .iter()
-                    .map(|n_field| KField::new(n_field.to_index()))
-                    .collect();
                 let parent_opt = n_struct_data
                     .parent_enum_opt
                     .map(|enum_id| KStructParent::new(KEnum::new(enum_id)));
                 KStructOutline {
                     name: n_struct_data.name.to_string(),
-                    fields: k_fields,
+                    fields: n_struct_data.fields.clone(),
                     parent_opt,
                     location: n_struct_data.location,
                 }
@@ -1563,7 +1558,7 @@ pub(crate) fn cps_conversion(
 
         gx.outlines.structs = VecArena::from_vec(k_structs);
 
-        gx.outlines.fields = k_fields;
+        gx.outlines.fields = VecArena::from_vec(k_fields);
 
         gen_root(p_root, &mut gx);
 

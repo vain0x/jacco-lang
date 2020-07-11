@@ -1,36 +1,34 @@
 use super::KTy;
-use crate::token::{Location, TokenSource};
+use crate::{
+    front::NFieldTag,
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
+/// `foo.field` の `.field` のような形で出現している、
+/// 式の型に依存するいずれかの構造体のフィールドを表す。
+// NFieldTag と紛らわしい。
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
     pub(crate) location: Location,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KField {
-    id: usize,
-}
+pub(crate) type KField = VecArenaId<NFieldTag>;
+
+pub(crate) type KFieldArena = VecArena<NFieldTag, KFieldOutline>;
 
 impl KField {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
+    pub(crate) fn name(self, fields: &KFieldArena) -> &str {
+        &fields[self].name
     }
 
-    pub(crate) fn id(self) -> usize {
-        self.id
+    pub(crate) fn ty(self, fields: &KFieldArena) -> &KTy {
+        &fields[self].ty
     }
 
-    pub(crate) fn name(self, fields: &[KFieldOutline]) -> &str {
-        &fields[self.id].name
-    }
-
-    pub(crate) fn ty(self, fields: &[KFieldOutline]) -> &KTy {
-        &fields[self.id].ty
-    }
-
-    pub(crate) fn location(self, fields: &[KFieldOutline]) -> Location {
-        fields[self.id].location
+    pub(crate) fn location(self, fields: &KFieldArena) -> Location {
+        fields[self].location
     }
 }
 
@@ -39,17 +37,4 @@ pub(crate) struct KFieldOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) location: Location,
-}
-
-impl Default for KFieldOutline {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            ty: Default::default(),
-            location: Location::new(
-                TokenSource::Special("<KFieldOutline::default>"),
-                Default::default(),
-            ),
-        }
-    }
 }

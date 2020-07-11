@@ -1,4 +1,4 @@
-use super::{KField, KLocalData, KNode, KPrim, KRoot, KTerm, KTyEnv};
+use super::{KLocalData, KNode, KPrim, KRoot, KTerm, KTyEnv};
 use std::{collections::HashSet, mem::swap};
 
 #[derive(Default)]
@@ -42,11 +42,10 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
     let unit_fields = k_root
         .outlines
         .fields
-        .iter()
         .enumerate()
-        .filter_map(|(i, field_data)| {
+        .filter_map(|(k_field, field_data)| {
             if field_data.ty.is_unit() {
-                Some(KField::new(i))
+                Some(k_field)
             } else {
                 None
             }

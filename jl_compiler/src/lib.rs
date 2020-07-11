@@ -69,7 +69,7 @@ mod cps {
     pub(crate) use k_const::{KConst, KConstData, KConstValue};
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KVariant};
     pub(crate) use k_extern_fn::{KExternFn, KExternFnData, KExternFnOutline};
-    pub(crate) use k_field::{KField, KFieldOutline, KFieldTag};
+    pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
     pub(crate) use k_fn::{KFn, KFnData, KFnOutline};
     pub(crate) use k_label::{KLabel, KLabelData, KLabelSig};
     pub(crate) use k_local::{KLocal, KLocalData};
@@ -149,7 +149,7 @@ mod front {
 
     pub(crate) use cps_conversion::cps_conversion;
     pub(crate) use name_resolution::{
-        resolve_name, NConstTag, NName, NStaticVarTag, NStructTag, NameResolution,
+        resolve_name, NConstTag, NFieldTag, NName, NStaticVarTag, NStructTag, NameResolution,
     };
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;
