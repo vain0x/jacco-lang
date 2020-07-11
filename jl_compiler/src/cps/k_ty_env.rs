@@ -1,4 +1,4 @@
-use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStruct, KStructOutline, KTy};
+use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStruct, KStructArena, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -105,7 +105,7 @@ impl KTyEnv {
         &self,
         ty: &KTy,
         enums: &[KEnumOutline],
-        structs: &[KStructOutline],
+        structs: &KStructArena,
     ) -> String {
         match ty {
             KTy::Meta(meta_ty) => {

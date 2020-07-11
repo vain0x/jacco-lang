@@ -127,8 +127,8 @@ fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
     do_unique_name(
-        k_struct.id(),
-        &cx.outlines.structs[k_struct.id()].name,
+        k_struct.to_index(),
+        &cx.outlines.structs[k_struct].name,
         &mut cx.struct_ident_ids,
         &mut cx.ident_map,
     )
@@ -190,7 +190,7 @@ fn gen_invalid_constant_value() -> CExpr {
     CExpr::Other("/* invalid const */ 0")
 }
 
-fn gen_record_tag(k_struct: KStruct, structs: &[KStructOutline]) -> CExpr {
+fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
     // OK: タグ値は決定済みのはず
     let tag = k_struct.tag_value_opt(structs).unwrap();
     gen_constant_value(&tag)
@@ -663,7 +663,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
     cx.enum_ident_ids.resize(outlines.enums.len(), None);
     cx.struct_ident_ids.resize(outlines.structs.len(), None);
 
-    for (k_struct, struct_data) in KStructOutline::iter(&outlines.structs) {
+    for (k_struct, struct_data) in outlines.structs.enumerate() {
         let name = unique_struct_name(k_struct, cx);
         let fields = struct_data
             .fields

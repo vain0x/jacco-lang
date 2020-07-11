@@ -1,4 +1,4 @@
-use super::{k_const::KConstArena, KConst, KConstValue, KStruct, KStructOutline, KTy};
+use super::{k_const::KConstArena, k_struct::KStructArena, KConst, KConstValue, KStruct, KTy};
 use crate::token::{Location, TokenSource};
 
 #[derive(Copy, Clone, Debug)]
@@ -32,11 +32,7 @@ impl KVariant {
         }
     }
 
-    pub(crate) fn as_record_with_name(
-        self,
-        name: &str,
-        structs: &[KStructOutline],
-    ) -> Option<KStruct> {
+    pub(crate) fn as_record_with_name(self, name: &str, structs: &KStructArena) -> Option<KStruct> {
         self.as_record()
             .filter(|&k_struct| k_struct.name(structs) == name)
     }
@@ -152,7 +148,7 @@ impl KEnumOutline {
     pub(crate) fn determine_tags(
         consts: &mut KConstArena,
         enums: &mut [KEnumOutline],
-        structs: &mut [KStructOutline],
+        structs: &mut KStructArena,
     ) {
         for enum_data in enums {
             if !enum_data.repr.is_tagged_union() {
@@ -160,22 +156,18 @@ impl KEnumOutline {
                 continue;
             }
 
-            for (i, variant) in enum_data.variants.iter().enumerate() {
+            for (i, &variant) in enum_data.variants.iter().enumerate() {
                 let tag = KConstValue::Usize(i);
 
                 match variant {
                     KVariant::Const(k_const) => {
-                        let old_value = (*k_const).of_mut(consts).value_opt.replace(tag);
+                        let old_value = k_const.of_mut(consts).value_opt.replace(tag);
 
                         // 構造体バリアントを持つ enum の const バリアントへの値の指定は許可されていないため
                         assert_eq!(old_value, None);
                     }
                     KVariant::Record(k_struct) => {
-                        structs[k_struct.id()]
-                            .parent_opt
-                            .as_mut()
-                            .unwrap()
-                            .set_tag(tag);
+                        structs[k_struct].parent_opt.as_mut().unwrap().set_tag(tag);
                     }
                 }
             }

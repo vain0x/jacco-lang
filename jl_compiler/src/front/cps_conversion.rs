@@ -259,7 +259,7 @@ fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
         NName::C32 => KTy::C32,
         NName::Bool => KTy::Bool,
         NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
-        NName::Struct(n_struct) => KTy::Struct(KStruct::new(n_struct.to_index())),
+        NName::Struct(n_struct) => KTy::Struct(n_struct),
         _ => unreachable!("expected type name but {:?}", p_name),
     }
 }
@@ -303,13 +303,9 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
         }
         NName::Const(n_const) => KSymbolExt::Const(n_const),
         NName::StaticVar(n_static_var) => KSymbolExt::StaticVar(n_static_var),
-        NName::Struct(n_struct)
-            if KStruct::new(n_struct.to_index())
-                .fields(&gx.outlines.structs)
-                .is_empty() =>
-        {
+        NName::Struct(n_struct) if n_struct.fields(&gx.outlines.structs).is_empty() => {
             KSymbolExt::UnitLikeStruct {
-                k_struct: KStruct::new(n_struct.to_index()),
+                k_struct: n_struct,
                 location,
             }
         }
@@ -486,7 +482,7 @@ fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
     let PRecordVariantDecl { name, fields, .. } = decl;
 
     let k_struct = match name.info_opt {
-        Some(NName::Struct(n_struct)) => KStruct::new(n_struct.to_index()),
+        Some(NName::Struct(n_struct)) => n_struct,
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
     assert_eq!(name.text(&gx.tokens), k_struct.name(&gx.outlines.structs));
@@ -598,7 +594,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         }) => {
             let k_struct = match name.info_opt {
                 Some(NName::Const(_)) => todo!(),
-                Some(NName::Struct(n_struct)) => KStruct::new(n_struct.to_index()),
+                Some(NName::Struct(n_struct)) => n_struct,
                 n_name => unreachable!("{:?}", n_name),
             };
 
@@ -1051,12 +1047,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                         }
                     },
                     PPat::Record(PRecordPat { name, .. }) => {
-                        let k_struct = name
-                            .info_opt
-                            .unwrap()
-                            .as_struct()
-                            .map(|n_struct| KStruct::new(n_struct.to_index()))
-                            .unwrap();
+                        let k_struct = name.info_opt.unwrap().as_struct().unwrap();
                         KTerm::RecordTag(k_struct)
                     }
                 }))
@@ -1570,7 +1561,7 @@ pub(crate) fn cps_conversion(
 
         gx.outlines.enums.resize_with(enum_count, Default::default);
 
-        gx.outlines.structs = k_structs;
+        gx.outlines.structs = VecArena::from_vec(k_structs);
 
         gx.outlines.fields = k_fields;
 

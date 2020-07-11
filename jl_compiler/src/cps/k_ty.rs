@@ -149,7 +149,7 @@ impl Debug for KTy {
             }
             KTy::Struct(k_struct) => {
                 // FIXME: print name
-                write!(f, "struct {}", k_struct.id())
+                write!(f, "struct {}", k_struct.to_index())
             }
         }
     }

@@ -1,5 +1,5 @@
 use super::{
-    k_const::KConstArena, k_static_var::KStaticVarArena, k_struct::KStructOutline, KEnumOutline,
+    k_const::KConstArena, k_static_var::KStaticVarArena, k_struct::KStructArena, KEnumOutline,
     KExternFnOutline, KFieldOutline, KFnOutline,
 };
 
@@ -10,6 +10,6 @@ pub(crate) struct KOutlines {
     pub(crate) fns: Vec<KFnOutline>,
     pub(crate) extern_fns: Vec<KExternFnOutline>,
     pub(crate) enums: Vec<KEnumOutline>,
-    pub(crate) structs: Vec<KStructOutline>,
+    pub(crate) structs: KStructArena,
     pub(crate) fields: Vec<KFieldOutline>,
 }

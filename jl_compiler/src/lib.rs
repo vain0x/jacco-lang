@@ -80,7 +80,7 @@ mod cps {
     pub(crate) use k_prim::KPrim;
     pub(crate) use k_root::KRoot;
     pub(crate) use k_static_var::{KStaticVar, KStaticVarData};
-    pub(crate) use k_struct::{KStruct, KStructOutline, KStructParent};
+    pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;
     pub(crate) use k_ty::KTy;
@@ -149,7 +149,7 @@ mod front {
 
     pub(crate) use cps_conversion::cps_conversion;
     pub(crate) use name_resolution::{
-        resolve_name, NConstTag, NName, NStaticVarTag, NameResolution,
+        resolve_name, NConstTag, NName, NStaticVarTag, NStructTag, NameResolution,
     };
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;

@@ -62,11 +62,6 @@ impl<Tag> VecArenaId<Tag> {
         id_to_index(self.inner)
     }
 
-    // FIXME: to_index に差し替える
-    pub(crate) fn id(self) -> usize {
-        self.to_index()
-    }
-
     #[allow(unused)]
     pub(crate) const fn add_offset(self, offset: usize) -> VecArenaId<Tag> {
         Self::from_inner(id_add_offset(self.inner, offset))

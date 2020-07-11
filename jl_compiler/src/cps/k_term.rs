@@ -86,7 +86,7 @@ impl Debug for KTerm {
             KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => Debug::fmt(symbol, f),
             KTerm::Const(k_const) => write!(f, "const#{}", k_const.to_index()),
-            KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.id()),
+            KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.to_index()),
             KTerm::Fn(k_fn) => {
                 // FIXME: name
                 write!(f, "fn#{}", k_fn.id())
@@ -105,7 +105,7 @@ impl Debug for KTerm {
             }
             KTerm::RecordTag(k_struct) => {
                 // FIXME: name
-                write!(f, "struct_tag#{}", k_struct.id())
+                write!(f, "struct_tag#{}", k_struct.to_index())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
         }

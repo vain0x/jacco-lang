@@ -1,5 +1,9 @@
 use super::{KConstValue, KEnum, KEnumOutline, KField, KTy};
-use crate::token::{Location, TokenSource};
+use crate::{
+    front::NStructTag,
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStructParent {
@@ -22,48 +26,35 @@ impl KStructParent {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct KStruct {
-    id: usize,
-}
+pub(crate) type KStruct = VecArenaId<NStructTag>;
+
+pub(crate) type KStructArena = VecArena<NStructTag, KStructOutline>;
 
 impl KStruct {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
+    pub(crate) fn name(self, structs: &KStructArena) -> &str {
+        &structs[self].name
     }
 
-    pub(crate) fn id(self) -> usize {
-        self.id
-    }
-
-    pub(crate) fn name(self, structs: &[KStructOutline]) -> &str {
-        &structs[self.id].name
-    }
-
-    pub(crate) fn ty(self, structs: &[KStructOutline]) -> KTy {
-        match &structs[self.id].parent_opt {
+    pub(crate) fn ty(self, structs: &KStructArena) -> KTy {
+        match &structs[self].parent_opt {
             Some(parent) => KTy::Enum(parent.k_enum),
             None => KTy::Struct(self),
         }
     }
 
-    pub(crate) fn tag_ty<'a>(
-        self,
-        structs: &[KStructOutline],
-        enums: &'a [KEnumOutline],
-    ) -> &'a KTy {
-        match &structs[self.id].parent_opt {
+    pub(crate) fn tag_ty<'a>(self, structs: &KStructArena, enums: &'a [KEnumOutline]) -> &'a KTy {
+        match &structs[self].parent_opt {
             Some(parent) => parent.k_enum.tag_ty(enums),
             None => &KTy::Unit,
         }
     }
 
-    pub(crate) fn tag_value_opt<'a>(self, structs: &[KStructOutline]) -> Option<KConstValue> {
-        structs[self.id].parent_opt.as_ref()?.tag_opt.clone()
+    pub(crate) fn tag_value_opt<'a>(self, structs: &KStructArena) -> Option<KConstValue> {
+        structs[self].parent_opt.as_ref()?.tag_opt.clone()
     }
 
-    pub(crate) fn fields(self, structs: &[KStructOutline]) -> &[KField] {
-        &structs[self.id].fields
+    pub(crate) fn fields(self, structs: &KStructArena) -> &[KField] {
+        &structs[self].fields
     }
 }
 
@@ -73,33 +64,4 @@ pub(crate) struct KStructOutline {
     pub(crate) fields: Vec<KField>,
     pub(crate) parent_opt: Option<KStructParent>,
     pub(crate) location: Location,
-}
-
-impl KStructOutline {
-    pub(crate) fn keys(structs: &[KStructOutline]) -> impl Iterator<Item = KStruct> {
-        (0..structs.len()).map(KStruct::new)
-    }
-
-    pub(crate) fn iter(
-        structs: &[KStructOutline],
-    ) -> impl Iterator<Item = (KStruct, &KStructOutline)> {
-        structs
-            .iter()
-            .enumerate()
-            .map(|(i, struct_data)| (KStruct::new(i), struct_data))
-    }
-}
-
-impl Default for KStructOutline {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            fields: Default::default(),
-            parent_opt: Default::default(),
-            location: Location::new(
-                TokenSource::Special("<KStructOutline::default>"),
-                Default::default(),
-            ),
-        }
-    }
 }
