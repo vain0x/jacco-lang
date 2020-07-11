@@ -44,6 +44,7 @@ pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
 pub(crate) struct NStructData {
     pub(crate) name: String,
     pub(crate) fields: Vec<NField>,
+    pub(crate) parent_enum_opt: Option<usize>,
     pub(crate) location: Location,
 }
 
@@ -471,7 +472,12 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
     }
 }
 
-fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx: &mut Nx) {
+fn resolve_variant(
+    variant: &mut PVariantDecl,
+    parent_enum_opt: Option<usize>,
+    parent_name_opt: Option<&str>,
+    nx: &mut Nx,
+) {
     match variant {
         PVariantDecl::Const(PConstVariantDecl {
             name, value_opt, ..
@@ -493,6 +499,7 @@ fn resolve_variant(variant: &mut PVariantDecl, parent_name_opt: Option<&str>, nx
             let n_struct = nx.res.structs.alloc(NStructData {
                 name: name.text(nx.tokens()).to_string(),
                 fields: vec![],
+                parent_enum_opt,
                 location: name.location(),
             });
 
@@ -556,11 +563,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 name_opt, variants, ..
             }) => {
                 // alloc enum
-                let k_enum = {
-                    let enum_id = nx.res.enums.len();
-                    nx.res.enums.push(NEnumData);
-                    NName::Enum(enum_id)
-                };
+                let enum_id = nx.res.enums.len();
+                nx.res.enums.push(NEnumData);
+                let k_enum = NName::Enum(enum_id);
 
                 let mut parent_name = "__anonymous_enum".to_string();
 
@@ -570,12 +575,12 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 }
 
                 for variant in variants {
-                    resolve_variant(variant, Some(&parent_name), nx);
+                    resolve_variant(variant, Some(enum_id), Some(&parent_name), nx);
                 }
             }
             PDecl::Struct(PStructDecl { variant_opt, .. }) => {
                 if let Some(variant) = variant_opt {
-                    resolve_variant(variant, None, nx);
+                    resolve_variant(variant, None, None, nx);
                 }
             }
             PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}

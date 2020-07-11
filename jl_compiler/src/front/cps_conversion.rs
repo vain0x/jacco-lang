@@ -496,11 +496,7 @@ fn gen_const_variant(
     k_const
 }
 
-fn gen_record_variant(
-    decl: &PRecordVariantDecl,
-    parent_enum_opt: Option<KEnum>,
-    gx: &mut Gx,
-) -> KStruct {
+fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
     let PRecordVariantDecl { name, fields, .. } = decl;
 
     let k_struct = match name.info_opt {
@@ -525,9 +521,6 @@ fn gen_record_variant(
         gx.outlines.fields[k_field.id()].ty = field_ty;
     }
 
-    let parent_opt = parent_enum_opt.map(KStructParent::new);
-
-    gx.outlines.structs[k_struct.id()].parent_opt = parent_opt;
     k_struct
 }
 
@@ -541,9 +534,7 @@ fn gen_variant(
         PVariantDecl::Const(decl) => {
             KVariant::Const(gen_const_variant(decl, parent_enum_opt, value_slot, gx))
         }
-        PVariantDecl::Record(decl) => {
-            KVariant::Record(gen_record_variant(decl, parent_enum_opt, gx))
-        }
+        PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, gx)),
     }
 }
 
@@ -1533,10 +1524,13 @@ pub(crate) fn cps_conversion(
                     .iter()
                     .map(|n_field| KField::new(n_field.to_index()))
                     .collect();
+                let parent_opt = n_struct_data
+                    .parent_enum_opt
+                    .map(|enum_id| KStructParent::new(KEnum::new(enum_id)));
                 KStructOutline {
                     name: n_struct_data.name.to_string(),
                     fields: k_fields,
-                    parent_opt: None,
+                    parent_opt,
                     location: n_struct_data.location,
                 }
             })
