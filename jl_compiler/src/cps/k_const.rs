@@ -1,7 +1,10 @@
 use super::{KEnum, KTy};
-use crate::utils::{VecArena, VecArenaId};
+use crate::{
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
-pub(crate) struct KConstTag;
+pub(crate) type KConstTag = crate::front::NConstTag;
 
 pub(crate) type KConst = VecArenaId<KConstTag>;
 
@@ -24,12 +27,13 @@ impl KConst {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KConstData {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
     pub(crate) parent_opt: Option<KEnum>,
+    pub(crate) location: Location,
 }
 
 #[derive(Clone, Debug, PartialEq)]

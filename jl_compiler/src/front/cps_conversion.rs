@@ -7,6 +7,7 @@ use crate::{
     front::NameResolution,
     logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind, TokenSource},
+    utils::VecArena,
 };
 use log::{error, trace};
 use std::{
@@ -300,10 +301,7 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
             assert!(extern_fn_id < gx.extern_fns.len());
             KSymbolExt::ExternFn(KExternFn::new(extern_fn_id))
         }
-        NName::Const(const_id) => {
-            assert!(const_id < gx.outlines.consts.len());
-            KSymbolExt::Const(KConst::from_index(const_id.into()))
-        }
+        NName::Const(n_const) => KSymbolExt::Const(n_const),
         NName::StaticVar(static_var_id) => {
             assert!(static_var_id < gx.outlines.static_vars.len());
             KSymbolExt::StaticVar(KStaticVar::new(static_var_id))
@@ -458,24 +456,16 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
     }
 }
 
-fn gen_const_variant(
-    decl: &PConstVariantDecl,
-    parent_enum_opt: Option<KEnum>,
-    value_slot: &mut usize,
-    gx: &mut Gx,
-) -> KConst {
+fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KConst {
     let PConstVariantDecl {
         name, value_opt, ..
     } = decl;
 
-    let (name, k_const) = {
-        let k_const = match name.info_opt {
-            Some(NName::Const(const_id)) => KConst::from_index(const_id.into()),
-            _ => unreachable!(),
-        };
-        let name = name.text(&gx.tokens).to_string();
-        (name, k_const)
+    let k_const = match name.info_opt {
+        Some(NName::Const(n_const)) => n_const,
+        _ => unreachable!(),
     };
+    assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
 
     if let Some(value) = value_opt.as_deref() {
         let location = value.location();
@@ -488,12 +478,10 @@ fn gen_const_variant(
         }
     }
 
-    gx.outlines.consts[k_const] = KConstData {
-        name,
-        value_ty: KTy::Usize,
-        value_opt: Some(KConstValue::Usize(*value_slot)),
-        parent_opt: parent_enum_opt,
-    };
+    let data = &mut gx.outlines.consts[k_const];
+    data.value_ty = KTy::Usize;
+    data.value_opt = Some(KConstValue::Usize(*value_slot));
+
     k_const
 }
 
@@ -525,16 +513,9 @@ fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
     k_struct
 }
 
-fn gen_variant(
-    decl: &PVariantDecl,
-    parent_enum_opt: Option<KEnum>,
-    value_slot: &mut usize,
-    gx: &mut Gx,
-) -> KVariant {
+fn gen_variant(decl: &PVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KVariant {
     match decl {
-        PVariantDecl::Const(decl) => {
-            KVariant::Const(gen_const_variant(decl, parent_enum_opt, value_slot, gx))
-        }
+        PVariantDecl::Const(decl) => KVariant::Const(gen_const_variant(decl, value_slot, gx)),
         PVariantDecl::Record(decl) => KVariant::Record(gen_record_variant(decl, gx)),
     }
 }
@@ -1060,9 +1041,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
-                        NName::Const(const_id) => {
-                            KTerm::Const(KConst::from_index((*const_id).into()))
-                        }
+                        NName::Const(n_const) => KTerm::Const(*n_const),
                         NName::LocalVar(_) => {
                             let symbol = gen_name(name, gx).expect_symbol();
                             KTerm::Name(symbol)
@@ -1214,15 +1193,13 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let (name, k_const) = {
-                let name = name_opt.clone().unwrap();
-                let k_const = match name.info_opt {
-                    Some(NName::Const(const_id)) => KConst::from_index(const_id.into()),
-                    _ => unreachable!(),
-                };
-                let name = name.text(&gx.tokens).to_string();
-                (name, k_const)
+            let name = name_opt.clone().unwrap();
+            let k_const = match name.info_opt {
+                Some(NName::Const(n_const)) => n_const,
+                _ => unreachable!(),
             };
+            assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
+
             let ty = gen_ty(ty_opt.as_ref().unwrap(), gx);
 
             if !ty.is_primitive() {
@@ -1243,12 +1220,9 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            gx.outlines.consts[k_const] = KConstData {
-                name,
-                value_ty: ty,
-                value_opt,
-                parent_opt: None,
-            };
+            let data = &mut gx.outlines.consts[k_const];
+            data.value_ty = ty;
+            data.value_opt = value_opt;
         }
         PDecl::Static(PStaticDecl {
             keyword,
@@ -1436,7 +1410,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let k_variants = variants
                 .into_iter()
                 .map(|variant_decl| {
-                    let k_variant = gen_variant(variant_decl, Some(k_enum), &mut next_value, gx);
+                    let k_variant = gen_variant(variant_decl, &mut next_value, gx);
                     next_value += 1;
                     k_variant
                 })
@@ -1453,7 +1427,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
         }
         PDecl::Struct(PStructDecl { variant_opt, .. }) => {
             if let Some(variant) = variant_opt {
-                gen_variant(variant, None, &mut 0, gx);
+                gen_variant(variant, &mut 0, gx);
             }
         }
     }
@@ -1485,7 +1459,17 @@ pub(crate) fn cps_conversion(
     logger: Logger,
 ) -> KRoot {
     let k_root = {
-        let const_count = name_resolution.consts.len();
+        let k_consts = name_resolution
+            .consts
+            .iter()
+            .map(|n_const_data| KConstData {
+                name: n_const_data.name.to_string(),
+                value_ty: KTy::Unresolved,
+                value_opt: None,
+                parent_opt: n_const_data.parent_enum_opt.map(KEnum::new),
+                location: n_const_data.location,
+            })
+            .collect();
 
         let static_var_count = name_resolution.static_vars.len();
 
@@ -1554,9 +1538,7 @@ pub(crate) fn cps_conversion(
         let mut gx = Gx::new(logger.clone());
         gx.tokens = Rc::new(p_root.tokens.clone());
 
-        gx.outlines
-            .consts
-            .resize_with(const_count, Default::default);
+        gx.outlines.consts = VecArena::from_vec(k_consts);
 
         gx.outlines
             .static_vars

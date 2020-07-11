@@ -19,7 +19,17 @@ pub(crate) struct NLoopData {
 
 pub(crate) struct NLocalVarData;
 
-pub(crate) struct NConstData;
+pub(crate) struct NConstTag;
+
+pub(crate) type NConst = VecArenaId<NConstTag>;
+
+pub(crate) type NConstArena = VecArena<NConstTag, NConstData>;
+
+pub(crate) struct NConstData {
+    pub(crate) name: String,
+    pub(crate) parent_enum_opt: Option<usize>,
+    pub(crate) location: Location,
+}
 
 pub(crate) struct NStaticVarData;
 
@@ -62,7 +72,7 @@ pub(crate) struct NFieldData {
 /// 名前解決の結果。
 #[derive(Default)]
 pub(crate) struct NameResolution {
-    pub(crate) consts: Vec<NConstData>,
+    pub(crate) consts: NConstArena,
     pub(crate) static_vars: Vec<NStaticVarData>,
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
@@ -76,7 +86,7 @@ pub(crate) enum NName {
     Unresolved,
     /// ローカル変数や仮引数
     LocalVar(usize),
-    Const(usize),
+    Const(NConst),
     StaticVar(usize),
     Fn(usize),
     ExternFn(usize),
@@ -483,13 +493,13 @@ fn resolve_variant(
             name, value_opt, ..
         }) => {
             // alloc const
-            let k_const = {
-                let const_id = nx.res.consts.len();
-                nx.res.consts.push(NConstData);
-                NName::Const(const_id)
-            };
+            let n_const = nx.res.consts.alloc(NConstData {
+                name: name.text(&nx.tokens()).to_string(),
+                parent_enum_opt,
+                location: name.location(),
+            });
 
-            resolve_qualified_name_def(name, parent_name_opt, k_const, nx);
+            resolve_qualified_name_def(name, parent_name_opt, NName::Const(n_const), nx);
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
@@ -611,20 +621,26 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             }
         }
         PDecl::Const(PConstDecl {
+            keyword,
             name_opt,
             ty_opt,
             init_opt,
             ..
         }) => {
             // alloc const
-            let const_id = nx.res.consts.len();
-            nx.res.consts.push(NConstData);
+            let n_const = nx.res.consts.alloc(NConstData {
+                name: String::new(),
+                parent_enum_opt: None,
+                location: keyword.location(&nx.tokens()),
+            });
 
             resolve_ty_opt(ty_opt.as_mut(), nx);
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, NName::Const(const_id), nx);
+                resolve_name_def(name, NName::Const(n_const), nx);
+
+                nx.res.consts[n_const].name = name.text(nx.tokens()).to_string();
             }
         }
         PDecl::Static(PStaticDecl {
