@@ -507,15 +507,16 @@ fn gen_record_variant(
         Some(NName::Struct(n_struct)) => KStruct::new(n_struct.to_index()),
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
-    let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
+    assert_eq!(name.text(&gx.tokens), k_struct.name(&gx.outlines.structs));
 
-    let mut k_fields = Vec::with_capacity(fields.len());
-    for p_field in fields {
-        let k_field = KField::new(p_field.field_id_opt.unwrap());
-        k_fields.push(k_field);
-
-        let name = p_field.name.text(&gx.tokens).to_string();
-        assert_eq!(&name, k_field.name(&gx.outlines.fields));
+    for (p_field, k_field) in fields
+        .iter()
+        .zip(k_struct.fields(&gx.outlines.structs).to_owned())
+    {
+        assert_eq!(
+            p_field.name.text(&gx.tokens),
+            k_field.name(&gx.outlines.fields)
+        );
 
         let field_ty = match &p_field.ty_opt {
             Some(ty) => gen_ty(ty, gx),
@@ -526,12 +527,7 @@ fn gen_record_variant(
 
     let parent_opt = parent_enum_opt.map(KStructParent::new);
 
-    gx.outlines.structs[k_struct.id()] = KStructOutline {
-        name,
-        parent_opt,
-        fields: k_fields,
-        location,
-    };
+    gx.outlines.structs[k_struct.id()].parent_opt = parent_opt;
     k_struct
 }
 
@@ -1528,7 +1524,23 @@ pub(crate) fn cps_conversion(
 
         let enum_count = name_resolution.enums.len();
 
-        let struct_count = name_resolution.structs.len();
+        let k_structs = name_resolution
+            .structs
+            .iter()
+            .map(|n_struct_data| {
+                let k_fields = n_struct_data
+                    .fields
+                    .iter()
+                    .map(|n_field| KField::new(n_field.to_index()))
+                    .collect();
+                KStructOutline {
+                    name: n_struct_data.name.to_string(),
+                    fields: k_fields,
+                    parent_opt: None,
+                    location: n_struct_data.location,
+                }
+            })
+            .collect();
 
         let k_fields = name_resolution
             .fields
@@ -1565,9 +1577,7 @@ pub(crate) fn cps_conversion(
 
         gx.outlines.enums.resize_with(enum_count, Default::default);
 
-        gx.outlines
-            .structs
-            .resize_with(struct_count, Default::default);
+        gx.outlines.structs = k_structs;
 
         gx.outlines.fields = k_fields;
 

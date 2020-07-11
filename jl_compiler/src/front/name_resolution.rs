@@ -41,7 +41,6 @@ pub(crate) type NStruct = VecArenaId<NStructTag>;
 
 pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
 
-#[allow(unused)]
 pub(crate) struct NStructData {
     pub(crate) name: String,
     pub(crate) fields: Vec<NField>,
