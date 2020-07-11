@@ -4,11 +4,12 @@ use super::*;
 use crate::{
     cps::{
         KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KStaticVar, KStaticVarTag, KStruct,
-        KStructTag, KVariant,
+        KStructTag, KTy, KVariant,
     },
     logs::Logger,
     utils::VecArena,
 };
+use cps_conversion::gen_ty;
 use log::trace;
 use std::{
     collections::HashMap,
@@ -28,6 +29,7 @@ pub(crate) type NConstArena = VecArena<KConstTag, NConstData>;
 
 pub(crate) struct NConstData {
     pub(crate) name: String,
+    pub(crate) value_ty: KTy,
     pub(crate) parent_opt: Option<KEnum>,
     pub(crate) location: Location,
 }
@@ -115,6 +117,14 @@ pub(crate) enum NName {
 }
 
 impl NName {
+    #[allow(unused)]
+    pub(crate) fn as_enum(self) -> Option<KEnum> {
+        match self {
+            NName::Enum(k_enum) => Some(k_enum),
+            _ => None,
+        }
+    }
+
     pub(crate) fn as_struct(self) -> Option<KStruct> {
         match self {
             NName::Struct(n_struct) => Some(n_struct),
@@ -499,6 +509,10 @@ fn resolve_variant(
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: name.text(&nx.tokens()).to_string(),
+                value_ty: {
+                    // FIXME: 値を見て型を決める？
+                    KTy::Usize
+                },
                 parent_opt,
                 location: name.location(),
             });
@@ -647,6 +661,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: String::new(),
+                value_ty: KTy::Unresolved,
                 parent_opt: None,
                 location: keyword.location(&nx.tokens()),
             });
@@ -659,6 +674,21 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
                 nx.res.consts[n_const].name = name.text(nx.tokens()).to_string();
             }
+
+            let value_ty = match ty_opt {
+                Some(p_ty) => {
+                    let ty = gen_ty(p_ty);
+                    if !ty.is_primitive() {
+                        nx.logger.error(
+                            &keyword.location(nx.tokens()),
+                            "定数はプリミティブ型でなければいけません",
+                        );
+                    }
+                    ty
+                }
+                None => KTy::Unresolved,
+            };
+            n_const.of_mut(&mut nx.res.consts).value_ty = value_ty;
         }
         PDecl::Static(PStaticDecl {
             keyword,

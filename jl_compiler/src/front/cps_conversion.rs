@@ -239,7 +239,7 @@ fn gen_mut(p_mut: Option<&PMut>) -> KMut {
 }
 
 // ローカル型環境を引数に取るかもしれない
-fn gen_ty_name(p_name: &PName) -> KTy {
+pub(crate) fn gen_ty_name(p_name: &PName) -> KTy {
     let n_name = p_name.info_opt.clone().unwrap();
 
     match n_name {
@@ -265,7 +265,7 @@ fn gen_ty_name(p_name: &PName) -> KTy {
     }
 }
 
-fn gen_ty(ty: &PTy) -> KTy {
+pub(crate) fn gen_ty(ty: &PTy) -> KTy {
     match ty {
         PTy::Name(name) => gen_ty_name(name),
         PTy::Never(_) => KTy::Never,
@@ -1176,11 +1176,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
         PDecl::Const(PConstDecl {
-            keyword,
-            name_opt,
-            ty_opt,
-            init_opt,
-            ..
+            name_opt, init_opt, ..
         }) => {
             let name = name_opt.clone().unwrap();
             let k_const = match name.info_opt {
@@ -1188,15 +1184,6 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 _ => unreachable!(),
             };
             assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
-
-            let ty = gen_ty(ty_opt.as_ref().unwrap());
-
-            if !ty.is_primitive() {
-                gx.logger.error(
-                    &keyword.location(&gx.tokens),
-                    "constant must be of primitive type",
-                );
-            }
 
             let init = init_opt.as_ref().unwrap();
             let init_location = init.location();
@@ -1209,9 +1196,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            let data = &mut gx.outlines.consts[k_const];
-            data.value_ty = ty;
-            data.value_opt = value_opt;
+            k_const.of_mut(&mut gx.outlines.consts).value_opt = value_opt;
         }
         PDecl::Static(PStaticDecl {
             keyword,
@@ -1446,10 +1431,7 @@ pub(crate) fn cps_conversion(
             .iter()
             .map(|n_const_data| KConstData {
                 name: n_const_data.name.to_string(),
-                value_ty: {
-                    // FIXME: resolve here?
-                    KTy::Unresolved
-                },
+                value_ty: n_const_data.value_ty.clone(),
                 value_opt: {
                     // FIXME: calc here?
                     None
