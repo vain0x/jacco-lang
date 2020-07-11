@@ -28,7 +28,7 @@ impl KTerm {
         &self,
         outlines: &KOutlines,
         labels: &[KLabelSig],
-        locals: &[KLocalData],
+        locals: &KLocalArena,
     ) -> KTy {
         match self {
             KTerm::Unit { .. } => KTy::Unit,

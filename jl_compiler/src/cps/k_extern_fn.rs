@@ -1,4 +1,4 @@
-use super::{KLocalData, KSymbol, KTy};
+use super::{KLocalArena, KSymbol, KTy};
 use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -60,7 +60,7 @@ impl Default for KExternFnOutline {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
-    pub(crate) locals: Vec<KLocalData>,
+    pub(crate) locals: KLocalArena,
 }
 
 impl KExternFnData {

@@ -1,6 +1,7 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
+use crate::utils::VecArena;
 use c_stmt::CStorageModifier;
 use std::{
     collections::HashMap,
@@ -17,7 +18,7 @@ struct Cx<'a> {
     fn_ident_ids: Vec<Option<usize>>,
     enum_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
-    locals: Vec<KLocalData>,
+    locals: KLocalArena,
     local_ident_ids: Vec<Option<usize>>,
     label_raw_names: Vec<String>,
     label_param_lists: Vec<Vec<KSymbol>>,
@@ -136,8 +137,8 @@ fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
 
 fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
     do_unique_name(
-        local.id(),
-        &cx.locals[local.id()].name,
+        local.to_index(),
+        &cx.locals[local].name,
         &mut cx.local_ident_ids,
         &mut cx.ident_map,
     )
@@ -153,7 +154,7 @@ fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
 }
 
 fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
-    let is_alive = cx.locals[symbol.local.id()].is_alive;
+    let is_alive = symbol.local.of(&cx.locals).is_alive;
     let (name, ty) = gen_param(symbol, ty_env, cx);
 
     // 不要な変数なら束縛しない。
@@ -353,10 +354,10 @@ fn emit_assign(
     match (args, conts) {
         ([left, right], [cont]) => {
             match left {
-                KTerm::Name(symbol) if !cx.locals[symbol.local.id()].is_alive => {
+                KTerm::Name(symbol) if !symbol.local.of(&cx.locals).is_alive => {
                     cx.stmts.push(CStmt::Comment(format!(
                         "assignment to {} is eliminated.",
-                        &cx.locals[symbol.local.id()].name
+                        symbol.local.of(&cx.locals).name
                     )));
                 }
                 _ => {
@@ -399,7 +400,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 for (param, arg) in params.into_iter().zip(args) {
                     let name = unique_name(&param, cx);
 
-                    if !cx.locals[param.local.id()].is_alive {
+                    if !param.local.of(&cx.locals).is_alive {
                         CStmt::Comment(format!("{} is skipped.", &name));
                         continue;
                     }
@@ -726,9 +727,10 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
 
     for (extern_fn, extern_fn_data) in KExternFnData::iter(&root.extern_fns) {
         let params = extern_fn_data.params.as_slice();
-        let locals = extern_fn_data.locals.as_slice();
+        let locals = &extern_fn_data.locals;
 
-        cx.locals = locals.to_owned();
+        // FIXME: clone しない
+        cx.locals = locals.clone();
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
@@ -743,7 +745,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
             result_ty,
         });
 
-        cx.locals.clear();
+        cx.locals = VecArena::default();
     }
 
     // 関数宣言
@@ -770,11 +772,12 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
 
     for (k_fn, fn_data) in KFnData::iter(&root.fns) {
         let params = fn_data.params.as_slice();
-        let locals = fn_data.locals.as_slice();
+        let locals = &fn_data.locals;
         let labels = fn_data.labels.as_slice();
         let ty_env = &fn_data.ty_env;
 
-        cx.locals = locals.to_owned();
+        // FIXME: clone しない
+        cx.locals = locals.clone();
         cx.local_ident_ids.clear();
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
@@ -820,7 +823,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
             body_opt: Some(CBlock { stmts }),
         });
 
-        cx.locals.clear();
+        cx.locals = VecArena::default();
     }
 }
 

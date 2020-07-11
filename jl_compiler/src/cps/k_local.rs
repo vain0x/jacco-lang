@@ -1,29 +1,24 @@
 use super::KTy;
+use crate::utils::{VecArena, VecArenaId};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub(crate) struct KLocal {
-    id: usize,
-}
+pub(crate) struct KLocalTag;
+
+/// ローカル変数や仮引数
+pub(crate) type KLocal = VecArenaId<KLocalTag>;
+
+pub(crate) type KLocalArena = VecArena<KLocalTag, KLocalData>;
 
 impl KLocal {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
+    pub(crate) fn name(self, locals: &KLocalArena) -> &str {
+        &locals[self].name
     }
 
-    pub(crate) fn id(self) -> usize {
-        self.id
+    pub(crate) fn ty(self, locals: &KLocalArena) -> &KTy {
+        &locals[self].ty
     }
 
-    pub(crate) fn name(self, locals: &[KLocalData]) -> &str {
-        &locals[self.id].name
-    }
-
-    pub(crate) fn ty(self, locals: &[KLocalData]) -> &KTy {
-        &locals[self.id].ty
-    }
-
-    pub(crate) fn ty_mut(self, locals: &mut [KLocalData]) -> &mut KTy {
-        &mut locals[self.id].ty
+    pub(crate) fn ty_mut(self, locals: &mut KLocalArena) -> &mut KTy {
+        &mut locals[self].ty
     }
 }
 

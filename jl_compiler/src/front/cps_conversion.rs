@@ -28,7 +28,7 @@ struct Gx {
     tokens: Rc<PTokens>,
     outlines: KOutlines,
     current_commands: Vec<KCommand>,
-    current_locals: Vec<KLocalData>,
+    current_locals: KLocalArena,
     current_loops: Vec<KLoopData>,
     current_labels: Vec<KLabelData>,
     fns: Vec<KFnData>,
@@ -49,8 +49,7 @@ impl Gx {
         let name = hint.to_string();
         let ty = KTy::default();
 
-        let local = KLocal::new(self.current_locals.len());
-        self.current_locals.push(KLocalData {
+        let local = self.current_locals.alloc(KLocalData {
             name: name.clone(),
             ty: ty.clone(),
             is_alive: true,
@@ -284,11 +283,8 @@ fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
     let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
 
     match n_name {
-        NName::LocalVar(local_var_id) => {
-            assert!(local_var_id < gx.current_locals.len());
-            let local = KLocal::new(local_var_id);
-
-            let local_data = &mut gx.current_locals[local_var_id];
+        NName::LocalVar(local) => {
+            let local_data = &mut gx.current_locals[local];
             local_data.name = name.to_string();
             local_data.is_alive = true;
 
@@ -350,7 +346,7 @@ fn gen_param(param: &PParam, gx: &mut Gx) -> KSymbol {
 
     let symbol = gen_name(&param.name, gx).expect_symbol();
 
-    let old_ty = replace(&mut gx.current_locals[symbol.local.id()].ty, ty);
+    let old_ty = replace(&mut symbol.local.of_mut(&mut gx.current_locals).ty, ty);
     assert!(old_ty.is_unresolved());
 
     symbol
@@ -1432,7 +1428,10 @@ pub(crate) fn cps_conversion(
         let fns = n_fns
             .iter()
             .map(|fn_data| KFnData {
-                locals: vec![KLocalData::default(); fn_data.local_vars.len()],
+                locals: KLocalArena::from_vec(vec![
+                    KLocalData::default();
+                    fn_data.local_vars.len()
+                ]),
                 ..KFnData::default()
             })
             .collect();
@@ -1443,7 +1442,10 @@ pub(crate) fn cps_conversion(
         let k_extern_fns = n_extern_fns
             .iter()
             .map(|extern_fn_data| KExternFnData {
-                locals: vec![KLocalData::default(); extern_fn_data.local_vars.len()],
+                locals: KLocalArena::from_vec(vec![
+                    KLocalData::default();
+                    extern_fn_data.local_vars.len()
+                ]),
                 ..KExternFnData::default()
             })
             .collect();

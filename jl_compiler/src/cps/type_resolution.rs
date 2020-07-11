@@ -9,7 +9,7 @@ struct Tx<'a> {
     // 現在の関数の型環境
     ty_env: KTyEnv,
     // 現在の関数に含まれるローカル変数の情報
-    locals: Vec<KLocalData>,
+    locals: KLocalArena,
     // 現在の関数に含まれるラベルのシグネチャ情報
     label_sigs: Vec<KLabelSig>,
     // 現在の関数の return ラベルの型
@@ -703,7 +703,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
             resolve_node(&mut label.body, tx);
         }
 
-        for local_data in &mut tx.locals {
+        for local_data in tx.locals.iter_mut() {
             if tx.ty_env.is_unbound(&local_data.ty) {
                 local_data.ty = KTy::Never;
             }

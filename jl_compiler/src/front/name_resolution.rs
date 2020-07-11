@@ -3,8 +3,8 @@
 use super::*;
 use crate::{
     cps::{
-        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KStaticVar, KStaticVarTag, KStruct,
-        KStructTag, KTy, KVariant,
+        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KLocal, KStaticVar, KStaticVarTag,
+        KStruct, KStructTag, KTy, KVariant,
     },
     logs::Logger,
     utils::VecArena,
@@ -92,8 +92,7 @@ pub(crate) struct NameResolution {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum NName {
     Unresolved,
-    /// ローカル変数や仮引数
-    LocalVar(usize),
+    LocalVar(KLocal),
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(usize),
@@ -291,10 +290,10 @@ fn resolve_qualified_name_def(
 
 fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
     // alloc local
-    let local_var_id = nx.parent_local_vars.len();
+    let local_var = KLocal::from_index(nx.parent_local_vars.len());
     nx.parent_local_vars.push(NLocalVarData);
 
-    resolve_name_def(name, NName::LocalVar(local_var_id), nx);
+    resolve_name_def(name, NName::LocalVar(local_var), nx);
 }
 
 fn resolve_ty_name(name: &mut PName, nx: &mut Nx) {

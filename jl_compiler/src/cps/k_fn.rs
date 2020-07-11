@@ -1,4 +1,4 @@
-use super::{KLabelData, KLabelSig, KLocalData, KNode, KSymbol, KTy, KTyEnv, KVis};
+use super::{k_local::KLocalArena, KLabelData, KLabelSig, KNode, KSymbol, KTy, KTyEnv, KVis};
 use crate::token::{Location, TokenSource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -77,7 +77,7 @@ pub(crate) struct KFnData {
     pub(crate) body: KNode,
     pub(crate) labels: Vec<KLabelData>,
     pub(crate) label_sigs: Vec<KLabelSig>,
-    pub(crate) locals: Vec<KLocalData>,
+    pub(crate) locals: KLocalArena,
     pub(crate) ty_env: KTyEnv,
 }
 

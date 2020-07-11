@@ -1,9 +1,9 @@
-use super::{KLocalData, KNode, KPrim, KRoot, KTerm, KTyEnv};
+use super::{k_local::KLocalArena, KNode, KPrim, KRoot, KTerm, KTyEnv};
 use std::{collections::HashSet, mem::swap};
 
 #[derive(Default)]
 struct Ex {
-    locals: Vec<KLocalData>,
+    locals: KLocalArena,
     ty_env: KTyEnv,
 }
 
@@ -22,7 +22,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
         // unit/never 型の変数の参照をリテラルで置き換える。
         // FIXME: never 型の変数は never リテラル (?) に置き換える？
         if let KTerm::Name(symbol) = arg {
-            let local_data = &mut ex.locals[symbol.local.id()];
+            let local_data = &mut ex.locals[symbol.local];
             if ex.ty_env.is_unit_or_never(&local_data.ty) {
                 local_data.is_alive = false;
                 let location = symbol.location;
@@ -77,7 +77,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
             label_sig.param_tys_mut().retain(|ty| !ty.is_unit());
         }
 
-        for local_data in &mut ex.locals {
+        for local_data in ex.locals.iter_mut() {
             if ex.ty_env.is_unit_or_never(&local_data.ty) {
                 local_data.is_alive = false;
             }

@@ -72,7 +72,7 @@ mod cps {
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
     pub(crate) use k_fn::{KFn, KFnData, KFnOutline};
     pub(crate) use k_label::{KLabel, KLabelData, KLabelSig};
-    pub(crate) use k_local::{KLocal, KLocalData};
+    pub(crate) use k_local::{KLocal, KLocalArena, KLocalData};
     pub(crate) use k_meta_ty::{KMetaTy, KMetaTyData};
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
