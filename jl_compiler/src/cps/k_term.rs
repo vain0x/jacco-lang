@@ -38,7 +38,7 @@ impl KTerm {
             KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
             KTerm::True(_) | KTerm::False(_) => KTy::Bool,
             KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
-            KTerm::Const(k_const) => (*k_const).of(&outlines.consts).ty.clone(),
+            KTerm::Const(k_const) => k_const.ty(&outlines.consts),
             KTerm::StaticVar(static_var) => static_var.ty(&outlines.static_vars).clone(),
             KTerm::Fn(k_fn) => k_fn.ty(&outlines.fns),
             KTerm::Label(label) => label.ty(labels),

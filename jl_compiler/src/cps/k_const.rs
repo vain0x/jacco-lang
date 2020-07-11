@@ -1,4 +1,4 @@
-use super::KTy;
+use super::{KEnum, KTy};
 use crate::utils::{VecArena, VecArenaId};
 
 pub(crate) struct KConstTag;
@@ -8,6 +8,14 @@ pub(crate) type KConst = VecArenaId<KConstTag>;
 pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
 impl KConst {
+    /// 値の型、またはこの定数が属する enum の型
+    pub(crate) fn ty(self, consts: &KConstArena) -> KTy {
+        match consts[self].parent_opt {
+            Some(k_enum) => KTy::Enum(k_enum),
+            None => consts[self].value_ty.clone(),
+        }
+    }
+
     pub(crate) fn is_zero(self, consts: &KConstArena) -> bool {
         match &consts[self].value_opt {
             Some(value) => value.is_zero(),
@@ -19,9 +27,9 @@ impl KConst {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KConstData {
     pub(crate) name: String,
-    /// 定数の型、または定数バリアントが所属する enum の型
-    pub(crate) ty: KTy,
+    pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
+    pub(crate) parent_opt: Option<KEnum>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -490,8 +490,9 @@ fn gen_const_variant(
 
     gx.outlines.consts[k_const] = KConstData {
         name,
-        ty: parent_enum_opt.map_or(KTy::Usize, KTy::Enum),
+        value_ty: KTy::Usize,
         value_opt: Some(KConstValue::Usize(*value_slot)),
+        parent_opt: parent_enum_opt,
     };
     k_const
 }
@@ -1244,8 +1245,9 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             gx.outlines.consts[k_const] = KConstData {
                 name,
-                ty,
+                value_ty: ty,
                 value_opt,
+                parent_opt: None,
             };
         }
         PDecl::Static(PStaticDecl {
