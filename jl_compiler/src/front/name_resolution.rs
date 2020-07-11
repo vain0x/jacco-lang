@@ -73,6 +73,7 @@ pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
 
 pub(crate) struct NFieldData {
     pub(crate) name: String,
+    pub(crate) ty: KTy,
     pub(crate) location: Location,
 }
 
@@ -537,9 +538,11 @@ fn resolve_variant(
             resolve_qualified_name_def(name, parent_name_opt, NName::Struct(n_struct), nx);
 
             for field in fields {
+                // 型は後ろにある宣言を見た後に解決する。
                 // alloc field
                 let n_field = nx.res.fields.alloc(NFieldData {
                     name: field.name.text(nx.tokens()).to_string(),
+                    ty: KTy::Unresolved,
                     location: name.location(),
                 });
                 field.field_id_opt = Some(n_field.to_index());
@@ -551,6 +554,19 @@ fn resolve_variant(
 
             nx.res.structs[n_struct].fields = n_fields;
             KVariant::Record(n_struct)
+        }
+    }
+}
+
+fn resolve_variant2(variant: &PVariantDecl, nx: &mut Nx) {
+    match variant {
+        PVariantDecl::Const(_) => {}
+        PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
+            let k_struct = name.info_opt.unwrap().as_struct().unwrap();
+            for (k_field, p_field) in nx.res.structs[k_struct].fields.clone().iter().zip(fields) {
+                let ty = p_field.ty_opt.as_ref().map_or(KTy::Unresolved, gen_ty);
+                k_field.of_mut(&mut nx.res.fields).ty = ty;
+            }
         }
     }
 }
@@ -763,7 +779,16 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
             nx.res.extern_fns[extern_fn_id_opt.unwrap()].local_vars = local_vars;
         }
-        PDecl::Enum(_) | PDecl::Struct(_) => {}
+        PDecl::Enum(PEnumDecl { variants, .. }) => {
+            for variant in variants {
+                resolve_variant2(variant, nx);
+            }
+        }
+        PDecl::Struct(PStructDecl { variant_opt, .. }) => {
+            if let Some(variant) = variant_opt {
+                resolve_variant2(variant, nx);
+            }
+        }
     }
 }
 

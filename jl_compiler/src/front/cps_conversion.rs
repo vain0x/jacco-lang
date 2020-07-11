@@ -480,29 +480,13 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
 }
 
 fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
-    let PRecordVariantDecl { name, fields, .. } = decl;
+    let PRecordVariantDecl { name, .. } = decl;
 
     let k_struct = match name.info_opt {
         Some(NName::Struct(n_struct)) => n_struct,
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
     assert_eq!(name.text(&gx.tokens), k_struct.name(&gx.outlines.structs));
-
-    for (p_field, k_field) in fields
-        .iter()
-        .zip(k_struct.fields(&gx.outlines.structs).to_owned())
-    {
-        assert_eq!(
-            p_field.name.text(&gx.tokens),
-            k_field.name(&gx.outlines.fields)
-        );
-
-        let field_ty = match &p_field.ty_opt {
-            Some(ty) => gen_ty(ty),
-            None => KTy::Unresolved,
-        };
-        gx.outlines.fields[k_field].ty = field_ty;
-    }
 
     k_struct
 }
@@ -1496,10 +1480,7 @@ pub(crate) fn cps_conversion(
             .iter()
             .map(|n_field_data| KFieldOutline {
                 name: n_field_data.name.to_string(),
-                ty: {
-                    // FIXME: 型は注釈と名前解決の結果から計算できるので、このタイミングで確定できるはず
-                    KTy::Unresolved
-                },
+                ty: n_field_data.ty.clone(),
                 location: n_field_data.location,
             })
             .collect();
