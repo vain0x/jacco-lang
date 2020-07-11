@@ -3,8 +3,8 @@
 use super::*;
 use crate::{
     cps::{
-        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KLocal, KStaticVar, KStaticVarTag,
-        KStruct, KStructTag, KTy, KVariant,
+        KConst, KConstTag, KEnum, KEnumTag, KField, KFieldTag, KLocal, KLocalTag, KStaticVar,
+        KStaticVarTag, KStruct, KStructTag, KTy, KVariant,
     },
     logs::Logger,
     utils::VecArena,
@@ -23,7 +23,12 @@ pub(crate) struct NLoopData {
     pub(crate) location: Location,
 }
 
-pub(crate) struct NLocalVarData;
+pub(crate) struct NLocalVarData {
+    pub(crate) name: String,
+    pub(crate) location: Location,
+}
+
+pub(crate) type NLocalVarArena = VecArena<KLocalTag, NLocalVarData>;
 
 pub(crate) type NConstArena = VecArena<KConstTag, NConstData>;
 
@@ -44,12 +49,12 @@ pub(crate) struct NStaticVarData {
 
 pub(crate) struct NFnData {
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
-    pub(crate) local_vars: Vec<NLocalVarData>,
+    pub(crate) local_vars: NLocalVarArena,
     pub(crate) loops: Vec<NLoopData>,
 }
 
 pub(crate) struct NExternFnData {
-    pub(crate) local_vars: Vec<NLocalVarData>,
+    pub(crate) local_vars: NLocalVarArena,
 }
 
 pub(crate) type NEnumArena = VecArena<KEnumTag, NEnumData>;
@@ -148,7 +153,7 @@ struct Nx {
     // global_env: HashMap<String, NName>,
     parent_loop: Option<usize>,
     parent_fn: Option<usize>,
-    parent_local_vars: Vec<NLocalVarData>,
+    parent_local_vars: NLocalVarArena,
     parent_loops: Vec<NLoopData>,
     res: NameResolution,
     logger: Logger,
@@ -290,8 +295,10 @@ fn resolve_qualified_name_def(
 
 fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) {
     // alloc local
-    let local_var = KLocal::from_index(nx.parent_local_vars.len());
-    nx.parent_local_vars.push(NLocalVarData);
+    let local_var = nx.parent_local_vars.alloc(NLocalVarData {
+        name: name.text(nx.tokens()).to_string(),
+        location: name.location(),
+    });
 
     resolve_name_def(name, NName::LocalVar(local_var), nx);
 }
@@ -584,7 +591,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 let fn_id = nx.res.fns.len();
                 *fn_id_opt = Some(fn_id);
                 nx.res.fns.push(NFnData {
-                    local_vars: vec![],
+                    local_vars: Default::default(),
                     loops: vec![],
                 });
 
@@ -600,7 +607,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 // alloc extern fn
                 let extern_fn_id = nx.res.extern_fns.len();
                 *extern_fn_id_opt = Some(extern_fn_id);
-                nx.res.extern_fns.push(NExternFnData { local_vars: vec![] });
+                nx.res.extern_fns.push(NExternFnData {
+                    local_vars: Default::default(),
+                });
 
                 if let Some(name) = name_opt.as_mut() {
                     resolve_name_def(name, NName::ExternFn(extern_fn_id), nx);

@@ -1,5 +1,8 @@
 use super::KTy;
-use crate::utils::{VecArena, VecArenaId};
+use crate::{
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
 pub(crate) struct KLocalTag;
 
@@ -22,9 +25,10 @@ impl KLocal {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct KLocalData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
+    pub(crate) location: Location,
     pub(crate) is_alive: bool,
 }

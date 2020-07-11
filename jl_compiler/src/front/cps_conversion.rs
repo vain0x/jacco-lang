@@ -46,12 +46,10 @@ impl Gx {
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
-        let name = hint.to_string();
-        let ty = KTy::default();
-
         let local = self.current_locals.alloc(KLocalData {
-            name: name.clone(),
-            ty: ty.clone(),
+            name: hint.to_string(),
+            ty: KTy::Unresolved,
+            location,
             is_alive: true,
         });
 
@@ -1428,10 +1426,18 @@ pub(crate) fn cps_conversion(
         let fns = n_fns
             .iter()
             .map(|fn_data| KFnData {
-                locals: KLocalArena::from_vec(vec![
-                    KLocalData::default();
-                    fn_data.local_vars.len()
-                ]),
+                locals: KLocalArena::from_vec(
+                    fn_data
+                        .local_vars
+                        .iter()
+                        .map(|n_local_var_data| KLocalData {
+                            name: n_local_var_data.name.to_string(),
+                            ty: KTy::Unresolved,
+                            location: n_local_var_data.location,
+                            is_alive: true,
+                        })
+                        .collect(),
+                ),
                 ..KFnData::default()
             })
             .collect();
@@ -1442,10 +1448,18 @@ pub(crate) fn cps_conversion(
         let k_extern_fns = n_extern_fns
             .iter()
             .map(|extern_fn_data| KExternFnData {
-                locals: KLocalArena::from_vec(vec![
-                    KLocalData::default();
-                    extern_fn_data.local_vars.len()
-                ]),
+                locals: KLocalArena::from_vec(
+                    extern_fn_data
+                        .local_vars
+                        .iter()
+                        .map(|n_local_var_data| KLocalData {
+                            name: n_local_var_data.name.to_string(),
+                            ty: KTy::Unresolved,
+                            location: n_local_var_data.location,
+                            is_alive: true,
+                        })
+                        .collect(),
+                ),
                 ..KExternFnData::default()
             })
             .collect();
