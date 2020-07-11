@@ -5,11 +5,9 @@ use crate::{
     utils::{VecArena, VecArenaId},
 };
 
-pub(crate) type KStaticVarTag = NStaticVarTag;
+pub(crate) type KStaticVar = VecArenaId<NStaticVarTag>;
 
-pub(crate) type KStaticVar = VecArenaId<KStaticVarTag>;
-
-pub(crate) type KStaticVarArena = VecArena<KStaticVarTag, KStaticVarData>;
+pub(crate) type KStaticVarArena = VecArena<NStaticVarTag, KStaticVarData>;
 
 impl KStaticVar {
     pub(crate) fn name(self, static_vars: &KStaticVarArena) -> &str {
