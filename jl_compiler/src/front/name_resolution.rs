@@ -8,6 +8,7 @@ use crate::{
 use log::trace;
 use std::{
     collections::HashMap,
+    fmt::{self, Debug, Formatter},
     mem::{replace, take},
     rc::Rc,
 };
@@ -27,7 +28,7 @@ pub(crate) type NConstArena = VecArena<NConstTag, NConstData>;
 
 pub(crate) struct NConstData {
     pub(crate) name: String,
-    pub(crate) parent_enum_opt: Option<usize>,
+    pub(crate) parent_opt: Option<NEnum>,
     pub(crate) location: Location,
 }
 
@@ -52,7 +53,32 @@ pub(crate) struct NExternFnData {
     pub(crate) local_vars: Vec<NLocalVarData>,
 }
 
-pub(crate) struct NEnumData;
+#[derive(Copy, Clone)]
+pub(crate) enum NVariant {
+    Const(NConst),
+    Record(NStruct),
+}
+
+impl Debug for NVariant {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            NVariant::Const(inner) => Debug::fmt(inner, f),
+            NVariant::Record(inner) => Debug::fmt(inner, f),
+        }
+    }
+}
+
+pub(crate) struct NEnumTag;
+
+pub(crate) type NEnum = VecArenaId<NEnumTag>;
+
+pub(crate) type NEnumArena = VecArena<NEnumTag, NEnumData>;
+
+pub(crate) struct NEnumData {
+    pub(crate) name: String,
+    pub(crate) variants: Vec<NVariant>,
+    pub(crate) location: Location,
+}
 
 pub(crate) struct NStructTag;
 
@@ -63,7 +89,7 @@ pub(crate) type NStructArena = VecArena<NStructTag, NStructData>;
 pub(crate) struct NStructData {
     pub(crate) name: String,
     pub(crate) fields: Vec<NField>,
-    pub(crate) parent_enum_opt: Option<usize>,
+    pub(crate) parent_opt: Option<NEnum>,
     pub(crate) location: Location,
 }
 
@@ -85,7 +111,7 @@ pub(crate) struct NameResolution {
     pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: Vec<NFnData>,
     pub(crate) extern_fns: Vec<NExternFnData>,
-    pub(crate) enums: Vec<NEnumData>,
+    pub(crate) enums: NEnumArena,
     pub(crate) structs: NStructArena,
     pub(crate) fields: NFieldArena,
 }
@@ -99,7 +125,7 @@ pub(crate) enum NName {
     StaticVar(NStaticVar),
     Fn(usize),
     ExternFn(usize),
-    Enum(usize),
+    Enum(NEnum),
     Struct(NStruct),
     Bool,
     I8,
@@ -493,10 +519,10 @@ fn resolve_param_list_opt(param_list_opt: Option<&mut PParamList>, nx: &mut Nx) 
 
 fn resolve_variant(
     variant: &mut PVariantDecl,
-    parent_enum_opt: Option<usize>,
+    parent_opt: Option<NEnum>,
     parent_name_opt: Option<&str>,
     nx: &mut Nx,
-) {
+) -> NVariant {
     match variant {
         PVariantDecl::Const(PConstVariantDecl {
             name, value_opt, ..
@@ -504,12 +530,14 @@ fn resolve_variant(
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: name.text(&nx.tokens()).to_string(),
-                parent_enum_opt,
+                parent_opt,
                 location: name.location(),
             });
 
             resolve_qualified_name_def(name, parent_name_opt, NName::Const(n_const), nx);
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
+
+            NVariant::Const(n_const)
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
             let mut n_fields = Vec::with_capacity(fields.len());
@@ -518,7 +546,7 @@ fn resolve_variant(
             let n_struct = nx.res.structs.alloc(NStructData {
                 name: name.text(nx.tokens()).to_string(),
                 fields: vec![],
-                parent_enum_opt,
+                parent_opt,
                 location: name.location(),
             });
 
@@ -538,6 +566,7 @@ fn resolve_variant(
             }
 
             nx.res.structs[n_struct].fields = n_fields;
+            NVariant::Record(n_struct)
         }
     }
 }
@@ -579,23 +608,33 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 }
             }
             PDecl::Enum(PEnumDecl {
-                name_opt, variants, ..
+                keyword,
+                name_opt,
+                variants,
+                ..
             }) => {
                 // alloc enum
-                let enum_id = nx.res.enums.len();
-                nx.res.enums.push(NEnumData);
-                let k_enum = NName::Enum(enum_id);
+                let n_enum = nx.res.enums.alloc(NEnumData {
+                    name: Default::default(),
+                    variants: Default::default(),
+                    location: keyword.location(&nx.tokens()),
+                });
 
-                let mut parent_name = "__anonymous_enum".to_string();
-
+                let mut enum_name = String::new();
                 if let Some(name) = name_opt {
-                    resolve_name_def(name, k_enum, nx);
-                    parent_name = name.text(nx.tokens()).to_string();
+                    resolve_name_def(name, NName::Enum(n_enum), nx);
+
+                    enum_name = name.text(nx.tokens()).to_string();
                 }
 
-                for variant in variants {
-                    resolve_variant(variant, Some(enum_id), Some(&parent_name), nx);
-                }
+                let n_variants = variants
+                    .iter_mut()
+                    .map(|p_variant| resolve_variant(p_variant, Some(n_enum), Some(&enum_name), nx))
+                    .collect();
+
+                let enum_data = n_enum.of_mut(&mut nx.res.enums);
+                enum_data.name = enum_name;
+                enum_data.variants = n_variants;
             }
             PDecl::Struct(PStructDecl { variant_opt, .. }) => {
                 if let Some(variant) = variant_opt {
@@ -639,7 +678,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: String::new(),
-                parent_enum_opt: None,
+                parent_opt: None,
                 location: keyword.location(&nx.tokens()),
             });
 

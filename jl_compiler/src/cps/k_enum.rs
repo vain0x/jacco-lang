@@ -1,11 +1,11 @@
 use super::{k_const::KConstArena, k_struct::KStructArena, KConst, KConstValue, KStruct, KTy};
-use crate::token::{Location, TokenSource};
+use crate::{
+    front::{NEnumTag, NVariant},
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum KVariant {
-    Const(KConst),
-    Record(KStruct),
-}
+pub(crate) type KVariant = NVariant;
 
 impl KVariant {
     pub(crate) fn as_const(self) -> Option<KConst> {
@@ -38,38 +38,29 @@ impl KVariant {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct KEnum {
-    id: usize,
-}
+pub(crate) type KEnum = VecArenaId<NEnumTag>;
+
+pub(crate) type KEnumArena = VecArena<NEnumTag, KEnumOutline>;
 
 impl KEnum {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
-    }
-
-    pub(crate) fn id(self) -> usize {
-        self.id
-    }
-
-    pub(crate) fn name(self, enums: &[KEnumOutline]) -> &str {
-        &enums[self.id].name
+    pub(crate) fn name(self, enums: &KEnumArena) -> &str {
+        &enums[self].name
     }
 
     #[allow(unused)]
-    pub(crate) fn variants(self, enums: &[KEnumOutline]) -> &[KVariant] {
-        &enums[self.id].variants
+    pub(crate) fn variants(self, enums: &KEnumArena) -> &[KVariant] {
+        &enums[self].variants
     }
 
-    pub(crate) fn repr(self, enums: &[KEnumOutline]) -> &KEnumRepr {
-        &enums[self.id].repr
+    pub(crate) fn repr(self, enums: &KEnumArena) -> &KEnumRepr {
+        &enums[self].repr
     }
 
-    pub(crate) fn is_tagged_union(self, enums: &[KEnumOutline]) -> bool {
+    pub(crate) fn is_tagged_union(self, enums: &KEnumArena) -> bool {
         self.repr(enums).is_tagged_union()
     }
 
-    pub(crate) fn tag_ty(self, enums: &[KEnumOutline]) -> &KTy {
+    pub(crate) fn tag_ty(self, enums: &KEnumArena) -> &KTy {
         match self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
             KEnumRepr::Unit => &KTy::Unit,
@@ -132,25 +123,12 @@ pub(crate) struct KEnumOutline {
 }
 
 impl KEnumOutline {
-    #[allow(unused)]
-    pub(crate) fn keys(enums: &[KEnumOutline]) -> impl Iterator<Item = KEnum> {
-        (0..enums.len()).map(KEnum::new)
-    }
-
-    #[allow(unused)]
-    pub(crate) fn iter(enums: &[KEnumOutline]) -> impl Iterator<Item = (KEnum, &KEnumOutline)> {
-        enums
-            .iter()
-            .enumerate()
-            .map(|(i, enum_data)| (KEnum::new(i), enum_data))
-    }
-
     pub(crate) fn determine_tags(
         consts: &mut KConstArena,
-        enums: &mut [KEnumOutline],
+        enums: &mut KEnumArena,
         structs: &mut KStructArena,
     ) {
-        for enum_data in enums {
+        for enum_data in enums.iter_mut() {
             if !enum_data.repr.is_tagged_union() {
                 // FIXME: const バリアントの未指定の値を埋める処理をここに移動する？
                 continue;
@@ -171,20 +149,6 @@ impl KEnumOutline {
                     }
                 }
             }
-        }
-    }
-}
-
-impl Default for KEnumOutline {
-    fn default() -> Self {
-        KEnumOutline {
-            name: Default::default(),
-            variants: Default::default(),
-            repr: Default::default(),
-            location: Location::new(
-                TokenSource::Special("<KEnumOutline::default>"),
-                Default::default(),
-            ),
         }
     }
 }

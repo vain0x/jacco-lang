@@ -258,7 +258,7 @@ fn gen_ty_name(p_name: &PName, _gx: &mut Gx) -> KTy {
         NName::C16 => KTy::C16,
         NName::C32 => KTy::C32,
         NName::Bool => KTy::Bool,
-        NName::Enum(enum_id) => KTy::Enum(KEnum::new(enum_id)),
+        NName::Enum(n_enum) => KTy::Enum(n_enum),
         NName::Struct(n_struct) => KTy::Struct(n_struct),
         _ => unreachable!("expected type name but {:?}", p_name),
     }
@@ -1388,10 +1388,10 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
         }) => {
             let name = name_opt.as_ref().unwrap();
             let k_enum = match name.info_opt {
-                Some(NName::Enum(enum_id)) => KEnum::new(enum_id),
+                Some(NName::Enum(n_enum)) => n_enum,
                 n_name_opt => unreachable!("{:?}", n_name_opt),
             };
-            let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
+            assert_eq!(name.text(&gx.tokens), k_enum.name(&gx.outlines.enums));
 
             let mut next_value = 0_usize;
             let k_variants = variants
@@ -1404,13 +1404,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 .collect::<Vec<_>>();
 
             let repr = KEnumRepr::determine(&k_variants, &gx.outlines.consts);
-
-            gx.outlines.enums[k_enum.id()] = KEnumOutline {
-                name,
-                variants: k_variants,
-                repr,
-                location,
-            };
+            k_enum.of_mut(&mut gx.outlines.enums).repr = repr;
         }
         PDecl::Struct(PStructDecl { variant_opt, .. }) => {
             if let Some(variant) = variant_opt {
@@ -1459,7 +1453,7 @@ pub(crate) fn cps_conversion(
                     // FIXME: calc here?
                     None
                 },
-                parent_opt: n_const_data.parent_enum_opt.map(KEnum::new),
+                parent_opt: n_const_data.parent_opt,
                 location: n_const_data.location,
             })
             .collect();
@@ -1507,21 +1501,28 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
-        let enum_count = name_resolution.enums.len();
+        let k_enums = name_resolution
+            .enums
+            .iter()
+            .map(|n_enum_data| KEnumOutline {
+                name: n_enum_data.name.to_string(),
+                variants: n_enum_data.variants.clone(),
+                repr: {
+                    // FIXME: determine?
+                    KEnumRepr::Never
+                },
+                location: n_enum_data.location,
+            })
+            .collect();
 
         let k_structs = name_resolution
             .structs
             .iter()
-            .map(|n_struct_data| {
-                let parent_opt = n_struct_data
-                    .parent_enum_opt
-                    .map(|enum_id| KStructParent::new(KEnum::new(enum_id)));
-                KStructOutline {
-                    name: n_struct_data.name.to_string(),
-                    fields: n_struct_data.fields.clone(),
-                    parent_opt,
-                    location: n_struct_data.location,
-                }
+            .map(|n_struct_data| KStructOutline {
+                name: n_struct_data.name.to_string(),
+                fields: n_struct_data.fields.clone(),
+                parent_opt: n_struct_data.parent_opt.map(KStructParent::new),
+                location: n_struct_data.location,
             })
             .collect();
 
@@ -1554,7 +1555,7 @@ pub(crate) fn cps_conversion(
             .extern_fns
             .resize_with(extern_fn_count, Default::default);
 
-        gx.outlines.enums.resize_with(enum_count, Default::default);
+        gx.outlines.enums = VecArena::from_vec(k_enums);
 
         gx.outlines.structs = VecArena::from_vec(k_structs);
 

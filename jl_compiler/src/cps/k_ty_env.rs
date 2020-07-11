@@ -1,4 +1,4 @@
-use super::{KEnum, KEnumOutline, KMetaTy, KMetaTyData, KMut, KStruct, KStructArena, KTy};
+use super::{k_enum::KEnumArena, KEnum, KMetaTy, KMetaTyData, KMut, KStruct, KStructArena, KTy};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -101,12 +101,7 @@ impl KTyEnv {
         self.as_struct_or_enum(ty).is_some()
     }
 
-    pub(crate) fn display(
-        &self,
-        ty: &KTy,
-        enums: &[KEnumOutline],
-        structs: &KStructArena,
-    ) -> String {
+    pub(crate) fn display(&self, ty: &KTy, enums: &KEnumArena, structs: &KStructArena) -> String {
         match ty {
             KTy::Meta(meta_ty) => {
                 let ty = match meta_ty.try_unwrap(self) {

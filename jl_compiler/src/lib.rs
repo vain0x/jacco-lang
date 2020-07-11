@@ -149,7 +149,8 @@ mod front {
 
     pub(crate) use cps_conversion::cps_conversion;
     pub(crate) use name_resolution::{
-        resolve_name, NConstTag, NFieldTag, NName, NStaticVarTag, NStructTag, NameResolution,
+        resolve_name, NConstTag, NEnumTag, NFieldTag, NName, NStaticVarTag, NStructTag, NVariant,
+        NameResolution,
     };
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;

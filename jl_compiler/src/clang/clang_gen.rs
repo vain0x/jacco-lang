@@ -118,8 +118,8 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
 
 fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
     do_unique_name(
-        k_enum.id(),
-        &cx.outlines.enums[k_enum.id()].name,
+        k_enum.to_index(),
+        &cx.outlines.enums[k_enum].name,
         &mut cx.enum_ident_ids,
         &mut cx.ident_map,
     )
@@ -682,7 +682,7 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
         });
     }
 
-    for (k_enum, enum_data) in KEnumOutline::iter(&outlines.enums) {
+    for (k_enum, enum_data) in outlines.enums.enumerate() {
         match &enum_data.repr {
             KEnumRepr::Never | KEnumRepr::Unit | KEnumRepr::Const { .. } => continue,
             KEnumRepr::Sum { tag_ty } => {

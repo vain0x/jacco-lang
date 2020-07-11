@@ -145,7 +145,7 @@ impl Debug for KTy {
             }
             KTy::Enum(k_enum) => {
                 // FIXME: print name
-                write!(f, "enum#{}", k_enum.id())
+                write!(f, "enum#{}", k_enum.to_index())
             }
             KTy::Struct(k_struct) => {
                 // FIXME: print name
