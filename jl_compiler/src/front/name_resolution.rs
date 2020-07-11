@@ -38,6 +38,7 @@ pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
 
 pub(crate) struct NStaticVarData {
     pub(crate) name: String,
+    pub(crate) ty: KTy,
     pub(crate) location: Location,
 }
 
@@ -700,6 +701,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             // alloc static var
             let n_static_var = nx.res.static_vars.alloc(NStaticVarData {
                 name: String::new(),
+                ty: KTy::Unresolved,
                 location: keyword.location(&nx.tokens()),
             });
 
@@ -711,6 +713,21 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
                 nx.res.static_vars[n_static_var].name = name.text(nx.tokens()).to_string();
             }
+
+            let ty = match ty_opt {
+                Some(p_ty) => {
+                    let ty = gen_ty(p_ty);
+                    if !ty.is_primitive() {
+                        nx.logger.error(
+                            &keyword.location(nx.tokens()),
+                            "定数はプリミティブ型でなければいけません",
+                        );
+                    }
+                    ty
+                }
+                None => KTy::Unresolved,
+            };
+            n_static_var.of_mut(&mut nx.res.static_vars).ty = ty;
         }
         PDecl::Fn(PFnDecl {
             param_list_opt,

@@ -1199,11 +1199,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             k_const.of_mut(&mut gx.outlines.consts).value_opt = value_opt;
         }
         PDecl::Static(PStaticDecl {
-            keyword,
-            name_opt,
-            ty_opt,
-            init_opt,
-            ..
+            name_opt, init_opt, ..
         }) => {
             let name = name_opt.clone().unwrap();
             let static_var = match name.info_opt {
@@ -1214,15 +1210,6 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 name.text(&gx.tokens),
                 static_var.name(&gx.outlines.static_vars)
             );
-
-            let ty = gen_ty(ty_opt.as_ref().unwrap());
-
-            if !ty.is_primitive() {
-                gx.logger.error(
-                    &keyword.location(&gx.tokens),
-                    "static var must be of primitive type",
-                );
-            }
 
             let init = init_opt.as_ref().unwrap();
             let init_location = init.location();
@@ -1235,9 +1222,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            let data = &mut gx.outlines.static_vars[static_var];
-            data.ty = ty;
-            data.value_opt = value_opt;
+            static_var.of_mut(&mut gx.outlines.static_vars).value_opt = value_opt;
         }
 
         PDecl::Fn(PFnDecl {
@@ -1446,10 +1431,7 @@ pub(crate) fn cps_conversion(
             .iter()
             .map(|n_static_var_data| KStaticVarData {
                 name: n_static_var_data.name.to_string(),
-                ty: {
-                    // FIXME: resolve here
-                    KTy::Unresolved
-                },
+                ty: n_static_var_data.ty.clone(),
                 value_opt: {
                     // FIXME: calc here?
                     None
