@@ -1,0 +1,1 @@
+[ERROR jl_compiler::cli] tests/name_resolution/undefined_local_var/undefined_local_var.jacco:2.5-2.15 undefined value

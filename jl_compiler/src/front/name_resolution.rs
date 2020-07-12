@@ -8,6 +8,7 @@ use crate::{
         KVariant, KVis,
     },
     logs::Logger,
+    source::{Doc, Loc},
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
@@ -243,6 +244,17 @@ impl Nx {
     }
 }
 
+// FIXME: doc の値をもらう
+const DOC: Doc = Doc::new(1);
+
+fn error_on_token(token: PToken, message: impl Into<String>, nx: &Nx) {
+    nx.logger.error_loc(Loc::new(DOC, token), message);
+}
+fn error_on_name(name: PName, message: impl Into<String>, nx: &Nx) {
+    nx.logger
+        .error_loc(Loc::new(DOC, name.of(&nx.names).token), message);
+}
+
 fn parse_known_ty_name(s: &str) -> Option<NName> {
     let n_name = match s {
         "i8" => NName::I8,
@@ -275,7 +287,7 @@ fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
 
 fn resolve_name_use(p_name: PName, nx: &mut Nx) {
     let n_name = find_value_name(&p_name.full_name(&nx.names), nx).unwrap_or_else(|| {
-        nx.logger.error(&p_name, "undefined value");
+        error_on_name(p_name, "undefined value", nx);
         NName::Unresolved
     });
 
@@ -327,7 +339,7 @@ fn resolve_ty_name(p_name: PName, nx: &mut Nx) {
     let n_name = find_value_name(&p_name.full_name(&nx.names), nx)
         .or_else(|| parse_known_ty_name(p_name.text(&nx.names)))
         .unwrap_or_else(|| {
-            nx.logger.error(&p_name, "undefined type");
+            error_on_name(p_name, "undefined type", nx);
             NName::Unresolved
         });
 
@@ -530,7 +542,7 @@ fn resolve_param_list_opt(
         let ty = match &param.ty_opt {
             Some(ty) => gen_ty(ty, &nx.res.names),
             None => {
-                nx.logger.error(&param.name, "param type is mandatory");
+                error_on_name(param.name, "param type is mandatory", nx);
                 KTy::Unresolved
             }
         };
@@ -766,10 +778,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 Some(p_ty) => {
                     let ty = gen_ty(p_ty, &nx.res.names);
                     if !ty.is_primitive() {
-                        nx.logger.error(
-                            &keyword.location(nx.tokens()),
-                            "定数はプリミティブ型でなければいけません",
-                        );
+                        error_on_token(*keyword, "定数はプリミティブ型でなければいけません", nx);
                     }
                     ty
                 }
@@ -804,10 +813,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 Some(p_ty) => {
                     let ty = gen_ty(p_ty, &nx.res.names);
                     if !ty.is_primitive() {
-                        nx.logger.error(
-                            &keyword.location(nx.tokens()),
-                            "定数はプリミティブ型でなければいけません",
-                        );
+                        error_on_token(*keyword, "定数はプリミティブ型でなければいけません", nx);
                     }
                     ty
                 }

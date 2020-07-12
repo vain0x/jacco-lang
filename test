@@ -29,9 +29,17 @@ f() {
 }
 
 expect_compile_err() {
-    NAME=$1
-    SRC="tests/$NAME/$NAME.jacco"
-    ERR="tests/$NAME/${NAME}_stderr.log"
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        ERR="tests/$NAME/${NAME}_stderr.log"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        ERR="tests/$CATEGORY/$NAME/${NAME}_stderr.log"
+    fi
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
@@ -92,6 +100,7 @@ else
 
     # その他のテスト
     expect_compile_err syntax_error
+    expect_compile_err undefined_local_var name_resolution
 fi
 
 # 差分の量を表示する。
