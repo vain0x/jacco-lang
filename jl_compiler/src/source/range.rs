@@ -84,6 +84,12 @@ impl From<TRange> for Range {
     }
 }
 
+impl From<Range> for TRange {
+    fn from(range: Range) -> Self {
+        TRange::new(range.start.into(), range.end.into())
+    }
+}
+
 impl Debug for Range {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self)

@@ -78,6 +78,15 @@ impl From<TPos> for Pos {
     }
 }
 
+impl From<Pos> for TPos {
+    fn from(pos: Pos) -> Self {
+        // FIXME: 元の文字列にアクセスしないと index は計算できない。いまのところ使っていないので問題ない
+        let index = pos.line * 1000 + pos.character;
+        let (line, character) = (pos.line, pos.character);
+        TPos::new(index, line, character, character)
+    }
+}
+
 impl AddAssign for Pos {
     fn add_assign(&mut self, other: Self) {
         if other.line >= 1 {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::source::{Doc, Loc};
 use std::rc::Rc;
 
 enum IsRequired {
@@ -30,13 +31,14 @@ fn error_behind_node(have_location: impl HaveLocation, message: impl Into<String
 }
 
 fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    let location = token.location(&vx.tokens);
-    vx.logger.error(location, message);
+    // FIXME: doc の値を持っておく
+    vx.logger.error_loc(Loc::new(Doc::new(1), token), message);
 }
 
 fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    let location = token.location(vx.tokens());
-    vx.logger.error(location, message)
+    // FIXME: doc の値を持っておく
+    vx.logger
+        .error_loc(Loc::new(Doc::new(1), token).behind(), message)
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {

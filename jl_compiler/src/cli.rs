@@ -3,8 +3,8 @@ use crate::{
     cps::{eliminate_unit, resolve_types, KEnumOutline},
     front::{cps_conversion, resolve_name, validate_syntax},
     logs::{LogItem, Logs},
-    parse::parse_tokens,
-    source::{Doc, TPos, TRange},
+    parse::{parse_tokens, PToken, PTokens},
+    source::{loc::LocResolver, Doc, TRange},
     token::{tokenize, TokenSource},
 };
 use log::{error, trace};
@@ -36,7 +36,13 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     trace!("p_root = {:#?}\n", p_root);
 
     if logs.is_fatal() {
-        report_logs(&source_code, &logs.finish());
+        report_logs(
+            logs.finish(),
+            &MyLocResolver {
+                doc_path: &source_path,
+                tokens: &p_root.tokens,
+            },
+        );
         process::exit(1);
     }
 
@@ -47,7 +53,13 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     eliminate_unit(&mut k_root);
     trace!("k_root (elim) = {:#?}\n", k_root);
 
-    report_logs(&source_code, &logs.finish());
+    report_logs(
+        logs.finish(),
+        &MyLocResolver {
+            doc_path: &source_path,
+            tokens: &p_root.tokens,
+        },
+    );
 
     KEnumOutline::determine_tags(
         &mut k_root.outlines.consts,
@@ -58,22 +70,28 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     clang_dump(&k_root)
 }
 
-fn report_logs(doc_text: &str, logs: &[LogItem]) {
+pub(crate) struct MyLocResolver<'a> {
+    doc_path: &'a Path,
+    tokens: &'a PTokens,
+}
+
+impl<'a> LocResolver for MyLocResolver<'a> {
+    fn doc_path(&self, _doc: Doc) -> Option<&Path> {
+        Some(self.doc_path)
+    }
+
+    fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
+        token.location(self.tokens).range().into()
+    }
+}
+
+fn report_logs(logs: impl IntoIterator<Item = LogItem>, resolver: &impl LocResolver) {
     for item in logs {
-        let doc = match item.location.source {
-            TokenSource::Special(name) => name.to_string(),
-            TokenSource::File(doc) => format!("{:?}", doc),
-        };
-
-        let t_range = {
-            // 累積和を取っておくと効率がいい。
-            let range = item.location.range;
-            let start = TPos::from(&doc_text[..range.start_index()]);
-            let end = start + TPos::from(&doc_text[range.start_index()..range.end_index()]);
-            TRange::new(start, end)
-        };
-
-        error!("{}:{:?} {}", doc, t_range, item.message);
+        let (message, path_opt, range) = item.resolve(resolver);
+        let path = path_opt
+            .map(|path| path.to_string_lossy().to_string())
+            .unwrap_or_else(String::new);
+        error!("{}:{:?} {}", path, range, message);
     }
 }
 

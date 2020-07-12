@@ -218,12 +218,14 @@ mod source {
     //! ソースファイル
 
     pub(crate) mod doc;
+    pub(crate) mod loc;
     pub(crate) mod pos;
     pub(crate) mod range;
     pub(crate) mod t_pos;
     pub(crate) mod t_range;
 
     pub(crate) use doc::Doc;
+    pub(crate) use loc::Loc;
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
 

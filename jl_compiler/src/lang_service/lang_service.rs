@@ -1,16 +1,18 @@
 use crate::{
+    cli::MyLocResolver,
     cps::{self, KOutlines, KRoot},
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
-    source::{Doc, Pos, Range, TPos, TRange},
+    source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
 use front::NName;
 use log::{error, trace};
+use parse::PToken;
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     rc::Rc,
     sync::Arc,
 };
@@ -46,6 +48,19 @@ struct AnalysisCache {
     cps_opt: Option<Cps>,
 }
 
+impl LocResolver for AnalysisCache {
+    fn doc_path(&self, doc: Doc) -> Option<&Path> {
+        Some(self.source_path.as_ref())
+    }
+
+    fn token_range(&self, doc: Doc, token: PToken) -> TRange {
+        match &self.syntax_opt {
+            Some(syntax) => token.location(&syntax.root.tokens).range().into(),
+            None => TPos::ZERO.to_empty_range(),
+        }
+    }
+}
+
 impl AnalysisCache {
     fn set_text(&mut self, version: i64, text: Rc<String>) {
         self.version = version;
@@ -72,7 +87,7 @@ impl AnalysisCache {
             let root = parse::parse_tokens(tokens, logs.logger());
             validate_syntax(&root, logs.logger());
 
-            let errors = logs_into_errors(&self.text, logs);
+            let errors = logs_into_errors(logs, self);
 
             Syntax { root, errors }
         };
@@ -99,7 +114,7 @@ impl AnalysisCache {
             };
             let res = Rc::try_unwrap(res).ok().unwrap();
 
-            let errors = logs_into_errors(&self.text, logs);
+            let errors = logs_into_errors(logs, self);
 
             Symbols {
                 name_resolution_opt: Some(res),
@@ -131,7 +146,7 @@ impl AnalysisCache {
 
             cps::resolve_types(&mut root, logs.logger());
 
-            let errors = logs_into_errors(&self.text, logs);
+            let errors = logs_into_errors(logs, self);
 
             Cps { root, errors }
         };
@@ -310,18 +325,12 @@ impl LangService {
     }
 }
 
-fn logs_into_errors(doc_text: &str, logs: Logs) -> Vec<(Range, String)> {
+fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(Range, String)> {
     logs.finish()
         .into_iter()
         .map(|item| {
-            let t_range = {
-                // 累積和を取っておくと効率がいい。
-                let range = item.location.range;
-                let start = TPos::from(&doc_text[..range.start_index()]);
-                let end = start + TPos::from(&doc_text[range.start_index()..range.end_index()]);
-                TRange::new(start, end)
-            };
-            (Range::from(t_range), item.message)
+            let (message, _, range) = item.resolve(resolver);
+            (range.into(), message.to_string())
         })
         .collect()
 }
