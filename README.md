@@ -53,8 +53,8 @@ cargo build
 | cond  | condition     | 条件 |
 | cont  | continuation  | 継続 |
 | decl  | declaration   | 宣言 |
-| div   | division      | 除算 |
 | deref | dereference   | 脱参照 (参照を辿る操作) |
+| div   | division      | 除算 |
 | env   | environment   | 環境 |
 | expr  | expression    | 式 |
 | fn    | function      | 関数 |
