@@ -283,20 +283,20 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         },
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
-        KTerm::Const(k_const) => match &(*k_const).of(&cx.outlines.consts).value_opt {
+        KTerm::Const { k_const, .. } => match &(*k_const).of(&cx.outlines.consts).value_opt {
             Some(value) => gen_constant_value(value),
             None => gen_invalid_constant_value(),
         },
-        KTerm::StaticVar(static_var) => CExpr::Name(unique_static_var_name(*static_var, cx)),
-        KTerm::Fn(k_fn) => CExpr::Name(unique_fn_name(*k_fn, cx)),
-        KTerm::Label(label) => CExpr::Name(unique_label_name(*label, cx)),
-        KTerm::Return(k_fn) => {
+        KTerm::StaticVar { static_var, .. } => CExpr::Name(unique_static_var_name(*static_var, cx)),
+        KTerm::Fn { k_fn, .. } => CExpr::Name(unique_fn_name(*k_fn, cx)),
+        KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
+        KTerm::Return { k_fn, .. } => {
             error!("can't gen return term to c {}", unique_fn_name(*k_fn, cx));
             CExpr::Other("/* error */ 0")
         }
-        KTerm::ExternFn(extern_fn) => CExpr::Name(unique_extern_fn_name(*extern_fn, cx)),
+        KTerm::ExternFn { extern_fn, .. } => CExpr::Name(unique_extern_fn_name(*extern_fn, cx)),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::RecordTag(k_struct) => gen_record_tag(*k_struct, &cx.outlines.structs),
+        KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {
             error!("can't gen field term to c {} ({:?})", name, location);
             CExpr::Other("/* error */ 0")
@@ -386,14 +386,14 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
     match node.prim {
         KPrim::Stuck => unreachable!(),
         KPrim::Jump => match (args, results) {
-            ([KTerm::Return(_), KTerm::Unit { .. }], []) | ([KTerm::Return(_)], []) => {
+            ([KTerm::Return { .. }, KTerm::Unit { .. }], []) | ([KTerm::Return { .. }], []) => {
                 cx.stmts.push(CStmt::Return(None));
             }
-            ([KTerm::Return(_), arg], []) => {
+            ([KTerm::Return { .. }, arg], []) => {
                 let arg = gen_term(arg, cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
             }
-            ([KTerm::Label(label), args @ ..], []) => {
+            ([KTerm::Label { label, .. }, args @ ..], []) => {
                 let name = unique_label_name(*label, cx);
                 let params = cx.label_param_lists[*label].to_owned();
 

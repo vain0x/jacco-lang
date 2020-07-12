@@ -213,14 +213,14 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Char(_) => KTy::C8,
         KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
-        KTerm::Const(k_const) => k_const.ty(&tx.outlines.consts),
-        KTerm::StaticVar(static_var) => static_var.ty(&tx.outlines.static_vars).clone(),
-        KTerm::Fn(k_fn) => k_fn.ty(&tx.outlines.fns),
-        KTerm::Label(label) => label.ty(&tx.label_sigs),
-        KTerm::Return(_) => tx.return_ty_opt.clone().unwrap(),
-        KTerm::ExternFn(extern_fn) => extern_fn.ty(&tx.outlines.extern_fns),
+        KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts),
+        KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.outlines.static_vars).clone(),
+        KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns),
+        KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
+        KTerm::Return { .. } => tx.return_ty_opt.clone().unwrap(),
+        KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&tx.outlines.extern_fns),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::RecordTag(k_struct) => k_struct
+        KTerm::RecordTag { k_struct, .. } => k_struct
             .tag_ty(&tx.outlines.structs, &tx.outlines.enums)
             .clone(),
         KTerm::FieldTag(_) => unreachable!(),

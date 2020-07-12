@@ -5,7 +5,9 @@ use std::fmt::{self, Debug};
 /// CPS 原子項
 #[derive(Clone)]
 pub(crate) enum KTerm {
-    Unit { location: Location },
+    Unit {
+        location: Location,
+    },
     Int(TokenData, KTy),
     Float(TokenData),
     Char(TokenData),
@@ -13,13 +15,34 @@ pub(crate) enum KTerm {
     True(TokenData),
     False(TokenData),
     Name(KSymbol),
-    Const(KConst),
-    StaticVar(KStaticVar),
-    Fn(KFn),
-    Label(KLabel),
-    Return(KFn),
-    ExternFn(KExternFn),
-    RecordTag(KStruct),
+    Const {
+        k_const: KConst,
+        location: Location,
+    },
+    StaticVar {
+        static_var: KStaticVar,
+        location: Location,
+    },
+    Fn {
+        k_fn: KFn,
+        location: Location,
+    },
+    Label {
+        label: KLabel,
+        location: Location,
+    },
+    Return {
+        k_fn: KFn,
+        location: Location,
+    },
+    ExternFn {
+        extern_fn: KExternFn,
+        location: Location,
+    },
+    RecordTag {
+        k_struct: KStruct,
+        location: Location,
+    },
     FieldTag(KFieldTag),
 }
 
@@ -38,13 +61,13 @@ impl KTerm {
             KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
             KTerm::True(_) | KTerm::False(_) => KTy::Bool,
             KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
-            KTerm::Const(k_const) => k_const.ty(&outlines.consts),
-            KTerm::StaticVar(static_var) => static_var.ty(&outlines.static_vars).clone(),
-            KTerm::Fn(k_fn) => k_fn.ty(&outlines.fns),
-            KTerm::Label(label) => label.ty(labels),
-            KTerm::Return(k_fn) => k_fn.return_ty(&outlines.fns),
-            KTerm::ExternFn(extern_fn) => extern_fn.ty(&outlines.extern_fns),
-            KTerm::RecordTag(k_struct) => {
+            KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts),
+            KTerm::StaticVar { static_var, .. } => static_var.ty(&outlines.static_vars).clone(),
+            KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns),
+            KTerm::Label { label, .. } => label.ty(labels),
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns),
+            KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns),
+            KTerm::RecordTag { k_struct, .. } => {
                 k_struct.tag_ty(&outlines.structs, &outlines.enums).clone()
             }
             KTerm::FieldTag(field_tag) => {
@@ -63,13 +86,15 @@ impl KTerm {
             KTerm::Str(token) => token.location(),
             KTerm::True(token) => token.location(),
             KTerm::False(token) => token.location(),
-            KTerm::Name(KSymbol { location, .. }) => *location,
-            KTerm::FieldTag(KFieldTag { location, .. }) => *location,
-            _ => {
-                // FIXME: no location info
-                trace!("no location for {:?}", self);
-                Location::new(TokenSource::Special("<KTerm::location>"), Range::default())
-            }
+            KTerm::Name(KSymbol { location, .. })
+            | KTerm::Const { location, .. }
+            | KTerm::StaticVar { location, .. }
+            | KTerm::Fn { location, .. }
+            | KTerm::Label { location, .. }
+            | KTerm::Return { location, .. }
+            | KTerm::ExternFn { location, .. }
+            | KTerm::RecordTag { location, .. }
+            | KTerm::FieldTag(KFieldTag { location, .. }) => *location,
         }
     }
 }
@@ -85,25 +110,27 @@ impl Debug for KTerm {
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => Debug::fmt(symbol, f),
-            KTerm::Const(k_const) => write!(f, "const#{}", k_const.to_index()),
-            KTerm::StaticVar(static_var) => write!(f, "static_var#{}", static_var.to_index()),
-            KTerm::Fn(k_fn) => {
+            KTerm::Const { k_const, .. } => write!(f, "const#{}", k_const.to_index()),
+            KTerm::StaticVar { static_var, .. } => {
+                write!(f, "static_var#{}", static_var.to_index())
+            }
+            KTerm::Fn { k_fn, .. } => {
                 // FIXME: name
                 write!(f, "fn#{}", k_fn.to_index())
             }
-            KTerm::Label(label) => {
+            KTerm::Label { label, .. } => {
                 // FIXME: name
                 write!(f, "label#{}", label.to_index())
             }
-            KTerm::Return(k_fn) => {
+            KTerm::Return { k_fn, .. } => {
                 // FIXME: name
                 write!(f, "return#{}", k_fn.to_index())
             }
-            KTerm::ExternFn(extern_fn) => {
+            KTerm::ExternFn { extern_fn, .. } => {
                 // FIXME: name
                 write!(f, "extern_fn#{}", extern_fn.to_index())
             }
-            KTerm::RecordTag(k_struct) => {
+            KTerm::RecordTag { k_struct, .. } => {
                 // FIXME: name
                 write!(f, "struct_tag#{}", k_struct.to_index())
             }

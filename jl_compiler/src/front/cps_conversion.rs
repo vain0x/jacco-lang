@@ -96,14 +96,16 @@ impl Gx {
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
     ) {
+        // FIXME: location を持たせる
+        let location = Location::new(TokenSource::Special("<do_push_jump>"), Default::default());
+
         self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
-            args: once(KTerm::Label(label)).chain(args).collect(),
+            args: once(KTerm::Label { label, location }).chain(args).collect(),
             result_opt: None,
             cont_count,
-            // FIXME: location を持たせる
-            location: Location::new(TokenSource::Special("<do_push_jump>"), Default::default()),
+            location,
         });
     }
 
@@ -469,27 +471,36 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token.get(&gx.tokens)),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token.get(&gx.tokens)),
         PExpr::False(PFalseExpr(token)) => KTerm::False(token.get(&gx.tokens)),
-        PExpr::Name(name) => match gen_name(name, gx) {
-            KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
-            KSymbolExt::Const(k_const) => KTerm::Const(k_const),
-            KSymbolExt::StaticVar(static_var) => KTerm::StaticVar(static_var),
-            KSymbolExt::Fn(k_fn) => KTerm::Fn(k_fn),
-            KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn(extern_fn),
-            KSymbolExt::UnitLikeStruct { k_struct, location } => {
-                let ty = KTy::Struct(k_struct);
-                let name = k_struct.name(&gx.outlines.structs).to_string();
-                let result = gx.fresh_symbol(&name, location);
-                gx.push(KCommand::Node {
-                    prim: KPrim::Record,
-                    tys: vec![ty],
-                    args: vec![],
-                    result_opt: Some(result.clone()),
-                    cont_count: 1,
+        PExpr::Name(name) => {
+            let location = name.location();
+            match gen_name(name, gx) {
+                KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
+                KSymbolExt::Const(k_const) => KTerm::Const { k_const, location },
+                KSymbolExt::StaticVar(static_var) => KTerm::StaticVar {
+                    static_var,
                     location,
-                });
-                KTerm::Name(result)
+                },
+                KSymbolExt::Fn(k_fn) => KTerm::Fn { k_fn, location },
+                KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn {
+                    extern_fn,
+                    location,
+                },
+                KSymbolExt::UnitLikeStruct { k_struct, location } => {
+                    let ty = KTy::Struct(k_struct);
+                    let name = k_struct.name(&gx.outlines.structs).to_string();
+                    let result = gx.fresh_symbol(&name, location);
+                    gx.push(KCommand::Node {
+                        prim: KPrim::Record,
+                        tys: vec![ty],
+                        args: vec![],
+                        result_opt: Some(result.clone()),
+                        cont_count: 1,
+                        location,
+                    });
+                    KTerm::Name(result)
+                }
             }
-        },
+        }
         PExpr::Record(PRecordExpr {
             name,
             left_brace,
@@ -885,7 +896,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let args = {
-                let return_term = KTerm::Return(k_fn);
+                let return_term = KTerm::Return { k_fn, location };
                 let arg = match arg_opt {
                     Some(arg) => gen_expr(&arg, gx),
                     None => new_unit_term(location),
@@ -939,22 +950,24 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
-                    PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
-                        NName::Const(n_const) => KTerm::Const(*n_const),
-                        NName::LocalVar(_) => {
-                            let symbol = gen_name(name, gx).expect_symbol();
-                            KTerm::Name(symbol)
-                        }
-                        _ => {
-                            error!("unimplemented pat {:?}", arm);
-                            KTerm::Unit {
-                                location: arm.location(),
+                    PPat::Name(name) => {
+                        let location = name.location();
+                        match name.info_opt.clone().unwrap() {
+                            NName::Const(k_const) => KTerm::Const { k_const, location },
+                            NName::LocalVar(_) => {
+                                let symbol = gen_name(name, gx).expect_symbol();
+                                KTerm::Name(symbol)
+                            }
+                            _ => {
+                                error!("unimplemented pat {:?}", arm);
+                                KTerm::Unit { location }
                             }
                         }
-                    },
+                    }
                     PPat::Record(PRecordPat { name, .. }) => {
+                        let location = name.location();
                         let k_struct = name.info_opt.unwrap().as_struct().unwrap();
-                        KTerm::RecordTag(k_struct)
+                        KTerm::RecordTag { k_struct, location }
                     }
                 }))
                 .collect();
@@ -1170,7 +1183,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 gx.push(KCommand::Node {
                     prim: KPrim::Jump,
                     tys: vec![],
-                    args: vec![KTerm::Return(k_fn), result],
+                    args: vec![KTerm::Return { k_fn, location }, result],
                     result_opt: None,
                     cont_count: 1,
                     location,
