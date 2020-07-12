@@ -7,5 +7,8 @@ pub fn main() -> i32 {
 
     let o = s[4_usize];
     assert_ok(o == 'o');
+
+    let pp: **c8 = &s;
+    assert_ok(**pp == 'h');
     0
 }

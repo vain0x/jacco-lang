@@ -2,7 +2,7 @@
 
 extern fn exit(code: i32) -> !;
 
-extern fn strtol(nptr: *c8, endptr: * *c8, base: i32) -> i32;
+extern fn strtol(nptr: *c8, endptr: **c8, base: i32) -> i32;
 
 // FIXME: printfn 的なものがないので、引数の種類だけ関数を用意しておく。
 extern fn print_s(value: *c8);
@@ -24,8 +24,7 @@ fn eprintln(str: *c8) {
 // compiler
 // -----------------------------------------------
 
-// FIXME: **c8 がポインタ型にパースされない
-pub fn cc_main(argc: usize, argv: * *c8) {
+pub fn cc_main(argc: usize, argv: **c8) {
     if argc != 2_usize {
         eprintln("引数の個数が正しくありません\n");
         exit(1)

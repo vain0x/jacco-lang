@@ -27,7 +27,12 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
             let bang = px.bump();
             PTy::Never(PNeverTy { bang })
         }
-        TokenKind::Star => {
+        TokenKind::Star | TokenKind::StarStar => {
+            let rep = if px.next() == TokenKind::Star {
+                OneOrTwo::One
+            } else {
+                OneOrTwo::Two
+            };
             let star = px.bump();
             let mut_opt = parse_mut(px);
             let ty_opt = parse_ty(px).map(Box::new);
@@ -35,6 +40,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
                 star,
                 mut_opt,
                 ty_opt,
+                rep,
             })
         }
         _ => return None,
