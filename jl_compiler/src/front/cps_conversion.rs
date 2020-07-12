@@ -29,6 +29,8 @@ struct KLoopData {
 #[derive(Default)]
 struct Gx {
     tokens: Rc<PTokens>,
+    names: PNameArena,
+    name_res: VecArena<PNameTag, NName>,
     outlines: KOutlines,
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
@@ -246,10 +248,8 @@ fn gen_mut(p_mut: Option<&PMut>) -> KMut {
 }
 
 // ローカル型環境を引数に取るかもしれない
-pub(crate) fn gen_ty_name(p_name: &PName) -> KTy {
-    let n_name = p_name.info_opt.clone().unwrap();
-
-    match n_name {
+pub(crate) fn gen_ty_name(p_name: PName, name_res: &VecArena<PNameTag, NName>) -> KTy {
+    match *p_name.of(name_res) {
         NName::I8 => KTy::I8,
         NName::I16 => KTy::I16,
         NName::I32 => KTy::I32,
@@ -272,25 +272,25 @@ pub(crate) fn gen_ty_name(p_name: &PName) -> KTy {
     }
 }
 
-pub(crate) fn gen_ty(ty: &PTy) -> KTy {
+pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
     match ty {
-        PTy::Name(name) => gen_ty_name(name),
+        PTy::Name(name) => gen_ty_name(*name, name_res),
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
         PTy::Ptr(PPtrTy {
             ty_opt, mut_opt, ..
         }) => {
             let k_mut = gen_mut(mut_opt.as_ref());
-            gen_ty(ty_opt.as_deref().unwrap()).into_ptr(k_mut)
+            gen_ty(ty_opt.as_deref().unwrap(), name_res).into_ptr(k_mut)
         }
     }
 }
 
-fn gen_name(name: &PName, gx: &mut Gx) -> KSymbolExt {
-    let n_name = name.info_opt.unwrap();
-    let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
+fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
+    let n_name = name.of(&gx.name_res);
+    let (name, location) = (name.text(&gx.names).to_string(), name.location());
 
-    match n_name {
+    match *n_name {
         NName::LocalVar(local) => {
             let local_data = &mut gx.current_locals[local];
             local_data.name = name.to_string();
@@ -369,7 +369,7 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
             .map(KConstValue::F64),
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
-        PExpr::Name(name) => match gen_name(name, gx) {
+        PExpr::Name(name) => match gen_name(*name, gx) {
             KSymbolExt::Const(k_const) => k_const.of(&gx.outlines.consts).value_opt.clone(),
             _ => None,
         },
@@ -386,11 +386,11 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
         name, value_opt, ..
     } = decl;
 
-    let k_const = match name.info_opt {
-        Some(NName::Const(n_const)) => n_const,
+    let k_const = match *name.of(&gx.name_res) {
+        NName::Const(n_const) => n_const,
         _ => unreachable!(),
     };
-    assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
+    assert_eq!(name.text(&gx.names), k_const.of(&gx.outlines.consts).name);
 
     if let Some(value) = value_opt.as_deref() {
         let location = value.location();
@@ -411,11 +411,11 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
 fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
     let PRecordVariantDecl { name, .. } = decl;
 
-    let k_struct = match name.info_opt {
-        Some(NName::Struct(n_struct)) => n_struct,
+    let k_struct = match *name.of(&gx.name_res) {
+        NName::Struct(n_struct) => n_struct,
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
-    assert_eq!(name.text(&gx.tokens), k_struct.name(&gx.outlines.structs));
+    assert_eq!(name.text(&gx.names), k_struct.name(&gx.outlines.structs));
 
     k_struct
 }
@@ -481,7 +481,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         PExpr::False(PFalseExpr(token)) => KTerm::False(token.get(&gx.tokens)),
         PExpr::Name(name) => {
             let location = name.location();
-            match gen_name(name, gx) {
+            match gen_name(*name, gx) {
                 KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
                 KSymbolExt::Const(k_const) => KTerm::Const { k_const, location },
                 KSymbolExt::StaticVar(static_var) => KTerm::StaticVar {
@@ -515,13 +515,13 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             fields,
             ..
         }) => {
-            let k_struct = match name.info_opt {
-                Some(NName::Const(_)) => todo!(),
-                Some(NName::Struct(n_struct)) => n_struct,
+            let k_struct = match *name.of(&gx.name_res) {
+                NName::Const(_) => todo!(),
+                NName::Struct(n_struct) => n_struct,
                 n_name => unreachable!("{:?}", n_name),
             };
 
-            let (name, location) = (name.text(&gx.tokens).to_string(), name.location());
+            let (name, location) = (name.text(&gx.names).to_string(), name.location());
             let result = gx.fresh_symbol(&name, location);
 
             let field_count = k_struct.fields(&gx.outlines.structs).len();
@@ -532,7 +532,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 let term = gen_expr(field.value_opt.as_ref().unwrap(), gx);
 
                 match (0..field_count).find(|&i| {
-                    field.name.text(&gx.tokens).to_string()
+                    field.name.text(&gx.names).to_string()
                         == k_struct.fields(&gx.outlines.structs)[i].name(&gx.outlines.fields)
                 }) {
                     Some(i) => {
@@ -559,7 +559,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
             if !duped.is_empty() {
                 for field_expr in fields {
-                    if duped.contains(&field_expr.name.text(&gx.tokens)) {
+                    if duped.contains(&field_expr.name.text(&gx.names)) {
                         gx.logger.error(field_expr, "duplicated");
                     }
                 }
@@ -656,7 +656,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("cast", location);
 
             let left = gen_expr(&left, gx);
-            let ty = gen_ty(ty_opt.as_ref().unwrap());
+            let ty = gen_ty(ty_opt.as_ref().unwrap(), &gx.name_res);
 
             gx.push(KCommand::Node {
                 prim: KPrim::Cast,
@@ -960,10 +960,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Name(name) => {
                         let location = name.location();
-                        match name.info_opt.clone().unwrap() {
+                        match *name.of(&gx.name_res) {
                             NName::Const(k_const) => KTerm::Const { k_const, location },
                             NName::LocalVar(_) => {
-                                let symbol = gen_name(name, gx).expect_symbol();
+                                let symbol = gen_name(*name, gx).expect_symbol();
                                 KTerm::Name(symbol)
                             }
                             _ => {
@@ -974,7 +974,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                     }
                     PPat::Record(PRecordPat { name, .. }) => {
                         let location = name.location();
-                        let k_struct = name.info_opt.unwrap().as_struct().unwrap();
+                        let k_struct = name.of(&gx.name_res).as_struct().unwrap();
                         KTerm::RecordTag { k_struct, location }
                     }
                 }))
@@ -992,10 +992,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
             for arm in arms {
                 match &arm.pat {
-                    PPat::Name(name) => match name.info_opt.as_ref().unwrap() {
+                    PPat::Name(name) => match *name.of(&gx.name_res) {
                         NName::Const(_) => {}
                         NName::LocalVar(_) => {
-                            let name = gen_name(name, gx).expect_symbol();
+                            let name = gen_name(*name, gx).expect_symbol();
                             gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
                         }
                         _ => error!("unimplemented pat {:?}", name),
@@ -1095,10 +1095,12 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let ty = ty_opt.as_ref().map_or(KTy::Unresolved, gen_ty);
+            let ty = ty_opt
+                .as_ref()
+                .map_or(KTy::Unresolved, |ty| gen_ty(ty, &gx.name_res));
 
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
-            let mut result = gen_name(name_opt.as_ref().unwrap(), gx).expect_symbol();
+            let mut result = gen_name(name_opt.unwrap(), gx).expect_symbol();
             *result.ty_mut(&mut gx.current_locals) = ty;
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
@@ -1107,11 +1109,11 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             name_opt, init_opt, ..
         }) => {
             let name = name_opt.clone().unwrap();
-            let k_const = match name.info_opt {
-                Some(NName::Const(n_const)) => n_const,
+            let k_const = match *name.of(&gx.name_res) {
+                NName::Const(n_const) => n_const,
                 _ => unreachable!(),
             };
-            assert_eq!(name.text(&gx.tokens), k_const.of(&gx.outlines.consts).name);
+            assert_eq!(name.text(&gx.names), k_const.of(&gx.outlines.consts).name);
 
             let init = init_opt.as_ref().unwrap();
             let init_location = init.location();
@@ -1130,12 +1132,12 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             name_opt, init_opt, ..
         }) => {
             let name = name_opt.clone().unwrap();
-            let static_var = match name.info_opt {
-                Some(NName::StaticVar(n_static_var)) => n_static_var,
+            let static_var = match *name.of(&gx.name_res) {
+                NName::StaticVar(n_static_var) => n_static_var,
                 _ => unreachable!(),
             };
             assert_eq!(
-                name.text(&gx.tokens),
+                name.text(&gx.names),
                 static_var.name(&gx.outlines.static_vars)
             );
 
@@ -1216,12 +1218,12 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
         PDecl::Enum(PEnumDecl {
             name_opt, variants, ..
         }) => {
-            let name = name_opt.as_ref().unwrap();
-            let k_enum = match name.info_opt {
-                Some(NName::Enum(n_enum)) => n_enum,
+            let name = name_opt.unwrap();
+            let k_enum = match *name.of(&gx.name_res) {
+                NName::Enum(n_enum) => n_enum,
                 n_name_opt => unreachable!("{:?}", n_name_opt),
             };
-            assert_eq!(name.text(&gx.tokens), k_enum.name(&gx.outlines.enums));
+            assert_eq!(name.text(&gx.names), k_enum.name(&gx.outlines.enums));
 
             let mut next_value = 0_usize;
             let k_variants = variants
@@ -1413,6 +1415,8 @@ pub(crate) fn cps_conversion(
 
         let mut gx = Gx::new(logger.clone());
         gx.tokens = Rc::new(p_root.tokens.clone());
+        gx.names = p_root.names.clone();
+        gx.name_res = name_resolution.names.clone();
 
         gx.outlines.consts = VecArena::from_vec(k_consts);
 

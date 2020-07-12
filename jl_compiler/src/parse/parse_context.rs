@@ -4,6 +4,7 @@ use super::*;
 pub(crate) struct Px {
     tokens: PTokens,
     current: usize,
+    names: PNameArena,
     skipped: Vec<PToken>,
     logger: Logger,
 }
@@ -13,6 +14,7 @@ impl Px {
         Px {
             tokens,
             current: 0,
+            names: PNameArena::new(),
             skipped: vec![],
             logger,
         }
@@ -69,10 +71,32 @@ impl Px {
         }
     }
 
-    pub(crate) fn finish(mut self) -> (PToken, Vec<PToken>, PTokens) {
+    pub(crate) fn finish(mut self) -> (PToken, PNameArena, Vec<PToken>, PTokens) {
         assert_eq!(self.current + 1, self.tokens.len());
 
         let eof = self.expect(TokenKind::Eof);
-        (eof, self.skipped, self.tokens)
+        (eof, self.names, self.skipped, self.tokens)
     }
+}
+
+pub(crate) fn alloc_name(quals: Vec<PNameQual>, token: PToken, px: &mut Px) -> PName {
+    let text = token.text(px.tokens()).to_string();
+    let full_name = {
+        let mut s = String::new();
+
+        for qual in &quals {
+            s += qual.name.text(px.tokens());
+            s += "::";
+        }
+
+        s += token.text(px.tokens());
+        s
+    };
+
+    px.names.alloc(PNameData {
+        quals,
+        token,
+        text,
+        full_name,
+    })
 }

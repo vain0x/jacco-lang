@@ -13,6 +13,7 @@ pub(crate) struct Occurrences {
 /// Collecting context.
 struct Cx {
     tokens: Rc<PTokens>,
+    names: Rc<PNameArena>,
     #[allow(unused)]
     res: Rc<NameResolution>,
     parent_fn: NName,
@@ -20,9 +21,10 @@ struct Cx {
 }
 
 impl Cx {
-    fn new(tokens: Rc<PTokens>, res: Rc<NameResolution>) -> Self {
+    fn new(tokens: Rc<PTokens>, names: Rc<PNameArena>, res: Rc<NameResolution>) -> Self {
         Self {
             tokens,
+            names,
             res,
             parent_fn: NName::Unresolved,
             occurrences: Occurrences::default(),
@@ -42,8 +44,9 @@ fn full_name(n_name: NName, cx: &Cx) -> (NName, NName) {
     (parent, n_name)
 }
 
-fn resolve_name_def(p_name: &PName, cx: &mut Cx) {
-    if let Some(n_name) = p_name.info_opt.clone() {
+fn resolve_name_def(p_name: PName, cx: &mut Cx) {
+    let n_name = *p_name.of(&cx.res.names);
+    if n_name != NName::Unresolved {
         cx.occurrences
             .def_sites
             .entry(full_name(n_name, cx))
@@ -52,8 +55,10 @@ fn resolve_name_def(p_name: &PName, cx: &mut Cx) {
     }
 }
 
-fn resolve_name_use(p_name: &PName, cx: &mut Cx) {
-    if let Some(n_name) = p_name.info_opt.clone() {
+fn resolve_name_use(p_name: PName, cx: &mut Cx) {
+    let n_name = *p_name.of(&cx.res.names);
+
+    if n_name != NName::Unresolved {
         cx.occurrences
             .use_sites
             .entry(full_name(n_name, cx))
@@ -62,13 +67,13 @@ fn resolve_name_use(p_name: &PName, cx: &mut Cx) {
     }
 }
 
-fn resolve_ty_name(ty_name: &PName, cx: &mut Cx) {
-    resolve_name_use(&ty_name, cx);
+fn resolve_ty_name(ty_name: PName, cx: &mut Cx) {
+    resolve_name_use(ty_name, cx);
 }
 
 fn resolve_ty(ty: &PTy, cx: &mut Cx) {
     match ty {
-        PTy::Name(name) => resolve_ty_name(name, cx),
+        PTy::Name(name) => resolve_ty_name(*name, cx),
         PTy::Never(_) | PTy::Unit(_) => {}
         PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             resolve_ty_opt(ty_opt.as_deref(), cx);
@@ -84,8 +89,8 @@ fn resolve_ty_opt(ty_opt: Option<&PTy>, cx: &mut Cx) {
 
 fn resolve_pat(pat: &PPat, cx: &mut Cx) {
     match pat {
-        PPat::Name(name) => resolve_name_def(name, cx),
-        PPat::Record(PRecordPat { name, .. }) => resolve_name_def(name, cx),
+        PPat::Name(name) => resolve_name_def(*name, cx),
+        PPat::Record(PRecordPat { name, .. }) => resolve_name_def(*name, cx),
     }
 }
 
@@ -105,15 +110,15 @@ fn resolve_expr(expr: &PExpr, cx: &mut Cx) {
         | PExpr::True(_)
         | PExpr::False(_) => {}
         PExpr::Name(name) => {
-            resolve_name_use(name, cx);
+            resolve_name_use(*name, cx);
         }
         PExpr::Record(PRecordExpr { name, fields, .. }) => {
-            resolve_ty_name(name, cx);
+            resolve_ty_name(*name, cx);
 
             for field in fields {
                 let field_use = (
-                    field.name.text(cx.tokens()).to_string(),
-                    field.name.token.location(cx.tokens()),
+                    field.name.text(&cx.names).to_string(),
+                    field.name.location(),
                 );
                 cx.occurrences.field_uses.push(field_use);
 
@@ -207,7 +212,7 @@ fn resolve_param_list_opt(param_list_opt: Option<&PParamList>, cx: &mut Cx) {
         .into_iter()
         .flat_map(|param_list| param_list.params.iter());
     for param in params {
-        resolve_name_def(&param.name, cx);
+        resolve_name_def(param.name, cx);
         resolve_ty_opt(param.ty_opt.as_ref(), cx);
     }
 }
@@ -217,14 +222,14 @@ fn resolve_variant(variant: &PVariantDecl, cx: &mut Cx) {
         PVariantDecl::Const(PConstVariantDecl {
             name, value_opt, ..
         }) => {
-            resolve_name_def(name, cx);
+            resolve_name_def(*name, cx);
             resolve_expr_opt(value_opt.as_deref(), cx);
         }
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
-            resolve_name_def(name, cx);
+            resolve_name_def(*name, cx);
 
             for field in fields {
-                resolve_name_def(&field.name, cx);
+                resolve_name_def(field.name, cx);
                 resolve_ty_opt(field.ty_opt.as_ref(), cx);
             }
         }
@@ -252,7 +257,7 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             resolve_expr_opt(init_opt.as_ref(), cx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
         }
         PDecl::Const(PConstDecl {
@@ -265,7 +270,7 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             resolve_expr_opt(init_opt.as_ref(), cx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
         }
         PDecl::Static(PStaticDecl {
@@ -278,7 +283,7 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             resolve_expr_opt(init_opt.as_ref(), cx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
         }
         PDecl::Fn(PFnDecl {
@@ -291,13 +296,13 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             let parent_fn = {
                 let n_fn = name_opt
                     .as_ref()
-                    .and_then(|name| name.info_opt)
+                    .map(|name| *name.of(&cx.res.names))
                     .unwrap_or(NName::Unresolved);
                 replace(&mut cx.parent_fn, n_fn)
             };
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
 
             resolve_param_list_opt(param_list_opt.as_ref(), cx);
@@ -315,13 +320,13 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             let parent_fn = {
                 let extern_fn = name_opt
                     .as_ref()
-                    .and_then(|name| name.info_opt)
+                    .map(|name| *name.of(&cx.res.names))
                     .unwrap_or(NName::Unresolved);
                 replace(&mut cx.parent_fn, extern_fn)
             };
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
 
             resolve_param_list_opt(param_list_opt.as_ref(), cx);
@@ -333,7 +338,7 @@ fn resolve_decl(decl: &PDecl, cx: &mut Cx) {
             name_opt, variants, ..
         }) => {
             if let Some(name) = name_opt {
-                resolve_name_def(name, cx);
+                resolve_name_def(*name, cx);
             }
 
             for variant in variants {
@@ -371,7 +376,8 @@ fn resolve_block_opt(block_opt: Option<&PBlock>, cx: &mut Cx) {
 pub(crate) fn collect_occurrences(p_root: &PRoot, res: Rc<NameResolution>) -> Occurrences {
     // FIXME: clone しない
     let tokens = Rc::new(p_root.tokens.clone());
-    let mut cx = Cx::new(tokens, res);
+    let names = Rc::new(p_root.names.clone());
+    let mut cx = Cx::new(tokens, names, res);
 
     resolve_decls(&p_root.decls, &mut cx);
 

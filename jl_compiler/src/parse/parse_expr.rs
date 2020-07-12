@@ -1,6 +1,7 @@
 //! 式の構文解析ルール
 
 use super::*;
+use parse_context::alloc_name;
 use parse_pat::parse_pat;
 use parse_ty::parse_mut;
 use std::mem::replace;
@@ -35,11 +36,7 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<PName> {
         quals.push(PNameQual { name, colon_colon });
     }
 
-    Some(PName {
-        quals,
-        token: left,
-        info_opt: None,
-    })
+    Some(alloc_name(quals, left, px))
 }
 
 fn parse_field_expr(px: &mut Px) -> PFieldExpr {

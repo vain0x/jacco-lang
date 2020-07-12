@@ -106,6 +106,7 @@ pub(crate) struct NFieldData {
 /// 名前解決の結果。
 #[derive(Default)]
 pub(crate) struct NameResolution {
+    pub(crate) names: VecArena<PNameTag, NName>,
     pub(crate) consts: NConstArena,
     pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: NFnArena,
@@ -164,6 +165,7 @@ impl NName {
 #[derive(Default)]
 struct Nx {
     tokens: Rc<PTokens>,
+    names: PNameArena,
     local_env: HashMap<String, NName>,
     // global_env: HashMap<String, NName>,
     parent_loop: Option<NLoop>,
@@ -175,9 +177,10 @@ struct Nx {
 }
 
 impl Nx {
-    fn new(tokens: Rc<PTokens>, logger: Logger) -> Self {
+    fn new(tokens: Rc<PTokens>, names: PNameArena, logger: Logger) -> Self {
         Self {
             tokens,
+            names,
             logger,
             ..Self::default()
         }
@@ -270,47 +273,47 @@ fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
         .cloned()
 }
 
-fn resolve_name_use(name: &mut PName, nx: &mut Nx) {
-    let name_info = find_value_name(&name.full_name(nx.tokens()), nx).unwrap_or_else(|| {
-        nx.logger.error(&name, "undefined value");
+fn resolve_name_use(p_name: PName, nx: &mut Nx) {
+    let n_name = find_value_name(&p_name.full_name(&nx.names), nx).unwrap_or_else(|| {
+        nx.logger.error(&p_name, "undefined value");
         NName::Unresolved
     });
 
-    name.info_opt = Some(name_info);
+    nx.res.names[p_name] = n_name;
 }
 
-fn resolve_name_def(p_name: &mut PName, n_name: NName, nx: &mut Nx) {
-    p_name.info_opt = Some(n_name);
+fn resolve_name_def(p_name: PName, n_name: NName, nx: &mut Nx) {
+    nx.res.names[p_name] = n_name;
 
-    if !p_name.is_underscore(nx.tokens()) {
-        nx.import_local(p_name.full_name(nx.tokens()), n_name);
+    if !p_name.is_underscore(&nx.names) {
+        nx.import_local(p_name.full_name(&nx.names), n_name);
     }
 }
 
 fn resolve_qualified_name_def(
-    p_name: &mut PName,
+    p_name: PName,
     parent_name_opt: Option<&str>,
     n_name: NName,
     nx: &mut Nx,
 ) {
-    p_name.info_opt = Some(n_name);
+    nx.res.names[p_name] = n_name;
 
-    if !p_name.is_underscore(nx.tokens()) {
+    if !p_name.is_underscore(&nx.names) {
         let full_name = match parent_name_opt {
             Some(parent_name) => {
                 // PName::full_name と同じエンコーディング
-                format!("{}::{}", parent_name, p_name.full_name(nx.tokens()))
+                format!("{}::{}", parent_name, p_name.full_name(&nx.names))
             }
-            _ => p_name.full_name(nx.tokens()),
+            _ => p_name.full_name(&nx.names),
         };
         nx.import_local(full_name, n_name);
     }
 }
 
-fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) -> KLocal {
+fn resolve_local_var_def(name: PName, nx: &mut Nx) -> KLocal {
     // alloc local
     let local_var = nx.parent_local_vars.alloc(NLocalVarData {
-        name: name.text(nx.tokens()).to_string(),
+        name: name.text(&nx.names).to_string(),
         ty: KTy::Unresolved,
         location: name.location(),
     });
@@ -319,21 +322,21 @@ fn resolve_local_var_def(name: &mut PName, nx: &mut Nx) -> KLocal {
     local_var
 }
 
-fn resolve_ty_name(name: &mut PName, nx: &mut Nx) {
+fn resolve_ty_name(p_name: PName, nx: &mut Nx) {
     // 環境から探して、なければ組み込み型の名前とみなす。
-    let name_info = find_value_name(&name.full_name(nx.tokens()), nx)
-        .or_else(|| parse_known_ty_name(name.text(nx.tokens())))
+    let n_name = find_value_name(&p_name.full_name(&nx.names), nx)
+        .or_else(|| parse_known_ty_name(p_name.text(&nx.names)))
         .unwrap_or_else(|| {
-            nx.logger.error(&name, "undefined type");
+            nx.logger.error(&p_name, "undefined type");
             NName::Unresolved
         });
 
-    name.info_opt = Some(name_info);
+    nx.res.names[p_name] = n_name;
 }
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
     match ty {
-        PTy::Name(name) => resolve_ty_name(name, nx),
+        PTy::Name(name) => resolve_ty_name(*name, nx),
         PTy::Never(_) | PTy::Unit(_) => {}
         PTy::Ptr(PPtrTy { ty_opt, .. }) => {
             resolve_ty_opt(ty_opt.as_deref_mut(), nx);
@@ -349,15 +352,15 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 
 fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
     match pat {
-        PPat::Name(name) => match find_value_name(&name.full_name(nx.tokens()), nx) {
+        PPat::Name(name) => match find_value_name(&name.full_name(&nx.names), nx) {
             Some(NName::Const(_)) => {
-                resolve_name_use(name, nx);
+                resolve_name_use(*name, nx);
             }
             _ => {
-                resolve_local_var_def(name, nx);
+                resolve_local_var_def(*name, nx);
             }
         },
-        PPat::Record(PRecordPat { name, .. }) => resolve_name_use(name, nx),
+        PPat::Record(PRecordPat { name, .. }) => resolve_name_use(*name, nx),
     }
 }
 
@@ -377,10 +380,10 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         | PExpr::True(_)
         | PExpr::False(_) => {}
         PExpr::Name(name) => {
-            resolve_name_use(name, nx);
+            resolve_name_use(*name, nx);
         }
         PExpr::Record(PRecordExpr { name, fields, .. }) => {
-            resolve_ty_name(name, nx);
+            resolve_ty_name(*name, nx);
 
             for field in fields {
                 resolve_expr_opt(field.value_opt.as_mut(), nx);
@@ -521,11 +524,11 @@ fn resolve_param_list_opt(
         .into_iter()
         .flat_map(|param_list| param_list.params.iter_mut());
     for param in params {
-        let local = resolve_local_var_def(&mut param.name, nx);
+        let local = resolve_local_var_def(param.name, nx);
         resolve_ty_opt(param.ty_opt.as_mut(), nx);
 
         let ty = match &param.ty_opt {
-            Some(ty) => gen_ty(ty),
+            Some(ty) => gen_ty(ty, &nx.res.names),
             None => {
                 nx.logger.error(&param.name, "param type is mandatory");
                 KTy::Unresolved
@@ -552,7 +555,7 @@ fn resolve_variant(
         }) => {
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
-                name: name.text(&nx.tokens()).to_string(),
+                name: name.text(&nx.names).to_string(),
                 value_ty: {
                     // FIXME: 値を見て型を決める？
                     KTy::Usize
@@ -561,7 +564,7 @@ fn resolve_variant(
                 location: name.location(),
             });
 
-            resolve_qualified_name_def(name, parent_name_opt, NName::Const(n_const), nx);
+            resolve_qualified_name_def(*name, parent_name_opt, NName::Const(n_const), nx);
             resolve_expr_opt(value_opt.as_deref_mut(), nx);
 
             KVariant::Const(n_const)
@@ -571,19 +574,19 @@ fn resolve_variant(
 
             // alloc struct
             let n_struct = nx.res.structs.alloc(NStructData {
-                name: name.text(nx.tokens()).to_string(),
+                name: name.text(&nx.names).to_string(),
                 fields: vec![],
                 parent_opt,
                 location: name.location(),
             });
 
-            resolve_qualified_name_def(name, parent_name_opt, NName::Struct(n_struct), nx);
+            resolve_qualified_name_def(*name, parent_name_opt, NName::Struct(n_struct), nx);
 
             for field in fields {
                 // 型は後ろにある宣言を見た後に解決する。
                 // alloc field
                 let n_field = nx.res.fields.alloc(NFieldData {
-                    name: field.name.text(nx.tokens()).to_string(),
+                    name: field.name.text(&nx.names).to_string(),
                     ty: KTy::Unresolved,
                     location: name.location(),
                 });
@@ -604,9 +607,12 @@ fn resolve_variant2(variant: &PVariantDecl, nx: &mut Nx) {
     match variant {
         PVariantDecl::Const(_) => {}
         PVariantDecl::Record(PRecordVariantDecl { name, fields, .. }) => {
-            let k_struct = name.info_opt.unwrap().as_struct().unwrap();
+            let k_struct = name.of(&nx.res.names).as_struct().unwrap();
             for (k_field, p_field) in nx.res.structs[k_struct].fields.clone().iter().zip(fields) {
-                let ty = p_field.ty_opt.as_ref().map_or(KTy::Unresolved, gen_ty);
+                let ty = p_field
+                    .ty_opt
+                    .as_ref()
+                    .map_or(KTy::Unresolved, |ty| gen_ty(ty, &nx.res.names));
                 k_field.of_mut(&mut nx.res.fields).ty = ty;
             }
         }
@@ -639,9 +645,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 *fn_id_opt = Some(k_fn.to_index());
 
                 if let Some(name) = name_opt {
-                    resolve_name_def(name, NName::Fn(k_fn), nx);
+                    resolve_name_def(*name, NName::Fn(k_fn), nx);
 
-                    nx.res.fns[k_fn].name = name.text(nx.tokens()).to_string();
+                    nx.res.fns[k_fn].name = name.text(&nx.names).to_string();
                 }
             }
             PDecl::ExternFn(PExternFnDecl {
@@ -666,9 +672,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 *extern_fn_id_opt = Some(extern_fn.to_index());
 
                 if let Some(name) = name_opt.as_mut() {
-                    resolve_name_def(name, NName::ExternFn(extern_fn), nx);
+                    resolve_name_def(*name, NName::ExternFn(extern_fn), nx);
 
-                    nx.res.extern_fns[extern_fn].name = name.text(nx.tokens()).to_string();
+                    nx.res.extern_fns[extern_fn].name = name.text(&nx.names).to_string();
                 }
             }
             PDecl::Enum(PEnumDecl {
@@ -686,9 +692,9 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
 
                 let mut enum_name = String::new();
                 if let Some(name) = name_opt {
-                    resolve_name_def(name, NName::Enum(n_enum), nx);
+                    resolve_name_def(*name, NName::Enum(n_enum), nx);
 
-                    enum_name = name.text(nx.tokens()).to_string();
+                    enum_name = name.text(&nx.names).to_string();
                 }
 
                 let n_variants = variants
@@ -729,7 +735,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt.as_mut() {
-                resolve_local_var_def(name, nx);
+                resolve_local_var_def(*name, nx);
             }
         }
         PDecl::Const(PConstDecl {
@@ -751,14 +757,14 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, NName::Const(n_const), nx);
+                resolve_name_def(*name, NName::Const(n_const), nx);
 
-                nx.res.consts[n_const].name = name.text(nx.tokens()).to_string();
+                nx.res.consts[n_const].name = name.text(&nx.names).to_string();
             }
 
             let value_ty = match ty_opt {
                 Some(p_ty) => {
-                    let ty = gen_ty(p_ty);
+                    let ty = gen_ty(p_ty, &nx.res.names);
                     if !ty.is_primitive() {
                         nx.logger.error(
                             &keyword.location(nx.tokens()),
@@ -789,14 +795,14 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             resolve_expr_opt(init_opt.as_mut(), nx);
 
             if let Some(name) = name_opt {
-                resolve_name_def(name, NName::StaticVar(n_static_var), nx);
+                resolve_name_def(*name, NName::StaticVar(n_static_var), nx);
 
-                nx.res.static_vars[n_static_var].name = name.text(nx.tokens()).to_string();
+                nx.res.static_vars[n_static_var].name = name.text(&nx.names).to_string();
             }
 
             let ty = match ty_opt {
                 Some(p_ty) => {
-                    let ty = gen_ty(p_ty);
+                    let ty = gen_ty(p_ty, &nx.res.names);
                     if !ty.is_primitive() {
                         nx.logger.error(
                             &keyword.location(nx.tokens()),
@@ -827,7 +833,9 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 nx.enter_scope(|nx| {
                     resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
-                    result_ty = result_ty_opt.as_ref().map_or(KTy::Unit, gen_ty);
+                    result_ty = result_ty_opt
+                        .as_ref()
+                        .map_or(KTy::Unit, |ty| gen_ty(ty, &nx.res.names));
 
                     resolve_block_opt(block_opt.as_mut(), nx);
                 });
@@ -852,7 +860,9 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);
                 resolve_ty_opt(result_ty_opt.as_mut(), nx);
 
-                result_ty = result_ty_opt.as_ref().map_or(KTy::Unit, gen_ty);
+                result_ty = result_ty_opt
+                    .as_ref()
+                    .map_or(KTy::Unit, |ty| gen_ty(ty, &nx.res.names));
             });
 
             let local_vars = replace(&mut nx.parent_local_vars, parent_local_vars);
@@ -900,12 +910,15 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
 
 pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution {
     let mut nx = {
-        let tokens = Rc::new(take(&mut p_root.tokens));
-        Nx::new(tokens, logger)
+        // FIXME: clone しない
+        let tokens = Rc::new(p_root.tokens.clone());
+        let names = p_root.names.clone();
+        Nx::new(tokens, names, logger)
     };
+
+    nx.res.names = VecArena::from_iter(nx.names.iter().map(|_| NName::Unresolved));
 
     resolve_decls(&mut p_root.decls, &mut nx);
 
-    p_root.tokens = Rc::try_unwrap(nx.tokens).unwrap();
     nx.res
 }

@@ -1,7 +1,17 @@
 //! Jacco 言語の構文木の定義
 
 use super::*;
-use crate::{front::NName, source::Range, token::TokenSource};
+use crate::{
+    source::Range,
+    token::TokenSource,
+    utils::{VecArena, VecArenaId},
+};
+
+pub(crate) struct PNameTag;
+
+pub(crate) type PName = VecArenaId<PNameTag>;
+
+pub(crate) type PNameArena = VecArena<PNameTag, PNameData>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct PNameQual {
@@ -10,34 +20,25 @@ pub(crate) struct PNameQual {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PName {
+pub(crate) struct PNameData {
     pub(crate) quals: Vec<PNameQual>,
     pub(crate) token: PToken,
-
-    /// 名前解決の結果
-    /// FIXME: 構文ノードを id か何かで特定できるようにして、このような情報は外部のマップに持つ？
-    pub(crate) info_opt: Option<NName>,
+    pub(crate) text: String,
+    pub(crate) full_name: String,
 }
 
 impl PName {
-    pub(crate) fn text<'a>(&self, tokens: &'a PTokens) -> &'a str {
-        self.token.text(tokens)
+    pub(crate) fn text(self, names: &PNameArena) -> &str {
+        &names[self].text
     }
 
-    pub(crate) fn is_underscore(&self, tokens: &PTokens) -> bool {
-        self.quals.is_empty() && self.token.text(tokens) == "_"
+    pub(crate) fn is_underscore(self, names: &PNameArena) -> bool {
+        let data = &names[self];
+        data.quals.is_empty() && data.text == "_"
     }
 
-    pub(crate) fn full_name(&self, tokens: &PTokens) -> String {
-        let mut s = String::new();
-
-        for qual in &self.quals {
-            s += qual.name.text(tokens);
-            s += "::";
-        }
-
-        s += self.token.text(tokens);
-        s
+    pub(crate) fn full_name(self, names: &PNameArena) -> String {
+        names[self].full_name.to_string()
     }
 }
 
@@ -458,6 +459,7 @@ pub(crate) enum PDecl {
 pub(crate) struct PRoot {
     pub(crate) decls: Vec<PDecl>,
     pub(crate) eof: PToken,
+    pub(crate) names: PNameArena,
     pub(crate) skipped: Vec<PToken>,
     pub(crate) tokens: PTokens,
 }

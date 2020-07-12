@@ -418,11 +418,12 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
-    let (eof, skipped, tokens) = px.finish();
+    let (eof, names, skipped, tokens) = px.finish();
 
     PRoot {
         decls,
         eof,
+        names,
         skipped,
         tokens,
     }
