@@ -480,6 +480,12 @@ macro_rules! impl_node {
                 }
             }
 
+            impl<'a> From<(&'a $node_ty, &'a PRoot)> for PToken {
+                fn from((node, root): (&'a $node_ty, &'a PRoot)) -> Self {
+                    node.some_token(root)
+                }
+            }
+
             impl $node_ty {
                 #[allow(unused)]
                 pub(crate) fn ends_with_block(&self) -> bool {
@@ -545,4 +551,367 @@ impl_node! {
     PExpr,
     PVariantDecl,
     PDecl,
+}
+
+impl PNameQual {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.name
+    }
+}
+
+impl PName {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        root.names[*self].token
+    }
+}
+
+impl PNeverTy {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.bang
+    }
+}
+
+impl PUnitTy {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_paren
+    }
+}
+
+impl PPtrTy {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.star
+    }
+}
+
+impl PTy {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        match self {
+            PTy::Name(inner) => inner.some_token(root),
+            PTy::Never(inner) => inner.some_token(root),
+            PTy::Unit(inner) => inner.some_token(root),
+            PTy::Ptr(inner) => inner.some_token(root),
+        }
+    }
+}
+
+impl PRecordPat {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_brace
+    }
+}
+
+impl PParam {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.colon_opt.unwrap_or_else(|| self.name.some_token(root))
+    }
+}
+
+impl PParamList {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_paren
+    }
+}
+
+impl PArg {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.comma_opt.unwrap_or_else(|| self.expr.some_token(root))
+    }
+}
+
+impl PArgList {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_paren
+    }
+}
+
+impl PBlock {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_brace
+    }
+}
+
+impl PIntExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.token
+    }
+}
+
+impl PFloatExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.token
+    }
+}
+
+impl PCharExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.token
+    }
+}
+
+impl PStrExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.token
+    }
+}
+
+impl PTrueExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.0
+    }
+}
+
+impl PFalseExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.0
+    }
+}
+
+impl PFieldExpr {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.name.some_token(root)
+    }
+}
+
+impl PRecordExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.left_brace
+    }
+}
+
+impl PTupleExpr {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.arg_list.some_token(root)
+    }
+}
+
+impl PDotFieldExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.dot
+    }
+}
+
+impl PCallExpr {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.arg_list.some_token(root)
+    }
+}
+
+impl PIndexExpr {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.arg_list.some_token(root)
+    }
+}
+
+impl PAsExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PUnaryOpExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.op_token
+    }
+}
+
+impl PBinaryOpExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.op_token
+    }
+}
+
+impl PPipeExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.pipe
+    }
+}
+
+impl PBlockExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.0.left_brace
+    }
+}
+
+impl PBreakExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PContinueExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PReturnExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PIfExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PArm {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.arrow_opt.unwrap_or_else(|| self.pat.some_token(root))
+    }
+}
+
+impl PMatchExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PWhileExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PLoopExpr {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PExprDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.semi_opt.unwrap_or_else(|| self.expr.some_token(root))
+    }
+}
+
+impl PLetDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PConstDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PStaticDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PFnDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PExternFnDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.fn_keyword
+    }
+}
+
+impl PConstVariantDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.name.some_token(root)
+    }
+}
+
+impl PFieldDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.name.some_token(root)
+    }
+}
+
+impl PRecordVariantDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        self.name.some_token(root)
+    }
+}
+
+impl PEnumDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PStructDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
+impl PRoot {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.eof
+    }
+}
+
+impl PPat {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        match self {
+            PPat::Name(inner) => inner.some_token(root),
+            PPat::Record(inner) => inner.some_token(root),
+        }
+    }
+}
+
+impl PExpr {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        match self {
+            PExpr::Int(inner) => inner.some_token(root),
+            PExpr::Float(inner) => inner.some_token(root),
+            PExpr::Char(inner) => inner.some_token(root),
+            PExpr::Str(inner) => inner.some_token(root),
+            PExpr::True(inner) => inner.some_token(root),
+            PExpr::False(inner) => inner.some_token(root),
+            PExpr::Name(inner) => inner.some_token(root),
+            PExpr::Record(inner) => inner.some_token(root),
+            PExpr::Tuple(inner) => inner.some_token(root),
+            PExpr::DotField(inner) => inner.some_token(root),
+            PExpr::Call(inner) => inner.some_token(root),
+            PExpr::Index(inner) => inner.some_token(root),
+            PExpr::As(inner) => inner.some_token(root),
+            PExpr::UnaryOp(inner) => inner.some_token(root),
+            PExpr::BinaryOp(inner) => inner.some_token(root),
+            PExpr::Pipe(inner) => inner.some_token(root),
+            PExpr::Block(inner) => inner.some_token(root),
+            PExpr::Break(inner) => inner.some_token(root),
+            PExpr::Continue(inner) => inner.some_token(root),
+            PExpr::Return(inner) => inner.some_token(root),
+            PExpr::If(inner) => inner.some_token(root),
+            PExpr::Match(inner) => inner.some_token(root),
+            PExpr::While(inner) => inner.some_token(root),
+            PExpr::Loop(inner) => inner.some_token(root),
+        }
+    }
+}
+
+impl PVariantDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        match self {
+            PVariantDecl::Const(inner) => inner.some_token(root),
+            PVariantDecl::Record(inner) => inner.some_token(root),
+        }
+    }
+}
+
+impl PDecl {
+    pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
+        match self {
+            PDecl::Expr(inner) => inner.some_token(root),
+            PDecl::Let(inner) => inner.some_token(root),
+            PDecl::Const(inner) => inner.some_token(root),
+            PDecl::Static(inner) => inner.some_token(root),
+            PDecl::Fn(inner) => inner.some_token(root),
+            PDecl::ExternFn(inner) => inner.some_token(root),
+            PDecl::Enum(inner) => inner.some_token(root),
+            PDecl::Struct(inner) => inner.some_token(root),
+        }
+    }
 }

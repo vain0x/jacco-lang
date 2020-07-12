@@ -40,6 +40,7 @@ impl Location {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn behind(self) -> Location {
         Location {
             range: self.range.behind(),

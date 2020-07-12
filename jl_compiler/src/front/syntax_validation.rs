@@ -1,44 +1,49 @@
 use super::*;
 use crate::source::{Doc, Loc};
-use std::rc::Rc;
 
 enum IsRequired {
-    True(Location),
+    True(PToken),
     False,
 }
 
-struct Vx {
-    tokens: Rc<PTokens>,
+struct Vx<'a> {
+    root: &'a PRoot,
     logger: Logger,
 }
 
-impl Vx {
-    fn new(tokens: Rc<PTokens>, logger: Logger) -> Self {
-        Vx { tokens, logger }
-    }
-
-    fn tokens(&self) -> &PTokens {
-        &self.tokens
+impl<'a> Vx<'a> {
+    fn new(root: &'a PRoot, logger: Logger) -> Self {
+        Vx { root, logger }
     }
 }
 
-fn error_node(have_location: impl HaveLocation, message: impl Into<String>, vx: &Vx) {
-    vx.logger.error(&have_location.location(), message);
+// FIXME: doc の値を持っておく
+const DOC: Doc = Doc::new(1);
+
+fn error_node<'a, T: 'a>(have_location: &'a T, message: impl Into<String>, vx: &'a Vx)
+where
+    PToken: From<(&'a T, &'a PRoot)>,
+{
+    let token = PToken::from((have_location, &vx.root));
+    let loc = Loc::new(DOC, token);
+    vx.logger.error_loc(loc, message);
 }
 
-fn error_behind_node(have_location: impl HaveLocation, message: impl Into<String>, vx: &Vx) {
-    vx.logger.error(&have_location.location().behind(), message);
+fn error_behind_node<'a, T: 'a>(have_location: &'a T, message: impl Into<String>, vx: &'a Vx)
+where
+    PToken: From<(&'a T, &'a PRoot)>,
+{
+    let token = PToken::from((have_location, &vx.root));
+    let loc = Loc::new(DOC, token);
+    vx.logger.error_loc(loc.behind(), message);
 }
 
 fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    // FIXME: doc の値を持っておく
-    vx.logger.error_loc(Loc::new(Doc::new(1), token), message);
+    vx.logger.error_loc(Loc::new(DOC, token), message);
 }
 
 fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    // FIXME: doc の値を持っておく
-    vx.logger
-        .error_loc(Loc::new(Doc::new(1), token).behind(), message)
+    vx.logger.error_loc(Loc::new(DOC, token).behind(), message)
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {
@@ -162,12 +167,10 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             validate_brace_matching(*left_brace, *right_brace_opt, vx);
 
             for (i, field) in fields.iter().enumerate() {
-                match &field.colon_opt {
-                    Some(colon) => validate_expr_opt(
-                        field.value_opt.as_ref(),
-                        IsRequired::True(colon.location(vx.tokens())),
-                        vx,
-                    ),
+                match field.colon_opt {
+                    Some(colon) => {
+                        validate_expr_opt(field.value_opt.as_ref(), IsRequired::True(colon), vx)
+                    }
                     None => error_behind_node(&field.name, "missed a colon?", vx),
                 }
 
@@ -295,12 +298,10 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             for (i, arm) in arms.iter().enumerate() {
                 validate_pat(&arm.pat, vx);
 
-                match &arm.arrow_opt {
-                    Some(arrow) => validate_expr_opt(
-                        arm.body_opt.as_deref(),
-                        IsRequired::True(arrow.location(vx.tokens())),
-                        vx,
-                    ),
+                match arm.arrow_opt {
+                    Some(arrow) => {
+                        validate_expr_opt(arm.body_opt.as_deref(), IsRequired::True(arrow), vx)
+                    }
                     None => error_behind_node(&arm.pat, "maybe missed an => arrow here?", vx),
                 }
 
@@ -347,9 +348,7 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
 fn validate_expr_opt(expr_opt: Option<&PExpr>, is_required: IsRequired, vx: &Vx) {
     match (expr_opt, is_required) {
         (Some(expr), _) => validate_expr(expr, vx),
-        (None, IsRequired::True(location)) => {
-            error_node(location, "maybe missed an expression?", vx)
-        }
+        (None, IsRequired::True(token)) => error_token(token, "maybe missed an expression?", vx),
         (None, IsRequired::False) => {}
     }
 }
@@ -361,12 +360,8 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             value_opt,
             ..
         }) => {
-            if let Some(equal) = equal_opt {
-                validate_expr_opt(
-                    value_opt.as_deref(),
-                    IsRequired::True(equal.location(vx.tokens())),
-                    vx,
-                );
+            if let Some(equal) = *equal_opt {
+                validate_expr_opt(value_opt.as_deref(), IsRequired::True(equal), vx);
             }
         }
         PVariantDecl::Record(PRecordVariantDecl {
@@ -442,7 +437,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                     .as_ref()
                     .map_or(false, |init| init.ends_with_block())
             {
-                error_behind_node(&decl, "missed a semicolon?", vx);
+                error_behind_node(decl, "missed a semicolon?", vx);
             }
         }
         PDecl::Const(PConstDecl {
@@ -544,7 +539,6 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             }
         }
         PDecl::ExternFn(PExternFnDecl {
-            extern_keyword,
             fn_keyword,
             name_opt,
             param_list_opt,
@@ -553,17 +547,13 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
             semi_opt,
             ..
         }) => {
-            let location = extern_keyword
-                .location(vx.tokens())
-                .unite(fn_keyword.location(vx.tokens()));
-
             if name_opt.is_none() {
-                error_behind_node(location, "missed the function name?", vx);
+                error_behind_token(*fn_keyword, "missed the function name?", vx);
             }
 
             match param_list_opt {
                 Some(param_list) => validate_param_list(param_list, vx),
-                None => error_node(location, "missed param list?", vx),
+                None => error_node(decl, "missed param list?", vx),
             }
 
             validate_result(*arrow_opt, result_ty_opt.as_ref(), vx);
@@ -625,8 +615,6 @@ fn validate_root(root: &PRoot, vx: &Vx) {
 }
 
 pub(crate) fn validate_syntax(root: &PRoot, logger: Logger) {
-    // FIXME: clone しない
-    let tokens = Rc::new(root.tokens.clone());
-    let vx = Vx::new(tokens, logger);
+    let vx = Vx::new(root, logger);
     validate_root(root, &vx);
 }

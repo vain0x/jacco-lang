@@ -68,6 +68,7 @@ impl Range {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn behind(self) -> Range {
         Range {
             start: self.end,
