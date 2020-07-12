@@ -162,6 +162,47 @@ impl NName {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum NParentFn {
+    Fn(KFn),
+    ExternFn(KExternFn),
+}
+
+impl NParentFn {
+    pub(crate) fn from_name(n_name: NName) -> Option<Self> {
+        let parent_fn = match n_name {
+            NName::Fn(k_fn) => NParentFn::Fn(k_fn),
+            NName::ExternFn(extern_fn) => NParentFn::ExternFn(extern_fn),
+            _ => return None,
+        };
+        Some(parent_fn)
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum NAbsName {
+    Unresolved,
+    LocalVar {
+        parent_fn: NParentFn,
+        local: KLocal,
+    },
+    /// Unresolved, LocalVar 以外
+    Other(NName),
+}
+
+impl NAbsName {
+    pub(crate) fn new(parent_fn_opt: Option<NParentFn>, n_name: NName) -> Self {
+        match n_name {
+            NName::Unresolved => NAbsName::Unresolved,
+            NName::LocalVar(local) => NAbsName::LocalVar {
+                parent_fn: parent_fn_opt.unwrap(),
+                local,
+            },
+            _ => NAbsName::Other(n_name),
+        }
+    }
+}
+
 /// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {

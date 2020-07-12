@@ -7,7 +7,7 @@ use crate::{
     source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
-use front::NName;
+use front::{NAbsName, NName, NParentFn};
 use log::{error, trace};
 use parse::PToken;
 use std::{
@@ -127,6 +127,7 @@ impl AnalysisCache {
         self.symbols_opt.as_mut().unwrap()
     }
 
+    /// FIXME: rename to request_typed_cps?
     fn request_cps(&mut self) -> &mut Cps {
         if self.cps_opt.is_some() {
             return self.cps_opt.as_mut().unwrap();
@@ -281,7 +282,10 @@ impl LangService {
         let cps = self.request_cps(doc)?;
 
         match name {
-            (NName::Fn(n_fn), NName::LocalVar(n_local_var)) => {
+            NAbsName::LocalVar {
+                parent_fn: NParentFn::Fn(n_fn),
+                local: n_local_var,
+            } => {
                 let ty_env = &cps.root.fns[n_fn].ty_env;
                 let ty = &cps.root.fns[n_fn].locals[n_local_var].ty;
                 let enums = &cps.root.outlines.enums;

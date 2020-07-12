@@ -1,12 +1,13 @@
 //! シンボルの出現箇所を収集する。
 
 use super::*;
+use name_resolution::{NAbsName, NParentFn};
 use std::{collections::HashMap, mem::replace, rc::Rc};
 
 #[derive(Default)]
 pub(crate) struct Occurrences {
-    pub(crate) def_sites: HashMap<(NName, NName), Vec<Location>>,
-    pub(crate) use_sites: HashMap<(NName, NName), Vec<Location>>,
+    pub(crate) def_sites: HashMap<NAbsName, Vec<Location>>,
+    pub(crate) use_sites: HashMap<NAbsName, Vec<Location>>,
     pub(crate) field_uses: Vec<(String, Location)>,
 }
 
@@ -36,12 +37,9 @@ impl Cx {
     }
 }
 
-fn full_name(n_name: NName, cx: &Cx) -> (NName, NName) {
-    let parent = match n_name {
-        NName::LocalVar(_) => cx.parent_fn,
-        _ => NName::Unresolved,
-    };
-    (parent, n_name)
+fn full_name(n_name: NName, cx: &Cx) -> NAbsName {
+    let parent_fn_opt = NParentFn::from_name(cx.parent_fn);
+    NAbsName::new(parent_fn_opt, n_name)
 }
 
 fn resolve_name_def(p_name: PName, cx: &mut Cx) {
