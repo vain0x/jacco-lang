@@ -1,0 +1,19 @@
+fn height(value: i32) -> i32 {
+    if value < 0 {
+        return 0;
+    }
+
+    let x = value;
+    let t = 0;
+    while x != 0 {
+        x /= 2;
+        t += 1;
+    }
+
+    t
+}
+
+pub fn main() -> i32 {
+    let n = height(13);
+    0
+}

@@ -153,6 +153,15 @@ fn new_never_term(location: Location) -> KTerm {
     KTerm::Unit { location }
 }
 
+fn fresh_loop_labels(location: Location, gx: &mut Gx) -> KLoopData {
+    let continue_label = gx.fresh_label("continue_", location);
+    let break_label = gx.fresh_label("next", location);
+    KLoopData {
+        break_label,
+        continue_label,
+    }
+}
+
 fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: Location, gx: &mut Gx) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
 
@@ -1035,13 +1044,18 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ..
         }) => {
             let location = keyword.location(&gx.tokens);
-            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
             let result = gx.fresh_symbol("while_result", location);
             let unit_term = new_unit_term(location);
+
             let KLoopData {
                 break_label: next_label,
                 continue_label,
-            } = gx.current_loops[n_loop].clone();
+            } = {
+                let n_loop = NLoop::from_index(loop_id_opt.unwrap());
+                let loop_data = fresh_loop_labels(location, gx);
+                gx.current_loops[n_loop] = loop_data.clone();
+                loop_data
+            };
 
             gx.push_jump(continue_label, vec![], location);
 
@@ -1077,12 +1091,17 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
         }) => {
             let location = keyword.location(&gx.tokens);
-            let n_loop = NLoop::from_index(loop_id_opt.unwrap());
             let result = gx.fresh_symbol("loop_result", location);
+
             let KLoopData {
                 break_label: next_label,
                 continue_label,
-            } = gx.current_loops[n_loop].clone();
+            } = {
+                let n_loop = NLoop::from_index(loop_id_opt.unwrap());
+                let loop_data = fresh_loop_labels(location, gx);
+                gx.current_loops[n_loop] = loop_data.clone();
+                loop_data
+            };
 
             gx.push_jump(continue_label.clone(), vec![], location);
 
@@ -1191,17 +1210,13 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 let parent_labels = take(&mut gx.current_labels);
                 let parent_loops = take(&mut gx.current_loops);
 
+                // ここでラベルを生成すると順番が構文と食い違うので、ループの宣言を見たときに生成する。
                 gx.current_loops = VecArena::from_vec(
                     take(&mut gx.fn_loops[k_fn])
                         .iter()
-                        .map(|loop_data| {
-                            let location = loop_data.location;
-                            let continue_label = gx.fresh_label("continue_", location);
-                            let break_label = gx.fresh_label("next", location);
-                            KLoopData {
-                                break_label,
-                                continue_label,
-                            }
+                        .map(|_| KLoopData {
+                            break_label: KLabel::MAX,
+                            continue_label: KLabel::MAX,
                         })
                         .collect(),
                 );

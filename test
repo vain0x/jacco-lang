@@ -10,8 +10,15 @@
 set -eu
 
 f() {
-    NAME=$1
-    SRC="tests/$NAME/$NAME.jacco"
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+    fi
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
@@ -69,6 +76,7 @@ f_all() {
     f match
     f enum_consts
     f enum_records
+    f label_order_issue issues
 }
 
 ONLY=${1:-''}
