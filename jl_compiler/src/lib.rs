@@ -175,7 +175,6 @@ mod parse {
     mod p_binary_op;
     mod p_token;
     mod p_unary_op;
-    mod p_vis;
     mod parse_context;
     mod parse_decl;
     mod parse_expr;
@@ -186,13 +185,12 @@ mod parse {
     pub(crate) use p_binary_op::PBinaryOp;
     pub(crate) use p_token::{PToken, PTokens};
     pub(crate) use p_unary_op::PUnaryOp;
-    pub(crate) use p_vis::PVis;
     pub(crate) use parse_decl::parse_tokens;
     pub(crate) use parse_tree::*;
 
     use crate::logs::Logger;
     use crate::{
-        cps::KMut,
+        cps::{KMut, KVis},
         token::{HaveLocation, Location, TokenData, TokenKind},
     };
     use parse_context::Px;
@@ -201,6 +199,8 @@ mod parse {
     use parse_ty::{parse_ty, parse_ty_ascription};
 
     pub(crate) type PMut = (KMut, PToken);
+
+    pub(crate) type PVis = (KVis, PToken);
 
     /// 関数の中か外か。
     /// FIXME: より適切な名前？
