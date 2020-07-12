@@ -185,6 +185,11 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_cps())
     }
 
+    fn hit_test(&mut self, doc: Doc, pos: Pos) -> Option<(NAbsName, Location)> {
+        let symbols = self.request_symbols(doc)?;
+        hit_test(doc, pos, symbols)
+    }
+
     pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
         self.docs.insert(
             doc,
@@ -225,21 +230,7 @@ impl LangService {
     pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<Range>, Vec<Range>)> {
         let symbols = self.request_symbols(doc)?;
 
-        let name = symbols
-            .occurrences
-            .def_sites
-            .iter()
-            .chain(symbols.occurrences.use_sites.iter())
-            .find_map(|(&name, locations)| {
-                if locations
-                    .iter()
-                    .any(|location| location.range().contains_loosely(pos))
-                {
-                    Some(name)
-                } else {
-                    None
-                }
-            })?;
+        let (name, _) = hit_test(doc, pos, symbols)?;
 
         let def_sites = symbols
             .occurrences
@@ -261,23 +252,9 @@ impl LangService {
     }
 
     pub fn hover(&mut self, doc: Doc, pos: Pos) -> Option<String> {
-        let name = {
+        let (name, _) = {
             let symbols = self.request_symbols(doc)?;
-            symbols
-                .occurrences
-                .def_sites
-                .iter()
-                .chain(symbols.occurrences.use_sites.iter())
-                .find_map(|(&name, locations)| {
-                    if locations
-                        .iter()
-                        .any(|location| location.range().contains_loosely(pos))
-                    {
-                        Some(name)
-                    } else {
-                        None
-                    }
-                })?
+            hit_test(doc, pos, symbols)?
         };
 
         let cps = self.request_cps(doc)?;
@@ -362,6 +339,29 @@ impl NAbsName {
             _ => KTyEnv::EMPTY,
         }
     }
+}
+
+fn hit_test(doc: Doc, pos: Pos, symbols: &Symbols) -> Option<(NAbsName, Location)> {
+    symbols
+        .occurrences
+        .def_sites
+        .iter()
+        .chain(symbols.occurrences.use_sites.iter())
+        .find_map(|(&name, locations)| {
+            locations.iter().find_map(|&location| {
+                if location.range().contains_loosely(pos) {
+                    Some((
+                        name,
+                        Location {
+                            doc,
+                            range: location.range(),
+                        },
+                    ))
+                } else {
+                    None
+                }
+            })
+        })
 }
 
 fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
