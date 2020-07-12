@@ -132,7 +132,7 @@ impl<W: Write> LspHandler<W> {
                 //     trigger_characters: None,
                 //     work_done_progress_options: WorkDoneProgressOptions::default(),
                 // }),
-                // definition_provider: Some(true),
+                definition_provider: Some(true),
                 document_highlight_provider: Some(true),
                 hover_provider: Some(true),
                 // references_provider: Some(true),
@@ -218,20 +218,34 @@ impl<W: Write> LspHandler<W> {
         completion_item
     }
 
-    // fn text_document_definition(
-    //     &mut self,
-    //     params: TextDocumentPositionParams,
-    // ) -> lsp_types::GotoDefinitionResponse {
-    //     let definitions = self
-    //         .service
-    //         .definitions(params.text_document.uri, params.position);
+    fn text_document_definition(
+        &mut self,
+        params: TextDocumentPositionParams,
+    ) -> lsp_types::GotoDefinitionResponse {
+        let doc = params.text_document;
+        let pos = from_lsp_pos(params.position);
 
-    //     if definitions.len() == 1 {
-    //         lsp_types::GotoDefinitionResponse::Scalar(definitions.into_iter().next().unwrap())
-    //     } else {
-    //         lsp_types::GotoDefinitionResponse::Array(definitions)
-    //     }
-    // }
+        (|| {
+            let uri = doc.uri.clone();
+            let doc = self.docs.url_to_doc(&doc.uri)?;
+            let definitions = self
+                .service
+                .definitions(doc, pos)?
+                .into_iter()
+                .map(|location| {
+                    let range = to_lsp_range(location.range());
+                    Location::new(uri.clone(), range)
+                })
+                .collect::<Vec<_>>();
+            let response = if definitions.len() == 1 {
+                lsp_types::GotoDefinitionResponse::Scalar(definitions.into_iter().next().unwrap())
+            } else {
+                lsp_types::GotoDefinitionResponse::Array(definitions)
+            };
+            Some(response)
+        })()
+        .unwrap_or_else(|| lsp_types::GotoDefinitionResponse::Array(vec![]))
+    }
 
     fn text_document_highlight(
         &mut self,
@@ -348,13 +362,13 @@ impl<W: Write> LspHandler<W> {
             //     let response = self.completion_item_resolve(msg.params);
             //     self.sender.send_response(msg_id, response);
             // }
-            // "textDocument/definition" => {
-            //     let msg =
-            //         serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();
-            //     let msg_id = msg.id;
-            //     let response = self.text_document_definition(msg.params);
-            //     self.sender.send_response(msg_id, response);
-            // }
+            GotoDefinition::METHOD => {
+                let msg =
+                    serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();
+                let msg_id = msg.id;
+                let response = self.text_document_definition(msg.params);
+                self.sender.send_response(msg_id, response);
+            }
             DocumentHighlightRequest::METHOD => {
                 let msg =
                     serde_json::from_str::<LspRequest<TextDocumentPositionParams>>(json).unwrap();

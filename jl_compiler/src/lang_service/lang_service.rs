@@ -23,6 +23,16 @@ pub struct Location {
     range: Range,
 }
 
+impl Location {
+    fn new(doc: Doc, range: Range) -> Self {
+        Self { doc, range }
+    }
+
+    pub fn range(&self) -> Range {
+        self.range
+    }
+}
+
 struct Syntax {
     root: PRoot,
     errors: Vec<(Range, String)>,
@@ -223,8 +233,20 @@ impl LangService {
         vec![]
     }
 
-    pub fn definitions(&mut self, doc: Doc, pos: Pos) -> Vec<Location> {
-        vec![]
+    pub fn definitions(&mut self, doc: Doc, pos: Pos) -> Option<Vec<Location>> {
+        let symbols = self.request_symbols(doc)?;
+
+        let (name, _) = hit_test(doc, pos, symbols)?;
+        let def_sites = symbols
+            .occurrences
+            .def_sites
+            .get(&name)
+            .iter()
+            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .map(|range| Location::new(doc, range))
+            .collect();
+
+        Some(def_sites)
     }
 
     pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<Range>, Vec<Range>)> {
