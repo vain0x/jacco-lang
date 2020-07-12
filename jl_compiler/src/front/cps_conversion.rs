@@ -9,7 +9,7 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::Logger,
-    token::{HaveLocation, Location, TokenData, TokenKind, TokenSource},
+    token::{HaveLocation, Location, TokenData, TokenKind},
     utils::VecArena,
 };
 use log::{error, trace};
@@ -95,10 +95,8 @@ impl Gx {
         label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
+        location: Location,
     ) {
-        // FIXME: location を持たせる
-        let location = Location::new(TokenSource::Special("<do_push_jump>"), Default::default());
-
         self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
@@ -109,12 +107,22 @@ impl Gx {
         });
     }
 
-    fn push_jump(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>) {
-        self.do_push_jump(label, args, 0);
+    fn push_jump(
+        &mut self,
+        label: KLabel,
+        args: impl IntoIterator<Item = KTerm>,
+        location: Location,
+    ) {
+        self.do_push_jump(label, args, 0, location);
     }
 
-    fn push_jump_with_cont(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>) {
-        self.do_push_jump(label, args, 1);
+    fn push_jump_with_cont(
+        &mut self,
+        label: KLabel,
+        args: impl IntoIterator<Item = KTerm>,
+        location: Location,
+    ) {
+        self.do_push_jump(label, args, 1, location);
     }
 }
 
@@ -216,13 +224,13 @@ fn emit_if(
     // body
     {
         let body = gen_body(gx);
-        gx.push_jump(next_label, vec![body]);
+        gx.push_jump(next_label, vec![body], location);
     }
 
     // alt
     {
         let alt = gen_alt(gx);
-        gx.push_jump(next_label, vec![alt]);
+        gx.push_jump(next_label, vec![alt], location);
     }
 
     gx.push_label(next_label, vec![result.clone()]);
@@ -871,7 +879,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 Some(arg) => gen_expr(&arg, gx),
                 None => new_unit_term(location),
             };
-            gx.push_jump_with_cont(label, vec![arg]);
+            gx.push_jump_with_cont(label, vec![arg], location);
 
             new_never_term(location)
         }
@@ -883,7 +891,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let n_loop = NLoop::from_index(loop_id_opt.unwrap());
 
             let label = gx.current_loops[n_loop].continue_label;
-            gx.push_jump_with_cont(label, vec![]);
+            gx.push_jump_with_cont(label, vec![], location);
 
             new_never_term(location)
         }
@@ -996,7 +1004,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 }
 
                 let body = gen_expr(arm.body_opt.as_deref().unwrap(), gx);
-                gx.push_jump(next_label, vec![body]);
+                gx.push_jump(next_label, vec![body], arm.location());
             }
 
             gx.push_label(next_label, vec![result.clone()]);
@@ -1018,7 +1026,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 continue_label,
             } = gx.current_loops[n_loop].clone();
 
-            gx.push_jump(continue_label, vec![]);
+            gx.push_jump(continue_label, vec![], location);
 
             gx.push_label(continue_label, vec![]);
 
@@ -1036,10 +1044,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             // body:
             gen_block(body_opt.as_ref().unwrap(), gx);
 
-            gx.push_jump(continue_label, vec![]);
+            gx.push_jump(continue_label, vec![], location);
 
             // alt:
-            gx.push_jump(next_label, vec![unit_term.clone()]);
+            gx.push_jump(next_label, vec![unit_term.clone()], location);
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -1059,14 +1067,14 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 continue_label,
             } = gx.current_loops[n_loop].clone();
 
-            gx.push_jump(continue_label.clone(), vec![]);
+            gx.push_jump(continue_label.clone(), vec![], location);
 
             gx.push_label(continue_label.clone(), vec![]);
 
             // body:
             gen_block(body_opt.as_ref().unwrap(), gx);
 
-            gx.push_jump(continue_label.clone(), vec![]);
+            gx.push_jump(continue_label.clone(), vec![], location);
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
