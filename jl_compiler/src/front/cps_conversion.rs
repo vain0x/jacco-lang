@@ -678,169 +678,179 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         }
         PExpr::UnaryOp(PUnaryOpExpr {
             op,
+            op_token,
             mut_opt,
             arg_opt,
-            location,
-        }) => match op {
-            PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), *location, gx),
-            PUnaryOp::DerefDeref => {
-                let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), *location, gx);
+        }) => {
+            let location = op_token.location(&gx.tokens);
+            match op {
+                PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx),
+                PUnaryOp::DerefDeref => {
+                    let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx);
 
-                let result = gx.fresh_symbol("deref", *location);
-                gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
-                KTerm::Name(result)
+                    let result = gx.fresh_symbol("deref", location);
+                    gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
+                    KTerm::Name(result)
+                }
+                PUnaryOp::Ref => {
+                    let k_mut = gen_mut(mut_opt.as_ref());
+                    gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, location, gx)
+                }
+                PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), location, gx),
+                PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), location, gx),
             }
-            PUnaryOp::Ref => {
-                let k_mut = gen_mut(mut_opt.as_ref());
-                gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, *location, gx)
-            }
-            PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), *location, gx),
-            PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), *location, gx),
-        },
+        }
         PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left,
             right_opt,
-            location,
-        }) => match op {
-            PBinaryOp::Assign => {
-                let left = gen_expr_lval(&left, KMut::Mut, *location, gx);
-                let right = gen_expr(right_opt.as_ref().unwrap(), gx);
+        }) => {
+            let location = op_token.location(&gx.tokens);
+            match op {
+                PBinaryOp::Assign => {
+                    let left = gen_expr_lval(&left, KMut::Mut, location, gx);
+                    let right = gen_expr(right_opt.as_ref().unwrap(), gx);
 
-                gx.push(KCommand::Node {
-                    prim: KPrim::Assign,
-                    tys: vec![],
-                    args: vec![left, right],
-                    result_opt: None,
-                    cont_count: 1,
-                    location: *location,
-                });
+                    gx.push(KCommand::Node {
+                        prim: KPrim::Assign,
+                        tys: vec![],
+                        args: vec![left, right],
+                        result_opt: None,
+                        cont_count: 1,
+                        location,
+                    });
 
-                new_unit_term(*location)
-            }
-            PBinaryOp::AddAssign => {
-                emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::SubAssign => {
-                emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::MulAssign => {
-                emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::DivAssign => {
-                emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::ModuloAssign => emit_compound_assign(
-                KPrim::ModuloAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::BitAndAssign => emit_compound_assign(
-                KPrim::BitAndAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::BitOrAssign => emit_compound_assign(
-                KPrim::BitOrAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::BitXorAssign => emit_compound_assign(
-                KPrim::BitXorAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::LeftShiftAssign => emit_compound_assign(
-                KPrim::LeftShiftAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::RightShiftAssign => emit_compound_assign(
-                KPrim::RightShiftAssign,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::Add => emit_binary_op(KPrim::Add, left, right_opt.as_deref(), *location, gx),
-            PBinaryOp::Sub => emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), *location, gx),
-            PBinaryOp::Mul => emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), *location, gx),
-            PBinaryOp::Div => emit_binary_op(KPrim::Div, left, right_opt.as_deref(), *location, gx),
-            PBinaryOp::Modulo => {
-                emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::BitAnd => {
-                emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::BitOr => {
-                emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::BitXor => {
-                emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::LeftShift => {
-                emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::RightShift => {
-                emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::Equal => {
-                emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::NotEqual => {
-                emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::LessThan => {
-                emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::LessEqual => {
-                emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), *location, gx)
-            }
-            PBinaryOp::GreaterThan => emit_binary_op(
-                KPrim::GreaterThan,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::GreaterEqual => emit_binary_op(
-                KPrim::GreaterEqual,
-                left,
-                right_opt.as_deref(),
-                *location,
-                gx,
-            ),
-            PBinaryOp::LogAnd => {
-                let false_term = new_false_term(*location);
-                emit_if(
-                    &left,
-                    |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
-                    move |_| false_term,
-                    *location,
+                    new_unit_term(location)
+                }
+                PBinaryOp::AddAssign => {
+                    emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::SubAssign => {
+                    emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::MulAssign => {
+                    emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::DivAssign => {
+                    emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::ModuloAssign => emit_compound_assign(
+                    KPrim::ModuloAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
                     gx,
-                )
-            }
-            PBinaryOp::LogOr => {
-                let true_term = new_true_term(*location);
-                emit_if(
-                    &left,
-                    move |_| true_term,
-                    |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
-                    *location,
+                ),
+                PBinaryOp::BitAndAssign => emit_compound_assign(
+                    KPrim::BitAndAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
                     gx,
-                )
+                ),
+                PBinaryOp::BitOrAssign => emit_compound_assign(
+                    KPrim::BitOrAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
+                    gx,
+                ),
+                PBinaryOp::BitXorAssign => emit_compound_assign(
+                    KPrim::BitXorAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
+                    gx,
+                ),
+                PBinaryOp::LeftShiftAssign => emit_compound_assign(
+                    KPrim::LeftShiftAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
+                    gx,
+                ),
+                PBinaryOp::RightShiftAssign => emit_compound_assign(
+                    KPrim::RightShiftAssign,
+                    left,
+                    right_opt.as_deref(),
+                    location,
+                    gx,
+                ),
+                PBinaryOp::Add => {
+                    emit_binary_op(KPrim::Add, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::Sub => {
+                    emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::Mul => {
+                    emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::Div => {
+                    emit_binary_op(KPrim::Div, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::Modulo => {
+                    emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::BitAnd => {
+                    emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::BitOr => {
+                    emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::BitXor => {
+                    emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::LeftShift => {
+                    emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::RightShift => {
+                    emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::Equal => {
+                    emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::NotEqual => {
+                    emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::LessThan => {
+                    emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::LessEqual => {
+                    emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::GreaterThan => {
+                    emit_binary_op(KPrim::GreaterThan, left, right_opt.as_deref(), location, gx)
+                }
+                PBinaryOp::GreaterEqual => emit_binary_op(
+                    KPrim::GreaterEqual,
+                    left,
+                    right_opt.as_deref(),
+                    location,
+                    gx,
+                ),
+                PBinaryOp::LogAnd => {
+                    let false_term = new_false_term(location);
+                    emit_if(
+                        &left,
+                        |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
+                        move |_| false_term,
+                        location,
+                        gx,
+                    )
+                }
+                PBinaryOp::LogOr => {
+                    let true_term = new_true_term(location);
+                    emit_if(
+                        &left,
+                        move |_| true_term,
+                        |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
+                        location,
+                        gx,
+                    )
+                }
             }
-        },
+        }
         PExpr::Pipe(PPipeExpr {
             left: arg,
             pipe,

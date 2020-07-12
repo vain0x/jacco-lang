@@ -207,26 +207,26 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
             }
         }
         PExpr::UnaryOp(PUnaryOpExpr {
-            arg_opt, location, ..
+            op_token, arg_opt, ..
         }) => match arg_opt.as_deref() {
             Some(arg) => validate_expr(arg, vx),
-            None => error_node(
-                location,
+            None => error_behind_token(
+                *op_token,
                 "maybe missed the argument of the unary operator?",
                 vx,
             ),
         },
         PExpr::BinaryOp(PBinaryOpExpr {
+            op_token,
             left,
             right_opt,
-            location,
             ..
         }) => {
             validate_expr(left, vx);
 
             match right_opt {
                 Some(right) => validate_expr(right, vx),
-                None => error_node(location, "maybe missed the right-hand side?", vx),
+                None => error_behind_token(*op_token, "maybe missed the right-hand side?", vx),
             }
         }
         PExpr::Pipe(PPipeExpr {

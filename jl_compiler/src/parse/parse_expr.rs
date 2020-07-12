@@ -185,12 +185,11 @@ fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     let op_token = px.bump();
     let mut_opt = if op.allow_mut() { parse_mut(px) } else { None };
     let arg_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
-    let location = op_token.location(px.tokens());
     Some(PExpr::UnaryOp(PUnaryOpExpr {
         op,
+        op_token,
         mut_opt,
         arg_opt,
-        location,
     }))
 }
 
@@ -209,9 +208,9 @@ fn parse_mul(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         let right_opt = parse_prefix_expr(allow_struct, px).map(Box::new);
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -230,9 +229,9 @@ fn parse_add(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         let right_opt = parse_mul(allow_struct, px).map(Box::new);
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -254,9 +253,9 @@ fn parse_bit(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         let right_opt = parse_add(allow_struct, px).map(Box::new);
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -279,9 +278,9 @@ fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         let right_opt = parse_bit(allow_struct, px).map(Box::new);
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -300,9 +299,9 @@ fn parse_logical(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
         let right_opt = parse_comparison(allow_struct, px).map(Box::new);
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op_token.location(px.tokens()),
         });
     }
 }
@@ -342,14 +341,14 @@ fn parse_pipe_or_assign(
             _ => return Some(left),
         };
 
-        let op = px.bump();
+        let op_token = px.bump();
         let right_opt = parse_pipe_or_assign(allow_struct, AllowAssign::False, px).map(Box::new);
 
         left = PExpr::BinaryOp(PBinaryOpExpr {
             op: assign_op,
+            op_token,
             left: Box::new(left),
             right_opt,
-            location: op.location(px.tokens()),
         });
         return Some(left);
     }

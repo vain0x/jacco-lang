@@ -213,22 +213,20 @@ pub(crate) struct PAsExpr {
     pub(crate) ty_opt: Option<PTy>,
 }
 
-// FIXME: 演算子のトークンを持つ
 #[derive(Clone, Debug)]
 pub(crate) struct PUnaryOpExpr {
     pub(crate) op: PUnaryOp,
+    pub(crate) op_token: PToken,
     pub(crate) mut_opt: Option<PMut>,
     pub(crate) arg_opt: Option<Box<PExpr>>,
-    pub(crate) location: Location,
 }
 
-// FIXME: 演算子のトークンを持つ
 #[derive(Clone, Debug)]
 pub(crate) struct PBinaryOpExpr {
     pub(crate) op: PBinaryOp,
+    pub(crate) op_token: PToken,
     pub(crate) left: Box<PExpr>,
     pub(crate) right_opt: Option<Box<PExpr>>,
-    pub(crate) location: Location,
 }
 
 #[derive(Clone, Debug)]
