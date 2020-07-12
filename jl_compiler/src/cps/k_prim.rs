@@ -55,9 +55,3 @@ impl KPrim {
         format!("{:?}", self).to_lowercase()
     }
 }
-
-impl Default for KPrim {
-    fn default() -> Self {
-        KPrim::Stuck
-    }
-}
