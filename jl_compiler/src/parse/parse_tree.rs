@@ -321,12 +321,6 @@ pub(crate) enum PExpr {
     Loop(PLoopExpr),
 }
 
-impl Default for PExpr {
-    fn default() -> Self {
-        PExpr::Str(PStrExpr { token: PToken::MAX })
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct PExprDecl {
     pub(crate) expr: PExpr,

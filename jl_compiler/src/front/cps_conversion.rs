@@ -517,7 +517,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol(&name, location);
 
             let field_count = k_struct.fields(&gx.outlines.structs).len();
-            let mut args = vec![KTerm::default(); field_count];
+            let mut args = vec![KTerm::Unit { location }; field_count];
             let mut arg_freq = vec![0_u8; field_count];
 
             for field in fields {

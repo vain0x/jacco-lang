@@ -8,6 +8,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+#[allow(unused)]
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
 
 const fn id_from_index(index: usize) -> NonZeroU32 {
@@ -41,6 +42,7 @@ pub(crate) struct VecArenaId<Tag> {
 }
 
 impl<Tag> VecArenaId<Tag> {
+    #[allow(unused)]
     pub(crate) const MAX: Self = Self::from_inner(ID_MAX);
 
     const fn from_inner(inner: NonZeroU32) -> Self {

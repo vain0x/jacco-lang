@@ -123,12 +123,6 @@ impl KEnumRepr {
     }
 }
 
-impl Default for KEnumRepr {
-    fn default() -> Self {
-        KEnumRepr::Never
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,

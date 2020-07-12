@@ -1,5 +1,4 @@
 use super::*;
-use crate::{source::Range, token::TokenSource};
 use std::fmt::{self, Debug};
 
 /// CPS 原子項
@@ -135,14 +134,6 @@ impl Debug for KTerm {
                 write!(f, "struct_tag#{}", k_struct.to_index())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
-        }
-    }
-}
-
-impl Default for KTerm {
-    fn default() -> Self {
-        KTerm::Unit {
-            location: Location::new(TokenSource::Special("<KTerm::default>"), Range::default()),
         }
     }
 }

@@ -160,12 +160,6 @@ impl NName {
     }
 }
 
-impl Default for NName {
-    fn default() -> Self {
-        NName::Unresolved
-    }
-}
-
 /// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {
