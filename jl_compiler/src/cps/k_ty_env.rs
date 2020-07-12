@@ -13,6 +13,8 @@ pub(crate) struct KTyEnv {
 }
 
 impl KTyEnv {
+    pub(crate) const EMPTY: &'static KTyEnv = &KTyEnv { meta_tys: vec![] };
+
     pub(crate) fn is_empty(&self) -> bool {
         self.meta_tys.is_empty()
     }

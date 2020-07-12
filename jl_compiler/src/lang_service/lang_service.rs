@@ -7,6 +7,7 @@ use crate::{
     source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
+use cps::{KTy, KTyEnv};
 use front::{NAbsName, NName, NParentFn};
 use log::{error, trace};
 use parse::PToken;
@@ -280,21 +281,9 @@ impl LangService {
         };
 
         let cps = self.request_cps(doc)?;
-
-        match name {
-            NAbsName::LocalVar {
-                parent_fn: NParentFn::Fn(n_fn),
-                local: n_local_var,
-            } => {
-                let ty_env = &cps.root.fns[n_fn].ty_env;
-                let ty = &cps.root.fns[n_fn].locals[n_local_var].ty;
-                let enums = &cps.root.outlines.enums;
-                let structs = &cps.root.outlines.structs;
-                let ty_name = ty_env.display(ty, enums, structs);
-                Some(ty_name)
-            }
-            _ => None,
-        }
+        let ty = name.ty(&cps.root);
+        let ty_env = name.ty_env(&cps.root);
+        Some(display_ty(ty, ty_env, &cps.root))
     }
 
     pub fn references(&mut self, doc: Doc, pos: Pos, include_definition: bool) -> Vec<Location> {
@@ -337,6 +326,48 @@ fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(Range, Stri
             (range.into(), message.to_string())
         })
         .collect()
+}
+
+impl NParentFn {
+    fn ty_env(self, k_root: &KRoot) -> &KTyEnv {
+        match self {
+            NParentFn::Fn(k_fn) => &k_fn.of(&k_root.fns).ty_env,
+            NParentFn::ExternFn(extern_fn) => KTyEnv::EMPTY,
+        }
+    }
+}
+
+impl NAbsName {
+    pub(crate) fn ty(self, k_root: &KRoot) -> &KTy {
+        let name = match self {
+            NAbsName::Unresolved => return &KTy::Unresolved,
+            NAbsName::LocalVar {
+                parent_fn: NParentFn::Fn(k_fn),
+                local,
+            } => return &local.of(&k_fn.of(&k_root.fns).locals).ty,
+            NAbsName::LocalVar {
+                parent_fn: NParentFn::ExternFn(extern_fn),
+                local,
+            } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
+            NAbsName::Other(name) => name,
+        };
+
+        &KTy::Unresolved
+    }
+
+    pub(crate) fn ty_env(self, k_root: &KRoot) -> &KTyEnv {
+        match self {
+            NAbsName::LocalVar { parent_fn, .. } => parent_fn.ty_env(k_root),
+            NAbsName::Other(NName::Fn(k_fn)) => &k_fn.of(&k_root.fns).ty_env,
+            _ => KTyEnv::EMPTY,
+        }
+    }
+}
+
+fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
+    let enums = &k_root.outlines.enums;
+    let structs = &k_root.outlines.structs;
+    ty_env.display(ty, enums, structs)
 }
 
 #[cfg(test)]
