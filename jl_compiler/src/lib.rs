@@ -225,7 +225,7 @@ mod source {
     pub(crate) mod t_range;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::Loc;
+    pub(crate) use loc::{Loc, LocPart};
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
 

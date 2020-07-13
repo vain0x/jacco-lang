@@ -2,10 +2,29 @@
 
 use super::*;
 use crate::{
-    source::Range,
+    source::{LocPart, Range},
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
+use std::fmt::{self, Debug, Formatter};
+
+#[derive(Copy, Clone)]
+pub(crate) struct PLoc {
+    token: PToken,
+    part: LocPart,
+}
+
+impl Debug for PLoc {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        PToken::fmt(&self.token, f)?;
+
+        match self.part {
+            LocPart::Range => Ok(()),
+            LocPart::Ahead => write!(f, ":ahead"),
+            LocPart::Behind => write!(f, ":behind"),
+        }
+    }
+}
 
 pub(crate) struct PNameTag;
 
