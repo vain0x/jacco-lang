@@ -4,7 +4,7 @@ use crate::{
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::Logs,
     parse::{self, PRoot},
-    source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
+    source::{loc::LocResolver, Doc, Loc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
 use cps::{KTy, KTyEnv};
@@ -96,8 +96,12 @@ impl AnalysisCache {
             let logs = Logs::new();
 
             let root = parse::parse_tokens(tokens, logs.logger());
-            validate_syntax(&root, logs.logger());
-
+            let errors = validate_syntax(&root);
+            let logger = logs.logger();
+            for (loc, message) in errors {
+                let range = loc.resolve(&root);
+                logger.error((self.doc.into(), range.into()), message);
+            }
             let errors = logs_into_errors(logs, self);
 
             Syntax { root, errors }

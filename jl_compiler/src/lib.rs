@@ -156,7 +156,6 @@ mod front {
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;
 
-    use crate::logs::Logger;
     use crate::parse::*;
     use crate::token::{HaveLocation, Location};
 }

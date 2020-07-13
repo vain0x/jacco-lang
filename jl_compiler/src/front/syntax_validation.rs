@@ -1,5 +1,5 @@
 use super::*;
-use crate::source::{Doc, Loc};
+use std::cell::RefCell;
 
 enum IsRequired {
     True(PToken),
@@ -8,42 +8,46 @@ enum IsRequired {
 
 struct Vx<'a> {
     root: &'a PRoot,
-    logger: Logger,
+    errors: RefCell<Vec<(PLoc, String)>>,
 }
 
 impl<'a> Vx<'a> {
-    fn new(root: &'a PRoot, logger: Logger) -> Self {
-        Vx { root, logger }
+    fn new(root: &'a PRoot) -> Self {
+        Vx {
+            root,
+            errors: RefCell::default(),
+        }
     }
 }
 
-// FIXME: doc の値を持っておく
-const DOC: Doc = Doc::new(1);
-
-fn error_node<'a, T: 'a>(have_location: &'a T, message: impl Into<String>, vx: &'a Vx)
+fn error_node<'a, T: 'a>(node: &'a T, message: impl Into<String>, vx: &'a Vx)
 where
     PToken: From<(&'a T, &'a PRoot)>,
 {
-    let token = PToken::from((have_location, &vx.root));
-    let loc = Loc::new(DOC, token);
-    vx.logger.error_loc(loc, message);
+    let token = PToken::from((node, &vx.root));
+    let loc = PLoc::new(token);
+    vx.errors.borrow_mut().push((loc, message.into()));
 }
 
-fn error_behind_node<'a, T: 'a>(have_location: &'a T, message: impl Into<String>, vx: &'a Vx)
+fn error_behind_node<'a, T: 'a>(node: &'a T, message: impl Into<String>, vx: &'a Vx)
 where
     PToken: From<(&'a T, &'a PRoot)>,
 {
-    let token = PToken::from((have_location, &vx.root));
-    let loc = Loc::new(DOC, token);
-    vx.logger.error_loc(loc.behind(), message);
+    let token = PToken::from((node, &vx.root));
+    let loc = PLoc::new(token).behind();
+    vx.errors.borrow_mut().push((loc, message.into()));
 }
 
 fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    vx.logger.error_loc(Loc::new(DOC, token), message);
+    vx.errors
+        .borrow_mut()
+        .push((PLoc::new(token), message.into()));
 }
 
 fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    vx.logger.error_loc(Loc::new(DOC, token).behind(), message)
+    vx.errors
+        .borrow_mut()
+        .push((PLoc::new(token).behind(), message.into()));
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {
@@ -614,7 +618,8 @@ fn validate_root(root: &PRoot, vx: &Vx) {
     }
 }
 
-pub(crate) fn validate_syntax(root: &PRoot, logger: Logger) {
-    let vx = Vx::new(root, logger);
+pub(crate) fn validate_syntax(root: &PRoot) -> Vec<(PLoc, String)> {
+    let vx = Vx::new(root);
     validate_root(root, &vx);
+    vx.errors.into_inner()
 }

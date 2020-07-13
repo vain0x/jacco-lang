@@ -1,5 +1,5 @@
 use super::*;
-use crate::utils::TakeOut;
+use crate::{source::Doc, utils::TakeOut};
 use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
@@ -63,6 +63,13 @@ impl TakeOut for Location {
 
 pub(crate) trait HaveLocation {
     fn location(&self) -> Location;
+}
+
+impl HaveLocation for (Doc, Range) {
+    fn location(&self) -> Location {
+        let (doc, range) = *self;
+        Location::new(TokenSource::File(doc), range)
+    }
 }
 
 impl<'a, T: HaveLocation> HaveLocation for &'a T {

@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::{
-    source::{LocPart, Range},
+    source::{LocPart, Range, TRange},
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
@@ -12,6 +12,27 @@ use std::fmt::{self, Debug, Formatter};
 pub(crate) struct PLoc {
     token: PToken,
     part: LocPart,
+}
+
+impl PLoc {
+    pub(crate) fn new(token: PToken) -> Self {
+        Self {
+            token,
+            part: LocPart::Range,
+        }
+    }
+
+    pub(crate) fn behind(self) -> Self {
+        Self {
+            part: LocPart::Behind,
+            ..self
+        }
+    }
+
+    pub(crate) fn resolve(self, root: &PRoot) -> TRange {
+        let range = self.token.of(&root.tokens).location().range().into();
+        self.part.apply(range)
+    }
 }
 
 impl Debug for PLoc {
