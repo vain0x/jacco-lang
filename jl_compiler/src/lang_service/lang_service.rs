@@ -116,11 +116,19 @@ impl AnalysisCache {
             return self.symbols_opt.as_mut().unwrap();
         }
 
+        let doc = self.doc;
         let symbols = {
             let syntax = self.request_syntax();
 
             let logs = Logs::new();
-            let res = front::resolve_name(&mut syntax.root, logs.logger());
+            let (res, errors) = front::resolve_name(&mut syntax.root);
+            {
+                let logger = logs.logger();
+                for (loc, message) in errors {
+                    let range = loc.resolve(&syntax.root);
+                    logger.error((doc, range.into()), message);
+                }
+            }
 
             let res = Rc::new(res);
             let occurrences = {

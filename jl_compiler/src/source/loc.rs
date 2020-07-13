@@ -45,18 +45,6 @@ impl Loc {
         self.part
     }
 
-    fn resolve_range(&self, token_range_fn: impl Fn(Doc, PToken) -> TRange) -> TRange {
-        let range = token_range_fn(self.doc, self.token);
-        self.part.apply(range)
-    }
-
-    pub(crate) fn resolve<'a>(&self, resolver: &'a impl LocResolver) -> (Option<&'a Path>, TRange) {
-        let path_opt = resolver.doc_path(self.doc);
-        (
-            path_opt,
-            self.resolve_range(|doc, token| resolver.token_range(doc, token)),
-        )
-    }
 }
 
 impl Debug for Loc {
@@ -77,14 +65,6 @@ impl Debug for Loc {
 }
 
 impl Loc {
-    pub(crate) fn new(doc: Doc, token: PToken) -> Self {
-        Self {
-            doc,
-            token,
-            part: LocPart::Range,
-        }
-    }
-
     #[allow(unused)]
     pub(crate) fn ahead(self) -> Self {
         Self {

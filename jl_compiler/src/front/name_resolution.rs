@@ -7,13 +7,12 @@ use crate::{
         KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag, KStruct, KStructTag, KSymbol, KTy,
         KVariant, KVis,
     },
-    logs::Logger,
-    source::{Doc, Loc},
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
 use log::trace;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt::Debug,
     mem::{replace, take},
@@ -215,15 +214,14 @@ struct Nx {
     parent_local_vars: NLocalVarArena,
     parent_loops: NLoopArena,
     res: NameResolution,
-    logger: Logger,
+    errors: RefCell<Vec<(PLoc, String)>>,
 }
 
 impl Nx {
-    fn new(tokens: Rc<PTokens>, names: PNameArena, logger: Logger) -> Self {
+    fn new(tokens: Rc<PTokens>, names: PNameArena) -> Self {
         Self {
             tokens,
             names,
-            logger,
             ..Self::default()
         }
     }
@@ -285,15 +283,15 @@ impl Nx {
     }
 }
 
-// FIXME: doc の値をもらう
-const DOC: Doc = Doc::new(1);
-
 fn error_on_token(token: PToken, message: impl Into<String>, nx: &Nx) {
-    nx.logger.error_loc(Loc::new(DOC, token), message);
+    nx.errors
+        .borrow_mut()
+        .push((PLoc::new(token), message.into()));
 }
 fn error_on_name(name: PName, message: impl Into<String>, nx: &Nx) {
-    nx.logger
-        .error_loc(Loc::new(DOC, name.of(&nx.names).token), message);
+    nx.errors
+        .borrow_mut()
+        .push((PLoc::new(name.of(&nx.names).token), message.into()));
 }
 
 fn parse_known_ty_name(s: &str) -> Option<NName> {
@@ -489,8 +487,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             *loop_id_opt = nx.parent_loop.map(NLoop::to_index);
             if loop_id_opt.is_none() {
-                nx.logger
-                    .error(keyword.location(nx.tokens()), "break out of loop");
+                error_on_token(*keyword, "break out of loop", nx);
             }
         }
         PExpr::Continue(PContinueExpr {
@@ -499,8 +496,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             *loop_id_opt = nx.parent_loop.map(NLoop::to_index);
             if loop_id_opt.is_none() {
-                nx.logger
-                    .error(keyword.location(nx.tokens()), "continue out of loop");
+                error_on_token(*keyword, "continue out of loop", nx);
             }
         }
         PExpr::Return(PReturnExpr {
@@ -512,8 +508,7 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
 
             *fn_id_opt = nx.parent_fn.map(KFn::to_index);
             if fn_id_opt.is_none() {
-                nx.logger
-                    .error(keyword.location(nx.tokens()), "return out of function");
+                error_on_token(*keyword, "return out of loop", nx);
             }
         }
         PExpr::If(PIfExpr {
@@ -955,17 +950,17 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
     }
 }
 
-pub(crate) fn resolve_name(p_root: &mut PRoot, logger: Logger) -> NameResolution {
+pub(crate) fn resolve_name(p_root: &mut PRoot) -> (NameResolution, Vec<(PLoc, String)>) {
     let mut nx = {
         // FIXME: clone しない
         let tokens = Rc::new(p_root.tokens.clone());
         let names = p_root.names.clone();
-        Nx::new(tokens, names, logger)
+        Nx::new(tokens, names)
     };
 
     nx.res.names = VecArena::from_iter(nx.names.iter().map(|_| NName::Unresolved));
 
     resolve_decls(&mut p_root.decls, &mut nx);
 
-    nx.res
+    (nx.res, nx.errors.into_inner())
 }

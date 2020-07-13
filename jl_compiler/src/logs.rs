@@ -4,7 +4,7 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    source::{loc::LocResolver, Loc, TRange},
+    source::{loc::LocResolver,  TRange},
     token::{HaveLocation, Location, TokenSource},
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
@@ -12,18 +12,12 @@ use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]
 pub(crate) enum LogItem {
-    OnLoc { message: String, loc: Loc },
     OnLocation { message: String, location: Location },
 }
 
 impl LogItem {
     pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
         match self {
-            LogItem::OnLoc { message, loc } => {
-                let (path_opt, range) = loc.resolve(resolver);
-                let path_opt = path_opt.map(PathBuf::from);
-                (message, path_opt, range)
-            }
             LogItem::OnLocation { message, location } => {
                 let path_opt = match location.source {
                     TokenSource::Special(name) => Some(PathBuf::from(name)),
@@ -76,13 +70,5 @@ impl Logger {
         let location = have_location.location();
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLocation { message, location });
-    }
-
-    pub(crate) fn error_loc(&self, loc: Loc, message: impl Into<String>) {
-        let mut inner = self.parent.inner.borrow_mut();
-        inner.push(LogItem::OnLoc {
-            message: message.into(),
-            loc,
-        });
     }
 }

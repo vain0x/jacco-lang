@@ -32,13 +32,22 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
 
     let mut p_root = parse_tokens(tokens, logs.logger());
     let errors = validate_syntax(&p_root);
-    let logger = logs.logger();
-    for (loc, message) in errors {
-        let range = loc.resolve(&p_root);
-        logger.error((doc, range.into()), message);
+    {
+        let logger = logs.logger();
+        for (loc, message) in errors {
+            let range = loc.resolve(&p_root);
+            logger.error((doc, range.into()), message);
+        }
     }
 
-    let name_resolution = resolve_name(&mut p_root, logs.logger());
+    let (name_resolution, errors) = resolve_name(&mut p_root);
+    {
+        let logger = logs.logger();
+        for (loc, message) in errors {
+            let range = loc.resolve(&p_root);
+            logger.error((doc, range.into()), message);
+        }
+    }
     trace!("p_root = {:#?}\n", p_root);
 
     if logs.is_fatal() {
