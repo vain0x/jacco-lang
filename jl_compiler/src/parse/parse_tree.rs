@@ -126,6 +126,7 @@ pub(crate) struct PRecordPat {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PPat {
+    Char(PToken),
     Name(PName),
     Record(PRecordPat),
 }
@@ -593,6 +594,12 @@ impl_node! {
     PDecl,
 }
 
+impl PToken {
+    pub(crate) fn some_token(self, _root: &PRoot) -> PToken {
+        self
+    }
+}
+
 impl PNameQual {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
         self.name
@@ -895,6 +902,7 @@ impl PRoot {
 impl PPat {
     pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
         match self {
+            PPat::Char(inner) => inner.some_token(root),
             PPat::Name(inner) => inner.some_token(root),
             PPat::Record(inner) => inner.some_token(root),
         }

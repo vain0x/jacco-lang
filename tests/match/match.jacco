@@ -10,5 +10,11 @@ pub fn main() -> i32 {
         x => print_i32(x),
     }
 
+    match 'A' {
+        'a' => abort(),
+        'A' => print_str("OK"),
+        _ => {}
+    }
+
     0
 }

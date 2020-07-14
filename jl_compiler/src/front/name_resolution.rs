@@ -408,6 +408,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 
 fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
     match pat {
+        PPat::Char(_) => {}
         PPat::Name(name) => match find_value_name(&name.full_name(&nx.names), nx) {
             Some(NAbsName::Other(NName::Const(_))) => {
                 resolve_name_use(*name, nx);

@@ -22,6 +22,7 @@ fn parse_record_pat(name: PName, left_brace: PToken, px: &mut Px) -> PRecordPat 
 
 pub(crate) fn parse_pat(px: &mut Px) -> Option<PPat> {
     let pat = match px.next() {
+        TokenKind::Char => PPat::Char(px.bump()),
         TokenKind::Ident => {
             let name = parse_name(px).unwrap();
 

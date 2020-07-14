@@ -131,6 +131,7 @@ fn validate_ty_opt(ty_opt: Option<&PTy>, vx: &Vx) {
 
 fn validate_pat(pat: &PPat, vx: &Vx) {
     match pat {
+        PPat::Char(_) => {}
         PPat::Name(_) => {}
         PPat::Record(PRecordPat {
             left_brace,

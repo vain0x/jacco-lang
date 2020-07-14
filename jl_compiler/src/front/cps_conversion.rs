@@ -987,8 +987,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let result = gx.fresh_symbol("match_result", location);
             let next_label = gx.fresh_label("match_next", location);
 
+            // 比較される値を計算する。
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
+                    PPat::Char(token) => KTerm::Char(token.of(&gx.tokens).clone()),
                     PPat::Name(name) => {
                         let location = name.location();
                         match *name.of(&gx.name_res) {
@@ -1021,11 +1023,14 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 location,
             });
 
+            // 分岐後の処理を生成する。
             for arm in arms {
                 match &arm.pat {
+                    PPat::Char(_) => {}
                     PPat::Name(name) => match *name.of(&gx.name_res) {
                         NName::Const(_) => {}
                         NName::LocalVar(_) => {
+                            // パターン変数に値を代入する。
                             if let Some(name) = gen_name(*name, gx).as_symbol() {
                                 gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
                             }
