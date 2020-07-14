@@ -223,6 +223,9 @@ mod source {
     pub(crate) mod t_pos;
     pub(crate) mod t_range;
 
+    #[cfg(test)]
+    pub(crate) mod cursor_text;
+
     pub(crate) use doc::Doc;
     pub(crate) use loc::{Loc, LocPart};
     pub(crate) use pos::Pos;
@@ -232,6 +235,9 @@ mod source {
     pub(crate) use t_pos::TPos;
     #[allow(unused)]
     pub(crate) use t_range::TRange;
+
+    #[cfg(test)]
+    pub(crate) use cursor_text::CursorText;
 
     pub(crate) type SourceCode = String;
 }
