@@ -91,6 +91,7 @@ fn global_heap() -> *mut Heap {
 // -----------------------------------------------
 
 extern fn eprint_s(value: *c8);
+extern fn eprint_t(value: *c8, len: usize);
 extern fn eprint_d(value: i32);
 
 fn eprint_sds(s1: *c8, d2: i32, s3: *c8) {
@@ -378,6 +379,24 @@ fn str_buf_tests(tt: *mut TestTools)  {
     assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("abcd")), 0);
 }
 
+fn eprint_sts(s1: *c8, t2: Str, s3: *c8) {
+    eprint_s(s1);
+    eprint_t(t2.ptr, t2.len);
+    eprint_s(s3);
+}
+
+fn assert_eq_str(tt: *mut TestTools, actual: Str, expected: Str) {
+    if str_compare(actual, expected) == 0 {
+        assert_pass(tt);
+    } else {
+        assert_fail(tt);
+        // 文字色: シアン
+        eprint_sts("    期待された結果 '\x1B[36m", expected, "\x1B[0m'\n");
+        // 文字色: イエロー
+        eprint_sts("    実際に得た結果 '\x1B[33m", actual, "\x1B[0m'\n");
+    }
+}
+
 // -----------------------------------------------
 // 構文
 // -----------------------------------------------
@@ -390,6 +409,15 @@ enum SyntaxKind {
     NewLines,
     /// 1つ以上の、改行でない空白文字
     Blank,
+}
+
+fn syntax_kind_name(kind: SyntaxKind) -> Str {
+    let name = match kind {
+        SyntaxKind::Eof => "EOF",
+        SyntaxKind::NewLines => "NEW_LINES",
+        SyntaxKind::Blank => "BLANK",
+    };
+    str_from_raw(name)
 }
 
 // -----------------------------------------------
@@ -487,18 +515,40 @@ fn token_stream_next(ts: *mut TokenStream) -> SyntaxKind {
     }
 }
 
+fn tokenize_dump(s: *c8) -> StrBuf {
+    let ts = token_stream_from_raw(s);
+    let i = 0;
+    let buf = str_buf_empty();
+
+    loop {
+        let kind = token_stream_next(&mut ts);
+        if kind == SyntaxKind::Eof {
+            break;
+        }
+
+        if i != 0 {
+            str_buf_push_str(&mut buf, str_from_raw(", "));
+        }
+
+        str_buf_push_str(&mut buf, syntax_kind_name(kind));
+        i += 1;
+
+        if i >= 10_000_000 {
+            panic("字句解析が EOF に到達しないようです");
+        }
+    }
+
+    buf
+}
+
 fn tokenize_tests(tt: *mut TestTools) {
     let ts = token_stream_from_raw(" \t");
     assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
     assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
     assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
 
-    let ts = token_stream_from_raw("  \r\n\r\n  \n");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::NewLines, "expect new lines");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::NewLines, "expect new lines");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
+    let buf = tokenize_dump("  \r\n\r\n  \n");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
 }
 
 // -----------------------------------------------
