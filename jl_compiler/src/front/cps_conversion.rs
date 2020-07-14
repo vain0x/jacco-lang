@@ -277,7 +277,7 @@ pub(crate) fn gen_ty_name(p_name: PName, name_res: &VecArena<PNameTag, NName>) -
         NName::Bool => KTy::Bool,
         NName::Enum(n_enum) => KTy::Enum(n_enum),
         NName::Struct(n_struct) => KTy::Struct(n_struct),
-        _ => unreachable!("expected type name but {:?}", p_name),
+        _ => KTy::Unresolved,
     }
 }
 
