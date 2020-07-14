@@ -134,12 +134,15 @@ fn usize_min(left: usize, right: usize) -> usize {
 
 extern fn strlen(str: *c8) -> usize;
 
+/// 文字列の一部への読み取り専用の参照。
+///
+/// Rust の `&str`、C++ の `std::string_view` に相当。
 struct Str {
     ptr: *c8,
     len: usize,
 }
 
-fn str_new() -> Str {
+fn str_empty() -> Str {
     Str {
         ptr: "",
         len: 0_usize,
@@ -153,9 +156,13 @@ fn str_from_raw(c_str: *c8) -> Str {
     }
 }
 
+fn str_is_empty(s: Str) -> bool {
+    s.len == 0_usize
+}
+
 fn str_slice_from(s: Str, start: usize) -> Str {
     if start >= s.len {
-        return str_new();
+        return str_empty();
     }
 
     Str {
@@ -185,6 +192,9 @@ fn str_compare(s: Str, other: Str) -> i32 {
 fn str_tests(tt: *mut TestTools) {
     let hello = str_from_raw("hello");
     assert_eq_usize(tt, hello.len, 5_usize);
+
+    assert_that(tt, str_empty() |> str_is_empty(), "\"\" is empty");
+    assert_that(tt, !(hello |> str_is_empty()), "\"hello\" is not empty");
 
     let lo = str_slice_from(hello, 3_usize);
     assert_eq_usize(tt, lo.len, 2_usize);
