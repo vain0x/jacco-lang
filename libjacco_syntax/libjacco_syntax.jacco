@@ -171,7 +171,7 @@ fn assert_eq_usize(tt: *mut TestTools, actual: usize, expected: usize) {
 // 数値ライブラリ
 // -----------------------------------------------
 
-fn i32_compare(left: i32, right: i32) -> i32 {
+fn usize_compare(left: usize, right: usize) -> i32 {
     if left == right {
         0
     } else if left < right {
@@ -189,8 +189,16 @@ fn usize_min(left: usize, right: usize) -> usize {
     }
 }
 
+fn usize_max(left: usize, right: usize) -> usize {
+    if left > right {
+        left
+    } else {
+        right
+    }
+}
+
 // -----------------------------------------------
-// 文字列ライブラリ
+// Str
 // -----------------------------------------------
 
 extern fn strlen(str: *c8) -> usize;
@@ -233,7 +241,7 @@ fn str_slice_from(s: Str, start: usize) -> Str {
 }
 
 fn str_compare(s: Str, other: Str) -> i32 {
-    let n = (s.len |> usize_min(other.len)) + 1_usize;
+    let n = usize_min(s.len, other.len);
     let p = s.ptr;
     let q = other.ptr;
     while n >= 1_usize {
@@ -241,13 +249,13 @@ fn str_compare(s: Str, other: Str) -> i32 {
 
         if *p != *q {
             // FIXME: *p as i32 が *(p as i32) にパースされてしまう。
-            return i32_compare((*p) as i32, (*q) as i32);
+            return usize_compare((*p) as usize, (*q) as usize);
         }
 
         p += 1_usize;
         q += 1_usize;
     }
-    0
+    usize_compare(s.len, other.len)
 }
 
 fn str_tests(tt: *mut TestTools) {
