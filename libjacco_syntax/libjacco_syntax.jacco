@@ -74,6 +74,14 @@ fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), alignment: usize, new_count:
 
 fn heap_dealloc(_heap: *mut Heap, _ptr: *mut ()) {}
 
+fn global_heap_init() {}
+
+fn global_heap_deinit() {}
+
+fn global_heap() -> *mut Heap {
+    1 as *mut Heap
+}
+
 // -----------------------------------------------
 // 入出力
 // -----------------------------------------------
@@ -275,6 +283,73 @@ fn str_tests(tt: *mut TestTools) {
 }
 
 // -----------------------------------------------
+// StrBuf
+// -----------------------------------------------
+
+/// メモリを所有する文字列バッファ。
+///
+/// Rust の `String`、C++ の `std::string` に相当。
+struct StrBuf {
+    ptr: *mut c8,
+    len: usize,
+    cap: usize,
+}
+
+/// 空の StrBuf を生成する。(動的確保は発生しない。)
+fn str_buf_empty() -> StrBuf {
+    StrBuf {
+        ptr: "" as *mut c8,
+        len: 0_usize,
+        cap: 0_usize,
+    }
+}
+
+fn str_buf_new_with_cap(cap: usize) -> StrBuf {
+    if cap == 0_usize {
+        return str_buf_empty();
+    }
+
+    StrBuf {
+        ptr: heap_alloc(global_heap(), 1_usize, cap) as *mut c8,
+        len: 0_usize,
+        cap: cap,
+    }
+}
+
+fn str_buf_as_str(buf: *StrBuf) -> Str {
+    Str {
+        ptr: (*buf).ptr,
+        len: (*buf).len,
+    }
+}
+
+fn str_buf_len(buf: *StrBuf) -> usize {
+    (*buf).len
+}
+
+fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
+    if (*buf).len == (*buf).cap {
+        // FIXME: バッファを拡張する。
+        panic("buffer overflow");
+    }
+
+    (*buf).ptr[(*buf).len] = c;
+    (*buf).len += 1_usize;
+}
+
+fn str_buf_tests(tt: *mut TestTools)  {
+    let s = str_buf_new_with_cap(8_usize);
+    // s == ""
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_empty()), 0);
+
+    str_buf_push_c8(&mut s, 'a');
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("a")), 0);
+
+    str_buf_push_c8(&mut s, 'b');
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("ab")), 0);
+}
+
+// -----------------------------------------------
 // 構文
 // -----------------------------------------------
 
@@ -403,6 +478,8 @@ fn tokenize_tests(tt: *mut TestTools) {
 
 /// テストを実行して、結果コードを返す。
 pub fn libjacco_syntax_tests() -> i32 {
+    global_heap_init();
+
     let tt = test_tools_new();
     eprint_s("[TRACE] テストの実行を開始します。\n")
 
@@ -413,9 +490,13 @@ pub fn libjacco_syntax_tests() -> i32 {
         // assert_eq_i32(tt, 40 - 2, 42);
 
         str_tests(tt);
+        str_buf_tests(tt);
         tokenize_tests(tt);
     }
 
     eprint_s("[TRACE] テストの実行が終了しました。\n");
-    test_tools_finish(tt)
+    let exit_code = test_tools_finish(tt);
+
+    global_heap_deinit();
+    exit_code
 }
