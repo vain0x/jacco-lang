@@ -103,10 +103,17 @@ pub(crate) struct NFieldData {
     pub(crate) location: Location,
 }
 
+#[derive(Copy, Clone)]
+pub(crate) enum DefOrUse {
+    Def,
+    Use,
+}
+
 /// 名前解決の結果。
 #[derive(Default)]
 pub(crate) struct NameResolution {
     pub(crate) names: VecArena<PNameTag, NName>,
+    pub(crate) occurrences: VecArena<PNameTag, (NAbsName, DefOrUse)>,
     pub(crate) consts: NConstArena,
     pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: NFnArena,
@@ -202,15 +209,25 @@ impl NAbsName {
     }
 }
 
+impl From<NAbsName> for NName {
+    fn from(name: NAbsName) -> Self {
+        match name {
+            NAbsName::Unresolved => NName::Unresolved,
+            NAbsName::LocalVar { local, .. } => NName::LocalVar(local),
+            NAbsName::Other(name) => name,
+        }
+    }
+}
+
 /// Naming context. 名前解決処理の状態を持ち運ぶもの
 #[derive(Default)]
 struct Nx {
     tokens: Rc<PTokens>,
     names: PNameArena,
-    local_env: HashMap<String, NName>,
+    local_env: HashMap<String, NAbsName>,
     // global_env: HashMap<String, NName>,
     parent_loop: Option<NLoop>,
-    parent_fn: Option<KFn>,
+    parent_fn: Option<NParentFn>,
     parent_local_vars: NLocalVarArena,
     parent_loops: NLoopArena,
     res: NameResolution,
@@ -235,13 +252,7 @@ impl Nx {
     //     self.global_env.insert(name, n_name);
     // }
 
-    fn import_local(&mut self, name: String, n_name: NName) {
-        trace!(
-            "local {} => {:?} (parent={:?})",
-            name,
-            n_name,
-            self.parent_fn
-        );
+    fn import_local(&mut self, name: String, n_name: NAbsName) {
         self.local_env.insert(name, n_name);
     }
 
@@ -266,7 +277,7 @@ impl Nx {
 
     fn enter_fn(&mut self, k_fn: KFn, do_resolve: impl FnOnce(&mut Nx)) {
         let parent_loop = take(&mut self.parent_loop);
-        let parent_fn = replace(&mut self.parent_fn, Some(k_fn));
+        let parent_fn = replace(&mut self.parent_fn, Some(NParentFn::Fn(k_fn)));
         let parent_local_vars = take(&mut self.parent_local_vars);
         let parent_loops = take(&mut self.parent_loops);
 
@@ -317,7 +328,7 @@ fn parse_known_ty_name(s: &str) -> Option<NName> {
     Some(n_name)
 }
 
-fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
+fn find_value_name(name: &str, nx: &Nx) -> Option<NAbsName> {
     nx.local_env
         .get(name)
         // .or_else(|| nx.global_env.get(name))
@@ -327,17 +338,20 @@ fn find_value_name(name: &str, nx: &Nx) -> Option<NName> {
 fn resolve_name_use(p_name: PName, nx: &mut Nx) {
     let n_name = find_value_name(&p_name.full_name(&nx.names), nx).unwrap_or_else(|| {
         error_on_name(p_name, "undefined value", nx);
-        NName::Unresolved
+        NAbsName::Unresolved
     });
 
-    nx.res.names[p_name] = n_name;
+    nx.res.names[p_name] = n_name.into();
+    nx.res.occurrences[p_name] = (n_name, DefOrUse::Use);
 }
 
 fn resolve_name_def(p_name: PName, n_name: NName, nx: &mut Nx) {
+    let abs_name = NAbsName::new(nx.parent_fn, n_name);
     nx.res.names[p_name] = n_name;
+    nx.res.occurrences[p_name] = (abs_name, DefOrUse::Def);
 
     if !p_name.is_underscore(&nx.names) {
-        nx.import_local(p_name.full_name(&nx.names), n_name);
+        nx.import_local(p_name.full_name(&nx.names), abs_name);
     }
 }
 
@@ -347,7 +361,9 @@ fn resolve_qualified_name_def(
     n_name: NName,
     nx: &mut Nx,
 ) {
+    let abs_name = NAbsName::new(nx.parent_fn, n_name);
     nx.res.names[p_name] = n_name;
+    nx.res.occurrences[p_name] = (abs_name, DefOrUse::Def);
 
     if !p_name.is_underscore(&nx.names) {
         let full_name = match parent_name_opt {
@@ -357,7 +373,7 @@ fn resolve_qualified_name_def(
             }
             _ => p_name.full_name(&nx.names),
         };
-        nx.import_local(full_name, n_name);
+        nx.import_local(full_name, abs_name);
     }
 }
 
@@ -375,14 +391,15 @@ fn resolve_local_var_def(name: PName, nx: &mut Nx) -> KLocal {
 
 fn resolve_ty_name(p_name: PName, nx: &mut Nx) {
     // 環境から探して、なければ組み込み型の名前とみなす。
-    let n_name = find_value_name(&p_name.full_name(&nx.names), nx)
-        .or_else(|| parse_known_ty_name(p_name.text(&nx.names)))
+    let abs_name = find_value_name(&p_name.full_name(&nx.names), nx)
+        .or_else(|| parse_known_ty_name(p_name.text(&nx.names)).map(NAbsName::Other))
         .unwrap_or_else(|| {
             error_on_name(p_name, "undefined type", nx);
-            NName::Unresolved
+            NAbsName::Unresolved
         });
 
-    nx.res.names[p_name] = n_name;
+    nx.res.names[p_name] = abs_name.into();
+    nx.res.occurrences[p_name] = (abs_name, DefOrUse::Use);
 }
 
 fn resolve_ty(ty: &mut PTy, nx: &mut Nx) {
@@ -404,7 +421,7 @@ fn resolve_ty_opt(ty_opt: Option<&mut PTy>, nx: &mut Nx) {
 fn resolve_pat(pat: &mut PPat, nx: &mut Nx) {
     match pat {
         PPat::Name(name) => match find_value_name(&name.full_name(&nx.names), nx) {
-            Some(NName::Const(_)) => {
+            Some(NAbsName::Other(NName::Const(_))) => {
                 resolve_name_use(*name, nx);
             }
             _ => {
@@ -506,7 +523,10 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
         }) => {
             resolve_expr_opt(arg_opt.as_deref_mut(), nx);
 
-            *fn_id_opt = nx.parent_fn.map(KFn::to_index);
+            *fn_id_opt = match nx.parent_fn {
+                Some(NParentFn::Fn(k_fn)) => Some(k_fn.to_index()),
+                _ => unreachable!(),
+            };
             if fn_id_opt.is_none() {
                 error_on_token(*keyword, "return out of loop", nx);
             }
@@ -894,6 +914,8 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             extern_fn_id_opt,
             ..
         }) => {
+            let extern_fn = KExternFn::from_index(extern_fn_id_opt.unwrap());
+            let parent_fn = replace(&mut nx.parent_fn, Some(NParentFn::ExternFn(extern_fn)));
             let parent_local_vars = take(&mut nx.parent_local_vars);
             let mut params = vec![];
             let mut result_ty = KTy::Unresolved;
@@ -907,9 +929,9 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                     .map_or(KTy::Unit, |ty| gen_ty(ty, &nx.res.names));
             });
 
+            nx.parent_fn = parent_fn;
             let local_vars = replace(&mut nx.parent_local_vars, parent_local_vars);
 
-            let extern_fn = KExternFn::from_index(extern_fn_id_opt.unwrap());
             let mut extern_fn_data = &mut nx.res.extern_fns[extern_fn];
             extern_fn_data.params = params;
             extern_fn_data.result_ty = result_ty;
@@ -959,6 +981,11 @@ pub(crate) fn resolve_name(p_root: &mut PRoot) -> (NameResolution, Vec<(PLoc, St
     };
 
     nx.res.names = VecArena::from_iter(nx.names.iter().map(|_| NName::Unresolved));
+    nx.res.occurrences = VecArena::from_iter(
+        nx.names
+            .iter()
+            .map(|_| (NAbsName::Unresolved, DefOrUse::Use)),
+    );
 
     resolve_decls(&mut p_root.decls, &mut nx);
 

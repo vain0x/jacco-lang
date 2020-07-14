@@ -407,6 +407,7 @@ fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
 #[cfg(test)]
 mod tests {
     use super::{Doc, LangService};
+    use crate::source::Pos;
 
     const DOC: Doc = Doc::new(1);
 
@@ -443,5 +444,30 @@ mod tests {
         let mut lang_service = new_service_from_str("fn f() { 2_i32 + 3_f64 }");
         let (_, errors) = lang_service.validate(DOC);
         assert_ne!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_definition() {
+        let mut lang_service = new_service_from_str("fn foo() { foo(); }");
+
+        let defs = lang_service.definitions(DOC, Pos::new(0, 3, 3));
+        assert_eq!(
+            defs.unwrap()
+                .into_iter()
+                .map(|location| format!("{:?}", location.range()))
+                .collect::<Vec<_>>()
+                .join("; "),
+            "1.4-1.7"
+        );
+
+        let defs = lang_service.definitions(DOC, Pos::new(0, 14, 14));
+        assert_eq!(
+            defs.unwrap()
+                .into_iter()
+                .map(|location| format!("{:?}", location.range()))
+                .collect::<Vec<_>>()
+                .join("; "),
+            "1.4-1.7"
+        );
     }
 }
