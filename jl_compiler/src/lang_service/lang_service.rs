@@ -256,14 +256,8 @@ impl LangService {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
-        let def_sites = symbols
-            .occurrences
-            .def_sites
-            .get(&name)
-            .iter()
-            .flat_map(|locations| locations.iter().map(|location| location.range()))
-            .map(|range| Location::new(doc, range))
-            .collect();
+        let mut def_sites = vec![];
+        collect_def_sites(doc, name, &mut def_sites, symbols);
 
         Some(def_sites)
     }
@@ -272,21 +266,18 @@ impl LangService {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
+        let mut locations = vec![];
 
-        let def_sites = symbols
-            .occurrences
-            .def_sites
-            .get(&name)
-            .iter()
-            .flat_map(|locations| locations.iter().map(|location| location.range()))
+        collect_def_sites(doc, name, &mut locations, symbols);
+        let def_sites = locations
+            .drain(..)
+            .map(|location| location.range())
             .collect();
 
-        let use_sites = symbols
-            .occurrences
-            .use_sites
-            .get(&name)
-            .iter()
-            .flat_map(|locations| locations.iter().map(|location| location.range()))
+        collect_use_sites(doc, name, &mut locations, symbols);
+        let use_sites = locations
+            .drain(..)
+            .map(|location| location.range())
             .collect();
 
         Some((def_sites, use_sites))
@@ -314,27 +305,23 @@ impl LangService {
 
         let (name, _) = hit_test(doc, pos, symbols)?;
         let mut references = vec![];
+        let mut locations = vec![];
 
         if include_definition {
+            collect_def_sites(doc, name, &mut locations, symbols);
             references.extend(
-                symbols
-                    .occurrences
-                    .def_sites
-                    .get(&name)
-                    .iter()
-                    .flat_map(|locations| locations.iter().map(|location| location.range()))
-                    .map(|range| (DefOrUse::Def, Location::new(doc, range))),
+                locations
+                    .drain(..)
+                    .into_iter()
+                    .map(|location| (DefOrUse::Def, Location::new(doc, location.range()))),
             );
         }
 
+        collect_use_sites(doc, name, &mut locations, symbols);
         references.extend(
-            symbols
-                .occurrences
-                .use_sites
-                .get(&name)
-                .iter()
-                .flat_map(|locations| locations.iter().map(|location| location.range()))
-                .map(|range| (DefOrUse::Use, Location::new(doc, range))),
+            locations
+                .drain(..)
+                .map(|location| (DefOrUse::Use, Location::new(doc, location.range()))),
         );
 
         Some(references)
@@ -435,6 +422,40 @@ fn hit_test(doc: Doc, pos: Pos, symbols: &Symbols) -> Option<(NAbsName, Location
                 }
             })
         })
+}
+
+fn collect_def_sites(
+    doc: Doc,
+    name: NAbsName,
+    locations: &mut Vec<Location>,
+    symbols: &mut Symbols,
+) {
+    locations.extend(
+        symbols
+            .occurrences
+            .def_sites
+            .get(&name)
+            .iter()
+            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .map(|range| Location::new(doc, range)),
+    );
+}
+
+fn collect_use_sites(
+    doc: Doc,
+    name: NAbsName,
+    locations: &mut Vec<Location>,
+    symbols: &mut Symbols,
+) {
+    locations.extend(
+        symbols
+            .occurrences
+            .use_sites
+            .get(&name)
+            .iter()
+            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .map(|range| Location::new(doc, range)),
+    );
 }
 
 fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
