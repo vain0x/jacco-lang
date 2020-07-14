@@ -1,0 +1,6 @@
+* text=auto
+
+Cargo.lock          linguist-generated
+package-lock.json   linguist-generated
+tests/**/*.log      linguist-generated
+tests/**/*.txt      linguist-generated
