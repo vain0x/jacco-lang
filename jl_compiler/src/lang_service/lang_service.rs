@@ -214,7 +214,9 @@ impl LangService {
     }
 
     fn request_cps(&mut self, doc: Doc) -> Option<&mut Cps> {
-        self.docs.get_mut(&doc).map(|cache| cache.request_cps())
+        // 頻繁にクラッシュするので無効化
+        // self.docs.get_mut(&doc).map(|cache| cache.request_cps())
+        None
     }
 
     fn hit_test(&mut self, doc: Doc, pos: Pos) -> Option<(NAbsName, Location)> {
@@ -366,9 +368,10 @@ impl LangService {
                 if errors.is_empty() {
                     errors.extend(analysis.request_symbols().errors.clone());
                 }
-                if errors.is_empty() {
-                    errors.extend(analysis.request_cps().errors.clone());
-                }
+                // 頻繁にクラッシュするので無効化
+                // if errors.is_empty() {
+                //     errors.extend(analysis.request_cps().errors.clone());
+                // }
 
                 (version_opt, errors)
             })
