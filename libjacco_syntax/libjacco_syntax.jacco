@@ -1,6 +1,19 @@
 // ジャッコ言語の構文的操作を扱うライブラリ
 
 // -----------------------------------------------
+// プロセス管理
+// -----------------------------------------------
+
+extern fn abort() -> !;
+
+fn panic(s: *c8) -> ! {
+    eprint_s("[ERROR] ");
+    eprint_s(s);
+    eprint_s("\n");
+    abort()
+}
+
+// -----------------------------------------------
 // 入出力
 // -----------------------------------------------
 
@@ -157,6 +170,101 @@ fn str_tests(tt: *mut TestTools) {
 }
 
 // -----------------------------------------------
+// 構文
+// -----------------------------------------------
+
+/// 構文木のノードやトークンの種類
+enum SyntaxKind {
+    Eof,
+    Blank,
+}
+
+// -----------------------------------------------
+// トークン
+// -----------------------------------------------
+
+/// Tokenize context. 字句解析の状態
+struct Tx {
+    text: Str,
+    count: usize,
+}
+
+fn tx_new(text: Str) -> Tx {
+    Tx {
+        text: text,
+        count: 0_usize,
+    }
+}
+
+fn tx_next(tx: *Tx) -> c8 {
+    if (*tx).text.len == 0_usize {
+        return '\0';
+    }
+
+    *(*tx).text.ptr
+}
+
+fn tx_bump(tx: *mut Tx)
+    // requires tx.text.len >= 1
+{
+    // FIXME: Unicode 文字を途中で切らない
+    (*tx).text.ptr += 1_usize;
+    (*tx).text.len -= 1_usize;
+}
+
+fn tx_commit(tx: *mut Tx, kind: SyntaxKind) {
+    // FIXME: トークンリストに追加
+    (*tx).count += 1_usize;
+}
+
+fn c8_is_blank(c: c8) -> bool {
+    match c {
+        ' ' => true,
+        '\t' => true,
+        _ => false,
+    }
+}
+
+fn tokenize_blank(tx: *mut Tx) {
+    while tx |> tx_next() |> c8_is_blank() {
+        tx |> tx_bump();
+    }
+
+    tx |> tx_commit(SyntaxKind::Blank);
+}
+
+fn tokenize(text: Str) -> usize {
+    let tx = tx_new(text);
+
+    loop {
+        match &tx |> tx_next() {
+            '\0' => break,
+
+            // FIXME: OR パターンは未実装
+            ' ' => tokenize_blank(&mut tx),
+            '\t' => tokenize_blank(&mut tx),
+
+            c => {
+                eprint_sds("unknown char ", c as i32, "\n");
+                abort()
+            }
+        }
+    }
+
+    &mut tx |> tx_commit(SyntaxKind::Eof);
+    tx.count
+}
+
+fn tokenize_raw(s: *c8) -> usize {
+    tokenize(str_from_raw(s))
+}
+
+fn tokenize_tests(tt: *mut TestTools) {
+    assert_eq_i32(tt, tokenize_raw("") as i32, 1);
+    assert_eq_i32(tt, tokenize_raw(" \t ") as i32, 2);
+}
+
+// -----------------------------------------------
 // エントリポイント
 // -----------------------------------------------
 
@@ -172,6 +280,7 @@ pub fn libjacco_syntax_tests() -> i32 {
         // assert_eq_i32(tt, 40 - 2, 42);
 
         str_tests(tt);
+        tokenize_tests(tt);
     }
 
     eprint_s("[TRACE] テストの実行が終了しました。\n");
