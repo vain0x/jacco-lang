@@ -201,6 +201,10 @@ impl LangService {
 
     pub fn shutdown(&mut self) {}
 
+    fn doc_to_version(&self, doc: Doc) -> Option<i64> {
+        self.docs.get(&doc).map(|cache| cache.version)
+    }
+
     fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
@@ -331,8 +335,26 @@ impl LangService {
         None
     }
 
-    pub fn rename(&mut self, doc: Doc, pos: Pos, new_name: String) -> Option<()> {
-        None
+    pub fn rename(
+        &mut self,
+        doc: Doc,
+        pos: Pos,
+        new_name: String,
+    ) -> Option<Vec<(Location, i64, String)>> {
+        let version = self.doc_to_version(doc)?;
+        let symbols = self.request_symbols(doc)?;
+
+        let (name, _) = hit_test(doc, pos, symbols)?;
+
+        let mut locations = vec![];
+        collect_def_sites(doc, name, &mut locations, symbols);
+        collect_use_sites(doc, name, &mut locations, symbols);
+
+        let edits = locations
+            .into_iter()
+            .map(|location| (location, version, new_name.to_string()))
+            .collect();
+        Some(edits)
     }
 
     pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(Range, String)>) {

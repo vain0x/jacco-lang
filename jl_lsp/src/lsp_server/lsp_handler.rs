@@ -136,6 +136,7 @@ impl<W: Write> LspHandler<W> {
                 document_highlight_provider: Some(true),
                 hover_provider: Some(true),
                 // references_provider: Some(true),
+                rename_provider: Some(RenameProviderCapability::Simple(true)),
                 // rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
                 //     prepare_provider: Some(true),
                 //     work_done_progress_options: WorkDoneProgressOptions::default(),
@@ -306,13 +307,32 @@ impl<W: Write> LspHandler<W> {
     //     )
     // }
 
-    // fn text_document_rename(&mut self, params: RenameParams) -> Option<WorkspaceEdit> {
-    //     self.service.rename(
-    //         params.text_document_position.text_document.uri,
-    //         params.text_document_position.position,
-    //         params.new_name,
-    //     )
-    // }
+    fn text_document_rename(&mut self, params: RenameParams) -> Option<WorkspaceEdit> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = from_lsp_pos(params.text_document_position.position);
+        let new_name = params.new_name;
+
+        let doc = self.docs.url_to_doc(&uri)?;
+        let edits = self.service.rename(doc, pos, new_name)?;
+        let document_edits = edits
+            .into_iter()
+            .map(|(location, version, new_text)| TextDocumentEdit {
+                text_document: VersionedTextDocumentIdentifier {
+                    uri: uri.clone(),
+                    version: Some(version),
+                },
+                edits: vec![TextEdit {
+                    range: to_lsp_range(location.range()),
+                    new_text,
+                }],
+            })
+            .collect();
+        let workspace_edit = WorkspaceEdit {
+            document_changes: Some(DocumentChanges::Edits(document_edits)),
+            ..WorkspaceEdit::default()
+        };
+        Some(workspace_edit)
+    }
 
     fn did_receive(&mut self, json: &str) {
         let msg = serde_json::from_str::<LspMessageOpaque>(json).unwrap();
@@ -396,12 +416,12 @@ impl<W: Write> LspHandler<W> {
             //     let response = self.text_document_references(msg.params);
             //     self.sender.send_response(msg_id, response);
             // }
-            // request::Rename::METHOD => {
-            //     let msg: LspRequest<RenameParams> = serde_json::from_str(json).unwrap();
-            //     let msg_id = msg.id;
-            //     let response = self.text_document_rename(msg.params);
-            //     self.sender.send_response(msg_id, response);
-            // }
+            request::Rename::METHOD => {
+                let msg: LspRequest<RenameParams> = serde_json::from_str(json).unwrap();
+                let msg_id = msg.id;
+                let response = self.text_document_rename(msg.params);
+                self.sender.send_response(msg_id, response);
+            }
             method => trace!("Unresolved method='{}'", method),
         }
     }
