@@ -420,6 +420,11 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
     str_from_raw(name)
 }
 
+struct GreenToken {
+    kind: SyntaxKind,
+    len: u16,
+}
+
 // -----------------------------------------------
 // 字句解析
 // -----------------------------------------------
@@ -459,7 +464,7 @@ fn token_stream_from_raw(text: *c8) -> TokenStream {
 }
 
 fn ts_peek(ts: *TokenStream) -> c8 {
-    if (*ts).current == (*ts).text.len {
+    if (*ts).current >= (*ts).text.len {
         return '\0';
     }
 
@@ -470,34 +475,44 @@ fn ts_bump(ts: *mut TokenStream)
     // requires ts.current <= ts.text.len
 {
     // FIXME: Unicode 文字を途中で切らない
-    (*ts).text.ptr += 1_usize;
-    (*ts).text.len -= 1_usize;
+    (*ts).current += 1_usize;
 }
 
-fn tokenize_new_lines_with_cr(ts: *mut TokenStream) -> SyntaxKind {
+fn ts_commit(ts: *mut TokenStream, kind: SyntaxKind) -> GreenToken {
+    let len = (*ts).current - (*ts).last;
+
+    (*ts).last = (*ts).current;
+
+    GreenToken {
+        kind: kind,
+        len: len as u16,
+    }
+}
+
+fn tokenize_new_lines_with_cr(ts: *mut TokenStream) -> GreenToken {
     ts |> ts_bump();
     tokenize_new_lines(ts)
 }
 
-fn tokenize_new_lines(ts: *mut TokenStream) -> SyntaxKind {
+fn tokenize_new_lines(ts: *mut TokenStream) -> GreenToken {
     while ts |> ts_peek() |> c8_is_new_line() {
         ts |> ts_bump();
     }
 
-    SyntaxKind::NewLines
+    ts |> ts_commit(SyntaxKind::NewLines)
 }
 
-fn tokenize_blank(ts: *mut TokenStream) -> SyntaxKind {
+fn tokenize_blank(ts: *mut TokenStream) -> GreenToken {
     while ts |> ts_peek() |> c8_is_blank() {
         ts |> ts_bump();
     }
 
-    SyntaxKind::Blank
+    ts |> ts_commit(SyntaxKind::Blank)
 }
 
-fn token_stream_next(ts: *mut TokenStream) -> SyntaxKind {
+fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
     match ts |> ts_peek() {
-        '\0' => SyntaxKind::Eof,
+        '\0' => ts |> ts_commit(SyntaxKind::Eof),
 
         '\r' => tokenize_new_lines_with_cr(ts),
         '\n' => tokenize_new_lines(ts),
@@ -510,7 +525,7 @@ fn token_stream_next(ts: *mut TokenStream) -> SyntaxKind {
             eprint_sds("unknown char ", c as i32, "\n");
             // FIXME: abort の結果を返すと void 型の変数が生成されてしまう
             abort();
-            SyntaxKind::Eof
+            ts |> ts_commit(SyntaxKind::Eof)
         }
     }
 }
@@ -521,8 +536,8 @@ fn tokenize_dump(s: *c8) -> StrBuf {
     let buf = str_buf_empty();
 
     loop {
-        let kind = token_stream_next(&mut ts);
-        if kind == SyntaxKind::Eof {
+        let token = token_stream_next(&mut ts);
+        if token.kind == SyntaxKind::Eof {
             break;
         }
 
@@ -530,7 +545,7 @@ fn tokenize_dump(s: *c8) -> StrBuf {
             str_buf_push_str(&mut buf, str_from_raw(", "));
         }
 
-        str_buf_push_str(&mut buf, syntax_kind_name(kind));
+        str_buf_push_str(&mut buf, syntax_kind_name(token.kind));
         i += 1;
 
         if i >= 10_000_000 {
@@ -543,9 +558,9 @@ fn tokenize_dump(s: *c8) -> StrBuf {
 
 fn tokenize_tests(tt: *mut TestTools) {
     let ts = token_stream_from_raw(" \t");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
-    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Eof, "expect eof");
 
     let buf = tokenize_dump("  \r\n\r\n  \n");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
