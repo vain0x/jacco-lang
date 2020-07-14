@@ -102,6 +102,10 @@ fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) {
     }
 }
 
+fn assert_eq_usize(tt: *mut TestTools, actual: usize, expected: usize) {
+    assert_eq_i32(tt, actual as i32, expected as i32);
+}
+
 // -----------------------------------------------
 // 数値ライブラリ
 // -----------------------------------------------
@@ -180,10 +184,10 @@ fn str_compare(s: Str, other: Str) -> i32 {
 
 fn str_tests(tt: *mut TestTools) {
     let hello = str_from_raw("hello");
-    assert_eq_i32(tt, hello.len as i32, 5);
+    assert_eq_usize(tt, hello.len, 5_usize);
 
     let lo = str_slice_from(hello, 3_usize);
-    assert_eq_i32(tt, lo.len as i32, 2);
+    assert_eq_usize(tt, lo.len, 2_usize);
 
     assert_eq_i32(tt, str_compare(str_from_raw("a"), str_from_raw("aa")), -1);
     assert_eq_i32(tt, str_compare(str_from_raw("aa"), str_from_raw("ab")), -1);
