@@ -1,0 +1,82 @@
+// ジャッコ言語の構文的操作を扱うライブラリ
+
+// -----------------------------------------------
+// 入出力
+// -----------------------------------------------
+
+extern fn eprint_s(value: *c8);
+extern fn eprint_d(value: i32);
+
+fn eprint_sds(s1: *c8, d2: i32, s3: *c8) {
+    eprint_s(s1);
+    eprint_d(d2);
+    eprint_s(s3);
+}
+
+// -----------------------------------------------
+// テストフレームワーク
+// -----------------------------------------------
+
+struct TestTools {
+    pass_count: usize,
+    fail_count: usize,
+}
+
+fn test_tools_new() -> TestTools {
+    TestTools {
+        pass_count: 0_usize,
+        fail_count: 0_usize,
+    }
+}
+
+fn test_tools_finish(tt: TestTools) -> i32 {
+    let total_count = tt.pass_count + tt.fail_count;
+
+    eprint_sds("[TRACE] 表明数 ", total_count as i32, " / ");
+    eprint_sds("成功 ", tt.pass_count as i32, " / ");
+    eprint_sds("失敗 ", tt.fail_count as i32, "\n");
+
+    if tt.fail_count > 0_usize {
+        eprint_s("[\x1B[33mERROR\x1B[0m] 一部のテストが失敗しています。\n");
+        1
+    } else if tt.pass_count == 0_usize {
+        eprint_s("[\x1B[33mERROR\x1B[0m] 表明がありません。\n");
+        1
+    } else {
+        eprint_s("[\x1B[36mINFO]\x1B[0m OK\n");
+        0
+    }
+}
+
+fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) -> bool {
+    if actual == expected {
+        (*tt).pass_count += 1_usize;
+        true
+    } else {
+        (*tt).fail_count += 1_usize;
+        eprint_s("[\x1B[33mERROR\x1B[0m] 表明エラー\n");
+        eprint_sds("    期待される結果 \x1B[36m", expected, "\x1B[0m\n");
+        eprint_sds("    実際に出た結果 \x1B[33m", actual, "\x1B[0m\n");
+        false
+    }
+}
+
+// -----------------------------------------------
+// エントリポイント
+// -----------------------------------------------
+
+/// テストを実行して、結果コードを返す。
+pub fn libjacco_syntax_tests() -> i32 {
+    let tt = test_tools_new();
+    eprint_s("[TRACE] テストの実行を開始します。\n")
+
+    // FIXME: ブロック文が使えないので if true で代用。
+    if true {
+        let tt = &mut tt;
+        assert_eq_i32(tt, 40 + 2, 42);
+        // assert_eq_i32(tt, 40 - 2, 42);
+    }
+
+    eprint_s("[TRACE] テストの実行が終了しました。\n");
+    test_tools_finish(tt)
+}

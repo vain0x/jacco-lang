@@ -5,3 +5,8 @@ test_stdout.md
 
 target
 Cargo.lock
+
+
+
+*.g.c
+libjacco_syntax/libjacco_syntax
