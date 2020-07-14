@@ -236,6 +236,7 @@ mod source {
     #[allow(unused)]
     pub(crate) use t_range::TRange;
 
+    #[allow(unused)]
     #[cfg(test)]
     pub(crate) use cursor_text::CursorText;
 

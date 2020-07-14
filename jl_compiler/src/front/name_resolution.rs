@@ -10,7 +10,6 @@ use crate::{
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
-use log::trace;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -172,17 +171,6 @@ impl NName {
 pub(crate) enum NParentFn {
     Fn(KFn),
     ExternFn(KExternFn),
-}
-
-impl NParentFn {
-    pub(crate) fn from_name(n_name: NName) -> Option<Self> {
-        let parent_fn = match n_name {
-            NName::Fn(k_fn) => NParentFn::Fn(k_fn),
-            NName::ExternFn(extern_fn) => NParentFn::ExternFn(extern_fn),
-            _ => return None,
-        };
-        Some(parent_fn)
-    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
