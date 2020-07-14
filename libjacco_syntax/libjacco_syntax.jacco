@@ -1,5 +1,7 @@
 // ジャッコ言語の構文的操作を扱うライブラリ
 
+extern fn memcpy(dest: *mut (), src: *(), size: usize) -> *mut ();
+
 // -----------------------------------------------
 // プロセス管理
 // -----------------------------------------------
@@ -337,6 +339,16 @@ fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
     (*buf).len += 1_usize;
 }
 
+fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
+    if (*buf).len + other.len > (*buf).cap {
+        // FIXME: バッファを拡張する。
+        panic("buffer overflow");
+    }
+
+    memcpy(((*buf).ptr + (*buf).len) as *mut (), other.ptr as *(), other.len);
+    (*buf).len += other.len;
+}
+
 fn str_buf_tests(tt: *mut TestTools)  {
     let s = str_buf_new_with_cap(8_usize);
     // s == ""
@@ -347,6 +359,9 @@ fn str_buf_tests(tt: *mut TestTools)  {
 
     str_buf_push_c8(&mut s, 'b');
     assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("ab")), 0);
+
+    str_buf_push_str(&mut s, str_from_raw("cd"));
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("abcd")), 0);
 }
 
 // -----------------------------------------------
