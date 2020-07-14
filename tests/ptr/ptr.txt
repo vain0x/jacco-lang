@@ -23,5 +23,13 @@ int main() {
     int equal_3 = deref_3 == 'h';
     // call_result_3 is killed.
     assert_ok(equal_3);
+    int a_1 = 0;
+    int* refmut_1 = &a_1;
+    int* p_1 = refmut_1;
+    int* indexed_ptr_2 = p_1 + 0ULL;
+    *indexed_ptr_2 = 1;
+    int equal_4 = a_1 == 1;
+    // call_result_4 is killed.
+    assert_ok(equal_4);
     return 0;
 }

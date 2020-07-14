@@ -10,5 +10,10 @@ pub fn main() -> i32 {
 
     let pp: **c8 = &s;
     assert_ok(**pp == 'h');
+
+    let a = 0;
+    let p = &mut a;
+    p[0_usize] = 1;
+    assert_ok(a == 1);
     0
 }

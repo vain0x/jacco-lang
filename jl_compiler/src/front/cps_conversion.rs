@@ -451,6 +451,26 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
             let arg = &arg_list.args[0];
             gen_expr_lval(&arg.expr, k_mut, location, gx)
         }
+        PExpr::Index(PIndexExpr { left, arg_list }) => {
+            // a[i] ==> *(a + i)
+
+            let location = arg_list.left_paren.location(&gx.tokens);
+            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location);
+
+            if arg_list.args.len() != 1 {
+                gx.logger.error(
+                    location,
+                    "zero or multiple arguments of indexing is unimplemented",
+                );
+                return new_never_term(location);
+            }
+
+            let k_left = gen_expr(&left, gx);
+            let k_arg = gen_expr(&arg_list.args[0].expr, gx);
+            gx.push_prim_1(KPrim::Add, vec![k_left, k_arg], indexed_ptr.clone());
+
+            KTerm::Name(indexed_ptr)
+        }
         PExpr::UnaryOp(PUnaryOpExpr {
             op: PUnaryOp::Deref,
             arg_opt: Some(arg),
@@ -645,26 +665,12 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
             KTerm::Name(result)
         }
-        PExpr::Index(PIndexExpr { left, arg_list }) => {
-            // a[i] ==> *(a + i)
-
-            let location = arg_list.left_paren.location(&gx.tokens);
-            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location);
+        PExpr::Index(PIndexExpr { .. }) => {
+            let location = expr.location();
             let result = gx.fresh_symbol("index_result", location);
 
-            if arg_list.args.len() != 1 {
-                gx.logger.error(
-                    location,
-                    "zero or multiple arguments of indexing is unimplemented",
-                );
-                return new_never_term(location);
-            }
-
-            let k_left = gen_expr(&left, gx);
-            let k_arg = gen_expr(&arg_list.args[0].expr, gx);
-            gx.push_prim_1(KPrim::Add, vec![k_left, k_arg], indexed_ptr.clone());
-            gx.push_prim_1(KPrim::Deref, vec![KTerm::Name(indexed_ptr)], result.clone());
-
+            let indexed_ptr = gen_expr_lval(expr, KMut::Const, expr.location(), gx);
+            gx.push_prim_1(KPrim::Deref, vec![indexed_ptr], result.clone());
             KTerm::Name(result)
         }
         PExpr::As(PAsExpr {
