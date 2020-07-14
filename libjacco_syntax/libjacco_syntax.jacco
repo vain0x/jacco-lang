@@ -14,6 +14,67 @@ fn panic(s: *c8) -> ! {
 }
 
 // -----------------------------------------------
+// メモリ管理
+// -----------------------------------------------
+
+extern fn malloc(size: usize) -> *mut ();
+extern fn realloc(ptr: *(), new_size: usize) -> *mut ();
+extern fn free(ptr: *());
+
+// FIXME: 実装
+struct Heap {}
+
+fn heap_new() -> Heap {
+    Heap {}
+}
+
+fn heap_drop(_heap: Heap) {}
+
+/// `alignment * count` バイトのメモリを動的確保する。
+///
+/// 返されるポインタは NULL ではなく、`alignment` の倍数である。
+/// 書き込まれている値は未定義。
+fn heap_alloc(_heap: *mut Heap, alignment: usize, count: usize) -> *mut ()
+    // ensures(p) p != 0 && (alignment != 0 && count != 0 --> p % alignment == 0)
+{
+    // 0 バイトの確保は malloc に要求しない。
+    if (alignment | count) == 0_usize {
+        return 1 as *mut ();
+    }
+
+    // 巨大なメモリの確保はエラーで落とす。
+    if 1_000_000_000_usize / alignment <= count {
+        panic("OUT OF MEMORY");
+    }
+
+    let ptr = malloc(alignment * count);
+    if ptr as usize == 0_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    ptr
+}
+
+fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), alignment: usize, new_count: usize) -> *mut () {
+    if (alignment | new_count) == 0_usize {
+        return 1 as *mut ();
+    }
+
+    if 1_000_000_000_usize / alignment <= new_count {
+        panic("OUT OF MEMORY");
+    }
+
+    let new_ptr = realloc(old_ptr, alignment * new_count);
+    if new_ptr as usize == 0_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    new_ptr
+}
+
+fn heap_dealloc(_heap: *mut Heap, _ptr: *mut ()) {}
+
+// -----------------------------------------------
 // 入出力
 // -----------------------------------------------
 
