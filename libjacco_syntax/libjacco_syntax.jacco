@@ -64,6 +64,17 @@ fn test_tools_finish(tt: TestTools) -> i32 {
     }
 }
 
+fn assert_that(tt: *mut TestTools, cond: bool, message: *c8) {
+    if cond {
+        (*tt).pass_count += 1_usize;
+    } else {
+        (*tt).fail_count += 1_usize;
+        eprint_s("[\x1B[33mERROR\x1B[0m] 表明エラー\n    ");
+        eprint_s(message);
+        eprint_s("\n");
+    }
+}
+
 fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) -> bool {
     if actual == expected {
         (*tt).pass_count += 1_usize;
@@ -184,42 +195,8 @@ enum SyntaxKind {
 }
 
 // -----------------------------------------------
-// トークン
+// 字句解析
 // -----------------------------------------------
-
-/// Tokenize context. 字句解析の状態
-struct Tx {
-    text: Str,
-    count: usize,
-}
-
-fn tx_new(text: Str) -> Tx {
-    Tx {
-        text: text,
-        count: 0_usize,
-    }
-}
-
-fn tx_next(tx: *Tx) -> c8 {
-    if (*tx).text.len == 0_usize {
-        return '\0';
-    }
-
-    *(*tx).text.ptr
-}
-
-fn tx_bump(tx: *mut Tx)
-    // requires tx.text.len >= 1
-{
-    // FIXME: Unicode 文字を途中で切らない
-    (*tx).text.ptr += 1_usize;
-    (*tx).text.len -= 1_usize;
-}
-
-fn tx_commit(tx: *mut Tx, kind: SyntaxKind) {
-    // FIXME: トークンリストに追加
-    (*tx).count += 1_usize;
-}
 
 fn c8_is_new_line(c: c8) -> bool {
     match c {
@@ -237,60 +214,93 @@ fn c8_is_blank(c: c8) -> bool {
     }
 }
 
-fn tokenize_new_lines_with_cr(tx: *mut Tx) {
-    tx |> tx_bump();
-    tokenize_new_lines(tx);
+struct TokenStream {
+    text: Str,
+    last: usize,
+    current: usize,
 }
 
-fn tokenize_new_lines(tx: *mut Tx) {
-    while tx |> tx_next() |> c8_is_new_line() {
-        tx |> tx_bump();
+fn token_stream_new(text: Str) -> TokenStream {
+    TokenStream {
+        text: text,
+        last: 0_usize,
+        current: 0_usize,
+    }
+}
+
+fn token_stream_from_raw(text: *c8) -> TokenStream {
+    token_stream_new(str_from_raw(text))
+}
+
+fn ts_peek(ts: *TokenStream) -> c8 {
+    if (*ts).current == (*ts).text.len {
+        return '\0';
     }
 
-    tx |> tx_commit(SyntaxKind::NewLines);
+    (*ts).text.ptr[(*ts).current]
 }
 
-fn tokenize_blank(tx: *mut Tx) {
-    while tx |> tx_next() |> c8_is_blank() {
-        tx |> tx_bump();
+fn ts_bump(ts: *mut TokenStream)
+    // requires ts.current <= ts.text.len
+{
+    // FIXME: Unicode 文字を途中で切らない
+    (*ts).text.ptr += 1_usize;
+    (*ts).text.len -= 1_usize;
+}
+
+fn tokenize_new_lines_with_cr(ts: *mut TokenStream) -> SyntaxKind {
+    ts |> ts_bump();
+    tokenize_new_lines(ts)
+}
+
+fn tokenize_new_lines(ts: *mut TokenStream) -> SyntaxKind {
+    while ts |> ts_peek() |> c8_is_new_line() {
+        ts |> ts_bump();
     }
 
-    tx |> tx_commit(SyntaxKind::Blank);
+    SyntaxKind::NewLines
 }
 
-fn tokenize(text: Str) -> usize {
-    let tx = tx_new(text);
+fn tokenize_blank(ts: *mut TokenStream) -> SyntaxKind {
+    while ts |> ts_peek() |> c8_is_blank() {
+        ts |> ts_bump();
+    }
 
-    loop {
-        match &tx |> tx_next() {
-            '\0' => break,
+    SyntaxKind::Blank
+}
 
-            '\r' => tokenize_new_lines_with_cr(&mut tx),
-            '\n' => tokenize_new_lines(&mut tx),
+fn token_stream_next(ts: *mut TokenStream) -> SyntaxKind {
+    match ts |> ts_peek() {
+        '\0' => SyntaxKind::Eof,
 
-            // FIXME: OR パターンは未実装
-            ' ' => tokenize_blank(&mut tx),
-            '\t' => tokenize_blank(&mut tx),
+        '\r' => tokenize_new_lines_with_cr(ts),
+        '\n' => tokenize_new_lines(ts),
 
-            c => {
-                eprint_sds("unknown char ", c as i32, "\n");
-                abort()
-            }
+        // FIXME: OR パターンは未実装
+        ' ' => tokenize_blank(ts),
+        '\t' => tokenize_blank(ts),
+
+        c => {
+            eprint_sds("unknown char ", c as i32, "\n");
+            // FIXME: abort の結果を返すと void 型の変数が生成されてしまう
+            abort();
+            SyntaxKind::Eof
         }
     }
-
-    &mut tx |> tx_commit(SyntaxKind::Eof);
-    tx.count
-}
-
-fn tokenize_raw(s: *c8) -> usize {
-    tokenize(str_from_raw(s))
 }
 
 fn tokenize_tests(tt: *mut TestTools) {
-    assert_eq_i32(tt, tokenize_raw("") as i32, 1);
-    assert_eq_i32(tt, tokenize_raw(" \t ") as i32, 2);
-    assert_eq_i32(tt, tokenize_raw("\t\t\r\n\t\n") as i32, 5);
+    let ts = token_stream_from_raw(" \t");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
+
+    let ts = token_stream_from_raw("  \r\n\r\n  \n");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::NewLines, "expect new lines");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::NewLines, "expect new lines");
+    assert_that(tt, (&mut ts |> token_stream_next()) == SyntaxKind::Eof, "expect eof");
 }
 
 // -----------------------------------------------
