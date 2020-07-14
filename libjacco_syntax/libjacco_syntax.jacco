@@ -175,7 +175,11 @@ fn str_tests(tt: *mut TestTools) {
 
 /// 構文木のノードやトークンの種類
 enum SyntaxKind {
+    /// End of file. 入力の末尾
     Eof,
+    /// 1つ以上の改行
+    NewLines,
+    /// 1つ以上の、改行でない空白文字
     Blank,
 }
 
@@ -217,12 +221,33 @@ fn tx_commit(tx: *mut Tx, kind: SyntaxKind) {
     (*tx).count += 1_usize;
 }
 
+fn c8_is_new_line(c: c8) -> bool {
+    match c {
+        '\r' => true,
+        '\n' => true,
+        _ => false,
+    }
+}
+
 fn c8_is_blank(c: c8) -> bool {
     match c {
         ' ' => true,
         '\t' => true,
         _ => false,
     }
+}
+
+fn tokenize_new_lines_with_cr(tx: *mut Tx) {
+    tx |> tx_bump();
+    tokenize_new_lines(tx);
+}
+
+fn tokenize_new_lines(tx: *mut Tx) {
+    while tx |> tx_next() |> c8_is_new_line() {
+        tx |> tx_bump();
+    }
+
+    tx |> tx_commit(SyntaxKind::NewLines);
 }
 
 fn tokenize_blank(tx: *mut Tx) {
@@ -239,6 +264,9 @@ fn tokenize(text: Str) -> usize {
     loop {
         match &tx |> tx_next() {
             '\0' => break,
+
+            '\r' => tokenize_new_lines_with_cr(&mut tx),
+            '\n' => tokenize_new_lines(&mut tx),
 
             // FIXME: OR パターンは未実装
             ' ' => tokenize_blank(&mut tx),
@@ -262,6 +290,7 @@ fn tokenize_raw(s: *c8) -> usize {
 fn tokenize_tests(tt: *mut TestTools) {
     assert_eq_i32(tt, tokenize_raw("") as i32, 1);
     assert_eq_i32(tt, tokenize_raw(" \t ") as i32, 2);
+    assert_eq_i32(tt, tokenize_raw("\t\t\r\n\t\n") as i32, 5);
 }
 
 // -----------------------------------------------
