@@ -18,6 +18,12 @@ use std::{
     sync::Arc,
 };
 
+#[derive(Copy, Clone, Debug)]
+pub enum DefOrUse {
+    Def,
+    Use,
+}
+
 pub struct Location {
     doc: Doc,
     range: Range,
@@ -245,6 +251,7 @@ impl LangService {
         vec![]
     }
 
+    // references と同様
     pub fn definitions(&mut self, doc: Doc, pos: Pos) -> Option<Vec<Location>> {
         let symbols = self.request_symbols(doc)?;
 
@@ -297,8 +304,40 @@ impl LangService {
         Some(display_ty(ty, ty_env, &cps.root))
     }
 
-    pub fn references(&mut self, doc: Doc, pos: Pos, include_definition: bool) -> Vec<Location> {
-        vec![]
+    pub fn references(
+        &mut self,
+        doc: Doc,
+        pos: Pos,
+        include_definition: bool,
+    ) -> Option<Vec<(DefOrUse, Location)>> {
+        let symbols = self.request_symbols(doc)?;
+
+        let (name, _) = hit_test(doc, pos, symbols)?;
+        let mut references = vec![];
+
+        if include_definition {
+            references.extend(
+                symbols
+                    .occurrences
+                    .def_sites
+                    .get(&name)
+                    .iter()
+                    .flat_map(|locations| locations.iter().map(|location| location.range()))
+                    .map(|range| (DefOrUse::Def, Location::new(doc, range))),
+            );
+        }
+
+        references.extend(
+            symbols
+                .occurrences
+                .use_sites
+                .get(&name)
+                .iter()
+                .flat_map(|locations| locations.iter().map(|location| location.range()))
+                .map(|range| (DefOrUse::Use, Location::new(doc, range))),
+        );
+
+        Some(references)
     }
 
     pub fn prepare_rename(&mut self, doc: Doc, pos: Pos) -> Option<()> {
@@ -407,7 +446,7 @@ fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
 #[cfg(test)]
 mod tests {
     use super::{Doc, LangService};
-    use crate::source::Pos;
+    use crate::source::{cursor_text::parse_cursor_text, Pos};
 
     const DOC: Doc = Doc::new(1);
 
@@ -468,6 +507,34 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join("; "),
             "1.4-1.7"
+        );
+    }
+
+    #[test]
+    fn test_references() {
+        let text = r#"
+            fn f() {
+                let <[foo]> = 2;
+                <[foo]> += 4;
+                <[foo]> += 8;
+            }
+
+            fn g() {
+                let foo = "";
+            }
+        "#;
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+
+        let cursors = cursor_text.to_pos_vec();
+        let refs = lang_service.references(DOC, cursors[0].into(), true);
+        assert_eq!(
+            refs.unwrap()
+                .into_iter()
+                .map(|(def_or_use, location)| format!("{:?} {:?}", def_or_use, location.range()))
+                .collect::<Vec<_>>()
+                .join("; "),
+            "Def 3.21-3.24; Use 4.17-4.20; Use 5.17-5.20"
         );
     }
 }
