@@ -348,7 +348,8 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
         }
         NName::Unresolved => {
             // Unresolved ならエラーなのでコード生成には来ないはず。
-            unreachable!("{:?}", (&name, location, n_name))
+            error!("cannot gen_name {:?}", (&name, location, n_name));
+            KSymbolExt::Unresolved
         }
     }
 }
@@ -496,8 +497,12 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
         PExpr::True(PTrueExpr(token)) => KTerm::True(token.get(&gx.tokens)),
         PExpr::False(PFalseExpr(token)) => KTerm::False(token.get(&gx.tokens)),
         PExpr::Name(name) => {
-            let location = name.location();
+            let location = name.of(&gx.names).token.of(&gx.tokens).location();
             match gen_name(*name, gx) {
+                KSymbolExt::Unresolved => {
+                    error!("unresolved name {:?}", (name, location));
+                    new_unit_term(location)
+                }
                 KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
                 KSymbolExt::Const(k_const) => KTerm::Const { k_const, location },
                 KSymbolExt::StaticVar(static_var) => KTerm::StaticVar {
@@ -988,13 +993,13 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                         let location = name.location();
                         match *name.of(&gx.name_res) {
                             NName::Const(k_const) => KTerm::Const { k_const, location },
-                            NName::LocalVar(_) => {
-                                let symbol = gen_name(*name, gx).expect_symbol();
-                                KTerm::Name(symbol)
-                            }
+                            NName::LocalVar(_) => match gen_name(*name, gx).as_symbol() {
+                                Some(symbol) => KTerm::Name(symbol),
+                                None => new_never_term(location),
+                            },
                             _ => {
                                 error!("unimplemented pat {:?}", arm);
-                                KTerm::Unit { location }
+                                new_never_term(location)
                             }
                         }
                     }
@@ -1021,8 +1026,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                     PPat::Name(name) => match *name.of(&gx.name_res) {
                         NName::Const(_) => {}
                         NName::LocalVar(_) => {
-                            let name = gen_name(*name, gx).expect_symbol();
-                            gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
+                            if let Some(name) = gen_name(*name, gx).as_symbol() {
+                                gx.push_prim_1(KPrim::Let, vec![k_cond.clone()], name);
+                            }
                         }
                         _ => error!("unimplemented pat {:?}", name),
                     },
@@ -1136,7 +1142,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 .map_or(KTy::Unresolved, |ty| gen_ty(ty, &gx.name_res));
 
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
-            let mut result = gen_name(name_opt.unwrap(), gx).expect_symbol();
+            let mut result = gen_name(name_opt.unwrap(), gx).as_symbol().unwrap();
             *result.ty_mut(&mut gx.current_locals) = ty;
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);

@@ -27,6 +27,7 @@ impl HaveLocation for KSymbol {
 /// 名前を解決した結果。
 #[derive(Clone, Debug)]
 pub(crate) enum KSymbolExt {
+    Unresolved,
     Symbol(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),
@@ -39,10 +40,10 @@ pub(crate) enum KSymbolExt {
 }
 
 impl KSymbolExt {
-    pub(crate) fn expect_symbol(self) -> KSymbol {
+    pub(crate) fn as_symbol(self) -> Option<KSymbol> {
         match self {
-            KSymbolExt::Symbol(symbol) => symbol,
-            _ => unreachable!("{:?}", self),
+            KSymbolExt::Symbol(symbol) => Some(symbol),
+            _ => None,
         }
     }
 }
