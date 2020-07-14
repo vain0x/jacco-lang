@@ -37,12 +37,15 @@ fn test_tools_finish(tt: TestTools) -> i32 {
     eprint_sds("失敗 ", tt.fail_count as i32, "\n");
 
     if tt.fail_count > 0_usize {
+        // イエロー
         eprint_s("[\x1B[33mERROR\x1B[0m] 一部のテストが失敗しています。\n");
         1
     } else if tt.pass_count == 0_usize {
+        // イエロー
         eprint_s("[\x1B[33mERROR\x1B[0m] 表明がありません。\n");
         1
     } else {
+        // シアン
         eprint_s("[\x1B[36mINFO]\x1B[0m OK\n");
         0
     }
@@ -54,11 +57,103 @@ fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) -> bool {
         true
     } else {
         (*tt).fail_count += 1_usize;
+        // イエロー
         eprint_s("[\x1B[33mERROR\x1B[0m] 表明エラー\n");
+        // シアン
         eprint_sds("    期待される結果 \x1B[36m", expected, "\x1B[0m\n");
+        // イエロー
         eprint_sds("    実際に出た結果 \x1B[33m", actual, "\x1B[0m\n");
         false
     }
+}
+
+// -----------------------------------------------
+// 数値ライブラリ
+// -----------------------------------------------
+
+fn i32_compare(left: i32, right: i32) -> i32 {
+    if left == right {
+        0
+    } else if left < right {
+        -1
+    } else {
+        1
+    }
+}
+
+fn usize_min(left: usize, right: usize) -> usize {
+    if left < right {
+        left
+    } else {
+        right
+    }
+}
+
+// -----------------------------------------------
+// 文字列ライブラリ
+// -----------------------------------------------
+
+extern fn strlen(str: *c8) -> usize;
+
+struct Str {
+    ptr: *c8,
+    len: usize,
+}
+
+fn str_new() -> Str {
+    Str {
+        ptr: "",
+        len: 0_usize,
+    }
+}
+
+fn str_from_raw(c_str: *c8) -> Str {
+    Str {
+        ptr: c_str,
+        len: strlen(c_str),
+    }
+}
+
+fn str_slice_from(s: Str, start: usize) -> Str {
+    if start >= s.len {
+        return str_new();
+    }
+
+    Str {
+        ptr: s.ptr + start,
+        len: s.len - start,
+    }
+}
+
+fn str_compare(s: Str, other: Str) -> i32 {
+    let n = (s.len |> usize_min(other.len)) + 1_usize;
+    let p = s.ptr;
+    let q = other.ptr;
+    while n >= 1_usize {
+        n -= 1_usize;
+
+        if *p != *q {
+            // FIXME: *p as i32 が *(p as i32) にパースされてしまう。
+            return i32_compare((*p) as i32, (*q) as i32);
+        }
+
+        p += 1_usize;
+        q += 1_usize;
+    }
+    0
+}
+
+fn str_tests(tt: *mut TestTools) {
+    let hello = str_from_raw("hello");
+    assert_eq_i32(tt, hello.len as i32, 5);
+
+    let lo = str_slice_from(hello, 3_usize);
+    assert_eq_i32(tt, lo.len as i32, 2);
+
+    assert_eq_i32(tt, str_compare(str_from_raw("a"), str_from_raw("aa")), -1);
+    assert_eq_i32(tt, str_compare(str_from_raw("aa"), str_from_raw("ab")), -1);
+    assert_eq_i32(tt, str_compare(str_from_raw("ba"), str_from_raw("a")), 1);
+    assert_eq_i32(tt, str_compare(lo, str_from_raw("lo")), 0);
 }
 
 // -----------------------------------------------
@@ -75,6 +170,8 @@ pub fn libjacco_syntax_tests() -> i32 {
         let tt = &mut tt;
         assert_eq_i32(tt, 40 + 2, 42);
         // assert_eq_i32(tt, 40 - 2, 42);
+
+        str_tests(tt);
     }
 
     eprint_s("[TRACE] テストの実行が終了しました。\n");

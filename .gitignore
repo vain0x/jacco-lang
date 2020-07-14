@@ -8,5 +8,11 @@ Cargo.lock
 
 
 
+# 自動生成されるCファイル
 *.g.c
-libjacco_syntax/libjacco_syntax
+
+# バイナリ
+*.out
+
+# jacco-lsp のログファイル
+jacco_lsp.log
