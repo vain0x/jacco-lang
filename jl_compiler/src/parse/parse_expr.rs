@@ -512,6 +512,7 @@ fn parse_loop_expr(px: &mut Px) -> PLoopExpr {
 
 pub(crate) fn parse_expr(px: &mut Px) -> Option<PExpr> {
     let expr = match px.next() {
+        TokenKind::LeftBrace => PExpr::Block(parse_block_expr(px)),
         TokenKind::Break => PExpr::Break(parse_break_expr(px)),
         TokenKind::Continue => PExpr::Continue(parse_continue_expr(px)),
         TokenKind::Return => PExpr::Return(parse_return_expr(px)),

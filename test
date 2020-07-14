@@ -85,6 +85,7 @@ f_all() {
     f enum_consts
     f enum_records
     f label_order_issue issues
+    f block
 }
 
 ONLY=${1:-''}

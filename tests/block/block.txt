@@ -1,0 +1,59 @@
+void assert(int cond_1);
+
+void let_with_block_init_1();
+
+void match_arm_with_block_body_1();
+
+void shadowing_1();
+
+int main();
+
+void let_with_block_init_1() {
+    int i_1 = 0;
+    int* refmut_1 = &i_1;
+    *refmut_1 += 1;
+    int x_1 = i_1;
+    int equal_1 = i_1 == 1;
+    // call_result_1 is killed.
+    assert(equal_1);
+    int equal_2 = x_1 == 1;
+    // call_result_2 is killed.
+    assert(equal_2);
+    return;
+}
+
+void match_arm_with_block_body_1() {
+    // match_result_1 is killed.
+    switch (0ULL) {
+        case 0ULL: {
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    return;
+}
+
+void shadowing_1() {
+    int x_2 = 1;
+    int x_3 = 2;
+    int* refmut_2 = &x_3;
+    *refmut_2 *= 3;
+    int equal_3 = x_3 == 6;
+    // call_result_3 is killed.
+    assert(equal_3);
+    int equal_4 = x_2 == 1;
+    // call_result_4 is killed.
+    assert(equal_4);
+    return;
+}
+
+int main() {
+    // call_result_5 is killed.
+    let_with_block_init_1();
+    // call_result_6 is killed.
+    match_arm_with_block_body_1();
+    // call_result_7 is killed.
+    shadowing_1();
+    return 0;
+}

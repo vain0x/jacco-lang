@@ -1,0 +1,38 @@
+extern fn assert(cond: bool);
+
+enum Unit { Unit };
+
+fn let_with_block_init() {
+    let i = 0;
+    let x = {
+        i += 1;
+        i
+    };
+    assert(i == 1);
+    assert(x == 1);
+}
+
+fn match_arm_with_block_body() {
+    match Unit::Unit {
+        Unit::Unit => {}
+    }
+}
+
+fn shadowing() {
+    let x = 1;
+
+    {
+        let x = 2;
+        x *= 3;
+        assert(x == 6);
+    }
+
+    assert(x == 1);
+}
+
+pub fn main() -> i32 {
+    let_with_block_init();
+    match_arm_with_block_body();
+    shadowing();
+    0
+}
