@@ -50,44 +50,55 @@ fn test_tools_finish(tt: TestTools) -> i32 {
     eprint_sds("失敗 ", tt.fail_count as i32, "\n");
 
     if tt.fail_count > 0_usize {
-        // イエロー
+        // 文字色: イエロー
         eprint_s("[\x1B[33mERROR\x1B[0m] 一部のテストが失敗しています。\n");
         1
     } else if tt.pass_count == 0_usize {
-        // イエロー
+        // 文字色: イエロー
         eprint_s("[\x1B[33mERROR\x1B[0m] 表明がありません。\n");
         1
     } else {
-        // シアン
+        // 文字色: シアン
         eprint_s("[\x1B[36mINFO]\x1B[0m OK\n");
         0
     }
 }
 
+/// 表明が通ったときに呼ばれる。
+fn assert_pass(tt: *mut TestTools) {
+    (*tt).pass_count += 1_usize;
+}
+
+/// 表明が落ちたときに呼ばれる。
+fn assert_fail(tt: *mut TestTools) {
+    (*tt).fail_count += 1_usize;
+
+    let total_count = (*tt).pass_count + (*tt).fail_count;
+
+    // 文字色: イエロー
+    eprint_sds("[\x1B[33mERROR\x1B[0m] 表明エラー #", total_count as i32, "\n");
+}
+
 fn assert_that(tt: *mut TestTools, cond: bool, message: *c8) {
     if cond {
-        (*tt).pass_count += 1_usize;
+        tt |> assert_pass();
     } else {
-        (*tt).fail_count += 1_usize;
-        eprint_s("[\x1B[33mERROR\x1B[0m] 表明エラー\n    ");
+        tt |> assert_fail();
+        eprint_s("    ");
         eprint_s(message);
         eprint_s("\n");
     }
 }
 
-fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) -> bool {
+fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) {
     if actual == expected {
-        (*tt).pass_count += 1_usize;
-        true
+        tt |> assert_pass();
     } else {
-        (*tt).fail_count += 1_usize;
-        // イエロー
-        eprint_s("[\x1B[33mERROR\x1B[0m] 表明エラー\n");
-        // シアン
-        eprint_sds("    期待される結果 \x1B[36m", expected, "\x1B[0m\n");
-        // イエロー
-        eprint_sds("    実際に出た結果 \x1B[33m", actual, "\x1B[0m\n");
-        false
+        tt |> assert_fail();
+        // 文字色: シアン
+        eprint_sds("    期待された結果 \x1B[36m", expected, "\x1B[0m\n");
+        // 文字色: イエロー
+        eprint_sds("    実際に得た結果 \x1B[33m", actual, "\x1B[0m\n");
     }
 }
 
