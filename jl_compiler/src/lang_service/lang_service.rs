@@ -304,7 +304,7 @@ impl LangService {
         doc: Doc,
         pos: Pos,
         include_definition: bool,
-    ) -> Option<Vec<(DefOrUse, Location)>> {
+    ) -> Option<Vec<Location>> {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
@@ -316,8 +316,7 @@ impl LangService {
             references.extend(
                 locations
                     .drain(..)
-                    .into_iter()
-                    .map(|location| (DefOrUse::Def, Location::new(doc, location.range()))),
+                    .map(|location| Location::new(doc, location.range())),
             );
         }
 
@@ -325,7 +324,7 @@ impl LangService {
         references.extend(
             locations
                 .drain(..)
-                .map(|location| (DefOrUse::Use, Location::new(doc, location.range()))),
+                .map(|location| Location::new(doc, location.range())),
         );
 
         Some(references)
@@ -572,12 +571,12 @@ mod tests {
         let cursors = cursor_text.to_pos_vec();
         let refs = lang_service.references(DOC, cursors[0].into(), true);
         assert_eq!(
-            refs.unwrap()
-                .into_iter()
-                .map(|(def_or_use, location)| format!("{:?} {:?}", def_or_use, location.range()))
+            refs.into_iter()
+                .flatten()
+                .map(|location| format!("{:?}", location.range()))
                 .collect::<Vec<_>>()
                 .join("; "),
-            "Def 3.21-3.24; Use 4.17-4.20; Use 5.17-5.20"
+            "3.21-3.24; 4.17-4.20; 5.17-5.20"
         );
     }
 }

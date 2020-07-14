@@ -135,7 +135,7 @@ impl<W: Write> LspHandler<W> {
                 definition_provider: Some(true),
                 document_highlight_provider: Some(true),
                 hover_provider: Some(true),
-                // references_provider: Some(true),
+                references_provider: Some(true),
                 rename_provider: Some(RenameProviderCapability::Simple(true)),
                 // rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
                 //     prepare_provider: Some(true),
@@ -299,13 +299,25 @@ impl<W: Write> LspHandler<W> {
     //         .prepare_rename(params.text_document.uri, params.position)
     // }
 
-    // fn text_document_references(&mut self, params: ReferenceParams) -> Vec<Location> {
-    //     self.service.references(
-    //         params.text_document_position.text_document.uri,
-    //         params.text_document_position.position,
-    //         params.context.include_declaration,
-    //     )
-    // }
+    fn text_document_references(&mut self, params: ReferenceParams) -> Vec<Location> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = from_lsp_pos(params.text_document_position.position);
+        let include_declaration = params.context.include_declaration;
+
+        (|| {
+            let doc = self.docs.url_to_doc(&uri)?;
+            let refs = self.service.references(doc, pos, include_declaration)?;
+            Some(
+                refs.into_iter()
+                    .map(|location| {
+                        let range = to_lsp_range(location.range());
+                        Location::new(uri.clone(), range)
+                    })
+                    .collect(),
+            )
+        })()
+        .unwrap_or(vec![])
+    }
 
     fn text_document_rename(&mut self, params: RenameParams) -> Option<WorkspaceEdit> {
         let uri = params.text_document_position.text_document.uri;
@@ -410,13 +422,13 @@ impl<W: Write> LspHandler<W> {
             //     let response = self.text_document_prepare_rename(msg.params);
             //     self.sender.send_response(msg_id, response);
             // }
-            // "textDocument/references" => {
-            //     let msg: LspRequest<ReferenceParams> = serde_json::from_str(json).unwrap();
-            //     let msg_id = msg.id;
-            //     let response = self.text_document_references(msg.params);
-            //     self.sender.send_response(msg_id, response);
-            // }
-            request::Rename::METHOD => {
+            References::METHOD => {
+                let msg: LspRequest<ReferenceParams> = serde_json::from_str(json).unwrap();
+                let msg_id = msg.id;
+                let response = self.text_document_references(msg.params);
+                self.sender.send_response(msg_id, response);
+            }
+            Rename::METHOD => {
                 let msg: LspRequest<RenameParams> = serde_json::from_str(json).unwrap();
                 let msg_id = msg.id;
                 let response = self.text_document_rename(msg.params);
