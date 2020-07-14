@@ -20,8 +20,8 @@ fn panic(s: *c8) -> ! {
 // -----------------------------------------------
 
 extern fn malloc(size: usize) -> *mut ();
-extern fn realloc(ptr: *(), new_size: usize) -> *mut ();
-extern fn free(ptr: *());
+extern fn realloc(ptr: *mut (), new_size: usize) -> *mut ();
+extern fn free(ptr: *mut ());
 
 // FIXME: 実装
 struct Heap {}
@@ -49,6 +49,7 @@ fn heap_alloc(_heap: *mut Heap, alignment: usize, count: usize) -> *mut ()
         panic("OUT OF MEMORY");
     }
 
+    eprint_sds("[TRACE] malloc(", (alignment * count) as i32, ")\n");
     let ptr = malloc(alignment * count);
     if ptr as usize == 0_usize {
         panic("OUT OF MEMORY");
@@ -66,6 +67,7 @@ fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), alignment: usize, new_count:
         panic("OUT OF MEMORY");
     }
 
+    eprint_sds("[TRACE] realloc(", (alignment * new_count) as i32, ")\n");
     let new_ptr = realloc(old_ptr, alignment * new_count);
     if new_ptr as usize == 0_usize {
         panic("OUT OF MEMORY");
@@ -329,28 +331,40 @@ fn str_buf_len(buf: *StrBuf) -> usize {
     (*buf).len
 }
 
-fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
-    if (*buf).len == (*buf).cap {
-        // FIXME: バッファを拡張する。
-        panic("buffer overflow");
+fn str_buf_grow(buf: *mut StrBuf, new_size: usize) {
+    if new_size <= (*buf).cap {
+        return;
     }
+
+    if (*buf).cap == 0_usize {
+        // ptr がヒープを指していないので、realloc できない。
+        (*buf).ptr = heap_alloc(global_heap(), 1_usize, new_size) as *mut c8;
+    } else {
+        // 再確保の回数を抑えるため、バッファサイズは指数的に増やす。
+        new_size = usize_max(new_size, (*buf).cap * 2_usize);
+
+        (*buf).ptr = heap_realloc(global_heap(), (*buf).ptr as *mut (), 1_usize, new_size) as *mut c8;
+    }
+
+    (*buf).cap = new_size;
+}
+
+fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
+    str_buf_grow(buf, (*buf).len + 1_usize);
 
     (*buf).ptr[(*buf).len] = c;
     (*buf).len += 1_usize;
 }
 
 fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
-    if (*buf).len + other.len > (*buf).cap {
-        // FIXME: バッファを拡張する。
-        panic("buffer overflow");
-    }
+    str_buf_grow(buf, (*buf).len + other.len);
 
     memcpy(((*buf).ptr + (*buf).len) as *mut (), other.ptr as *(), other.len);
     (*buf).len += other.len;
 }
 
 fn str_buf_tests(tt: *mut TestTools)  {
-    let s = str_buf_new_with_cap(8_usize);
+    let s = str_buf_empty();
     // s == ""
     assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_empty()), 0);
 
