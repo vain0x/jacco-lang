@@ -4,7 +4,7 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    source::{loc::LocResolver,  TRange},
+    source::{loc::LocResolver, TRange},
     token::{HaveLocation, Location, TokenSource},
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};

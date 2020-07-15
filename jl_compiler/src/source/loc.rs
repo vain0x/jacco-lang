@@ -44,7 +44,6 @@ impl Loc {
     pub(crate) fn part(&self) -> LocPart {
         self.part
     }
-
 }
 
 impl Debug for Loc {
