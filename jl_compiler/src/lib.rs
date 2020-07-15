@@ -49,11 +49,11 @@ mod cps {
     mod k_label;
     mod k_local;
     mod k_meta_ty;
+    mod k_mod;
     mod k_mut;
     mod k_node;
-    mod k_outlines;
     mod k_prim;
-    mod k_root;
+    mod k_project;
     mod k_static_var;
     mod k_struct;
     mod k_symbol;
@@ -78,11 +78,11 @@ mod cps {
     };
     pub(crate) use k_local::{KLocal, KLocalArena, KLocalData, KLocalTag};
     pub(crate) use k_meta_ty::{KMetaTy, KMetaTyData};
+    pub(crate) use k_mod::{KMod, KModArena, KModData, KModOutline, KModOutlines, KModTag};
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
-    pub(crate) use k_outlines::KOutlines;
     pub(crate) use k_prim::KPrim;
-    pub(crate) use k_root::KRoot;
+    pub(crate) use k_project::{KProject, KProjectArena, KProjectData, KProjectTag};
     pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarTag};
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};

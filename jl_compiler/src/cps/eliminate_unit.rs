@@ -1,4 +1,4 @@
-use super::{k_local::KLocalArena, KNode, KPrim, KRoot, KTerm, KTyEnv};
+use super::{k_local::KLocalArena, KModData, KModOutline, KNode, KPrim, KTerm, KTyEnv};
 use std::{collections::HashSet, mem::swap};
 
 #[derive(Default)]
@@ -36,11 +36,10 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     }
 }
 
-pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
+pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) {
     let mut ex = Ex::default();
 
-    let unit_fields = k_root
-        .outlines
+    let unit_fields = outlines
         .fields
         .enumerate()
         .filter_map(|(k_field, field_data)| {
@@ -52,7 +51,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
         })
         .collect::<HashSet<_>>();
 
-    for struct_data in k_root.outlines.structs.iter_mut() {
+    for struct_data in outlines.structs.iter_mut() {
         struct_data
             .fields
             .retain(|k_field| !unit_fields.contains(&k_field));
@@ -60,7 +59,7 @@ pub(crate) fn eliminate_unit(k_root: &mut KRoot) {
 
     // FIXME: zero-sized type の引数はすべて捨てていい。
     // unit 型の引数は捨てる。
-    for fn_outline in k_root.outlines.fns.iter_mut() {
+    for fn_outline in outlines.fns.iter_mut() {
         fn_outline.param_tys.retain(|ty| !ty.is_unit());
     }
 

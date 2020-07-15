@@ -12,7 +12,7 @@ type IdentMap = HashMap<String, IdProvider>;
 
 /// C code generation context.
 struct Cx<'a> {
-    outlines: &'a KOutlines,
+    outlines: &'a KModOutline,
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
@@ -28,7 +28,7 @@ struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(outlines: &'a KOutlines) -> Self {
+    fn new(outlines: &'a KModOutline) -> Self {
         Self {
             outlines,
             ident_map: Default::default(),
@@ -654,7 +654,7 @@ fn gen_fn_sig(
     (params, result_ty)
 }
 
-fn gen_root(root: &KRoot, cx: &mut Cx) {
+fn gen_root(root: &KModData, cx: &mut Cx) {
     let outlines = cx.outlines;
     let empty_ty_env = KTyEnv::default();
 
@@ -821,8 +821,8 @@ fn gen_root(root: &KRoot, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(k_root: &KRoot) -> CRoot {
-    let mut cx = Cx::new(&k_root.outlines);
+pub(crate) fn gen(outlines: &KModOutline, k_root: &KModData) -> CRoot {
+    let mut cx = Cx::new(outlines);
     gen_root(k_root, &mut cx);
     CRoot { decls: cx.decls }
 }

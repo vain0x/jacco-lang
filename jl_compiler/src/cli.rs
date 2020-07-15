@@ -61,11 +61,11 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
         process::exit(1);
     }
 
-    let mut k_root = cps_conversion(&p_root, &name_resolution, logs.logger());
-    resolve_types(&mut k_root, logs.logger());
+    let (mut outline, mut k_root) = cps_conversion(&p_root, &name_resolution, logs.logger());
+    resolve_types(&mut outline, &mut k_root, logs.logger());
     trace!("k_root (gen) = {:#?}\n", k_root);
 
-    eliminate_unit(&mut k_root);
+    eliminate_unit(&mut outline, &mut k_root);
     trace!("k_root (elim) = {:#?}\n", k_root);
 
     report_logs(
@@ -77,12 +77,12 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     );
 
     KEnumOutline::determine_tags(
-        &mut k_root.outlines.consts,
-        &mut k_root.outlines.enums,
-        &mut k_root.outlines.structs,
+        &mut outline.consts,
+        &mut outline.enums,
+        &mut outline.structs,
     );
 
-    clang_dump(&k_root)
+    clang_dump(&outline, &k_root)
 }
 
 pub(crate) struct MyLocResolver<'a> {

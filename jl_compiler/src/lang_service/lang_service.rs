@@ -1,16 +1,13 @@
 use crate::{
     cli::MyLocResolver,
-    cps::{self, KOutlines, KRoot},
-    front::{self, validate_syntax, NameResolution, Occurrences},
+    cps::{resolve_types, KModData, KModOutline, KTy, KTyEnv},
+    front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::Logs,
-    parse::{self, PRoot},
+    parse::{self, PRoot, PToken},
     source::{loc::LocResolver, Doc, Loc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
-use cps::{KTy, KTyEnv};
-use front::{NAbsName, NName, NParentFn};
 use log::{error, trace};
-use parse::PToken;
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
@@ -51,7 +48,8 @@ struct Symbols {
 }
 
 struct Cps {
-    root: KRoot,
+    outline: KModOutline,
+    root: KModData,
     errors: Vec<(Range, String)>,
 }
 
@@ -168,17 +166,21 @@ impl AnalysisCache {
             let symbols = self.symbols_opt.as_mut().unwrap();
 
             let logs = Logs::new();
-            let mut root = front::cps_conversion(
+            let (mut outline, mut root) = front::cps_conversion(
                 &syntax.root,
                 symbols.name_resolution_opt.as_ref().unwrap(),
                 logs.logger(),
             );
 
-            cps::resolve_types(&mut root, logs.logger());
+            resolve_types(&outline, &mut root, logs.logger());
 
             let errors = logs_into_errors(logs, self);
 
-            Cps { root, errors }
+            Cps {
+                outline,
+                root,
+                errors,
+            }
         };
 
         self.cps_opt = Some(cps);
@@ -298,7 +300,7 @@ impl LangService {
         let cps = self.request_cps(doc)?;
         let ty = name.ty(&cps.root);
         let ty_env = name.ty_env(&cps.root);
-        Some(display_ty(ty, ty_env, &cps.root))
+        Some(display_ty(ty, ty_env, &cps.outline))
     }
 
     pub fn references(
@@ -390,7 +392,7 @@ fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(Range, Stri
 }
 
 impl NParentFn {
-    fn ty_env(self, k_root: &KRoot) -> &KTyEnv {
+    fn ty_env(self, k_root: &KModData) -> &KTyEnv {
         match self {
             NParentFn::Fn(k_fn) => &k_fn.of(&k_root.fns).ty_env,
             NParentFn::ExternFn(extern_fn) => KTyEnv::EMPTY,
@@ -399,7 +401,7 @@ impl NParentFn {
 }
 
 impl NAbsName {
-    pub(crate) fn ty(self, k_root: &KRoot) -> &KTy {
+    pub(crate) fn ty(self, k_root: &KModData) -> &KTy {
         let name = match self {
             NAbsName::Unresolved => return &KTy::Unresolved,
             NAbsName::LocalVar {
@@ -416,7 +418,7 @@ impl NAbsName {
         &KTy::Unresolved
     }
 
-    pub(crate) fn ty_env(self, k_root: &KRoot) -> &KTyEnv {
+    pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {
         match self {
             NAbsName::LocalVar { parent_fn, .. } => parent_fn.ty_env(k_root),
             NAbsName::Other(NName::Fn(k_fn)) => &k_fn.of(&k_root.fns).ty_env,
@@ -482,9 +484,9 @@ fn collect_use_sites(
     );
 }
 
-fn display_ty(ty: &KTy, ty_env: &KTyEnv, k_root: &KRoot) -> String {
-    let enums = &k_root.outlines.enums;
-    let structs = &k_root.outlines.structs;
+fn display_ty(ty: &KTy, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
+    let enums = &mod_outline.enums;
+    let structs = &mod_outline.structs;
     ty_env.display(ty, enums, structs)
 }
 

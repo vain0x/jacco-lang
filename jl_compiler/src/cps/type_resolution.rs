@@ -14,12 +14,12 @@ struct Tx<'a> {
     label_sigs: KLabelSigArena,
     // 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
-    outlines: &'a KOutlines,
+    outlines: &'a KModOutline,
     logger: Logger,
 }
 
 impl<'a> Tx<'a> {
-    fn new(outlines: &'a KOutlines, logger: Logger) -> Self {
+    fn new(outlines: &'a KModOutline, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             locals: Default::default(),
@@ -667,8 +667,8 @@ fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
     }
 }
 
-fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
-    let outlines = tx.outlines.clone();
+fn resolve_root(root: &mut KModData, tx: &mut Tx) {
+    let outlines = tx.outlines;
 
     for k_struct in outlines.structs.keys() {
         prepare_struct(k_struct, tx);
@@ -716,11 +716,7 @@ fn resolve_root(root: &mut KRoot, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(k_root: &mut KRoot, logger: Logger) {
-    let outlines = take(&mut k_root.outlines);
-
+pub(crate) fn resolve_types(outlines: &KModOutline, mod_data: &mut KModData, logger: Logger) {
     let mut tx = Tx::new(&outlines, logger);
-    resolve_root(k_root, &mut tx);
-
-    k_root.outlines = outlines;
+    resolve_root(mod_data, &mut tx);
 }

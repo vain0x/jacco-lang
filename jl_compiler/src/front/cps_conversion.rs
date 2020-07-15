@@ -31,7 +31,7 @@ struct Gx {
     tokens: Rc<PTokens>,
     names: PNameArena,
     name_res: VecArena<PNameTag, NName>,
-    outlines: KOutlines,
+    outlines: KModOutline,
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
     current_loops: VecArena<NLoopTag, KLoopData>,
@@ -1319,8 +1319,8 @@ pub(crate) fn cps_conversion(
     p_root: &PRoot,
     name_resolution: &NameResolution,
     logger: Logger,
-) -> KRoot {
-    let k_root = {
+) -> (KModOutline, KModData) {
+    let mod_info = {
         let k_consts = name_resolution
             .consts
             .iter()
@@ -1486,14 +1486,16 @@ pub(crate) fn cps_conversion(
 
         gen_root(p_root, &mut gx);
 
-        KRoot {
-            outlines: gx.outlines,
-            extern_fns: gx.extern_fns,
-            fns: gx.fns,
-        }
+        (
+            gx.outlines,
+            KModData {
+                extern_fns: gx.extern_fns,
+                fns: gx.fns,
+            },
+        )
     };
 
-    trace!("k_root (untyped) = {:#?}\n", k_root);
+    trace!("k_root (untyped) = {:#?}\n", mod_info);
 
-    k_root
+    mod_info
 }

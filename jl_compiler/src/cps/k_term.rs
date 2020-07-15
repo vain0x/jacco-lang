@@ -48,7 +48,7 @@ pub(crate) enum KTerm {
 impl KTerm {
     pub(crate) fn ty<'a>(
         &self,
-        outlines: &KOutlines,
+        outlines: &KModOutline,
         labels: &KLabelSigArena,
         locals: &KLocalArena,
     ) -> KTy {
@@ -76,7 +76,7 @@ impl KTerm {
         }
     }
 
-    pub(crate) fn location(&self, _outlines: &KOutlines) -> Location {
+    pub(crate) fn location(&self, _outlines: &KModOutline) -> Location {
         match self {
             KTerm::Unit { location } => *location,
             KTerm::Int(token, _) => token.location(),
