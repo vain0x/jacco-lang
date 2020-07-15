@@ -14,6 +14,11 @@ pub struct TRange {
 }
 
 impl TRange {
+    pub(crate) const ZERO: TRange = TRange {
+        start: TPos::ZERO,
+        end: TPos::ZERO,
+    };
+
     pub fn new(start: TPos, end: TPos) -> Self {
         assert!(start <= end);
 

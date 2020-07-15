@@ -19,6 +19,10 @@ impl Doc {
     pub(crate) fn id(self) -> usize {
         self.raw_id.to_index()
     }
+
+    pub(crate) fn inner(self) -> RawId {
+        self.raw_id
+    }
 }
 
 impl Debug for Doc {

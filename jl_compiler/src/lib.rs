@@ -3,7 +3,7 @@ mod logs;
 
 /// API for Rust.
 pub mod rust_api {
-    pub use super::cli::compile;
+    pub use super::cli::{compile, Project};
     pub use super::lang_service::lang_service::LangService;
     pub use super::source::{doc::Doc, pos::Pos, range::Range};
 }
@@ -78,11 +78,9 @@ mod cps {
     };
     pub(crate) use k_local::{KLocal, KLocalArena, KLocalData, KLocalTag};
     pub(crate) use k_meta_ty::{KMetaTy, KMetaTyData};
-    pub(crate) use k_mod::{KMod, KModArena, KModData, KModOutline, KModOutlines, KModTag};
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::KPrim;
-    pub(crate) use k_project::{KProject, KProjectArena, KProjectData, KProjectTag};
     pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarTag};
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
@@ -91,6 +89,11 @@ mod cps {
     pub(crate) use k_ty_env::KTyEnv;
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
+
+    #[allow(unused)]
+    pub(crate) use k_mod::{KMod, KModArena, KModData, KModOutline, KModOutlines, KModTag};
+    #[allow(unused)]
+    pub(crate) use k_project::{KProject, KProjectArena, KProjectData, KProjectTag};
 
     use crate::logs::Logger;
     use crate::token::{HaveLocation, Location, TokenData};

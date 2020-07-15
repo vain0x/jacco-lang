@@ -7,10 +7,13 @@ use crate::utils::{VecArena, VecArenaId};
 
 pub(crate) struct KModTag;
 
+#[allow(unused)]
 pub(crate) type KMod = VecArenaId<KModTag>;
 
+#[allow(unused)]
 pub(crate) type KModOutlines = VecArena<KModTag, KModOutline>;
 
+#[allow(unused)]
 pub(crate) type KModArena = VecArena<KModTag, KModData>;
 
 #[derive(Debug, Default)]

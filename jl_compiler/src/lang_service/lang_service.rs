@@ -27,7 +27,7 @@ pub struct Location {
 }
 
 impl Location {
-    fn new(doc: Doc, range: Range) -> Self {
+    pub(crate) fn new(doc: Doc, range: Range) -> Self {
         Self { doc, range }
     }
 
@@ -104,7 +104,7 @@ impl AnalysisCache {
             let logger = logs.logger();
             for (loc, message) in errors {
                 let range = loc.resolve(&root);
-                logger.error((self.doc.into(), range.into()), message);
+                logger.error((self.doc.into(), range), message);
             }
             let errors = logs_into_errors(logs, self);
 
@@ -130,7 +130,7 @@ impl AnalysisCache {
                 let logger = logs.logger();
                 for (loc, message) in errors {
                     let range = loc.resolve(&syntax.root);
-                    logger.error((doc, range.into()), message);
+                    logger.error((doc, range), message);
                 }
             }
 

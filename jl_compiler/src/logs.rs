@@ -16,6 +16,18 @@ pub(crate) enum LogItem {
 }
 
 impl LogItem {
+    pub(crate) fn message(&self) -> &str {
+        match self {
+            LogItem::OnLocation { message, .. } => message,
+        }
+    }
+
+    pub(crate) fn location(&self) -> Location {
+        match self {
+            LogItem::OnLocation { location, .. } => *location,
+        }
+    }
+
     pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
         match self {
             LogItem::OnLocation { message, location } => {

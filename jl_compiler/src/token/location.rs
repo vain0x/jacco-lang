@@ -1,5 +1,8 @@
 use super::*;
-use crate::{source::Doc, utils::TakeOut};
+use crate::{
+    source::{Doc, TRange},
+    utils::TakeOut,
+};
 use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
@@ -69,6 +72,13 @@ impl HaveLocation for (Doc, Range) {
     fn location(&self) -> Location {
         let (doc, range) = *self;
         Location::new(TokenSource::File(doc), range)
+    }
+}
+
+impl HaveLocation for (Doc, TRange) {
+    fn location(&self) -> Location {
+        let (doc, range) = *self;
+        Location::new(TokenSource::File(doc), range.into())
     }
 }
 

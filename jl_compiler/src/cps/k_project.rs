@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::{KModArena, KModOutlines};
 use crate::utils::{VecArena, VecArenaId};
 
