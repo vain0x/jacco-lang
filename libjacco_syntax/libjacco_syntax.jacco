@@ -431,6 +431,10 @@ enum SyntaxKind {
     Blank,
     /// 数値リテラル
     Number,
+    /// 文字リテラル
+    Char,
+    /// 文字列リテラル
+    String,
     /// 識別子
     Ident,
     /// `_`
@@ -443,6 +447,8 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::NewLines => "NEW_LINES",
         SyntaxKind::Blank => "BLANK",
         SyntaxKind::Number => "NUMBER",
+        SyntaxKind::Char => "CHAR",
+        SyntaxKind::STRING => "STRING",
         SyntaxKind::Ident => "IDENT",
         SyntaxKind::Underscore =>"UNDERSCORE",
     };
@@ -642,6 +648,34 @@ fn scan_number_with_radix(ts: *mut TokenStream, radix: Radix) {
     ts |> scan_ident();
 }
 
+fn scan_string_contents(ts: *mut TokenStream, quote: c8) {
+    loop {
+        match ts |> ts_peek() {
+            '\0' => break,
+            '\r' => break,
+            '\n' => break,
+            '\\' => {
+                ts |> ts_bump();
+                ts |> ts_bump();
+                continue;
+            }
+            '\'' => {
+                if quote == '\'' {
+                    break;
+                }
+            }
+            '"' => {
+                if quote == '\"' {
+                    break;
+                }
+            }
+            _ => {}
+        }
+
+        ts |> ts_bump();
+    }
+}
+
 fn scan_ident(ts: *mut TokenStream) {
     while ts |> ts_peek() |> c8_is_ident() {
         ts |> ts_bump();
@@ -678,6 +712,18 @@ fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
 fn tokenize_decimal(ts: *mut TokenStream) -> GreenToken {
     ts |> scan_number_with_radix(Radix::Decimal);
     ts |> ts_commit(SyntaxKind::Number)
+}
+
+fn tokenize_char_after_quote(ts: *mut TokenStream) -> GreenToken {
+    ts |> scan_string_contents('\'');
+    ts |> ts_eat1('\'');
+    ts |> ts_commit(SyntaxKind::Char)
+}
+
+fn tokenize_string_after_quote(ts: *mut TokenStream) -> GreenToken {
+    ts |> scan_string_contents('"');
+    ts |> ts_eat1('"');
+    ts |> ts_commit(SyntaxKind::String)
 }
 
 fn tokenize_ident_starting_with_underscore(ts: *mut TokenStream) -> GreenToken {
@@ -717,6 +763,14 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
         '0' => {
             ts |> ts_bump();
             ts |> tokenize_number_starting_with_zero()
+        },
+        '\'' => {
+            ts |> ts_bump();
+            ts |> tokenize_char_after_quote()
+        },
+        '"' => {
+            ts |> ts_bump();
+            ts |> tokenize_string_after_quote()
         },
         '_' => {
             ts |> ts_bump();
@@ -776,6 +830,18 @@ fn tokenize_tests(tt: *mut TestTools) {
 
     let buf = tokenize_dump("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, BLANK, NUMBER, BLANK, NUMBER"));
+
+    // 文字リテラル
+    let buf = tokenize_dump("''  'a'  '\\''");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("CHAR, BLANK, CHAR, BLANK, CHAR"));
+
+    // 文字列リテラル
+    let buf = tokenize_dump("\"\"  \"I'm a string!\"  \"\\\"\"");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, BLANK, STRING, BLANK, STRING"));
+
+    // 文字列リテラルは 改行や EOF で停止する。
+    let buf = tokenize_dump("\"\n\n\"");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, NEW_LINES, STRING"));
 
     let buf = tokenize_dump("_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("IDENT"));
