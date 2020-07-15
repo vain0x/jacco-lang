@@ -429,6 +429,8 @@ enum SyntaxKind {
     NewLines,
     /// 1つ以上の、改行でない空白文字
     Blank,
+    /// コメント
+    Comment,
     /// 数値リテラル
     Number,
     /// 文字リテラル
@@ -439,6 +441,8 @@ enum SyntaxKind {
     Ident,
     /// `_`
     Underscore,
+    /// `/`
+    Slash,
 }
 
 fn syntax_kind_name(kind: SyntaxKind) -> Str {
@@ -446,11 +450,13 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::Eof => "EOF",
         SyntaxKind::NewLines => "NEW_LINES",
         SyntaxKind::Blank => "BLANK",
+        SyntaxKind::Comment => "COMMENT",
         SyntaxKind::Number => "NUMBER",
         SyntaxKind::Char => "CHAR",
         SyntaxKind::STRING => "STRING",
         SyntaxKind::Ident => "IDENT",
         SyntaxKind::Underscore =>"UNDERSCORE",
+        SyntaxKind::Slash => "SLASH",
     };
     str_from_raw(name)
 }
@@ -692,6 +698,19 @@ fn tokenize_blank(ts: *mut TokenStream) -> GreenToken {
     ts |> ts_commit(SyntaxKind::Blank)
 }
 
+fn tokenize_comment_after_slash_slash(ts: *mut TokenStream) -> GreenToken {
+    loop {
+        match ts |> ts_peek() {
+            '\0' => break,
+            '\r' => break,
+            '\n' => break,
+            _ => ts |> ts_bump(),
+        }
+    }
+
+    ts |> ts_commit(SyntaxKind::Comment)
+}
+
 fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
     let radix = match ts |> ts_peek() {
         'b' => Radix::Binary,
@@ -776,6 +795,16 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
             ts |> ts_bump();
             ts |> tokenize_ident_starting_with_underscore()
         },
+        '/' => {
+            ts |> ts_bump();
+            match ts |> ts_peek() {
+                '/' => {
+                    ts |> ts_bump();
+                    ts |> tokenize_comment_after_slash_slash()
+                },
+                _ => ts |> ts_commit(SyntaxKind::Slash),
+            }
+        }
         c => {
             if c8_is_digit(c) {
                 ts |> ts_bump();
@@ -827,6 +856,10 @@ fn tokenize_tests(tt: *mut TestTools) {
 
     let buf = tokenize_dump("  \r\n\r\n  \n");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
+
+    // コメント
+    let buf = tokenize_dump("// 🐧LF:\n// 田CRLF:\r\n// EOF:");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("COMMENT, NEW_LINES, COMMENT, NEW_LINES, COMMENT"));
 
     let buf = tokenize_dump("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, BLANK, NUMBER, BLANK, NUMBER"));
