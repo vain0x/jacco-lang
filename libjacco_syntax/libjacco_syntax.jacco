@@ -2,6 +2,8 @@
 
 extern fn memcpy(dest: *mut (), src: *(), size: usize) -> *mut ();
 
+extern fn strncmp(s: *c8, t: *c8, len: usize) -> i32;
+
 // -----------------------------------------------
 // プロセス管理
 // -----------------------------------------------
@@ -286,6 +288,20 @@ fn str_compare(s: Str, other: Str) -> i32 {
     usize_compare(s.len, other.len)
 }
 
+fn str_equals_raw(s: Str, other: *c8) -> bool {
+    str_compare(s, str_from_raw(other)) == 0
+}
+
+fn str_prefix_raw(s: Str, prefix: *c8, len: *mut usize) -> bool {
+    let prefix_len = strlen(prefix);
+    if s.len >= prefix_len && strncmp(s.ptr, prefix, prefix_len) == 0 {
+        *len = prefix_len;
+        true
+    } else {
+        false
+    }
+}
+
 fn str_tests(tt: *mut TestTools) {
     let empty = str_empty();
     let hello = str_from_raw("hello");
@@ -441,8 +457,222 @@ enum SyntaxKind {
     Ident,
     /// `_`
     Underscore,
+
+    // キーワード類
+    As,
+    Box,
+    Break,
+    Case,
+    Cl,
+    Crate,
+    Const,
+    Continue,
+    Default,
+    Defer,
+    Do,
+    Dyn,
+    Else,
+    Enum,
+    Ensures,
+    Export,
+    Extern,
+    False,
+    Fn,
+    For,
+    From,
+    If,
+    Impl,
+    Import,
+    In,
+    Inline,
+    Let,
+    Loop,
+    Macro,
+    Match,
+    Mod,
+    Move,
+    Mut,
+    Of,
+    Out,
+    Priv,
+    Pub,
+    Raw,
+    Ref,
+    Requires,
+    Return,
+    Safe,
+    SelfLower,
+    Static,
+    Struct,
+    Super,
+    Then,
+    Throw,
+    To,
+    Trait,
+    True,
+    Try,
+    Type,
+    Union,
+    Unless,
+    Unsafe,
+    Until,
+    Use,
+    Val,
+    Void,
+    When,
+    Where,
+    While,
+    With,
+    Yield,
+
+    // カッコ類
+    /// `(`
+    LeftParen,
+    /// `)`
+    RightParen,
+    /// `[`
+    LeftBracket,
+    /// `]`
+    RightBracket,
+    /// `{`
+    LeftBrace,
+    /// `}`
+    RightBrace,
+
+    // 約物
+    /// `&`
+    And,
+    /// `&&`
+    AndAnd,
+    /// `&&=`
+    AndAndEqual,
+    /// `&=`
+    AndEqual,
+    /// `!`
+    Bang,
+    /// `!=`
+    BangEqual,
+    /// `!==`
+    BangEqualEqual,
+    /// `:`
+    Colon,
+    /// `::`
+    ColonColon,
+    /// `,`
+    Comma,
+    /// `.`
+    Dot,
+    /// `..`
+    DotDot,
+    /// `..=`
+    DotDotEqual,
+    /// `..<`
+    DotDotLeft,
+    /// `=`
+    Equal,
+    /// `==`
+    EqualEqual,
+    /// `===`
+    EqualEqualEqual,
+    /// `=>`
+    EqualRight,
+    /// `#`
+    Hash,
+    /// `#!`
+    HashBang,
+    /// `^`
+    Hat,
+    /// `^=`
+    HatEqual,
+    /// `<`
+    LeftAngle,
+    /// `<=`
+    LeftEqual,
+    /// `<=>`
+    LeftEqualRight,
+    /// `<<`
+    LeftLeft,
+    /// `<<=`
+    LeftLeftEqual,
+    /// `<<<`
+    LeftLeftLeft,
+    /// `<-`
+    LeftMinus,
+    /// `<->`
+    LeftMinusRight,
+    /// `-`
+    Minus,
+    /// `-=`
+    MinusEqual,
+    /// `--`
+    MinusMinus,
+    /// `-->`
+    MinusMinusRight,
+    /// `->`
+    MinusRight,
+    /// `%`
+    Percent,
+    /// `%=`
+    PercentEqual,
+    /// `|`
+    Pipe,
+    /// `|=`
+    PipeEqual,
+    /// `||`
+    PipePipe,
+    /// `||=`
+    PipePipeEqual,
+    /// `|>`
+    PipeRight,
+    /// `+`
+    Plus,
+    /// `+=`
+    PlusEqual,
+    /// `++`
+    PlusPlus,
+    /// `?`
+    Question,
+    /// `>`
+    RightAngle,
+    /// `>=`
+    RightEqual,
+    /// `>>`
+    RightRight,
+    /// `>>=`
+    RightRightEqual,
+    /// `>>>`
+    RightRightRight,
+    /// `;`
+    Semi,
     /// `/`
     Slash,
+    /// `/=`
+    SlashEqual,
+    /// `*`
+    Star,
+    /// `*=`
+    StarEqual,
+}
+
+fn syntax_kind_is_leading_trivia(kind: SyntaxKind) -> bool {
+    match kind {
+        SyntaxKind::NewLines => true,
+        SyntaxKind::Blank => true,
+        SyntaxKind::Comment => true,
+        _ => false,
+    }
+}
+
+fn syntax_kind_is_trailing_trivia(kind: SyntaxKind) -> bool {
+    match kind {
+        SyntaxKind::Blank => true,
+        SyntaxKind::Comment => true,
+        _ => false,
+    }
+}
+
+fn syntax_kind_is_trivia(kind: SyntaxKind) -> bool {
+    syntax_kind_is_leading_trivia(kind)
 }
 
 fn syntax_kind_name(kind: SyntaxKind) -> Str {
@@ -456,9 +686,648 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::STRING => "STRING",
         SyntaxKind::Ident => "IDENT",
         SyntaxKind::Underscore =>"UNDERSCORE",
-        SyntaxKind::Slash => "SLASH",
+        SyntaxKind::As => "AS",
+        SyntaxKind::Box => "BOX",
+        SyntaxKind::Break => "BREAK",
+        SyntaxKind::Case => "CASE",
+        SyntaxKind::Cl => "CL",
+        SyntaxKind::Crate => "CRATE",
+        SyntaxKind::Const => "CONST",
+        SyntaxKind::Continue => "CONTINUE",
+        SyntaxKind::Default => "DEFAULT",
+        SyntaxKind::Defer => "DEFER",
+        SyntaxKind::Do => "DO",
+        SyntaxKind::Dyn => "DYN",
+        SyntaxKind::Else => "ELSE",
+        SyntaxKind::Enum => "ENUM",
+        SyntaxKind::Ensures => "ENSURES",
+        SyntaxKind::Export => "EXPORT",
+        SyntaxKind::Extern => "EXTERN",
+        SyntaxKind::False => "FALSE",
+        SyntaxKind::Fn => "FN",
+        SyntaxKind::For => "FOR",
+        SyntaxKind::From => "FROM",
+        SyntaxKind::If => "IF",
+        SyntaxKind::Impl => "IMPL",
+        SyntaxKind::Import => "IMPORT",
+        SyntaxKind::In => "IN",
+        SyntaxKind::Inline => "INLINE",
+        SyntaxKind::Let => "LET",
+        SyntaxKind::Loop => "LOOP",
+        SyntaxKind::Macro => "MACRO",
+        SyntaxKind::Match => "MATCH",
+        SyntaxKind::Mod => "MOD",
+        SyntaxKind::Move => "MOVE",
+        SyntaxKind::Mut => "MUT",
+        SyntaxKind::Of => "OF",
+        SyntaxKind::Out => "OUT",
+        SyntaxKind::Priv => "PRIV",
+        SyntaxKind::Pub => "PUB",
+        SyntaxKind::Raw => "RAW",
+        SyntaxKind::Ref => "REF",
+        SyntaxKind::Requires => "REQUIRES",
+        SyntaxKind::Return => "RETURN",
+        SyntaxKind::Safe => "SAFE",
+        SyntaxKind::SelfLower => "SELF",
+        SyntaxKind::Static => "STATIC",
+        SyntaxKind::Struct => "STRUCT",
+        SyntaxKind::Super => "SUPER",
+        SyntaxKind::Then => "THEN",
+        SyntaxKind::Throw => "THROW",
+        SyntaxKind::To => "TO",
+        SyntaxKind::Trait => "TRAIT",
+        SyntaxKind::True => "TRUE",
+        SyntaxKind::Try => "TRY",
+        SyntaxKind::Type => "TYPE",
+        SyntaxKind::Union => "UNION",
+        SyntaxKind::Unless => "UNLESS",
+        SyntaxKind::Unsafe => "UNSAFE",
+        SyntaxKind::Until => "UNTIL",
+        SyntaxKind::Use => "USE",
+        SyntaxKind::Val => "VAL",
+        SyntaxKind::Void => "VOID",
+        SyntaxKind::When => "WHEN",
+        SyntaxKind::Where => "WHERE",
+        SyntaxKind::While => "WHILE",
+        SyntaxKind::With => "WITH",
+        SyntaxKind::Yield => "YIELD",
+        SyntaxKind::LeftParen => "(",
+        SyntaxKind::RightParen => ")",
+        SyntaxKind::LeftBracket => "[",
+        SyntaxKind::RightBracket => "]",
+        SyntaxKind::LeftBrace => "{",
+        SyntaxKind::RightBrace => "}",
+        SyntaxKind::And => "&",
+        SyntaxKind::AndAnd => "&&",
+        SyntaxKind::AndAndEqual => "&&=",
+        SyntaxKind::AndEqual => "&=",
+        SyntaxKind::Bang => "!",
+        SyntaxKind::BangEqual => "!=",
+        SyntaxKind::BangEqualEqual => "!==",
+        SyntaxKind::Colon => ":",
+        SyntaxKind::ColonColon => "::",
+        SyntaxKind::Comma => ",",
+        SyntaxKind::Dot => ".",
+        SyntaxKind::DotDot => "..",
+        SyntaxKind::DotDotEqual => "..=",
+        SyntaxKind::DotDotLeft => "..<",
+        SyntaxKind::Equal => "=",
+        SyntaxKind::EqualEqual => "==",
+        SyntaxKind::EqualEqualEqual => "===",
+        SyntaxKind::EqualRight => "=>",
+        SyntaxKind::Hash => "#",
+        SyntaxKind::HashBang => "#!",
+        SyntaxKind::Hat => "^",
+        SyntaxKind::HatEqual => "^=",
+        SyntaxKind::LeftAngle => "<",
+        SyntaxKind::LeftEqual => "<=",
+        SyntaxKind::LeftEqualRight => "<=>",
+        SyntaxKind::LeftLeft => "<<",
+        SyntaxKind::LeftLeftEqual => "<<=",
+        SyntaxKind::LeftLeftLeft => "<<<",
+        SyntaxKind::LeftMinus => "<-",
+        SyntaxKind::LeftMinusRight => "<->",
+        SyntaxKind::Minus => "-",
+        SyntaxKind::MinusEqual => "-=",
+        SyntaxKind::MinusMinus => "--",
+        SyntaxKind::MinusMinusRight => "-->",
+        SyntaxKind::MinusRight => "->",
+        SyntaxKind::Percent => "%",
+        SyntaxKind::PercentEqual => "%=",
+        SyntaxKind::Pipe => "|",
+        SyntaxKind::PipeEqual => "|=",
+        SyntaxKind::PipePipe => "||",
+        SyntaxKind::PipePipeEqual => "||=",
+        SyntaxKind::PipeRight => "|>",
+        SyntaxKind::Plus => "+",
+        SyntaxKind::PlusEqual => "+=",
+        SyntaxKind::PlusPlus => "++",
+        SyntaxKind::Question => "?",
+        SyntaxKind::RightAngle => ">",
+        SyntaxKind::RightEqual => ">=",
+        SyntaxKind::RightRight => ">>",
+        SyntaxKind::RightRightEqual => ">>=",
+        SyntaxKind::RightRightRight => ">>>",
+        SyntaxKind::Semi => ";",
+        SyntaxKind::Slash => "/",
+        SyntaxKind::SlashEqual => "/=",
+        SyntaxKind::Star => "*",
+        SyntaxKind::StarEqual => "*=",
     };
     str_from_raw(name)
+}
+
+fn syntax_kind_from_ident(s: Str) -> SyntaxKind
+    // requires s.len >= 1
+{
+    match *s.ptr {
+        '_' => {
+            if str_equals_raw(s, "_") {
+                return SyntaxKind::Underscore;
+            }
+        },
+        'a' => {
+            if str_equals_raw(s, "as") {
+                return SyntaxKind::As;
+            }
+        },
+        'b' => {
+            if str_equals_raw(s, "box") {
+                return SyntaxKind::Box;
+            }
+
+            if str_equals_raw(s, "break") {
+                return SyntaxKind::Break;
+            }
+        },
+        'c' => {
+            if str_equals_raw(s, "case") {
+                return SyntaxKind::Case;
+            }
+
+            if str_equals_raw(s, "cl") {
+                return SyntaxKind::Cl;
+            }
+
+            if str_equals_raw(s, "crate") {
+                return SyntaxKind::Crate;
+            }
+
+            if str_equals_raw(s, "const") {
+                return SyntaxKind::Const;
+            }
+
+            if str_equals_raw(s, "continue") {
+                return SyntaxKind::Continue;
+            }
+        },
+        'd' => {
+            if str_equals_raw(s, "default") {
+                return SyntaxKind::Default;
+            }
+
+            if str_equals_raw(s, "defer") {
+                return SyntaxKind::Defer;
+            }
+
+            if str_equals_raw(s, "do") {
+                return SyntaxKind::Do;
+            }
+
+            if str_equals_raw(s, "dyn") {
+                return SyntaxKind::Dyn;
+            }
+        },
+        'e' => {
+            if str_equals_raw(s, "else") {
+                return SyntaxKind::Else;
+            }
+
+            if str_equals_raw(s, "enum") {
+                return SyntaxKind::Enum;
+            }
+
+            if str_equals_raw(s, "ensures") {
+                return SyntaxKind::Ensures;
+            }
+
+            if str_equals_raw(s, "export") {
+                return SyntaxKind::Export;
+            }
+
+            if str_equals_raw(s, "extern") {
+                return SyntaxKind::Extern;
+            }
+        },
+        'f' => {
+            if str_equals_raw(s, "false") {
+                return SyntaxKind::False;
+            }
+
+            if str_equals_raw(s, "fn") {
+                return SyntaxKind::Fn;
+            }
+
+            if str_equals_raw(s, "for") {
+                return SyntaxKind::For;
+            }
+
+            if str_equals_raw(s, "from") {
+                return SyntaxKind::From;
+            }
+        },
+        'i' => {
+            if str_equals_raw(s, "if") {
+                return SyntaxKind::If;
+            }
+
+            if str_equals_raw(s, "impl") {
+                return SyntaxKind::Impl;
+            }
+
+            if str_equals_raw(s, "import") {
+                return SyntaxKind::Import;
+            }
+
+            if str_equals_raw(s, "in") {
+                return SyntaxKind::In;
+            }
+
+            if str_equals_raw(s, "inline") {
+                return SyntaxKind::Inline;
+            }
+        },
+        'l' => {
+            if str_equals_raw(s, "let") {
+                return SyntaxKind::Let;
+            }
+
+            if str_equals_raw(s, "loop") {
+                return SyntaxKind::Loop;
+            }
+        },
+        'm' => {
+            if str_equals_raw(s, "macro") {
+                return SyntaxKind::Macro;
+            }
+
+            if str_equals_raw(s, "match") {
+                return SyntaxKind::Match;
+            }
+
+            if str_equals_raw(s, "mod") {
+                return SyntaxKind::Mod;
+            }
+
+            if str_equals_raw(s, "move") {
+                return SyntaxKind::Move;
+            }
+
+            if str_equals_raw(s, "mut") {
+                return SyntaxKind::Mut;
+            }
+        },
+        'o' => {
+            if str_equals_raw(s, "of") {
+                return SyntaxKind::Of;
+            }
+
+            if str_equals_raw(s, "out") {
+                return SyntaxKind::Out;
+            }
+        },
+        'p' => {
+            if str_equals_raw(s, "priv") {
+                return SyntaxKind::Priv;
+            }
+
+            if str_equals_raw(s, "pub") {
+                return SyntaxKind::Pub;
+            }
+        },
+        'r' => {
+            if str_equals_raw(s, "raw") {
+                return SyntaxKind::Raw;
+            }
+
+            if str_equals_raw(s, "ref") {
+                return SyntaxKind::Ref;
+            }
+
+            if str_equals_raw(s, "requires") {
+                return SyntaxKind::Requires;
+            }
+
+            if str_equals_raw(s, "return") {
+                return SyntaxKind::Return;
+            }
+        },
+        's' => {
+            if str_equals_raw(s, "safe") {
+                return SyntaxKind::Safe;
+            }
+
+            if str_equals_raw(s, "self") {
+                return SyntaxKind::SelfLower;
+            }
+
+            if str_equals_raw(s, "static") {
+                return SyntaxKind::Static;
+            }
+
+            if str_equals_raw(s, "struct") {
+                return SyntaxKind::Struct;
+            }
+
+            if str_equals_raw(s, "super") {
+                return SyntaxKind::Super;
+            }
+        },
+        't' => {
+            if str_equals_raw(s, "then") {
+                return SyntaxKind::Then;
+            }
+
+            if str_equals_raw(s, "throw") {
+                return SyntaxKind::Throw;
+            }
+
+            if str_equals_raw(s, "to") {
+                return SyntaxKind::To;
+            }
+
+            if str_equals_raw(s, "trait") {
+                return SyntaxKind::Trait;
+            }
+
+            if str_equals_raw(s, "true") {
+                return SyntaxKind::True;
+            }
+
+            if str_equals_raw(s, "try") {
+                return SyntaxKind::Try;
+            }
+
+            if str_equals_raw(s, "type") {
+                return SyntaxKind::Type;
+            }
+        },
+        'u' => {
+            if str_equals_raw(s, "union") {
+                return SyntaxKind::Union;
+            }
+
+            if str_equals_raw(s, "unless") {
+                return SyntaxKind::Unless;
+            }
+
+            if str_equals_raw(s, "unsafe") {
+                return SyntaxKind::Unsafe;
+            }
+
+            if str_equals_raw(s, "until") {
+                return SyntaxKind::Until;
+            }
+
+            if str_equals_raw(s, "use") {
+                return SyntaxKind::Use;
+            }
+        },
+        'v' => {
+            if str_equals_raw(s, "val") {
+                return SyntaxKind::Val;
+            }
+
+            if str_equals_raw(s, "void") {
+                return SyntaxKind::Void;
+            }
+        },
+        'w' => {
+            if str_equals_raw(s, "when") {
+                return SyntaxKind::When;
+            }
+
+            if str_equals_raw(s, "where") {
+                return SyntaxKind::Where;
+            }
+
+            if str_equals_raw(s, "while") {
+                return SyntaxKind::While;
+            }
+
+            if str_equals_raw(s, "with") {
+                return SyntaxKind::With;
+            }
+        },
+        'y' => {
+            if str_equals_raw(s, "yield") {
+                return SyntaxKind::Yield;
+            }
+        },
+        _ => {},
+    }
+
+    SyntaxKind::Ident
+}
+
+fn syntax_kind_parse_and_pun(s: Str, len: *mut usize) -> SyntaxKind
+    // requires *s.ptr == '&'
+{
+    if s |> str_prefix_raw("&=", len) {
+        return SyntaxKind::AndEqual;
+    }
+
+    if s |> str_prefix_raw("&&=", len) {
+        return SyntaxKind::AndAndEqual;
+    }
+
+    if s |> str_prefix_raw("&&", len) {
+        return SyntaxKind::AndAnd;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::And
+}
+
+fn syntax_kind_parse_bang_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("!==", len) {
+        return SyntaxKind::BangEqualEqual;
+    }
+
+    if s |> str_prefix_raw("!=", len) {
+        return SyntaxKind::BangEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Bang
+}
+
+fn syntax_kind_parse_colon_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("::", len) {
+        return SyntaxKind::ColonColon;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Colon
+}
+
+fn syntax_kind_parse_dot_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("..=", len) {
+        return SyntaxKind::DotDotEqual;
+    }
+
+    if s |> str_prefix_raw("..<", len) {
+        return SyntaxKind::DotDotLeft;
+    }
+
+    if s |> str_prefix_raw("..", len) {
+        return SyntaxKind::DotDot;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Dot
+}
+
+fn syntax_kind_parse_equal_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("=>", len) {
+        return SyntaxKind::EqualRight;
+    }
+
+    if s |> str_prefix_raw("===", len) {
+        return SyntaxKind::EqualEqualEqual;
+    }
+
+    if s |> str_prefix_raw("==", len) {
+        return SyntaxKind::EqualEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Equal
+}
+
+fn syntax_kind_parse_hash_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("#!", len) {
+        return SyntaxKind::HashBang;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Hash
+}
+
+fn syntax_kind_parse_hat_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("^=", len) {
+        return SyntaxKind::HatEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Hat
+}
+
+fn syntax_kind_parse_left_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("<=>", len) {
+        return SyntaxKind::LeftEqualRight;
+    }
+
+    if s |> str_prefix_raw("<=", len) {
+        return SyntaxKind::LeftEqual;
+    }
+
+    if s |> str_prefix_raw("<<=", len) {
+        return SyntaxKind::LeftLeftEqual;
+    }
+
+    if s |> str_prefix_raw("<<<", len) {
+        return SyntaxKind::LeftLeftLeft;
+    }
+
+    if s |> str_prefix_raw("<<", len) {
+        return SyntaxKind::LeftLeft;
+    }
+
+    if s |> str_prefix_raw("<->", len) {
+        return SyntaxKind::LeftMinusRight;
+    }
+
+    if s |> str_prefix_raw("<-", len) {
+        return SyntaxKind::LeftMinus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::LeftAngle
+}
+
+fn syntax_kind_parse_minus_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("->", len) {
+        return SyntaxKind::MinusRight;
+    }
+
+    if s |> str_prefix_raw("-=", len) {
+        return SyntaxKind::MinusEqual;
+    }
+
+    if s |> str_prefix_raw("-->", len) {
+        return SyntaxKind::MinusMinusRight;
+    }
+
+    if s |> str_prefix_raw("--", len) {
+        return SyntaxKind::MinusMinus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Minus
+}
+
+fn syntax_kind_parse_percent_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("%=", len) {
+        return SyntaxKind::PercentEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Percent
+}
+
+fn syntax_kind_parse_pipe_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("||=", len) {
+        return SyntaxKind::PipePipeEqual;
+    }
+
+    if s |> str_prefix_raw("||", len) {
+        return SyntaxKind::PipePipe;
+    }
+
+    if s |> str_prefix_raw("|>", len) {
+        return SyntaxKind::PipeRight;
+    }
+
+    if s |> str_prefix_raw("|=", len) {
+        return SyntaxKind::PipeEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Pipe
+}
+
+fn syntax_kind_parse_plus_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("+=", len) {
+        return SyntaxKind::PlusEqual;
+    }
+
+    if s |> str_prefix_raw("++", len) {
+        return SyntaxKind::PlusPlus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Plus
+}
+
+fn syntax_kind_parse_right_angle_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw(">>>", len) {
+        return SyntaxKind::RightRightRight;
+    }
+
+    if s |> str_prefix_raw(">>=", len) {
+        return SyntaxKind::RightRightEqual;
+    }
+
+    if s |> str_prefix_raw(">>", len) {
+        return SyntaxKind::RightRight;
+    }
+
+    if s |> str_prefix_raw(">=", len) {
+        return SyntaxKind::RightEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::RightAngle
+}
+
+fn syntax_kind_parse_star_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if s |> str_prefix_raw("*=", len) {
+        return SyntaxKind::StarEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Star
 }
 
 struct GreenToken {
@@ -489,9 +1358,14 @@ fn token_stream_from_raw(text: *c8) -> TokenStream {
 }
 
 /// 前回 commit した位置から現在の位置までの文字列へのスライスを取る。
-// fn ts_current_str(ts: *TokenStream) -> Str {
-//     (*ts).text |> str_slice((*ts).last, (*ts).current)
-// }
+fn ts_current_str(ts: *TokenStream) -> Str {
+    (*ts).text |> str_slice((*ts).last, (*ts).current)
+}
+
+/// 現在の位置より後にある文字列へのスライスを取る。
+fn ts_rest_str(ts: *mut TokenStream) -> Str {
+    (*ts).text |> str_slice((*ts).current, (*ts).text.len)
+}
 
 /// 次の文字を見る。
 fn ts_peek(ts: *TokenStream) -> c8 {
@@ -502,9 +1376,15 @@ fn ts_peek(ts: *TokenStream) -> c8 {
     (*ts).text.ptr[(*ts).current]
 }
 
+fn ts_bump_many(ts: *mut TokenStream, len: usize)
+    // requires ts.current + len <= ts.text.len && ts.current + len is char boundary of ts.text
+{
+    (*ts).current += len;
+}
+
 /// 次の1文字を読み進める。
 fn ts_bump(ts: *mut TokenStream)
-    // requires ts.current < ts.text.len
+    // requires ts.current < ts.text.len && ts.current + 1 is char boundary of ts.text
 {
     // FIXME: Unicode 文字を途中で切らない
     (*ts).current += 1_usize;
@@ -756,7 +1636,13 @@ fn tokenize_ident_starting_with_underscore(ts: *mut TokenStream) -> GreenToken {
 
 fn tokenize_ident(ts: *mut TokenStream) -> GreenToken {
     scan_ident(ts);
-    ts |> ts_commit(SyntaxKind::Ident)
+    let kind = ts |> ts_current_str() |> syntax_kind_from_ident();
+    ts |> ts_commit(kind)
+}
+
+fn tokenize_pun(ts: *mut TokenStream, kind: SyntaxKind, len: usize) -> GreenToken {
+    ts |> ts_bump_many(len);
+    ts |> ts_commit(kind)
 }
 
 fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
@@ -795,6 +1681,15 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
             ts |> ts_bump();
             ts |> tokenize_ident_starting_with_underscore()
         },
+        '(' => ts |> tokenize_pun(SyntaxKind::LeftParen, 1_usize),
+        ')' => ts |> tokenize_pun(SyntaxKind::RightParen, 1_usize),
+        '[' => ts |> tokenize_pun(SyntaxKind::LeftBracket, 1_usize),
+        ']' => ts |> tokenize_pun(SyntaxKind::RightBracket, 1_usize),
+        '{' => ts |> tokenize_pun(SyntaxKind::LeftBrace, 1_usize),
+        '}' => ts |> tokenize_pun(SyntaxKind::RightBrace, 1_usize),
+        ',' => ts |> tokenize_pun(SyntaxKind::Comma, 1_usize),
+        '?' => ts |> tokenize_pun(SyntaxKind::Question, 1_usize),
+        ';' => ts |> tokenize_pun(SyntaxKind::Semi, 1_usize),
         '/' => {
             ts |> ts_bump();
             match ts |> ts_peek() {
@@ -802,9 +1697,83 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
                     ts |> ts_bump();
                     ts |> tokenize_comment_after_slash_slash()
                 },
+                '=' => {
+                    ts |> ts_bump();
+                    ts |> ts_commit(SyntaxKind::SlashEqual)
+                },
                 _ => ts |> ts_commit(SyntaxKind::Slash),
             }
-        }
+        },
+        '&' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_and_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '!' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_bang_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        ':' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_colon_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '.' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_dot_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '=' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_equal_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '#' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_hash_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '^' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_hat_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '<' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_left_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '-' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_minus_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '%' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_percent_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '|' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_pipe_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '+' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_plus_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '>' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_right_angle_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
+        '*' => {
+            let len = 0_usize;
+            let kind = ts |> ts_rest_str() |> syntax_kind_parse_star_pun(&mut len);
+            ts |> tokenize_pun(kind, len)
+        },
         c => {
             if c8_is_digit(c) {
                 ts |> ts_bump();
@@ -822,7 +1791,7 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
     }
 }
 
-fn tokenize_dump(s: *c8) -> StrBuf {
+fn do_tokenize_dump(s: *c8, include_trivia: bool) -> StrBuf {
     let ts = token_stream_from_raw(s);
     let i = 0;
     let buf = str_buf_empty();
@@ -831,6 +1800,11 @@ fn tokenize_dump(s: *c8) -> StrBuf {
         let token = token_stream_next(&mut ts);
         if token.kind == SyntaxKind::Eof {
             break;
+        }
+
+        if !include_trivia && syntax_kind_is_trivia(token.kind) {
+            i += 1;
+            continue;
         }
 
         if i != 0 {
@@ -848,6 +1822,14 @@ fn tokenize_dump(s: *c8) -> StrBuf {
     buf
 }
 
+fn tokenize_dump(s: *c8) -> StrBuf {
+    do_tokenize_dump(s, true)
+}
+
+fn tokenize_dump_without_trivia(s: *c8) -> StrBuf {
+    do_tokenize_dump(s, false)
+}
+
 fn tokenize_tests(tt: *mut TestTools) {
     let ts = token_stream_from_raw(" \t");
     assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Blank, "expect blank");
@@ -861,16 +1843,16 @@ fn tokenize_tests(tt: *mut TestTools) {
     let buf = tokenize_dump("// 🐧LF:\n// 田CRLF:\r\n// EOF:");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("COMMENT, NEW_LINES, COMMENT, NEW_LINES, COMMENT"));
 
-    let buf = tokenize_dump("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
-    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, BLANK, NUMBER, BLANK, NUMBER"));
+    let buf = tokenize_dump_without_trivia("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, NUMBER, NUMBER"));
 
     // 文字リテラル
-    let buf = tokenize_dump("''  'a'  '\\''");
-    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("CHAR, BLANK, CHAR, BLANK, CHAR"));
+    let buf = tokenize_dump_without_trivia("''  'a'  '\\''");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("CHAR, CHAR, CHAR"));
 
     // 文字列リテラル
-    let buf = tokenize_dump("\"\"  \"I'm a string!\"  \"\\\"\"");
-    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, BLANK, STRING, BLANK, STRING"));
+    let buf = tokenize_dump_without_trivia("\"\"  \"I'm a string!\"  \"\\\"\"");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, STRING, STRING"));
 
     // 文字列リテラルは 改行や EOF で停止する。
     let buf = tokenize_dump("\"\n\n\"");
@@ -879,8 +1861,17 @@ fn tokenize_tests(tt: *mut TestTools) {
     let buf = tokenize_dump("_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("IDENT"));
 
-    let buf = tokenize_dump("_ __");
-    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("UNDERSCORE, BLANK, IDENT"));
+    let buf = tokenize_dump_without_trivia("_ __");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("UNDERSCORE, IDENT"));
+
+    // キーワード
+    let buf = tokenize_dump_without_trivia("as assign in inline self Self SELF");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("AS, IDENT, IN, INLINE, SELF, IDENT, IDENT"));
+
+    // 記号類
+    let buf = tokenize_dump_without_trivia("||= || |> |= | >>> >>= >> >= > => === == = <=> <= <<= <<< << <-> <- < += ++ + ^= ^ %= % #! # &= &&= && & /= / *= * } { ] [ ) ( ..= ..< .. . ? !== != ! :: : ; , -> -= --> -- -");
+    let expected = "||=, ||, |>, |=, |, >>>, >>=, >>, >=, >, =>, ===, ==, =, <=>, <=, <<=, <<<, <<, <->, <-, <, +=, ++, +, ^=, ^, %=, %, #!, #, &=, &&=, &&, &, /=, /, *=, *, }, {, ], [, ), (, ..=, ..<, .., ., ?, !==, !=, !, ::, :, ;, ,, ->, -=, -->, --, -";
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw(expected));
 }
 
 // -----------------------------------------------
