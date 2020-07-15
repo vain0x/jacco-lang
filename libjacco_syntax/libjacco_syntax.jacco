@@ -253,6 +253,21 @@ fn str_slice_from(s: Str, start: usize) -> Str {
     }
 }
 
+fn str_slice(s: Str, start: usize, end: usize) -> Str {
+    if end >= s.len {
+        end = s.len;
+    }
+
+    if start >= end {
+        return str_empty();
+    }
+
+    Str {
+        ptr: s.ptr + start,
+        len: end - start,
+    }
+}
+
 fn str_compare(s: Str, other: Str) -> i32 {
     let n = usize_min(s.len, other.len);
     let p = s.ptr;
@@ -272,10 +287,11 @@ fn str_compare(s: Str, other: Str) -> i32 {
 }
 
 fn str_tests(tt: *mut TestTools) {
+    let empty = str_empty();
     let hello = str_from_raw("hello");
     assert_eq_usize(tt, hello.len, 5_usize);
 
-    assert_that(tt, str_empty() |> str_is_empty(), "\"\" is empty");
+    assert_that(tt, empty |> str_is_empty(), "\"\" is empty");
     assert_that(tt, !(hello |> str_is_empty()), "\"hello\" is not empty");
 
     let lo = str_slice_from(hello, 3_usize);
@@ -285,6 +301,10 @@ fn str_tests(tt: *mut TestTools) {
     assert_eq_i32(tt, str_compare(str_from_raw("aa"), str_from_raw("ab")), -1);
     assert_eq_i32(tt, str_compare(str_from_raw("ba"), str_from_raw("a")), 1);
     assert_eq_i32(tt, str_compare(lo, str_from_raw("lo")), 0);
+
+    assert_eq_i32(tt, str_compare(str_slice(hello, 0_usize, 99_usize), hello), 0);
+    assert_eq_i32(tt, str_compare(str_slice(hello, 99_usize, 66_usize), empty), 0);
+    assert_eq_i32(tt, str_compare(str_slice(hello, 1_usize, 4_usize), str_from_raw("ell")), 0);
 }
 
 // -----------------------------------------------
@@ -409,6 +429,12 @@ enum SyntaxKind {
     NewLines,
     /// 1つ以上の、改行でない空白文字
     Blank,
+    /// 数値リテラル
+    Number,
+    /// 識別子
+    Ident,
+    /// `_`
+    Underscore,
 }
 
 fn syntax_kind_name(kind: SyntaxKind) -> Str {
@@ -416,6 +442,9 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::Eof => "EOF",
         SyntaxKind::NewLines => "NEW_LINES",
         SyntaxKind::Blank => "BLANK",
+        SyntaxKind::Number => "NUMBER",
+        SyntaxKind::Ident => "IDENT",
+        SyntaxKind::Underscore =>"UNDERSCORE",
     };
     str_from_raw(name)
 }
@@ -428,22 +457,6 @@ struct GreenToken {
 // -----------------------------------------------
 // 字句解析
 // -----------------------------------------------
-
-fn c8_is_new_line(c: c8) -> bool {
-    match c {
-        '\r' => true,
-        '\n' => true,
-        _ => false,
-    }
-}
-
-fn c8_is_blank(c: c8) -> bool {
-    match c {
-        ' ' => true,
-        '\t' => true,
-        _ => false,
-    }
-}
 
 struct TokenStream {
     text: Str,
@@ -463,6 +476,12 @@ fn token_stream_from_raw(text: *c8) -> TokenStream {
     token_stream_new(str_from_raw(text))
 }
 
+/// 前回 commit した位置から現在の位置までの文字列へのスライスを取る。
+// fn ts_current_str(ts: *TokenStream) -> Str {
+//     (*ts).text |> str_slice((*ts).last, (*ts).current)
+// }
+
+/// 次の文字を見る。
 fn ts_peek(ts: *TokenStream) -> c8 {
     if (*ts).current >= (*ts).text.len {
         return '\0';
@@ -471,11 +490,22 @@ fn ts_peek(ts: *TokenStream) -> c8 {
     (*ts).text.ptr[(*ts).current]
 }
 
+/// 次の1文字を読み進める。
 fn ts_bump(ts: *mut TokenStream)
-    // requires ts.current <= ts.text.len
+    // requires ts.current < ts.text.len
 {
     // FIXME: Unicode 文字を途中で切らない
     (*ts).current += 1_usize;
+}
+
+/// 次の文字が c なら読み進める。読み進めたら true
+fn ts_eat1(ts: *mut TokenStream, c: c8) -> bool {
+    if ts_peek(ts) == c {
+        ts_bump(ts);
+        true
+    } else {
+        false
+    }
 }
 
 fn ts_commit(ts: *mut TokenStream, kind: SyntaxKind) -> GreenToken {
@@ -489,43 +519,222 @@ fn ts_commit(ts: *mut TokenStream, kind: SyntaxKind) -> GreenToken {
     }
 }
 
-fn tokenize_new_lines_with_cr(ts: *mut TokenStream) -> GreenToken {
-    ts |> ts_bump();
-    tokenize_new_lines(ts)
+fn c8_is_new_line(c: c8) -> bool {
+    match c {
+        '\r' => true,
+        '\n' => true,
+        _ => false,
+    }
 }
 
-fn tokenize_new_lines(ts: *mut TokenStream) -> GreenToken {
+fn c8_is_blank(c: c8) -> bool {
+    match c {
+        ' ' => true,
+        '\t' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_digit(c: c8) -> bool {
+    '0' <= c && c <= '9'
+}
+
+fn c8_is_bit(c: c8) -> bool {
+    match c {
+        '0' => true,
+        '1' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_hexdigit(c: c8) -> bool {
+    ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f')
+}
+
+fn c8_is_alphabetic(c: c8) -> bool {
+    ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')
+}
+
+fn c8_is_exponential(c: c8) -> bool {
+    match c {
+        'e' => true,
+        'E' => true,
+        'p' => true,
+        'P' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_ident(c: c8) -> bool {
+    // FIXME: Unicode 文字も識別子として受け付ける
+    c8_is_alphabetic(c) || c8_is_digit(c) || c == '_'
+}
+
+fn scan_new_lines(ts: *mut TokenStream) {
     while ts |> ts_peek() |> c8_is_new_line() {
         ts |> ts_bump();
     }
+}
 
+fn scan_blank(ts: *mut TokenStream) {
+    while ts |> ts_peek() |> c8_is_blank() {
+        ts |> ts_bump();
+    }
+}
+
+fn scan_digits(ts: *mut TokenStream) {
+    while ts |> ts_peek() |> c8_is_digit() {
+        ts |> ts_bump();
+        ts |> ts_eat1('_');
+    }
+}
+
+fn scan_bits(ts: *mut TokenStream) {
+    while ts |> ts_peek() |> c8_is_bit() {
+        ts |> ts_bump();
+        ts |> ts_eat1('_');
+    }
+}
+
+fn scan_hexdigits(ts: *mut TokenStream) {
+    while ts |> ts_peek() |> c8_is_hexdigit() {
+        ts |> ts_bump();
+        ts |> ts_eat1('_');
+    }
+}
+
+enum Radix {
+    Decimal,
+    Binary,
+    Hex,
+}
+
+fn scan_digits_with_radix(ts: *mut TokenStream, radix: Radix) {
+    match radix {
+        Radix::Decimal => scan_digits(ts),
+        Radix::Binary => scan_bits(ts),
+        Radix::Hex => scan_hexdigits(ts),
+    }
+}
+
+fn scan_number_with_radix(ts: *mut TokenStream, radix: Radix) {
+    ts |> scan_digits_with_radix(radix);
+
+    // 小数部
+    if ts |> ts_eat1('.') {
+        ts |> scan_digits_with_radix(radix);
+    }
+
+    // 指数部
+    if ts |> ts_peek() |> c8_is_exponential() {
+        ts |> ts_bump();
+
+        match ts |> ts_peek() {
+            '+' => ts |> ts_bump(),
+            '-' => ts |> ts_bump(),
+            _ => {}
+        }
+
+        ts |> scan_digits_with_radix(radix);
+    }
+
+    // 接尾辞
+    ts |> scan_ident();
+}
+
+fn scan_ident(ts: *mut TokenStream) {
+    while ts |> ts_peek() |> c8_is_ident() {
+        ts |> ts_bump();
+    }
+}
+
+fn tokenize_new_lines(ts: *mut TokenStream) -> GreenToken {
+    ts |> scan_new_lines();
     ts |> ts_commit(SyntaxKind::NewLines)
 }
 
 fn tokenize_blank(ts: *mut TokenStream) -> GreenToken {
-    while ts |> ts_peek() |> c8_is_blank() {
-        ts |> ts_bump();
+    ts |> scan_blank();
+    ts |> ts_commit(SyntaxKind::Blank)
+}
+
+fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
+    let radix = match ts |> ts_peek() {
+        'b' => Radix::Binary,
+        'B' => Radix::Binary,
+        'x' => Radix::Hex,
+        'X' => Radix::Hex,
+        _ => Radix::Decimal,
+    };
+
+    if radix != Radix::Decimal {
+        ts |> ts_bump(); // [bBxX]
     }
 
-    ts |> ts_commit(SyntaxKind::Blank)
+    ts |> scan_number_with_radix(radix);
+    ts |> ts_commit(SyntaxKind::Number)
+}
+
+fn tokenize_decimal(ts: *mut TokenStream) -> GreenToken {
+    ts |> scan_number_with_radix(Radix::Decimal);
+    ts |> ts_commit(SyntaxKind::Number)
+}
+
+fn tokenize_ident_starting_with_underscore(ts: *mut TokenStream) -> GreenToken {
+    if !(ts |> ts_peek() |> c8_is_ident() ){
+        return ts |> ts_commit(SyntaxKind::Underscore);
+    }
+
+    ts |> scan_ident();
+    ts |> ts_commit(SyntaxKind::Ident)
+}
+
+fn tokenize_ident(ts: *mut TokenStream) -> GreenToken {
+    scan_ident(ts);
+    ts |> ts_commit(SyntaxKind::Ident)
 }
 
 fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
     match ts |> ts_peek() {
         '\0' => ts |> ts_commit(SyntaxKind::Eof),
-
-        '\r' => tokenize_new_lines_with_cr(ts),
-        '\n' => tokenize_new_lines(ts),
-
-        // FIXME: OR パターンは未実装
-        ' ' => tokenize_blank(ts),
-        '\t' => tokenize_blank(ts),
-
+        // FIXME: OR パターン
+        '\r' => {
+            ts |> ts_bump();
+            ts |> tokenize_new_lines()
+        },
+        '\n' => {
+            ts |> ts_bump();
+            ts |> tokenize_new_lines()
+        },
+        ' ' => {
+            ts |> ts_bump();
+            ts |> tokenize_blank()
+        },
+        '\t' => {
+            ts |> ts_bump();
+            ts |> tokenize_blank()
+        },
+        '0' => {
+            ts |> ts_bump();
+            ts |> tokenize_number_starting_with_zero()
+        },
+        '_' => {
+            ts |> ts_bump();
+            ts |> tokenize_ident_starting_with_underscore()
+        },
         c => {
-            eprint_sds("unknown char ", c as i32, "\n");
-            // FIXME: abort の結果を返すと void 型の変数が生成されてしまう
-            abort();
-            ts |> ts_commit(SyntaxKind::Eof)
+            if c8_is_digit(c) {
+                ts |> ts_bump();
+                ts |> tokenize_decimal()
+            } else if c8_is_ident(c) {
+                ts |> tokenize_ident()
+            } else {
+                // FIXME: else の後ろに書くと生成後の C コードにおいて変数 c が未定義参照になってしまう
+                eprint_sds("[ERROR] unknown char ", c as i32, "\n");
+                // FIXME: abort の結果を返すと void 型の変数が生成されてしまう
+                abort();
+                ts |> ts_commit(SyntaxKind::Eof)
+            }
         }
     }
 }
@@ -564,6 +773,15 @@ fn tokenize_tests(tt: *mut TestTools) {
 
     let buf = tokenize_dump("  \r\n\r\n  \n");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
+
+    let buf = tokenize_dump("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, BLANK, NUMBER, BLANK, NUMBER"));
+
+    let buf = tokenize_dump("_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("IDENT"));
+
+    let buf = tokenize_dump("_ __");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("UNDERSCORE, BLANK, IDENT"));
 }
 
 // -----------------------------------------------
