@@ -439,6 +439,9 @@ fn assert_eq_str(tt: *mut TestTools, actual: Str, expected: Str) {
 
 /// 構文木のノードやトークンの種類
 enum SyntaxKind {
+    /// 不正なトークン。
+    /// UTF-8 として解釈できない部分や、コメントや文字列の外側に識別子として使えない Unicode 文字があるときなど。
+    BadToken,
     /// End of file. 入力の末尾
     Eof,
     /// 1つ以上の改行
@@ -656,6 +659,7 @@ enum SyntaxKind {
 
 fn syntax_kind_is_leading_trivia(kind: SyntaxKind) -> bool {
     match kind {
+        SyntaxKind::BadToken => true,
         SyntaxKind::NewLines => true,
         SyntaxKind::Blank => true,
         SyntaxKind::Comment => true,
@@ -664,7 +668,9 @@ fn syntax_kind_is_leading_trivia(kind: SyntaxKind) -> bool {
 }
 
 fn syntax_kind_is_trailing_trivia(kind: SyntaxKind) -> bool {
+    // 改行は含まない。
     match kind {
+        SyntaxKind::BadToken => true,
         SyntaxKind::Blank => true,
         SyntaxKind::Comment => true,
         _ => false,
@@ -677,6 +683,7 @@ fn syntax_kind_is_trivia(kind: SyntaxKind) -> bool {
 
 fn syntax_kind_name(kind: SyntaxKind) -> Str {
     let name = match kind {
+        SyntaxKind::BadToken => "BAD_TOKEN",
         SyntaxKind::Eof => "EOF",
         SyntaxKind::NewLines => "NEW_LINES",
         SyntaxKind::Blank => "BLANK",
@@ -751,12 +758,12 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::While => "WHILE",
         SyntaxKind::With => "WITH",
         SyntaxKind::Yield => "YIELD",
-        SyntaxKind::LeftParen => "(",
-        SyntaxKind::RightParen => ")",
-        SyntaxKind::LeftBracket => "[",
-        SyntaxKind::RightBracket => "]",
-        SyntaxKind::LeftBrace => "{",
-        SyntaxKind::RightBrace => "}",
+        SyntaxKind::LeftParen => "LEFT_PAREN",
+        SyntaxKind::RightParen => "RIGHT_PAREN",
+        SyntaxKind::LeftBracket => "LEFT_BRACKET",
+        SyntaxKind::RightBracket => "RIGHT_BRACKET",
+        SyntaxKind::LeftBrace => "LEFT_BRACE",
+        SyntaxKind::RightBrace => "RIGHT_BRACE",
         SyntaxKind::And => "&",
         SyntaxKind::AndAnd => "&&",
         SyntaxKind::AndAndEqual => "&&=",
@@ -766,7 +773,7 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::BangEqualEqual => "!==",
         SyntaxKind::Colon => ":",
         SyntaxKind::ColonColon => "::",
-        SyntaxKind::Comma => ",",
+        SyntaxKind::Comma => "COMMA",
         SyntaxKind::Dot => ".",
         SyntaxKind::DotDot => "..",
         SyntaxKind::DotDotEqual => "..=",
@@ -1775,17 +1782,28 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
             ts |> tokenize_pun(kind, len)
         },
         c => {
+            // FIXME: early return にすると不正なコードが生成されるバグがある
             if c8_is_digit(c) {
                 ts |> ts_bump();
                 ts |> tokenize_decimal()
             } else if c8_is_ident(c) {
                 ts |> tokenize_ident()
             } else {
-                // FIXME: else の後ろに書くと生成後の C コードにおいて変数 c が未定義参照になってしまう
-                eprint_sds("[ERROR] unknown char ", c as i32, "\n");
-                // FIXME: abort の結果を返すと void 型の変数が生成されてしまう
-                abort();
-                ts |> ts_commit(SyntaxKind::Eof)
+                eprint_sds("[WARN] 解釈できない文字 ", c as i32, "\n");
+
+                // FIXME: 不正な文字だけスキップする
+                // Unicode 文字境界にハマらないように、とりあえず空白まで飛ばす。
+                loop {
+                    match ts |> ts_peek() {
+                        '\0' => break,
+                        '\r' => break,
+                        '\n' => break,
+                        ' ' => break,
+                        '\t' => break,
+                        _ => ts |> ts_bump(),
+                    }
+                }
+                ts |> ts_commit(SyntaxKind::BadToken)
             }
         }
     }
@@ -1870,8 +1888,13 @@ fn tokenize_tests(tt: *mut TestTools) {
 
     // 記号類
     let buf = tokenize_dump_without_trivia("||= || |> |= | >>> >>= >> >= > => === == = <=> <= <<= <<< << <-> <- < += ++ + ^= ^ %= % #! # &= &&= && & /= / *= * } { ] [ ) ( ..= ..< .. . ? !== != ! :: : ; , -> -= --> -- -");
-    let expected = "||=, ||, |>, |=, |, >>>, >>=, >>, >=, >, =>, ===, ==, =, <=>, <=, <<=, <<<, <<, <->, <-, <, +=, ++, +, ^=, ^, %=, %, #!, #, &=, &&=, &&, &, /=, /, *=, *, }, {, ], [, ), (, ..=, ..<, .., ., ?, !==, !=, !, ::, :, ;, ,, ->, -=, -->, --, -";
+    let expected = "||=, ||, |>, |=, |, >>>, >>=, >>, >=, >, =>, ===, ==, =, <=>, <=, <<=, <<<, <<, <->, <-, <, +=, ++, +, ^=, ^, %=, %, #!, #, &=, &&=, &&, &, /=, /, *=, *, RIGHT_BRACE, LEFT_BRACE, RIGHT_BRACKET, LEFT_BRACKET, RIGHT_PAREN, LEFT_PAREN, ..=, ..<, .., ., ?, !==, !=, !, ::, :, ;, COMMA, ->, -=, -->, --, -";
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw(expected));
+
+    // 不正な文字
+    // 「解釈できない文字 240」という警告が出る。
+    let buf = tokenize_dump("let 🐧;");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("LET, BLANK, BAD_TOKEN"));
 }
 
 // -----------------------------------------------
