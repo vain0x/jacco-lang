@@ -40,6 +40,7 @@ mod cps {
 
     mod cps_fold;
     mod eliminate_unit;
+    mod k_alias;
     mod k_command;
     mod k_const;
     mod k_enum;
@@ -65,6 +66,8 @@ mod cps {
 
     pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
+    #[allow(unused)]
+    pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline, KAliasTag};
     pub(crate) use k_command::KCommand;
     pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue};
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumTag, KVariant};
