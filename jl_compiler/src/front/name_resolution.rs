@@ -768,7 +768,8 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     resolve_variant(variant, None, None, nx);
                 }
             }
-            PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
+            PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) | PDecl::Use(_) => {
+            }
         }
     }
 
@@ -935,6 +936,9 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             if let Some(variant) = variant_opt {
                 resolve_variant2(variant, nx);
             }
+        }
+        PDecl::Use(PUseDecl { .. }) => {
+            // FIXME: 実装
         }
     }
 }

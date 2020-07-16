@@ -604,6 +604,15 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
                 error_behind_node(decl, "maybe missed a semicolon?", vx);
             }
         }
+        PDecl::Use(PUseDecl {
+            keyword, name_opt, ..
+        }) => {
+            if name_opt.is_none() {
+                error_token(*keyword, "maybe missed name to be used?", vx);
+            }
+
+            // FIXME: semi
+        }
     }
 }
 

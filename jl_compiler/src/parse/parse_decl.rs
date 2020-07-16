@@ -315,6 +315,19 @@ fn parse_struct_decl(px: &mut Px) -> PStructDecl {
     }
 }
 
+fn parse_use_decl(px: &mut Px) -> PUseDecl {
+    let keyword = px.expect(TokenKind::Use);
+
+    let name_opt = parse_name(px);
+    let semi_opt = px.eat(TokenKind::Semi);
+
+    PUseDecl {
+        keyword,
+        name_opt,
+        semi_opt,
+    }
+}
+
 fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
     // FIXME: const, struct
     let decl = match px.next() {
@@ -344,6 +357,7 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<PDecl> {
         }
         TokenKind::Enum => PDecl::Enum(parse_enum_decl(None, px)),
         TokenKind::Struct => PDecl::Struct(parse_struct_decl(px)),
+        TokenKind::Use => PDecl::Use(parse_use_decl(px)),
         _ => PDecl::Expr(parse_expr_decl(px)?),
     };
     Some(decl)

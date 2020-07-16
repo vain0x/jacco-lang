@@ -491,6 +491,13 @@ pub(crate) struct PStructDecl {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PUseDecl {
+    pub(crate) keyword: PToken,
+    pub(crate) name_opt: Option<PName>,
+    pub(crate) semi_opt: Option<PToken>,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum PDecl {
     Expr(PExprDecl),
     Let(PLetDecl),
@@ -500,6 +507,7 @@ pub(crate) enum PDecl {
     ExternFn(PExternFnDecl),
     Enum(PEnumDecl),
     Struct(PStructDecl),
+    Use(PUseDecl),
 }
 
 #[derive(Clone, Debug)]
@@ -591,6 +599,7 @@ impl_node! {
     PPat,
     PExpr,
     PVariantDecl,
+    PUseDecl,
     PDecl,
 }
 
@@ -893,6 +902,12 @@ impl PStructDecl {
     }
 }
 
+impl PUseDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.keyword
+    }
+}
+
 impl PRoot {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
         self.eof
@@ -960,6 +975,7 @@ impl PDecl {
             PDecl::ExternFn(inner) => inner.some_token(root),
             PDecl::Enum(inner) => inner.some_token(root),
             PDecl::Struct(inner) => inner.some_token(root),
+            PDecl::Use(inner) => inner.some_token(root),
         }
     }
 }

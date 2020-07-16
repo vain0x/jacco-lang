@@ -1207,7 +1207,6 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             static_var.of_mut(&mut gx.outlines.static_vars).value_opt = value_opt;
         }
-
         PDecl::Fn(PFnDecl {
             keyword,
             block_opt,
@@ -1292,6 +1291,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 gen_variant(variant, &mut 0, gx);
             }
         }
+        PDecl::Use(_) => {}
     }
 }
 
