@@ -193,15 +193,15 @@ impl Project {
         }
 
         let mut c_modules = vec![];
-        for ((doc, mod_outline), mod_data) in self
+        for (((k_mod, doc), mod_outline), mod_data) in self
             .mod_docs
-            .iter()
+            .enumerate()
             .zip(self.mod_outlines.iter())
             .zip(self.mods.iter())
         {
             let id = doc.inner();
             let name = &self.docs[id].name;
-            let code = clang_dump(mod_outline, mod_data);
+            let code = clang_dump(k_mod, mod_outline, mod_data, &self.mod_outlines);
             c_modules.push((*doc, name.as_str(), code));
         }
         Ok(c_modules)

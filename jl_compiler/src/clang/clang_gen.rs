@@ -13,6 +13,7 @@ type IdentMap = HashMap<String, IdProvider>;
 /// C code generation context.
 struct Cx<'a> {
     outlines: &'a KModOutline,
+    mod_outlines: &'a KModOutlines,
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
@@ -28,9 +29,10 @@ struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(outlines: &'a KModOutline) -> Self {
+    fn new(mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
         Self {
-            outlines,
+            outlines: mod_outline,
+            mod_outlines,
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
             fn_ident_ids: Default::default(),
@@ -254,8 +256,8 @@ fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     (name, gen_ty(&ty, &ty_env, cx))
 }
 
-fn emit_const(k_const: KConst, cx: &mut Cx) -> CExpr {
-    match &k_const.of(&cx.outlines.consts).value_opt {
+fn emit_const(const_data: &KConstData) -> CExpr {
+    match &const_data.value_opt {
         Some(value) => gen_constant_value(value),
         None => gen_invalid_constant_value(),
     }
@@ -303,10 +305,12 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
         KTerm::Alias { alias, location } => match alias.of(&cx.outlines.aliases).referent() {
-            Some(KProjectSymbol::ModLocal { symbol, .. }) => {
+            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => {
                 // FIXME: 対象のモジュールの outlines を参照する
                 match symbol {
-                    KModLocalSymbol::Const(k_const) => emit_const(k_const, cx),
+                    KModLocalSymbol::Const(k_const) => {
+                        emit_const(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
+                    }
                     KModLocalSymbol::StaticVar(static_var) => emit_static_var(static_var, cx),
                     KModLocalSymbol::Fn(k_fn) => emit_fn_term(k_fn, cx),
                     KModLocalSymbol::ExternFn(extern_fn) => emit_extern_fn_term(extern_fn, cx),
@@ -327,7 +331,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Other("/* unresolved alias */")
             }
         },
-        KTerm::Const { k_const, .. } => emit_const(*k_const, cx),
+        KTerm::Const { k_const, .. } => emit_const((*k_const).of(&cx.outlines.consts)),
         KTerm::StaticVar { static_var, .. } => emit_static_var(*static_var, cx),
         KTerm::Fn { k_fn, .. } => emit_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
@@ -862,8 +866,13 @@ fn gen_root(root: &KModData, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(outlines: &KModOutline, k_root: &KModData) -> CRoot {
-    let mut cx = Cx::new(outlines);
-    gen_root(k_root, &mut cx);
+pub(crate) fn gen(
+    _mod: KMod,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
+    mod_outlines: &KModOutlines,
+) -> CRoot {
+    let mut cx = Cx::new(mod_outline, mod_outlines);
+    gen_root(mod_data, &mut cx);
     CRoot { decls: cx.decls }
 }
