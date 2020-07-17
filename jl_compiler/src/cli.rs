@@ -1,6 +1,9 @@
 use crate::{
     clang::clang_dump,
-    cps::{eliminate_unit, resolve_types, KEnumOutline, KModData, KModOutline, KModTag},
+    cps::{
+        eliminate_unit, resolve_aliases, resolve_types, KEnumOutline, KModData, KModOutline,
+        KModTag,
+    },
     front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
     logs::Logs,
     parse::{parse_tokens, PRoot, PToken, PTokens},
@@ -39,7 +42,8 @@ pub struct Project {
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
     names: VecArena<DocTag, (NameResolution, Logs)>,
-    mod_outlines: VecArena<KModTag, (Doc, KModOutline)>,
+    mod_docs: VecArena<KModTag, Doc>,
+    mod_outlines: VecArena<KModTag, KModOutline>,
     mods: VecArena<KModTag, KModData>,
 }
 
@@ -119,10 +123,14 @@ impl Project {
             let (mod_outline, mod_data) =
                 cps_conversion(&syntax.root, name_resolution, logs.logger());
 
-            let k_mod = self.mod_outlines.alloc((doc, mod_outline));
+            let k_mod = self.mod_outlines.alloc(mod_outline);
             {
                 let k_mod2 = self.mods.alloc(mod_data);
                 assert_eq!(k_mod, k_mod2);
+            }
+            {
+                let k_mod3 = self.mod_docs.alloc(doc);
+                assert_eq!(k_mod, k_mod3);
             }
         }
 
@@ -140,8 +148,15 @@ impl Project {
         }
 
         let logs = Logs::new();
+        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
+        for k_mod in mod_ids {
+            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
+            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
+            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
+        }
+
         let mut mods = take(&mut self.mods);
-        for ((_, (_, mod_outline)), ref mut mod_data) in
+        for ((_, mod_outline), ref mut mod_data) in
             self.mod_outlines.enumerate().zip(mods.iter_mut())
         {
             resolve_types(mod_outline, *mod_data, logs.logger());
@@ -167,9 +182,7 @@ impl Project {
             return Err(errors);
         }
 
-        for ((_, mod_outline), ref mut mod_data) in
-            self.mod_outlines.iter_mut().zip(self.mods.iter_mut())
-        {
+        for (mod_outline, mod_data) in self.mod_outlines.iter_mut().zip(self.mods.iter_mut()) {
             KEnumOutline::determine_tags(
                 &mut mod_outline.consts,
                 &mut mod_outline.enums,
@@ -180,7 +193,12 @@ impl Project {
         }
 
         let mut c_modules = vec![];
-        for ((doc, mod_outline), mod_data) in self.mod_outlines.iter().zip(self.mods.iter()) {
+        for ((doc, mod_outline), mod_data) in self
+            .mod_docs
+            .iter()
+            .zip(self.mod_outlines.iter())
+            .zip(self.mods.iter())
+        {
             let id = doc.inner();
             let name = &self.docs[id].name;
             let code = clang_dump(mod_outline, mod_data);

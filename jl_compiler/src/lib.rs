@@ -94,7 +94,10 @@ mod cps {
     pub(crate) use type_resolution::resolve_types;
 
     #[allow(unused)]
-    pub(crate) use k_mod::{KMod, KModArena, KModData, KModOutline, KModOutlines, KModTag};
+    pub(crate) use k_mod::{
+        resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,
+        KModOutlines, KModTag, KProjectSymbol,
+    };
     #[allow(unused)]
     pub(crate) use k_project::{KProject, KProjectArena, KProjectData, KProjectTag};
 
