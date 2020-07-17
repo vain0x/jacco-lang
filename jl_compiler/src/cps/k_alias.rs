@@ -15,14 +15,16 @@ pub(crate) type KAliasArena = VecArena<KAliasTag, KAliasOutline>;
 
 #[derive(Debug)]
 pub(crate) struct KAliasOutline {
+    name: String,
     path: Vec<String>,
     location: Location,
     referent_opt: Option<KProjectSymbol>,
 }
 
 impl KAliasOutline {
-    pub(crate) fn new(path: Vec<String>, location: Location) -> KAliasOutline {
+    pub(crate) fn new(name: String, path: Vec<String>, location: Location) -> KAliasOutline {
         KAliasOutline {
+            name,
             path,
             location,
             referent_opt: None,
@@ -30,10 +32,7 @@ impl KAliasOutline {
     }
 
     pub(crate) fn name(&self) -> &str {
-        match self.path.last() {
-            Some(name) => name.as_str(),
-            None => "<anonymous_alias>",
-        }
+        &self.name
     }
 
     pub(crate) fn path(&self) -> &[String] {
@@ -42,6 +41,10 @@ impl KAliasOutline {
 
     pub(crate) fn location(&self) -> Location {
         self.location
+    }
+
+    pub(crate) fn referent(&self) -> Option<KProjectSymbol> {
+        self.referent_opt
     }
 
     pub(crate) fn bind(&mut self, referent: KProjectSymbol) {

@@ -307,6 +307,7 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
     let (name, location) = (name.text(&gx.names).to_string(), name.location());
 
     match *n_name {
+        NName::Alias(alias) => KSymbolExt::Alias { alias, location },
         NName::LocalVar(local) => {
             let local_data = &mut gx.current_locals[local];
             local_data.name = name.to_string();
@@ -523,6 +524,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                     error!("unresolved name {:?}", (name, location));
                     new_unit_term(location)
                 }
+                KSymbolExt::Alias{ alias, location } => KTerm::Alias { alias, location },
                 KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
                 KSymbolExt::Const(k_const) => KTerm::Const { k_const, location },
                 KSymbolExt::StaticVar(static_var) => KTerm::StaticVar {

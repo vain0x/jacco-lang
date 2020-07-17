@@ -149,6 +149,8 @@ pub(crate) fn resolve_aliases(
                 continue;
             }
         };
+
+        // FIXME: privacy 検査
         alias_data.bind(referent);
     }
 }

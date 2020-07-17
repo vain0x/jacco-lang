@@ -1,4 +1,6 @@
-use super::{k_local::KLocalArena, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct, KTy};
+use super::{
+    k_local::KLocalArena, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct, KTy,
+};
 use crate::token::{HaveLocation, Location};
 
 /// ローカル変数の出現
@@ -28,6 +30,10 @@ impl HaveLocation for KSymbol {
 #[derive(Clone, Debug)]
 pub(crate) enum KSymbolExt {
     Unresolved,
+    Alias {
+        alias: KAlias,
+        location: Location,
+    },
     Symbol(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),

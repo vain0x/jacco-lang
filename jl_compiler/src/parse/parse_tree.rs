@@ -6,7 +6,10 @@ use crate::{
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
-use std::fmt::{self, Debug, Formatter};
+use std::{
+    fmt::{self, Debug, Formatter},
+    iter::once,
+};
 
 #[derive(Copy, Clone)]
 pub(crate) struct PLoc {
@@ -79,6 +82,15 @@ impl PName {
 
     pub(crate) fn full_name(self, names: &PNameArena) -> String {
         names[self].full_name.to_string()
+    }
+
+    pub(crate) fn name_path(self, names: &PNameArena, tokens: &PTokens) -> Vec<String> {
+        names[self]
+            .quals
+            .iter()
+            .map(|q| q.name.text(&tokens).to_string())
+            .chain(once(names[self].text.to_string()))
+            .collect()
     }
 }
 

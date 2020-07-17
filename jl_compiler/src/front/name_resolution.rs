@@ -3,9 +3,9 @@
 use super::*;
 use crate::{
     cps::{
-        KConst, KConstTag, KEnum, KEnumTag, KExternFn, KExternFnTag, KField, KFieldTag, KFn,
-        KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag, KStruct, KStructTag, KSymbol, KTy,
-        KVariant, KVis,
+        KAlias, KAliasArena, KAliasOutline, KConst, KConstTag, KEnum, KEnumTag, KExternFn,
+        KExternFnTag, KField, KFieldTag, KFn, KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag,
+        KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
     utils::{VecArena, VecArenaId},
 };
@@ -113,6 +113,7 @@ pub(crate) enum DefOrUse {
 pub(crate) struct NameResolution {
     pub(crate) names: VecArena<PNameTag, NName>,
     pub(crate) occurrences: VecArena<PNameTag, (NAbsName, DefOrUse)>,
+    pub(crate) aliases: KAliasArena,
     pub(crate) consts: NConstArena,
     pub(crate) static_vars: NStaticVarArena,
     pub(crate) fns: NFnArena,
@@ -125,6 +126,7 @@ pub(crate) struct NameResolution {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum NName {
     Unresolved,
+    Alias(KAlias),
     LocalVar(KLocal),
     Const(KConst),
     StaticVar(KStaticVar),
@@ -937,8 +939,21 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 resolve_variant2(variant, nx);
             }
         }
-        PDecl::Use(PUseDecl { .. }) => {
-            // FIXME: 実装
+        PDecl::Use(PUseDecl { name_opt, .. }) => {
+            if let Some(p_name) = name_opt {
+                // alloc alias
+                let alias = {
+                    let location = p_name.of(&nx.names).token.of(&nx.tokens).location();
+                    let path = p_name.name_path(&nx.names, &nx.tokens);
+                    let name = p_name.text(&nx.names).to_string();
+
+                    nx.res
+                        .aliases
+                        .alloc(KAliasOutline::new(name, path, location))
+                };
+
+                resolve_name_def(*p_name, NName::Alias(alias), nx);
+            }
         }
     }
 }

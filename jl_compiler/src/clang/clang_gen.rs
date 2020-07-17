@@ -254,6 +254,25 @@ fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     (name, gen_ty(&ty, &ty_env, cx))
 }
 
+fn emit_const(k_const: KConst, cx: &mut Cx) -> CExpr {
+    match &k_const.of(&cx.outlines.consts).value_opt {
+        Some(value) => gen_constant_value(value),
+        None => gen_invalid_constant_value(),
+    }
+}
+
+fn emit_static_var(static_var: KStaticVar, cx: &mut Cx) -> CExpr {
+    CExpr::Name(unique_static_var_name(static_var, cx))
+}
+
+fn emit_fn_term(k_fn: KFn, cx: &mut Cx) -> CExpr {
+    CExpr::Name(unique_fn_name(k_fn, cx))
+}
+
+fn emit_extern_fn_term(extern_fn: KExternFn, cx: &mut Cx) -> CExpr {
+    CExpr::Name(unique_extern_fn_name(extern_fn, cx))
+}
+
 fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => {
@@ -283,18 +302,40 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         },
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
-        KTerm::Const { k_const, .. } => match &(*k_const).of(&cx.outlines.consts).value_opt {
-            Some(value) => gen_constant_value(value),
-            None => gen_invalid_constant_value(),
+        KTerm::Alias { alias, location } => match alias.of(&cx.outlines.aliases).referent() {
+            Some(KProjectSymbol::ModLocal { symbol, .. }) => {
+                // FIXME: 対象のモジュールの outlines を参照する
+                match symbol {
+                    KModLocalSymbol::Const(k_const) => emit_const(k_const, cx),
+                    KModLocalSymbol::StaticVar(static_var) => emit_static_var(static_var, cx),
+                    KModLocalSymbol::Fn(k_fn) => emit_fn_term(k_fn, cx),
+                    KModLocalSymbol::ExternFn(extern_fn) => emit_extern_fn_term(extern_fn, cx),
+                    KModLocalSymbol::LocalVar { .. }
+                    | KModLocalSymbol::Alias(_)
+                    | KModLocalSymbol::Enum(_)
+                    | KModLocalSymbol::Struct(_) => {
+                        unreachable!("別名の参照先が不正です {:?}", (symbol, location))
+                    }
+                }
+            }
+            Some(KProjectSymbol::Mod(_)) => {
+                error!("モジュールを指す別名はCの式になりません {:?}", location);
+                CExpr::Other("/* error: mod alias */")
+            }
+            None => {
+                error!("未解決の別名をCの式にしようとしました {:?}", location);
+                CExpr::Other("/* unresolved alias */")
+            }
         },
-        KTerm::StaticVar { static_var, .. } => CExpr::Name(unique_static_var_name(*static_var, cx)),
-        KTerm::Fn { k_fn, .. } => CExpr::Name(unique_fn_name(*k_fn, cx)),
+        KTerm::Const { k_const, .. } => emit_const(*k_const, cx),
+        KTerm::StaticVar { static_var, .. } => emit_static_var(*static_var, cx),
+        KTerm::Fn { k_fn, .. } => emit_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
         KTerm::Return { k_fn, .. } => {
             error!("can't gen return term to c {}", unique_fn_name(*k_fn, cx));
             CExpr::Other("/* error */ 0")
         }
-        KTerm::ExternFn { extern_fn, .. } => CExpr::Name(unique_extern_fn_name(*extern_fn, cx)),
+        KTerm::ExternFn { extern_fn, .. } => emit_extern_fn_term(*extern_fn, cx),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {

@@ -213,6 +213,10 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Char(_) => KTy::C8,
         KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
+        KTerm::Alias { .. } => {
+            // FIXME: 実装. 別のモジュールの outlines を tx に入れておく必要がある
+            KTy::Unresolved
+        }
         KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts),
         KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns),

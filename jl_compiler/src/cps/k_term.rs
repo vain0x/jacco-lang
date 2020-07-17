@@ -14,6 +14,10 @@ pub(crate) enum KTerm {
     True(TokenData),
     False(TokenData),
     Name(KSymbol),
+    Alias {
+        alias: KAlias,
+        location: Location,
+    },
     Const {
         k_const: KConst,
         location: Location,
@@ -60,6 +64,10 @@ impl KTerm {
             KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
             KTerm::True(_) | KTerm::False(_) => KTy::Bool,
             KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
+            KTerm::Alias { .. } => {
+                // FIXME: 実装. プロジェクト全体の outlines を受け取る必要がある
+                KTy::Unresolved
+            }
             KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts),
             KTerm::StaticVar { static_var, .. } => static_var.ty(&outlines.static_vars).clone(),
             KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns),
@@ -86,6 +94,7 @@ impl KTerm {
             KTerm::True(token) => token.location(),
             KTerm::False(token) => token.location(),
             KTerm::Name(KSymbol { location, .. })
+            | KTerm::Alias { location, .. }
             | KTerm::Const { location, .. }
             | KTerm::StaticVar { location, .. }
             | KTerm::Fn { location, .. }
@@ -109,6 +118,7 @@ impl Debug for KTerm {
             KTerm::True(token) => write!(f, "{}", token.text()),
             KTerm::False(token) => write!(f, "{}", token.text()),
             KTerm::Name(symbol) => Debug::fmt(symbol, f),
+            KTerm::Alias { alias, .. } => write!(f, "alias#{}", alias.to_index()),
             KTerm::Const { k_const, .. } => write!(f, "const#{}", k_const.to_index()),
             KTerm::StaticVar { static_var, .. } => {
                 write!(f, "static_var#{}", static_var.to_index())
