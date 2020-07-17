@@ -305,23 +305,20 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True(_) => CExpr::BoolLit("1"),
         KTerm::False(_) => CExpr::BoolLit("0"),
         KTerm::Alias { alias, location } => match alias.of(&cx.outlines.aliases).referent() {
-            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => {
-                // FIXME: 対象のモジュールの outlines を参照する
-                match symbol {
-                    KModLocalSymbol::Const(k_const) => {
-                        gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
-                    }
-                    KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
-                    KModLocalSymbol::Fn(k_fn) => gen_fn_term(k_fn, cx),
-                    KModLocalSymbol::ExternFn(extern_fn) => gen_extern_fn_term(extern_fn, cx),
-                    KModLocalSymbol::LocalVar { .. }
-                    | KModLocalSymbol::Alias(_)
-                    | KModLocalSymbol::Enum(_)
-                    | KModLocalSymbol::Struct(_) => {
-                        unreachable!("別名の参照先が不正です {:?}", (symbol, location))
-                    }
+            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+                KModLocalSymbol::Const(k_const) => {
+                    gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
                 }
-            }
+                KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
+                KModLocalSymbol::Fn(k_fn) => gen_fn_term(k_fn, cx),
+                KModLocalSymbol::ExternFn(extern_fn) => gen_extern_fn_term(extern_fn, cx),
+                KModLocalSymbol::LocalVar { .. }
+                | KModLocalSymbol::Alias(_)
+                | KModLocalSymbol::Enum(_)
+                | KModLocalSymbol::Struct(_) => {
+                    unreachable!("別名の参照先が不正です {:?}", (symbol, location))
+                }
+            },
             Some(KProjectSymbol::Mod(_)) => {
                 error!("モジュールを指す別名はCの式になりません {:?}", location);
                 CExpr::Other("/* error: mod alias */")
