@@ -159,7 +159,7 @@ impl Project {
         for ((_, mod_outline), ref mut mod_data) in
             self.mod_outlines.enumerate().zip(mods.iter_mut())
         {
-            resolve_types(mod_outline, *mod_data, logs.logger());
+            resolve_types(mod_outline, *mod_data, &self.mod_outlines, logs.logger());
         }
         self.mods = mods;
 

@@ -1,8 +1,9 @@
 use super::{
     k_const::KConstArena, k_enum::KEnumArena, k_extern_fn::KExternFnOutlineArena,
     k_fn::KFnOutlineArena, k_static_var::KStaticVarArena, k_struct::KStructArena, KAlias,
-    KAliasArena, KConst, KEnum, KExternFn, KExternFnArena, KFieldArena, KFn, KFnArena, KLocal,
-    KStaticVar, KStruct,
+    KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn, KExternFnArena,
+    KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLocal, KStaticVar, KStaticVarData,
+    KStruct, KStructOutline,
 };
 use crate::{
     logs::Logger,
@@ -65,6 +66,50 @@ pub(crate) enum KModLocalSymbol {
     Alias(KAlias),
 }
 
+impl KModLocalSymbol {
+    pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModLocalSymbolOutline<'_> {
+        match self {
+            KModLocalSymbol::Alias(alias) => {
+                KModLocalSymbolOutline::Alias(alias, alias.of(&mod_outline.aliases))
+            }
+            KModLocalSymbol::LocalVar { parent, local_var } => {
+                KModLocalSymbolOutline::LocalVar(parent, local_var)
+            }
+            KModLocalSymbol::Const(k_const) => {
+                KModLocalSymbolOutline::Const(k_const, k_const.of(&mod_outline.consts))
+            }
+            KModLocalSymbol::StaticVar(static_var) => KModLocalSymbolOutline::StaticVar(
+                static_var,
+                static_var.of(&mod_outline.static_vars),
+            ),
+            KModLocalSymbol::Fn(k_fn) => {
+                KModLocalSymbolOutline::Fn(k_fn, k_fn.of(&mod_outline.fns))
+            }
+            KModLocalSymbol::ExternFn(extern_fn) => {
+                KModLocalSymbolOutline::ExternFn(extern_fn, extern_fn.of(&mod_outline.extern_fns))
+            }
+            KModLocalSymbol::Enum(k_enum) => {
+                KModLocalSymbolOutline::Enum(k_enum, k_enum.of(&mod_outline.enums))
+            }
+            KModLocalSymbol::Struct(k_struct) => {
+                KModLocalSymbolOutline::Struct(k_struct, k_struct.of(&mod_outline.structs))
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum KModLocalSymbolOutline<'a> {
+    LocalVar(KLocalVarParent, KLocal),
+    Const(KConst, &'a KConstData),
+    StaticVar(KStaticVar, &'a KStaticVarData),
+    Fn(KFn, &'a KFnOutline),
+    ExternFn(KExternFn, &'a KExternFnOutline),
+    Enum(KEnum, &'a KEnumOutline),
+    Struct(KStruct, &'a KStructOutline),
+    Alias(KAlias, &'a KAliasOutline),
+}
+
 #[allow(unused)]
 /// プロジェクト内で定義されるシンボルの名前。それが属するプロジェクトを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -74,6 +119,44 @@ pub(crate) enum KProjectSymbol {
         k_mod: KMod,
         symbol: KModLocalSymbol,
     },
+}
+
+impl KProjectSymbol {
+    pub(crate) fn outline<'a>(self, mod_outlines: &'a KModOutlines) -> KProjectSymbolOutline<'a> {
+        let (k_mod, symbol) = match self {
+            KProjectSymbol::ModLocal { k_mod, symbol } => (k_mod, symbol),
+            KProjectSymbol::Mod(k_mod) => {
+                return KProjectSymbolOutline::Mod(k_mod, k_mod.of(mod_outlines));
+            }
+        };
+
+        let mod_outline = k_mod.of(mod_outlines);
+        let symbol_outline = symbol.outline(mod_outline);
+        KProjectSymbolOutline::ModLocal {
+            k_mod,
+            mod_outline,
+            symbol_outline,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum KProjectSymbolOutline<'a> {
+    Mod(KMod, &'a KModOutline),
+    ModLocal {
+        k_mod: KMod,
+        mod_outline: &'a KModOutline,
+        symbol_outline: KModLocalSymbolOutline<'a>,
+    },
+}
+
+impl KAliasOutline {
+    pub(crate) fn referent_outline<'a>(
+        &self,
+        mod_outlines: &'a KModOutlines,
+    ) -> Option<KProjectSymbolOutline<'a>> {
+        self.referent().map(|symbol| symbol.outline(mod_outlines))
+    }
 }
 
 pub(crate) fn resolve_aliases(

@@ -1,31 +1,36 @@
 //! 型推論・型検査
 
 use super::*;
+use k_mod::KModLocalSymbolOutline;
 use k_ty_env::KEnumOrStruct;
 use std::mem::{swap, take};
 
-/// Typing context.
+/// Typing context. 型検査の状態
 struct Tx<'a> {
-    // 現在の関数の型環境
+    /// 現在の関数の型環境
     ty_env: KTyEnv,
-    // 現在の関数に含まれるローカル変数の情報
+    /// 現在の関数に含まれるローカル変数の情報
     locals: KLocalArena,
-    // 現在の関数に含まれるラベルのシグネチャ情報
+    /// 現在の関数に含まれるラベルのシグネチャ情報
     label_sigs: KLabelSigArena,
-    // 現在の関数の return ラベルの型
+    /// 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
+    /// 検査対象のモジュールのアウトライン
     outlines: &'a KModOutline,
+    /// プロジェクト内のモジュールのアウトライン
+    mod_outlines: &'a KModOutlines,
     logger: Logger,
 }
 
 impl<'a> Tx<'a> {
-    fn new(outlines: &'a KModOutline, logger: Logger) -> Self {
+    fn new(outlines: &'a KModOutline, mod_outlines: &'a KModOutlines, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             locals: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
             outlines,
+            mod_outlines,
             logger,
         }
     }
@@ -191,6 +196,53 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) -> KTy {
     }
 }
 
+fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy {
+    let outline = match alias
+        .of(&tx.outlines.aliases)
+        .referent_outline(&tx.mod_outlines)
+    {
+        Some(outline) => outline,
+        None => {
+            tx.logger.error(
+                location,
+                "解決されていないエイリアスの型が {unresolved} になりました",
+            );
+            return KTy::Unresolved;
+        }
+    };
+
+    match outline {
+        k_mod::KProjectSymbolOutline::Mod(..) => {
+            tx.logger.error(
+                location,
+                "モジュールを指すエイリアスを値として使うことはできません",
+            );
+            KTy::Never
+        }
+        k_mod::KProjectSymbolOutline::ModLocal { symbol_outline, .. } => match symbol_outline {
+            KModLocalSymbolOutline::Alias(alias, alias_data) => {
+                resolve_alias_term(alias, alias_data.location(), tx)
+            }
+            KModLocalSymbolOutline::Const(_, const_data) => const_data.value_ty.clone(),
+            KModLocalSymbolOutline::StaticVar(_, static_var_outline) => {
+                static_var_outline.ty.clone()
+            }
+            KModLocalSymbolOutline::Fn(_, fn_outline) => fn_outline.ty(),
+            KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => extern_fn_outline.ty(),
+            KModLocalSymbolOutline::Enum(_, _) | KModLocalSymbolOutline::Struct(_, _) => {
+                tx.logger
+                    .unimpl(location, "インポートされた型の型検査は未実装です");
+                KTy::Never
+            }
+            KModLocalSymbolOutline::LocalVar(..) => {
+                tx.logger
+                    .unexpected(location, "エイリアスがローカル変数を指すことはありません");
+                KTy::Never
+            }
+        },
+    }
+}
+
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
     match term {
         KTerm::Unit { .. } => KTy::Unit,
@@ -213,10 +265,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Char(_) => KTy::C8,
         KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
-        KTerm::Alias { .. } => {
-            // FIXME: 実装. 別のモジュールの outlines を tx に入れておく必要がある
-            KTy::Unresolved
-        }
+        KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),
         KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts),
         KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns),
@@ -720,7 +769,12 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(outlines: &KModOutline, mod_data: &mut KModData, logger: Logger) {
-    let mut tx = Tx::new(&outlines, logger);
+pub(crate) fn resolve_types(
+    outlines: &KModOutline,
+    mod_data: &mut KModData,
+    mod_outlines: &KModOutlines,
+    logger: Logger,
+) {
+    let mut tx = Tx::new(outlines, mod_outlines, logger);
     resolve_root(mod_data, &mut tx);
 }

@@ -34,10 +34,7 @@ impl KFn {
     }
 
     pub(crate) fn ty(self, fns: &KFnOutlineArena) -> KTy {
-        KTy::Fn {
-            param_tys: self.param_tys(fns).to_owned(),
-            result_ty: Box::new(self.result_ty(fns).clone()),
-        }
+        fns[self].ty()
     }
 
     pub(crate) fn is_pub(self, fns: &KFnOutlineArena) -> bool {
@@ -52,6 +49,15 @@ pub(crate) struct KFnOutline {
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
+}
+
+impl KFnOutline {
+    pub(crate) fn ty(&self) -> KTy {
+        KTy::Fn {
+            param_tys: self.param_tys.clone(),
+            result_ty: Box::new(self.result_ty.clone()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

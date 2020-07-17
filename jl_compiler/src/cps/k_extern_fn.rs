@@ -26,10 +26,7 @@ impl KExternFn {
     }
 
     pub(crate) fn ty(self, extern_fns: &KExternFnOutlineArena) -> KTy {
-        KTy::Fn {
-            param_tys: self.param_tys(extern_fns).to_owned(),
-            result_ty: Box::new(self.result_ty(extern_fns).clone()),
-        }
+        extern_fns[self].ty()
     }
 }
 
@@ -39,6 +36,15 @@ pub(crate) struct KExternFnOutline {
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) location: Location,
+}
+
+impl KExternFnOutline {
+    pub(crate) fn ty(&self) -> KTy {
+        KTy::Fn {
+            param_tys: self.param_tys.clone(),
+            result_ty: Box::new(self.result_ty.clone()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

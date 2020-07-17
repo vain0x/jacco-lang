@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::KProjectSymbol;
+use super::{KModLocalSymbol, KProjectSymbol};
 use crate::{
     front::NName,
     token::Location,
@@ -47,7 +47,31 @@ impl KAliasOutline {
         self.referent_opt
     }
 
+    fn verify_bind(&mut self, referent: KProjectSymbol) -> bool {
+        match referent {
+            KProjectSymbol::Mod(_) => true,
+            KProjectSymbol::ModLocal { symbol, .. } => match symbol {
+                KModLocalSymbol::LocalVar { .. } => {
+                    log::error!(
+                        "エイリアスにはローカル変数をバインドできません {:?}",
+                        referent
+                    );
+                    false
+                }
+                KModLocalSymbol::Alias(alias) => {
+                    log::error!("エイリアスにエイリアスをバインドしようとしていますが、無視されます。再エクスポート (pub use) は未実装です {:?}", referent);
+                    false
+                }
+                _ => true,
+            },
+        }
+    }
+
     pub(crate) fn bind(&mut self, referent: KProjectSymbol) {
+        if !self.verify_bind(referent) {
+            return;
+        }
+
         let old_referent = self.referent_opt.replace(referent);
         assert_eq!(old_referent, None);
     }

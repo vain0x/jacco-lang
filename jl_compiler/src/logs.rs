@@ -83,4 +83,12 @@ impl Logger {
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLocation { message, location });
     }
+
+    pub(crate) fn unexpected(&self, have_location: impl HaveLocation, message: impl Into<String>) {
+        self.error(have_location, format!("[バグ?] {}", message.into()))
+    }
+
+    pub(crate) fn unimpl(&self, have_location: impl HaveLocation, message: impl Into<String>) {
+        self.error(have_location, format!("[未実装?] {}", message.into()))
+    }
 }
