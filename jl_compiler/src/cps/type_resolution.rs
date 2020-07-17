@@ -46,7 +46,11 @@ fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
         (KTy::Never, _) | (_, KTy::Never) => {}
 
         (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
-            unreachable!("don't try to unify unresolved meta tys (other={:?})", other)
+            log::error!(
+                "don't try to unify unresolved meta tys (other={:?}, location={:?})",
+                other,
+                location
+            );
         }
         (KTy::Meta(left), KTy::Meta(right)) if left == right => {}
         (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {

@@ -1,0 +1,13 @@
+void main();
+
+void main() {
+    // call_result_1 is killed.
+    main();
+    return;
+}
+
+void another_fn();
+
+void another_fn() {
+    return;
+}

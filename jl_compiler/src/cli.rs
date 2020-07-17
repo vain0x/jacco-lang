@@ -152,8 +152,9 @@ impl Project {
                 continue;
             }
 
-            let (mod_outline, mod_data) =
+            let (mut mod_outline, mod_data) =
                 cps_conversion(&syntax.root, name_resolution, logs.logger());
+            mod_outline.name = self.docs[id].name.to_string();
 
             let k_mod = self.mod_outlines.alloc(mod_outline);
             {

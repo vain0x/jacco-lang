@@ -1469,6 +1469,8 @@ pub(crate) fn cps_conversion(
         gx.names = p_root.names.clone();
         gx.name_res = name_resolution.names.clone();
 
+        gx.outlines.aliases = name_resolution.aliases.clone();
+
         gx.outlines.consts = VecArena::from_vec(k_consts);
 
         gx.outlines.static_vars = VecArena::from_vec(static_vars);
