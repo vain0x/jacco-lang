@@ -17,6 +17,75 @@ fn panic(s: *c8) -> ! {
     abort()
 }
 
+fn dyn_assert(cond: bool, message: *c8) {
+    if !cond {
+        eprint_s("[ERROR] 表明違反！\n");
+        eprint_s(message);
+        eprint_s("\n");
+        abort();
+    }
+}
+
+// -----------------------------------------------
+// アラインメント
+// -----------------------------------------------
+
+struct Align {
+    value: usize,
+}
+
+fn align1() -> Align {
+    Align {
+        value: 1_usize,
+    }
+}
+
+fn align_from_i32(align: i32) -> Align {
+    dyn_assert(align >= 1, "alignment must be >= 1");
+    dyn_assert(align & (align - 1) == 0, "alignment must be 2^N");
+
+    Align {
+        value: align as usize,
+    }
+}
+
+// fn is_aligned(align: Align, value: usize) -> usize {
+//     let mask = align.value - 1;
+//     value & mask == 0
+// }
+
+/// アラインメントの倍数に切り上げる。
+fn align_ceil(align: Align, value: usize) -> usize {
+    let mask = align.value - 1_usize;
+    (value + mask) & usize_bitwise_not(mask)
+}
+
+/// サイズ 0 のメモリ領域を指す、アラインされたポインタを作る。
+fn aligned_ptr(align: Align) -> *mut () {
+    align.value as *mut()
+}
+
+/// アラインされたバイト単位のサイズ
+struct AlignedSize {
+    size: usize,
+    align: Align,
+}
+
+/// 1-byte アラインメントのサイズ
+fn aligned_size_of_align1(size: usize) -> AlignedSize {
+    AlignedSize {
+        size: size,
+        align: align1(),
+    }
+}
+
+fn aligned_size_by_ceiling(size: usize, align: Align) -> AlignedSize {
+    AlignedSize {
+        size: align_ceil(align, size),
+        align: align,
+    }
+}
+
 // -----------------------------------------------
 // メモリ管理
 // -----------------------------------------------
@@ -34,25 +103,28 @@ fn heap_new() -> Heap {
 
 fn heap_drop(_heap: Heap) {}
 
-/// `alignment * count` バイトのメモリを動的確保する。
+/// メモリを動的確保する。
 ///
-/// 返されるポインタは NULL ではなく、`alignment` の倍数である。
+/// 返されるポインタは NULL ではなく、アラインメントされている。
 /// 書き込まれている値は未定義。
-fn heap_alloc(_heap: *mut Heap, alignment: usize, count: usize) -> *mut ()
-    // ensures(p) p != 0 && (alignment != 0 && count != 0 --> p % alignment == 0)
+fn heap_alloc(_heap: *mut Heap, aligned_size: AlignedSize) -> *mut ()
+    // ensures(p) p != nullptr && p % aligned_size.align == 0
 {
+    let align = aligned_size.align;
+    let size = aligned_size.size;
+
     // 0 バイトの確保は malloc に要求しない。
-    if (alignment | count) == 0_usize {
-        return 1 as *mut ();
+    if size == 0_usize {
+        return aligned_ptr(align);
     }
 
     // 巨大なメモリの確保はエラーで落とす。
-    if 1_000_000_000_usize / alignment <= count {
+    if size > 1_000_000_000_usize {
         panic("OUT OF MEMORY");
     }
 
-    eprint_sds("[TRACE] malloc(", (alignment * count) as i32, ")\n");
-    let ptr = malloc(alignment * count);
+    eprint_sds("[TRACE] malloc(", size as i32, ")\n");
+    let ptr = malloc(size);
     if ptr as usize == 0_usize {
         panic("OUT OF MEMORY");
     }
@@ -60,17 +132,20 @@ fn heap_alloc(_heap: *mut Heap, alignment: usize, count: usize) -> *mut ()
     ptr
 }
 
-fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), alignment: usize, new_count: usize) -> *mut () {
-    if (alignment | new_count) == 0_usize {
-        return 1 as *mut ();
+fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), aligned_size: AlignedSize) -> *mut () {
+    let align = aligned_size.align;
+    let size = aligned_size.size;
+
+    if size == 0_usize {
+        return aligned_ptr(align);
     }
 
-    if 1_000_000_000_usize / alignment <= new_count {
+    if size > 1_000_000_000_usize {
         panic("OUT OF MEMORY");
     }
 
-    eprint_sds("[TRACE] realloc(", (alignment * new_count) as i32, ")\n");
-    let new_ptr = realloc(old_ptr, alignment * new_count);
+    eprint_sds("[TRACE] realloc(", size as i32, ")\n");
+    let new_ptr = realloc(old_ptr, size);
     if new_ptr as usize == 0_usize {
         panic("OUT OF MEMORY");
     }
@@ -183,7 +258,7 @@ fn assert_eq_usize(tt: *mut TestTools, actual: usize, expected: usize) {
 }
 
 // -----------------------------------------------
-// 数値ライブラリ
+// usize
 // -----------------------------------------------
 
 fn usize_compare(left: usize, right: usize) -> i32 {
@@ -210,6 +285,11 @@ fn usize_max(left: usize, right: usize) -> usize {
     } else {
         right
     }
+}
+
+// FIXME: !x が誤ったコードにコンパイルされるバグがある
+fn usize_bitwise_not(value: usize) -> usize {
+    value ^ ((-1) as usize)
 }
 
 // -----------------------------------------------
@@ -292,6 +372,8 @@ fn str_equals_raw(s: Str, other: *c8) -> bool {
     str_compare(s, str_from_raw(other)) == 0
 }
 
+/// 文字列が `prefix` で始まるか調べる。
+/// もしそうなら true を返し、`prefix` の長さを `len` に設定する。
 fn str_prefix_raw(s: Str, prefix: *c8, len: *mut usize) -> bool {
     let prefix_len = strlen(prefix);
     if s.len >= prefix_len && strncmp(s.ptr, prefix, prefix_len) == 0 {
@@ -336,7 +418,9 @@ struct StrBuf {
     cap: usize,
 }
 
-/// 空の StrBuf を生成する。(動的確保は発生しない。)
+/// 空の StrBuf を生成する。
+///
+/// 動的確保は発生しない。
 fn str_buf_empty() -> StrBuf {
     StrBuf {
         ptr: "" as *mut c8,
@@ -345,13 +429,14 @@ fn str_buf_empty() -> StrBuf {
     }
 }
 
+
 fn str_buf_new_with_cap(cap: usize) -> StrBuf {
     if cap == 0_usize {
         return str_buf_empty();
     }
 
     StrBuf {
-        ptr: heap_alloc(global_heap(), 1_usize, cap) as *mut c8,
+        ptr: heap_alloc(global_heap(), aligned_size_of_align1(cap)) as *mut c8,
         len: 0_usize,
         cap: cap,
     }
@@ -375,12 +460,12 @@ fn str_buf_grow(buf: *mut StrBuf, new_size: usize) {
 
     if (*buf).cap == 0_usize {
         // ptr がヒープを指していないので、realloc できない。
-        (*buf).ptr = heap_alloc(global_heap(), 1_usize, new_size) as *mut c8;
+        (*buf).ptr = heap_alloc(global_heap(), aligned_size_of_align1(new_size)) as *mut c8;
     } else {
         // 再確保の回数を抑えるため、バッファサイズは指数的に増やす。
         new_size = usize_max(new_size, (*buf).cap * 2_usize);
 
-        (*buf).ptr = heap_realloc(global_heap(), (*buf).ptr as *mut (), 1_usize, new_size) as *mut c8;
+        (*buf).ptr = heap_realloc(global_heap(), (*buf).ptr as *mut (), aligned_size_of_align1(new_size)) as *mut c8;
     }
 
     (*buf).cap = new_size;
