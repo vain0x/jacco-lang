@@ -172,6 +172,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.len()
     }
 
+    pub(crate) fn reserve(&mut self, additional: usize) {
+        self.inner.reserve(additional);
+    }
+
     #[allow(unused)]
     pub(crate) fn resize_with(&mut self, new_len: usize, default_fn: impl Fn() -> T) {
         let additional = new_len.saturating_sub(self.inner.len());

@@ -13,7 +13,7 @@ use crate::{
 };
 use log::{error, trace};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io,
     mem::take,
     path::{Component, Path, PathBuf},
@@ -33,6 +33,7 @@ type SyntaxArena = VecArena<DocTag, SyntaxData>;
 
 struct SyntaxData {
     root: PRoot,
+    mod_names: Vec<String>,
     logs: Logs,
 }
 
@@ -68,9 +69,23 @@ impl Project {
         Ok(doc)
     }
 
-    /// まだパースされていないドキュメントをパースして、use 宣言を検出し、どのドキュメントを参照しているかを報告する。
-    pub fn parse(&mut self) {
-        self.syntaxes = VecArena::from_iter(self.docs.enumerate().map(|(id, doc_data)| {
+    /// プロジェクト内の各ドキュメントをパースする。
+    ///
+    /// unresolved_mod_names に、use 宣言から参照されているドキュメントの名前のうち、
+    /// まだパースされていないものが列挙される。
+    /// (この呼び出しでパースされたドキュメントはパース済みとみなされるので、
+    ///  unresolved_mod_names には含まれない。)
+    pub fn parse(&mut self, unresolved_mod_names: &mut Vec<String>) {
+        log::trace!("parse");
+
+        // FIXME: mod_name? doc_name?
+        let mut mod_names = vec![];
+
+        let offset = self.syntaxes.len();
+        let additional = self.docs.len().saturating_sub(offset);
+        self.syntaxes.reserve(additional);
+
+        for (id, doc_data) in self.docs.enumerate().skip(offset) {
             let doc = Doc::from(id.to_index());
 
             let logs = Logs::new();
@@ -79,14 +94,31 @@ impl Project {
                 tokenize(source, doc_data.text.clone().into())
             };
             let root = parse_tokens(tokens, logs.logger());
+            root.collect_used_mod_names(&mut mod_names);
 
-            // FIXME: use 宣言をチェックして、パースされていないドキュメントへの参照があるなら報告する。クライアントは報告された名前のドキュメントをファイルシステムなどから探して insert し、再び parse を呼ぶ。
-            // 参照先のドキュメントがすべてパース済みであるドキュメントは名前解決の工程に入れる。
+            let id2 = self.syntaxes.alloc(SyntaxData {
+                root,
+                mod_names: mod_names.split_off(0),
+                logs,
+            });
+            assert_eq!(id2, id);
+        }
 
-            SyntaxData { root, logs }
-        }));
+        // use 宣言から参照される不明なモジュール名を列挙して、報告する。
+        let mut mod_names = HashSet::new();
+        for syntax_data in self.syntaxes.iter() {
+            for mod_name in &syntax_data.mod_names {
+                if !self.doc_name_map.contains_key(mod_name) {
+                    mod_names.insert(mod_name);
+                }
+            }
+        }
+        unresolved_mod_names.extend(mod_names.iter().map(ToString::to_string));
     }
 
+    /// プロジェクトをコンパイルして、C言語のソースコードを生成する。
+    ///
+    /// パースされていないドキュメントは単に無視される。
     pub fn compile(
         &mut self,
     ) -> Result<Vec<(Doc, &str, String)>, Vec<(Doc, &Path, TRange, String)>> {
@@ -212,6 +244,7 @@ impl Project {
 pub fn compile(source_path: &Path, source_code: &str) -> String {
     trace!("source_path = {:?}", source_path);
 
+    let project_dir = source_path.parent();
     let mut project = Project::new();
 
     let name = source_path
@@ -223,7 +256,58 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     let text = source_code.to_string();
     project.insert(name, source_path, text).ok().unwrap();
 
-    project.parse();
+    // 一度探して、見つからなかったファイル名。
+    let mut missed_files = HashSet::new();
+
+    let mut unresolved_doc_names = vec![];
+    loop {
+        assert!(unresolved_doc_names.is_empty());
+
+        project.parse(&mut unresolved_doc_names);
+
+        if unresolved_doc_names.is_empty() {
+            break;
+        }
+
+        let project_dir = project_dir.unwrap();
+        let mut stuck = true;
+
+        // use されているファイル名を列挙する。(このあたりの仕様はよく決まっていない。とりあえず、最初に与えられたファイルと同じディレクトリにある <name>.jacco ファイルを読むことにする。)
+        for doc_name in unresolved_doc_names.drain(..) {
+            let file_path = project_dir.join(format!("{}.jacco", doc_name));
+            if missed_files.contains(&file_path) {
+                continue;
+            }
+
+            let source_code = match std::fs::read_to_string(&file_path) {
+                Ok(text) => text,
+                Err(_) => {
+                    missed_files.insert(file_path.to_path_buf());
+                    continue;
+                }
+            };
+
+            project
+                .insert(doc_name, file_path.to_path_buf(), source_code)
+                .ok();
+            stuck = false;
+        }
+
+        if stuck {
+            break;
+        }
+    }
+
+    if !missed_files.is_empty() {
+        for path in missed_files {
+            error!(
+                "このファイルが use 宣言で必要とされていますが、見つかりませんでした {:?}",
+                path.to_string_lossy(),
+            );
+        }
+        return String::new();
+    }
+
     match project.compile() {
         Ok(c_modules) => c_modules
             .into_iter()

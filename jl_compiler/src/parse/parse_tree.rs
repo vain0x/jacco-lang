@@ -92,6 +92,14 @@ impl PName {
             .chain(once(names[self].text.to_string()))
             .collect()
     }
+
+    /// パスの先頭部分の文字列
+    pub(crate) fn root_text<'a>(self, names: &'a PNameArena, tokens: &'a PTokens) -> &'a str {
+        match names[self].quals.first() {
+            Some(qual) => qual.name.text(tokens),
+            None => &names[self].text,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -529,6 +537,21 @@ pub(crate) struct PRoot {
     pub(crate) names: PNameArena,
     pub(crate) skipped: Vec<PToken>,
     pub(crate) tokens: PTokens,
+}
+
+impl PRoot {
+    /// use 宣言で指名されているモジュールの名前を収集する。(いまのところトップレベルにある use 宣言の先頭にある名前だけを収集する。)
+    pub(crate) fn collect_used_mod_names(&self, mod_names: &mut Vec<String>) {
+        for decl in &self.decls {
+            match decl {
+                PDecl::Use(PUseDecl {
+                    name_opt: Some(name),
+                    ..
+                }) => mod_names.push(name.root_text(&self.names, &self.tokens).to_string()),
+                _ => {}
+            }
+        }
+    }
 }
 
 // FIXME: hot fix
