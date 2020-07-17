@@ -155,6 +155,18 @@ fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
                 format!("type mismatch ({:?} vs. {:?})", left, right),
             );
         }
+        (KTy::Alias(alias), _) => {
+            // FIXME: KTy::Enum などが他のモジュールのことを考慮していないのでまだ実装できない
+            let left_ty = match alias.of(&tx.outlines.aliases).referent() {
+                Some(KProjectSymbol::ModLocal { symbol, .. }) => match symbol {
+                    KModLocalSymbol::Enum(k_enum) => KTy::Enum(k_enum),
+                    KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
+                    _ => return,
+                },
+                _ => return,
+            };
+            do_unify(&left_ty, right, location, tx);
+        }
     }
 }
 

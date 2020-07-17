@@ -275,6 +275,7 @@ pub(crate) fn gen_ty_name(p_name: PName, name_res: &VecArena<PNameTag, NName>) -
         NName::C16 => KTy::C16,
         NName::C32 => KTy::C32,
         NName::Bool => KTy::Bool,
+        NName::Alias(alias) => KTy::Alias(alias),
         NName::Enum(n_enum) => KTy::Enum(n_enum),
         NName::Struct(n_struct) => KTy::Struct(n_struct),
         _ => KTy::Unresolved,

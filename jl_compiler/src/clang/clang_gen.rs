@@ -240,6 +240,10 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
             ty.into_ptr()
         }
+        KTy::Alias(_) => {
+            // FIXME: 実装
+            CTy::Other("/* error: alias ty */")
+        }
         KTy::Enum(k_enum) => match k_enum.repr(&cx.outlines.enums) {
             KEnumRepr::Unit => CTy::Other("/* unit-like enum */ void"),
             KEnumRepr::Never => CTy::Other("/* never enum */ void"),

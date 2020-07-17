@@ -151,6 +151,10 @@ impl KTyEnv {
                     .join(", "),
                 self.display(result_ty, enums, structs)
             ),
+            KTy::Alias(_) => {
+                // FIXME: 実装. aliases を引数にとる？
+                "{alias}".to_string()
+            }
             KTy::Enum(k_enum) => k_enum.name(enums).to_string(),
             KTy::Struct(k_struct) => k_struct.name(structs).to_string(),
         }

@@ -171,7 +171,6 @@ pub(crate) fn resolve_aliases(
 
     for alias_data in aliases.iter_mut() {
         let (mod_name, entity_name) = match alias_data.path() {
-            [] => continue,
             [mod_name, entity_name] => (mod_name, entity_name),
             _ => {
                 logger.error(
