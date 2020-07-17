@@ -316,7 +316,8 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 | KModLocalSymbol::Alias(_)
                 | KModLocalSymbol::Enum(_)
                 | KModLocalSymbol::Struct(_) => {
-                    unreachable!("別名の参照先が不正です {:?}", (symbol, location))
+                    error!("別名の参照先が不正です {:?}", (symbol, location));
+                    CExpr::Other("/* error: invalid alias term ")
                 }
             },
             Some(KProjectSymbol::Mod(_)) => {
@@ -325,7 +326,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             }
             None => {
                 error!("未解決の別名をCの式にしようとしました {:?}", location);
-                CExpr::Other("/* unresolved alias */")
+                CExpr::Other("/* error: unresolved alias */")
             }
         },
         KTerm::Const { k_const, .. } => gen_const_data((*k_const).of(&cx.outlines.consts)),
