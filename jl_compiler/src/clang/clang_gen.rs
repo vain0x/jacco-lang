@@ -310,8 +310,14 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                     gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
                 }
                 KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
-                KModLocalSymbol::Fn(k_fn) => gen_fn_term(k_fn, cx),
-                KModLocalSymbol::ExternFn(extern_fn) => gen_extern_fn_term(extern_fn, cx),
+                KModLocalSymbol::Fn(k_fn) => {
+                    let fn_name = k_fn.of(&k_mod.of(&cx.mod_outlines).fns).name.to_string();
+                    CExpr::Name(fn_name)
+                }
+                KModLocalSymbol::ExternFn(extern_fn) => {
+                    // FIXME: fn と同様に k_mod の値を見るように修正
+                    gen_extern_fn_term(extern_fn, cx)
+                }
                 KModLocalSymbol::LocalVar { .. }
                 | KModLocalSymbol::Alias(_)
                 | KModLocalSymbol::Enum(_)
