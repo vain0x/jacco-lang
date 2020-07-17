@@ -256,22 +256,22 @@ fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     (name, gen_ty(&ty, &ty_env, cx))
 }
 
-fn emit_const(const_data: &KConstData) -> CExpr {
+fn gen_const_data(const_data: &KConstData) -> CExpr {
     match &const_data.value_opt {
         Some(value) => gen_constant_value(value),
         None => gen_invalid_constant_value(),
     }
 }
 
-fn emit_static_var(static_var: KStaticVar, cx: &mut Cx) -> CExpr {
+fn gen_static_var_term(static_var: KStaticVar, cx: &mut Cx) -> CExpr {
     CExpr::Name(unique_static_var_name(static_var, cx))
 }
 
-fn emit_fn_term(k_fn: KFn, cx: &mut Cx) -> CExpr {
+fn gen_fn_term(k_fn: KFn, cx: &mut Cx) -> CExpr {
     CExpr::Name(unique_fn_name(k_fn, cx))
 }
 
-fn emit_extern_fn_term(extern_fn: KExternFn, cx: &mut Cx) -> CExpr {
+fn gen_extern_fn_term(extern_fn: KExternFn, cx: &mut Cx) -> CExpr {
     CExpr::Name(unique_extern_fn_name(extern_fn, cx))
 }
 
@@ -309,11 +309,11 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 // FIXME: 対象のモジュールの outlines を参照する
                 match symbol {
                     KModLocalSymbol::Const(k_const) => {
-                        emit_const(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
+                        gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
                     }
-                    KModLocalSymbol::StaticVar(static_var) => emit_static_var(static_var, cx),
-                    KModLocalSymbol::Fn(k_fn) => emit_fn_term(k_fn, cx),
-                    KModLocalSymbol::ExternFn(extern_fn) => emit_extern_fn_term(extern_fn, cx),
+                    KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
+                    KModLocalSymbol::Fn(k_fn) => gen_fn_term(k_fn, cx),
+                    KModLocalSymbol::ExternFn(extern_fn) => gen_extern_fn_term(extern_fn, cx),
                     KModLocalSymbol::LocalVar { .. }
                     | KModLocalSymbol::Alias(_)
                     | KModLocalSymbol::Enum(_)
@@ -331,15 +331,15 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Other("/* unresolved alias */")
             }
         },
-        KTerm::Const { k_const, .. } => emit_const((*k_const).of(&cx.outlines.consts)),
-        KTerm::StaticVar { static_var, .. } => emit_static_var(*static_var, cx),
-        KTerm::Fn { k_fn, .. } => emit_fn_term(*k_fn, cx),
+        KTerm::Const { k_const, .. } => gen_const_data((*k_const).of(&cx.outlines.consts)),
+        KTerm::StaticVar { static_var, .. } => gen_static_var_term(*static_var, cx),
+        KTerm::Fn { k_fn, .. } => gen_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
         KTerm::Return { k_fn, .. } => {
             error!("can't gen return term to c {}", unique_fn_name(*k_fn, cx));
             CExpr::Other("/* error */ 0")
         }
-        KTerm::ExternFn { extern_fn, .. } => emit_extern_fn_term(*extern_fn, cx),
+        KTerm::ExternFn { extern_fn, .. } => gen_extern_fn_term(*extern_fn, cx),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.outlines.structs),
         KTerm::FieldTag(KFieldTag { name, location }) => {
