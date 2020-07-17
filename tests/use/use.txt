@@ -1,12 +1,12 @@
 void main();
 
+void another_fn();
+
 void main() {
     // call_result_1 is killed.
     another_fn();
     return;
 }
-
-void another_fn();
 
 void another_fn() {
     return;

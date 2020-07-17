@@ -119,9 +119,7 @@ impl Project {
     /// プロジェクトをコンパイルして、C言語のソースコードを生成する。
     ///
     /// パースされていないドキュメントは単に無視される。
-    pub fn compile(
-        &mut self,
-    ) -> Result<Vec<(Doc, &str, String)>, Vec<(Doc, &Path, TRange, String)>> {
+    pub fn compile(&mut self) -> Result<String, Vec<(Doc, &Path, TRange, String)>> {
         let mut logs_list = vec![];
 
         self.names = VecArena::from_iter(self.syntaxes.enumerate_mut().map(|(id, syntax)| {
@@ -225,19 +223,7 @@ impl Project {
             eliminate_unit(mod_outline, mod_data);
         }
 
-        let mut c_modules = vec![];
-        for (((k_mod, doc), mod_outline), mod_data) in self
-            .mod_docs
-            .enumerate()
-            .zip(self.mod_outlines.iter())
-            .zip(self.mods.iter())
-        {
-            let id = doc.inner();
-            let name = &self.docs[id].name;
-            let code = clang_dump(k_mod, mod_outline, mod_data, &self.mod_outlines);
-            c_modules.push((*doc, name.as_str(), code));
-        }
-        Ok(c_modules)
+        Ok(clang_dump(&self.mod_outlines, &self.mods))
     }
 }
 
@@ -310,11 +296,7 @@ pub fn compile(source_path: &Path, source_code: &str) -> String {
     }
 
     match project.compile() {
-        Ok(c_modules) => c_modules
-            .into_iter()
-            .map(|(_, _, code)| code)
-            .collect::<Vec<_>>()
-            .join("\n"),
+        Ok(code) => code,
         Err(errors) => {
             for (_, path, range, message) in errors {
                 error!("{}:{} {}", path.to_string_lossy(), range, message);

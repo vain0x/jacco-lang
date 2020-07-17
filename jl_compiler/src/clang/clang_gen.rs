@@ -703,7 +703,8 @@ fn gen_fn_sig(
     (params, result_ty)
 }
 
-fn gen_root(root: &KModData, cx: &mut Cx) {
+/// 宣言を生成する。
+fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
     let outlines = cx.outlines;
     let empty_ty_env = KTyEnv::default();
 
@@ -818,7 +819,10 @@ fn gen_root(root: &KModData, cx: &mut Cx) {
             body_opt: None,
         });
     }
+}
 
+/// 定義を生成する。
+fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
     for (k_fn, fn_data) in root.fns.enumerate() {
         let params = fn_data.params.as_slice();
         let locals = &fn_data.locals;
@@ -856,8 +860,8 @@ fn gen_root(root: &KModData, cx: &mut Cx) {
 
         let name = unique_fn_name(k_fn, cx);
         let (params, result_ty) = {
-            let result_ty = k_fn.result_ty(&outlines.fns);
-            gen_fn_sig(params, result_ty, &empty_ty_env, cx)
+            let result_ty = k_fn.result_ty(&cx.outlines.fns);
+            gen_fn_sig(params, result_ty, KTyEnv::EMPTY, cx)
         };
         cx.decls.push(CStmt::FnDecl {
             name,
@@ -870,13 +874,26 @@ fn gen_root(root: &KModData, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(
-    _mod: KMod,
-    mod_outline: &KModOutline,
-    mod_data: &KModData,
-    mod_outlines: &KModOutlines,
-) -> CRoot {
-    let mut cx = Cx::new(mod_outline, mod_outlines);
-    gen_root(mod_data, &mut cx);
-    CRoot { decls: cx.decls }
+pub(crate) fn gen(mod_outlines: &KModOutlines, mods: &KModArena) -> CRoot {
+    let mut decls = vec![];
+
+    // 宣言
+    let cxx = mod_outlines
+        .iter()
+        .zip(mods.iter())
+        .map(|(mod_outline, mod_data)| {
+            let mut cx = Cx::new(mod_outline, mod_outlines);
+            gen_root_for_decls(mod_data, &mut cx);
+            decls.extend(cx.decls.drain(..));
+            (mod_outline, mod_data, cx)
+        })
+        .collect::<Vec<_>>();
+
+    // 定義
+    for (_, mod_data, mut cx) in cxx {
+        gen_root_for_defs(mod_data, &mut cx);
+        decls.extend(cx.decls.drain(..));
+    }
+
+    CRoot { decls }
 }
