@@ -237,11 +237,6 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
     }
 }
 
-fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
-    let expected_ty_opt = expected_ty_opt.map(|ty| ty.to_ty2(tx.k_mod));
-    resolve_symbol_def2(symbol, expected_ty_opt.as_ref(), tx)
-}
-
 fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
     let current_ty = symbol.ty(&tx.locals);
     if current_ty.is_unresolved() {
@@ -732,8 +727,8 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        let param_ty = &k_fn.param_tys(&outlines.fns)[i];
-        resolve_symbol_def(param, Some(param_ty), tx);
+        let param_ty = &k_fn.param_tys(&outlines.fns)[i].to_ty2(tx.k_mod);
+        resolve_symbol_def2(param, Some(param_ty), tx);
     }
 
     // いまから生成するところなので空のはず。
@@ -741,7 +736,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for label_data in fn_data.labels.iter_mut() {
         for param in &mut label_data.params {
-            resolve_symbol_def(param, None, tx);
+            resolve_symbol_def2(param, None, tx);
         }
 
         let label_sig = {
@@ -766,8 +761,8 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
 
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
-        let param_ty = &extern_fn.param_tys(&outlines.extern_fns)[i];
-        resolve_symbol_def(param, Some(param_ty), tx);
+        let param_ty = &extern_fn.param_tys(&outlines.extern_fns)[i].to_ty2(tx.k_mod);
+        resolve_symbol_def2(param, Some(&param_ty), tx);
     }
 }
 
