@@ -317,16 +317,16 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             // FIXME: i8 などに対応
             if ty.is_unresolved() {
                 if token.text().ends_with("i64") {
-                    *ty = KTy::I64;
+                    *ty = KTy2::I64;
                 } else if token.text().ends_with("usize") {
-                    *ty = KTy::Usize;
+                    *ty = KTy2::USIZE;
                 } else {
                     // FIXME: untyped int
-                    *ty = KTy::I32
+                    *ty = KTy2::I32
                 }
             }
             assert!(ty.is_primitive(&tx.ty_env));
-            ty.to_ty2(tx.k_mod)
+            ty.clone()
         }
         KTerm::Float(_) => KTy2::F64,
         KTerm::Char(_) => KTy2::C8,

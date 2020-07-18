@@ -522,7 +522,7 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
 
 fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Int(PIntExpr { token }) => KTerm::Int(token.get(&gx.tokens), KTy::Unresolved),
+        PExpr::Int(PIntExpr { token }) => KTerm::Int(token.get(&gx.tokens), KTy2::Unresolved),
         PExpr::Float(PFloatExpr { token }) => KTerm::Float(token.get(&gx.tokens)),
         PExpr::Char(PCharExpr { token }) => KTerm::Char(token.get(&gx.tokens)),
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token.get(&gx.tokens)),

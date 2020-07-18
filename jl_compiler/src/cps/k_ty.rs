@@ -256,6 +256,13 @@ impl KTy2 {
         })
     }
 
+    pub(crate) fn is_bool(&self, ty_env: &KTyEnv) -> bool {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::BOOL => true,
+            _ => false,
+        })
+    }
+
     // FIXME: const enum も primitive とみなす
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
@@ -300,6 +307,21 @@ impl KTy2 {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::Enum(k_mod, k_enum) => Some(KEnumOrStruct::Enum(k_mod, k_enum)),
             KTy2::Struct(k_mod, k_struct) => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<(KMod, KEnum)> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Enum(k_mod, k_enum) => Some((k_mod, k_enum)),
+            _ => None,
+        })
+    }
+
+    #[allow(unused)]
+    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Struct(k_mod, k_struct) => Some((k_mod, k_struct)),
             _ => None,
         })
     }
@@ -412,22 +434,8 @@ impl KTy {
         })
     }
 
-    pub(crate) fn is_bool(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Bool => true,
-            _ => false,
-        })
-    }
-
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, ty_is_primitive)
-    }
-
-    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KEnum> {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Enum(k_enum) => Some(*k_enum),
-            _ => None,
-        })
     }
 
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {

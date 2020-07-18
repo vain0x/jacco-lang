@@ -12,6 +12,7 @@ type IdentMap = HashMap<String, IdProvider>;
 
 /// C code generation context.
 struct Cx<'a> {
+    k_mod: KMod,
     outlines: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
     ident_map: HashMap<String, IdProvider>,
@@ -29,8 +30,9 @@ struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
+    fn new(k_mod: KMod, mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
         Self {
+            k_mod,
             outlines: mod_outline,
             mod_outlines,
             ident_map: Default::default(),
@@ -347,20 +349,22 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             // FIXME: error!
             CExpr::Other("(void)0")
         }
-        KTerm::Int(token, KTy::I64) | KTerm::Int(token, KTy::Isize) => CExpr::LongLongLit(
+        KTerm::Int(token, KTy2::I64) | KTerm::Int(token, KTy2::ISIZE) => CExpr::LongLongLit(
             token
                 .text()
                 .replace("_", "")
                 .replace("i64", "")
                 .replace("isize", ""),
         ),
-        KTerm::Int(token, KTy::U64) | KTerm::Int(token, KTy::Usize) => CExpr::UnsignedLongLongLit(
-            token
-                .text()
-                .replace("_", "")
-                .replace("u64", "")
-                .replace("usize", ""),
-        ),
+        KTerm::Int(token, KTy2::U64) | KTerm::Int(token, KTy2::USIZE) => {
+            CExpr::UnsignedLongLongLit(
+                token
+                    .text()
+                    .replace("_", "")
+                    .replace("u64", "")
+                    .replace("usize", ""),
+            )
+        }
         KTerm::Int(token, _) => CExpr::IntLit(token.text().replace("_", "").replace("i32", "")),
         KTerm::Float(token) => CExpr::DoubleLit(token.text().replace("_", "")),
         KTerm::Char(token) => CExpr::CharLit(token.text().to_string()),
@@ -623,9 +627,16 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [cond, pats @ ..] => {
                 // FIXME: label_sigs
                 let is_tagged_union = cond
-                    .ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals)
+                    .ty(
+                        cx.k_mod,
+                        &cx.outlines,
+                        &KLabelSigArena::default(),
+                        &cx.locals,
+                    )
                     .as_enum(ty_env)
-                    .map_or(false, |k_enum| k_enum.is_tagged_union(&cx.outlines.enums));
+                    .map_or(false, |(k_mod, k_enum)| {
+                        k_enum.is_tagged_union(&k_mod.of(cx.mod_outlines).enums)
+                    });
 
                 let mut cond = gen_term(cond, cx);
                 if is_tagged_union {
@@ -667,7 +678,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Not => match args {
             [arg] => {
                 let op = if arg
-                    .ty(&cx.outlines, &VecArena::default(), &cx.locals)
+                    .ty(cx.k_mod, &cx.outlines, &VecArena::default(), &cx.locals)
                     .is_bool(ty_env)
                 {
                     CUnaryOp::LogNot
@@ -932,10 +943,10 @@ pub(crate) fn gen(mod_outlines: &KModOutlines, mods: &KModArena) -> CRoot {
 
     // 宣言
     let cxx = mod_outlines
-        .iter()
+        .enumerate()
         .zip(mods.iter())
-        .map(|(mod_outline, mod_data)| {
-            let mut cx = Cx::new(mod_outline, mod_outlines);
+        .map(|((k_mod, mod_outline), mod_data)| {
+            let mut cx = Cx::new(k_mod, mod_outline, mod_outlines);
             gen_root_for_decls(mod_data, &mut cx);
             decls.extend(cx.decls.drain(..));
             (mod_outline, mod_data, cx)

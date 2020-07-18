@@ -7,7 +7,7 @@ pub(crate) enum KTerm {
     Unit {
         location: Location,
     },
-    Int(TokenData, KTy),
+    Int(TokenData, KTy2),
     Float(TokenData),
     Char(TokenData),
     Str(TokenData),
@@ -52,34 +52,37 @@ pub(crate) enum KTerm {
 impl KTerm {
     pub(crate) fn ty<'a>(
         &self,
+        k_mod: KMod,
         outlines: &KModOutline,
         labels: &KLabelSigArena,
         locals: &KLocalArena,
-    ) -> KTy {
+    ) -> KTy2 {
         match self {
-            KTerm::Unit { .. } => KTy::Unit,
+            KTerm::Unit { .. } => KTy2::UNIT,
             KTerm::Int(_, ty) => ty.clone(),
-            KTerm::Float(_) => KTy::F64,
-            KTerm::Char(_) => KTy::C8,
-            KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
-            KTerm::True(_) | KTerm::False(_) => KTy::Bool,
-            KTerm::Name(symbol) => symbol.local.ty(&locals).to_ty1(),
+            KTerm::Float(_) => KTy2::F64,
+            KTerm::Char(_) => KTy2::C8,
+            KTerm::Str(_) => KTy2::C8.into_ptr(KMut::Const),
+            KTerm::True(_) | KTerm::False(_) => KTy2::BOOL,
+            KTerm::Name(symbol) => symbol.local.ty(&locals),
             KTerm::Alias { .. } => {
                 // FIXME: 実装. プロジェクト全体の outlines を受け取る必要がある
-                KTy::Unresolved
+                KTy2::Unresolved
             }
-            KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts),
-            KTerm::StaticVar { static_var, .. } => static_var.ty(&outlines.static_vars).clone(),
-            KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns),
-            KTerm::Label { label, .. } => label.ty(labels).to_ty1(),
-            KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns),
-            KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns),
-            KTerm::RecordTag { k_struct, .. } => {
-                k_struct.tag_ty(&outlines.structs, &outlines.enums).clone()
+            KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts).to_ty2(k_mod),
+            KTerm::StaticVar { static_var, .. } => {
+                static_var.ty(&outlines.static_vars).to_ty2(k_mod)
             }
+            KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns).to_ty2(k_mod),
+            KTerm::Label { label, .. } => label.ty(labels),
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns).to_ty2(k_mod),
+            KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns).to_ty2(k_mod),
+            KTerm::RecordTag { k_struct, .. } => k_struct
+                .tag_ty(&outlines.structs, &outlines.enums)
+                .to_ty2(k_mod),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
-                KTy::Unresolved
+                KTy2::Unresolved
             }
         }
     }
