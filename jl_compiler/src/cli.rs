@@ -8,7 +8,7 @@ use crate::{
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PRoot, PToken, PTokens},
     source::{loc::LocResolver, Doc, TRange},
-    token::{tokenize, TokenSource},
+    token::{tokenize, Location, TokenSource},
     utils::VecArena,
 };
 use log::{error, trace};
@@ -195,12 +195,12 @@ impl Project {
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {
-                let doc = match item.location().source {
-                    TokenSource::File(doc) => doc,
-                    TokenSource::Special(name) => {
+                let doc = match item.location() {
+                    Location::Default(name) => {
                         error!("'{}' {}", name, item.message());
                         continue;
                     }
+                    Location::Loc(loc) => loc.doc(),
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();

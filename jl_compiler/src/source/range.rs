@@ -49,6 +49,7 @@ impl Range {
         self.start <= pos && pos <= self.end
     }
 
+    #[allow(unused)]
     pub(crate) fn unite(self, other: Range) -> Range {
         Range {
             start: self.start.min(other.start),

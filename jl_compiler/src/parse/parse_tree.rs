@@ -44,7 +44,6 @@ impl Debug for PLoc {
 
         match self.part {
             LocPart::Range => Ok(()),
-            LocPart::Ahead => write!(f, ":ahead"),
             LocPart::Behind => write!(f, ":behind"),
         }
     }

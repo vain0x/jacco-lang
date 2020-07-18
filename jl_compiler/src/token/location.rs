@@ -1,60 +1,65 @@
 use super::*;
 use crate::{
-    source::{Doc, TRange},
+    source::{Doc, Loc, TRange},
     utils::TakeOut,
 };
 use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Location {
-    pub(crate) source: TokenSource,
-    pub(crate) range: Range,
+pub(crate) enum Location {
+    Default(&'static str),
+    Loc(Loc),
 }
 
 impl Location {
     pub(crate) fn new(source: TokenSource, range: Range) -> Location {
-        Location { source, range }
+        match source {
+            TokenSource::Special(name) => Location::Default(name),
+            TokenSource::File(doc) => Location::Loc(Loc::Range {
+                doc,
+                range: range.into(),
+            }),
+        }
     }
 
     #[allow(dead_code)]
     pub(crate) fn range(&self) -> Range {
-        self.range
+        match self {
+            Location::Loc(Loc::Range { range, .. }) => (*range).into(),
+            _ => Range::default(),
+        }
     }
 
     #[allow(dead_code)]
     pub(crate) fn start(&self) -> Pos {
-        self.range.start
+        self.range().start
     }
 
     #[allow(dead_code)]
     pub(crate) fn unite(self, other: Location) -> Location {
-        Location {
-            range: self.range.unite(other.range),
-            ..self
-        }
-    }
-
-    #[allow(unused)]
-    pub(crate) fn ahead(self) -> Location {
-        Location {
-            range: self.range.ahead(),
-            ..self
+        match (self, other) {
+            (Location::Default(_), Location::Default(_)) => self,
+            (Location::Loc(left), Location::Loc(right)) => Location::Loc(left.unite(right)),
+            (Location::Loc(loc), _) | (_, Location::Loc(loc)) => Location::Loc(loc),
         }
     }
 
     #[allow(unused)]
     pub(crate) fn behind(self) -> Location {
-        Location {
-            range: self.range.behind(),
-            ..self
+        match self {
+            Location::Default(_) => self,
+            Location::Loc(loc) => Location::Loc(loc.behind()),
         }
     }
 }
 
 impl Debug for Location {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{:?}:{}", self.source, self.range)
+        match self {
+            Location::Default(name) => write!(f, "{}", name),
+            Location::Loc(loc) => Debug::fmt(loc, f),
+        }
     }
 }
 
@@ -71,14 +76,17 @@ pub(crate) trait HaveLocation {
 impl HaveLocation for (Doc, Range) {
     fn location(&self) -> Location {
         let (doc, range) = *self;
-        Location::new(TokenSource::File(doc), range)
+        Location::Loc(Loc::Range {
+            doc,
+            range: range.into(),
+        })
     }
 }
 
 impl HaveLocation for (Doc, TRange) {
     fn location(&self) -> Location {
         let (doc, range) = *self;
-        Location::new(TokenSource::File(doc), range.into())
+        Location::Loc(Loc::Range { doc, range })
     }
 }
 
