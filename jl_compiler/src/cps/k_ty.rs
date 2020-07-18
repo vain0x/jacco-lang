@@ -384,6 +384,13 @@ impl KTy {
         ty_map(self, ty_env, ty_is_primitive)
     }
 
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KEnum> {
+        ty_map(self, ty_env, |ty| match ty {
+            KTy::Enum(k_enum) => Some(*k_enum),
+            _ => None,
+        })
+    }
+
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty_map(self, ty_env, |ty| match ty {
             KTy::Struct(k_struct) => Some(*k_struct),

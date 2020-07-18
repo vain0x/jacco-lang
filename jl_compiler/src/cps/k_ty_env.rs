@@ -33,17 +33,6 @@ impl KTyEnv {
         &self.meta_tys[meta_ty]
     }
 
-    pub(crate) fn as_enum(&self, ty: &KTy) -> Option<KEnum> {
-        match ty {
-            KTy::Enum(k_enum) => Some(*k_enum),
-            KTy::Meta(meta_ty) => {
-                let ty = meta_ty.try_unwrap(self)?;
-                self.as_enum(&ty.borrow().clone().to_ty1())
-            }
-            _ => None,
-        }
-    }
-
     pub(crate) fn as_struct_or_enum(&self, ty: &KTy) -> Option<KEnumOrStruct> {
         let enum_or_struct = match ty {
             KTy::Enum(k_enum) => KEnumOrStruct::Enum(*k_enum),

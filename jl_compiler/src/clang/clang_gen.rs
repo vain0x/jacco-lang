@@ -560,8 +560,9 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Switch => match args {
             [cond, pats @ ..] => {
                 // FIXME: label_sigs
-                let is_tagged_union = ty_env
-                    .as_enum(&cond.ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals))
+                let is_tagged_union = cond
+                    .ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals)
+                    .as_enum(ty_env)
                     .map_or(false, |k_enum| k_enum.is_tagged_union(&cx.outlines.enums));
 
                 let mut cond = gen_term(cond, cx);
