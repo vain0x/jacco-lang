@@ -80,6 +80,11 @@ impl<'a> UnificationContext<'a> {
         );
     }
 
+    fn error_ptr_mut(&self) {
+        self.logger
+            .error(self.location, "ポインタの可変性に互換性がありません");
+    }
+
     fn error_arity(&self, left: &KTy2, right: &KTy2) {
         let ty_env = &self.ty_env;
         // FIXME: エラーメッセージを改善
@@ -106,7 +111,6 @@ impl<'a> UnificationContext<'a> {
 }
 
 fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
-    log::trace!("unify {:?} <- {:?} ({:?})", left, right, ux.variance);
     match (left, right) {
         (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
             ux.bug_unresolved(other);
@@ -159,8 +163,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
                 Variance::Contra => k_mut >= right_mut,
             };
             if !ok {
-                ux.logger
-                    .error(ux.location, "ポインタの可変性に互換性がありません");
+                ux.error_ptr_mut();
                 return;
             }
 
