@@ -530,33 +530,6 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::EnumToTag => match (args, results, conts) {
-            ([arg], [result], [cont]) => {
-                let k_enum = {
-                    // FIXME: label_sigs
-                    let arg_ty = arg.ty(&cx.outlines, &KLabelSigArena::default(), &cx.locals);
-                    ty_env.as_enum(&arg_ty).unwrap()
-                };
-
-                let arg = gen_term(arg, cx);
-                let expr = match k_enum.repr(&cx.outlines.enums) {
-                    KEnumRepr::Never => {
-                        error!("cannot obtain tag of never enum");
-                        CExpr::Other("/* never enum tag */ (void)0")
-                    }
-                    KEnumRepr::Unit => {
-                        error!("cannot obtain tag of unit enum");
-                        CExpr::Other("/* unit enum tag */ (void)0")
-                    }
-                    KEnumRepr::Const { .. } => arg,
-                    KEnumRepr::Sum { .. } => arg.into_dot("tag_"),
-                };
-
-                emit_var_decl(result, Some(expr), ty_env, cx);
-                gen_node(cont, ty_env, cx);
-            }
-            _ => unimplemented!(),
-        },
         KPrim::GetField | KPrim::GetFieldMut => match (args, results, conts) {
             (
                 [left, KTerm::FieldTag(KFieldTag {

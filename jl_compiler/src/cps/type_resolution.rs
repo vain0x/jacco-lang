@@ -334,22 +334,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             }
             _ => unimplemented!(),
         },
-        KPrim::EnumToTag => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            ([arg], [result]) => {
-                let arg_ty = resolve_term(arg, tx);
-
-                let result_ty = match tx.ty_env.as_enum(&arg_ty) {
-                    Some(k_enum) => k_enum.tag_ty(&tx.outlines.enums).clone(),
-                    None => {
-                        error!("expected enum type {:?}", arg);
-                        KTy::Never
-                    }
-                };
-
-                resolve_symbol_def(result, Some(&result_ty), tx);
-            }
-            _ => unimplemented!(),
-        },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
                 let k_struct = ty.clone().as_struct().unwrap();
