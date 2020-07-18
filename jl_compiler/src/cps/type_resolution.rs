@@ -237,13 +237,13 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
     }
 }
 
-fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
+fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
     let current_ty = symbol.ty(&tx.locals);
     if current_ty.is_unresolved() {
         error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
     }
 
-    current_ty.to_ty1()
+    current_ty
 }
 
 fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
@@ -341,7 +341,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx.return_ty_opt.clone().unwrap().to_ty2(tx.k_mod),
         KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&tx.outlines.extern_fns).to_ty2(tx.k_mod),
-        KTerm::Name(symbol) => resolve_symbol_use(symbol, tx).to_ty2(tx.k_mod),
+        KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::RecordTag { k_struct, .. } => k_struct
             .tag_ty(&tx.outlines.structs, &tx.outlines.enums)
             .clone()
