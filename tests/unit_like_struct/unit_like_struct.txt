@@ -1,14 +1,14 @@
-struct A_1 {
+struct A {
 };
 
 int main();
 
 int main() {
-    struct A_1 A_2;
-    struct A_1 a_1 = A_2;
-    struct A_1* refmut_1 = &a_1;
-    struct A_1* p_1 = refmut_1;
-    struct A_1 A_3;
-    *p_1 = A_3;
+    struct A A_1;
+    struct A a_1 = A_1;
+    struct A* refmut_1 = &a_1;
+    struct A* p_1 = refmut_1;
+    struct A A_2;
+    *p_1 = A_2;
     return 0;
 }

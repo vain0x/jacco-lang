@@ -1,32 +1,32 @@
-struct A_1 {
+struct A {
     int foo;
 };
 
-struct Deep_1 {
-    struct A_1 inner;
+struct Deep {
+    struct A inner;
 };
 
 int main();
 
 int main() {
-    struct A_1 A_2;
-    A_2.foo = 1;
-    struct A_1 a_1 = A_2;
-    struct A_1 const* ref_1 = &a_1;
+    struct A A_1;
+    A_1.foo = 1;
+    struct A a_1 = A_1;
+    struct A const* ref_1 = &a_1;
     int const* foo_ptr_1 = &ref_1->foo;
     int foo_1 = *foo_ptr_1;
     int a_foo_val_1 = foo_1;
-    struct A_1 const* ref_2 = &a_1;
+    struct A const* ref_2 = &a_1;
     int const* foo_ptr_2 = &ref_2->foo;
     int const* a_foo_ptr_1 = foo_ptr_2;
-    struct A_1* refmut_1 = &a_1;
+    struct A* refmut_1 = &a_1;
     int* foo_ptr_3 = &refmut_1->foo;
     *foo_ptr_3 = 2;
-    struct Deep_1 Deep_2;
-    Deep_2.inner = a_1;
-    struct Deep_1 deep_1 = Deep_2;
-    struct Deep_1* refmut_2 = &deep_1;
-    struct A_1* inner_ptr_1 = &refmut_2->inner;
+    struct Deep Deep_1;
+    Deep_1.inner = a_1;
+    struct Deep deep_1 = Deep_1;
+    struct Deep* refmut_2 = &deep_1;
+    struct A* inner_ptr_1 = &refmut_2->inner;
     int* foo_ptr_4 = &inner_ptr_1->foo;
     *foo_ptr_4 = 3;
     return 0;

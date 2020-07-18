@@ -120,21 +120,23 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
 }
 
 fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
-    do_unique_name(
-        k_enum.to_index(),
-        &cx.outlines.enums[k_enum].name,
-        &mut cx.enum_ident_ids,
-        &mut cx.ident_map,
-    )
+    k_enum.name(&cx.outlines.enums).to_string()
+    // do_unique_name(
+    //     k_enum.to_index(),
+    //     &cx.outlines.enums[k_enum].name,
+    //     &mut cx.enum_ident_ids,
+    //     &mut cx.ident_map,
+    // )
 }
 
 fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
-    do_unique_name(
-        k_struct.to_index(),
-        &cx.outlines.structs[k_struct].name,
-        &mut cx.struct_ident_ids,
-        &mut cx.ident_map,
-    )
+    k_struct.name(&cx.outlines.structs).to_string()
+    // do_unique_name(
+    //     k_struct.to_index(),
+    //     &cx.outlines.structs[k_struct].name,
+    //     &mut cx.struct_ident_ids,
+    //     &mut cx.ident_map,
+    // )
 }
 
 fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
@@ -207,7 +209,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* unresolved */ void")
         }
         KTy::Meta(meta) => match meta.try_unwrap(&ty_env) {
-            Some(ty) => gen_ty(&ty.borrow().to_ty1(), ty_env, cx),
+            Some(ty) => gen_ty2(&ty.borrow(), ty_env, cx),
             None => {
                 error!("Unexpected free type {:?}", meta);
                 CTy::Other("/* free */ void")
@@ -254,10 +256,70 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     }
 }
 
+fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
+    match ty {
+        KTy2::Unresolved => {
+            error!("Unexpected unresolved type {:?}", ty);
+            CTy::Other("/* unresolved */ void")
+        }
+        KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(&ty_env) {
+            Some(ty) => gen_ty2(&ty.borrow(), ty_env, cx),
+            None => {
+                error!("Unexpected free type {:?}", meta_ty);
+                CTy::Other("/* free */ void")
+            }
+        },
+        KTy2::Never => CTy::Other("/* never */ void"),
+        KTy2::Basic(basic_ty) => match basic_ty {
+            KBasicTy::Unit => CTy::Void,
+            KBasicTy::I8 => CTy::SignedChar,
+            KBasicTy::I16 => CTy::Short,
+            KBasicTy::I32 | KBasicTy::CNN | KBasicTy::Bool => CTy::Int,
+            KBasicTy::I64 | KBasicTy::Isize | KBasicTy::INN => CTy::LongLong,
+            KBasicTy::U8 | KBasicTy::C8 => CTy::UnsignedChar,
+            KBasicTy::U16 | KBasicTy::C16 => CTy::UnsignedShort,
+            KBasicTy::U32 | KBasicTy::C32 => CTy::UnsignedInt,
+            KBasicTy::U64 | KBasicTy::Usize | KBasicTy::UNN => CTy::UnsignedLongLong,
+            KBasicTy::F32 => CTy::Float,
+            KBasicTy::F64 | KBasicTy::FNN => CTy::Double,
+        },
+        KTy2::Fn { .. } => {
+            // FIXME: この時点で fn 型は除去されているべき
+            error!("Unexpected fn type {:?}", ty);
+            CTy::Other("/* fn */ void")
+        }
+        KTy2::Ptr { k_mut, base_ty } => {
+            let base_ty = gen_ty2(&base_ty, ty_env, cx);
+            match k_mut {
+                KMut::Const => base_ty.into_const().into_ptr(),
+                KMut::Mut => base_ty.into_ptr(),
+            }
+        }
+        &KTy2::Enum(k_mod, k_enum) => {
+            let enum_outline = k_enum.of(&k_mod.of(&cx.mod_outlines).enums);
+            match &enum_outline.repr {
+                KEnumRepr::Never => CTy::Other("/* never enum */ void"),
+                KEnumRepr::Unit => CTy::Void,
+                KEnumRepr::Const { value_ty } => gen_ty2(&value_ty.to_ty2(k_mod), ty_env, cx),
+                KEnumRepr::Sum { .. } => {
+                    // FIXME: unique_enum_name を事前に計算しておく
+                    let name = enum_outline.name.to_string();
+                    CTy::Struct(name)
+                }
+            }
+        }
+        KTy2::Struct(k_mod, k_struct) => {
+            // FIXME: unique_struct_name を事前に計算しておく
+            let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);
+            CTy::Struct(name.to_string())
+        }
+    }
+}
+
 fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     let name = unique_name(param, cx);
     let ty = param.ty(&cx.locals);
-    (name, gen_ty(&ty.to_ty1(), &ty_env, cx))
+    (name, gen_ty2(&ty, &ty_env, cx))
 }
 
 fn gen_const_data(const_data: &KConstData) -> CExpr {
@@ -639,7 +701,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Cast => match (args, results, conts) {
             ([arg], [result], [cont]) => {
                 let arg = gen_term(arg, cx);
-                let result_ty = gen_ty(&result.ty(&cx.locals).to_ty1(), ty_env, cx);
+                let result_ty = gen_ty2(&result.ty(&cx.locals), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
                 emit_var_decl(result, Some(expr), ty_env, cx);
                 gen_node(cont, ty_env, cx);
@@ -797,11 +859,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .iter()
             .map(|symbol| {
                 let name = symbol.local.name(&fn_data.locals).to_string();
-                let ty = gen_ty(
-                    &symbol.local.ty(&fn_data.locals).to_ty1(),
-                    &empty_ty_env,
-                    cx,
-                );
+                let ty = gen_ty2(&symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
                 (name, ty)
             })
             .collect();

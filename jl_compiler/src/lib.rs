@@ -87,7 +87,7 @@ mod cps {
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;
-    pub(crate) use k_ty::KTy;
+    pub(crate) use k_ty::{KBasicTy, KTy, KTy2};
     pub(crate) use k_ty_env::KTyEnv;
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
