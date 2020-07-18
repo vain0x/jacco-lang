@@ -25,11 +25,11 @@ impl KMetaTy {
         Some(cell)
     }
 
-    pub(crate) fn bind(&mut self, new_ty: KTy2, ty_env: &KTyEnv) {
+    pub(crate) fn bind(self, new_ty: KTy2, ty_env: &KTyEnv) {
         debug_assert!(self.try_unwrap(ty_env).is_none());
         debug_assert_ne!(new_ty, KTy2::Unresolved);
 
-        let data = ty_env.meta_ty_get(*self);
+        let data = ty_env.meta_ty_get(self);
         let old = replace(&mut *data.ty().borrow_mut(), new_ty);
 
         // バインドは1回のみ。

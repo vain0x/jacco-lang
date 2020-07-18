@@ -1,4 +1,4 @@
-use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct};
+use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct, KTyEnv};
 use std::{
     fmt::{self, Debug, Formatter},
     iter::once,
@@ -7,26 +7,29 @@ use std::{
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KBasicTy {
-    Never,
     Unit,
     I8,
     I16,
     I32,
     I64,
     Isize,
+    #[allow(unused)]
     IConst,
     U8,
     U16,
     U32,
     U64,
     Usize,
+    #[allow(unused)]
     UConst,
     F32,
     F64,
+    #[allow(unused)]
     FConst,
     C8,
     C16,
     C32,
+    #[allow(unused)]
     CConst,
     Bool,
 }
@@ -34,7 +37,6 @@ pub(crate) enum KBasicTy {
 impl KBasicTy {
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
-            KBasicTy::Never => "never",
             KBasicTy::Unit => "()",
             KBasicTy::I8 => "i8",
             KBasicTy::I16 => "i16",
@@ -79,6 +81,7 @@ pub(crate) enum KTyCtor {
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KTy2 {
     Unresolved,
+    Never,
     Meta(KMetaTy),
     Basic(KBasicTy),
     App { ctor: KTyCtor, args: Box<[KTy2]> },
@@ -117,7 +120,7 @@ impl KTy2 {
         match ty {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Meta(meta_ty) => KTy2::Meta(meta_ty),
-            KTy::Never => KTy2::Basic(KBasicTy::Never),
+            KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::Basic(KBasicTy::Unit),
             KTy::I8 => KTy2::Basic(KBasicTy::I8),
             KTy::I16 => KTy2::Basic(KBasicTy::I16),
@@ -152,9 +155,9 @@ impl KTy2 {
     pub(crate) fn into_ty1(self) -> KTy {
         match self {
             KTy2::Unresolved => KTy::Unresolved,
+            KTy2::Never => KTy::Never,
             KTy2::Meta(meta_ty) => KTy::Meta(meta_ty),
             KTy2::Basic(basic_ty) => match basic_ty {
-                KBasicTy::Never => KTy::Never,
                 KBasicTy::Unit => KTy::Unit,
                 KBasicTy::I8 => KTy::I8,
                 KBasicTy::I16 => KTy::I16,
@@ -200,6 +203,10 @@ impl KTy2 {
             },
         }
     }
+
+    pub(crate) fn display(&self, _ty_env: &KTyEnv) -> String {
+        format!("{:?}", self)
+    }
 }
 
 impl Default for KTy2 {
@@ -228,6 +235,7 @@ impl Debug for KTy2 {
 
         match self {
             KTy2::Unresolved => write!(f, "{{unresolved}}"),
+            KTy2::Never => write!(f, "!"),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy2::App { ctor, args } => match ctor {

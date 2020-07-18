@@ -2,6 +2,7 @@
 
 use super::*;
 use k_mod::KModLocalSymbolOutline;
+use k_ty::{KTy2, KTyCtor};
 use k_ty_env::KEnumOrStruct;
 use std::mem::{swap, take};
 
@@ -48,139 +49,183 @@ impl<'a> Tx<'a> {
     }
 }
 
-fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
-    match (left, right) {
-        (KTy::Never, _) | (_, KTy::Never) => {}
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum Variance {
+    In,
+    Co,
+    Contra,
+}
 
-        (KTy::Unresolved, other) | (other, KTy::Unresolved) => {
+fn ty_arg_variance(ctor: &KTyCtor, i: usize, len: usize) -> Variance {
+    match ctor {
+        KTyCtor::Ptr(KMut::Const) => Variance::Co,
+        KTyCtor::Ptr(KMut::Mut) => Variance::In,
+        KTyCtor::Fn => {
+            if i + 1 < len {
+                Variance::Co
+            } else {
+                Variance::Contra
+            }
+        }
+        KTyCtor::Enum(_, _) | KTyCtor::Struct(_, _) => Variance::In,
+    }
+}
+
+enum AllowUpCast {
+    True,
+    False,
+}
+
+fn do_unify_args2(
+    ctor: &KTyCtor,
+    args: &[KTy2],
+    right_args: &[KTy2],
+    allow_up_cast: AllowUpCast,
+    location: Location,
+    ty_env: &KTyEnv,
+    logger: &Logger,
+) {
+    assert_eq!(args.len(), right_args.len());
+    for ((i, left), right) in args.iter().enumerate().zip(right_args) {
+        let variance = match allow_up_cast {
+            AllowUpCast::True => ty_arg_variance(ctor, i, args.len()),
+            AllowUpCast::False => Variance::In,
+        };
+
+        match variance {
+            Variance::In => do_unify2(left, right, AllowUpCast::False, location, ty_env, logger),
+            Variance::Co => do_unify2(left, right, AllowUpCast::True, location, ty_env, logger),
+            Variance::Contra => do_unify2(right, left, AllowUpCast::True, location, ty_env, logger),
+        }
+    }
+}
+
+// left 型の変数に right 型の値を代入できるか判定する。
+// FIXME: variance を考慮する
+fn do_unify2(
+    left: &KTy2,
+    right: &KTy2,
+    allow_up_cast: AllowUpCast,
+    location: Location,
+    ty_env: &KTyEnv,
+    logger: &Logger,
+) {
+    match (left, right) {
+        // unresolved の出現はバグ
+        (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
             log::error!(
-                "don't try to unify unresolved meta tys (other={:?}, location={:?})",
-                other,
+                "unresolved な型は型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, location={:?})",
+                other.display(ty_env),
                 location
             );
         }
-        (KTy::Meta(left), KTy::Meta(right)) if left == right => {}
-        (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {
-            match meta.try_unwrap(&tx.ty_env) {
-                Some(ty) => {
-                    do_unify(&ty.borrow().clone().into_ty1(), other, location, tx);
-                }
+
+        // never は常に任意の型に upcast できる。
+        (_, KTy2::Never) => {}
+
+        // 左右の型が完全に一致するケース:
+        (KTy2::Meta(left), KTy2::Meta(right)) if left == right => {}
+        (KTy2::Basic(left), KTy2::Basic(right)) if left == right => {}
+
+        // メタ型変数の展開および束縛:
+        (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(ty_env) {
+            Some(ty_cell) => do_unify2(
+                left,
+                &ty_cell.borrow(),
+                allow_up_cast,
+                location,
+                ty_env,
+                logger,
+            ),
+            None => {
+                // fn main() -> i32 { loop {} } などで発生する。
+                // この時点で unbound な型変数は never とみなしてよいはず?
+            }
+        },
+        (KTy2::Meta(meta_ty), _) => {
+            match meta_ty.try_unwrap(ty_env) {
+                Some(ty_cell) => do_unify2(
+                    &ty_cell.borrow(),
+                    right,
+                    allow_up_cast,
+                    location,
+                    ty_env,
+                    logger,
+                ),
                 None => {
                     // FIXME: occurrence check
-                    meta.bind(other.clone().into_ty2(tx.k_mod), &tx.ty_env);
+                    meta_ty.bind(right.clone(), ty_env);
                 }
             }
         }
 
-        (KTy::Unit, KTy::Unit)
-        | (KTy::I8, KTy::I8)
-        | (KTy::I16, KTy::I16)
-        | (KTy::I32, KTy::I32)
-        | (KTy::I64, KTy::I64)
-        | (KTy::Isize, KTy::Isize)
-        | (KTy::U8, KTy::U8)
-        | (KTy::U16, KTy::U16)
-        | (KTy::U32, KTy::U32)
-        | (KTy::U64, KTy::U64)
-        | (KTy::Usize, KTy::Usize)
-        | (KTy::F32, KTy::F32)
-        | (KTy::F64, KTy::F64)
-        | (KTy::C8, KTy::C8)
-        | (KTy::C16, KTy::C16)
-        | (KTy::C32, KTy::C32)
-        | (KTy::Bool, KTy::Bool) => {}
-
+        // その他、型ごとのルール:
         (
-            KTy::Ptr {
-                k_mut: left_mut,
-                ty: left,
+            KTy2::App { ctor, args },
+            KTy2::App {
+                ctor: right_ctor,
+                args: right_args,
             },
-            KTy::Ptr {
-                k_mut: right_mut,
-                ty: right,
-            },
-        ) => {
-            do_unify(left, right, location, tx);
-
-            if let (KMut::Mut, KMut::Const) = (left_mut, right_mut) {
-                tx.logger
-                    .error(location, "cannot convert const ptr to mut ptr");
-            }
-        }
-
-        (
-            KTy::Fn {
-                param_tys: left_param_tys,
-                result_ty: left_result_ty,
-            },
-            KTy::Fn {
-                param_tys: right_param_tys,
-                result_ty: right_result_ty,
-            },
-        ) => {
-            do_unify(left_result_ty, right_result_ty, location, tx);
-
-            let left_param_count = left_param_tys.len();
-            let right_param_count = right_param_tys.len();
-
-            for (left, right) in left_param_tys.into_iter().zip(right_param_tys) {
-                do_unify(left, right, location, tx);
+        ) if ctor == right_ctor => {
+            if args.len() != right_args.len() {
+                // FIXME: エラーメッセージを改善
+                logger.error(
+                    location,
+                    format!(
+                        "型引数の個数が一致しません {:?}",
+                        (left.display(ty_env), right.display(ty_env))
+                    ),
+                );
+                return;
             }
 
-            if left_param_count != right_param_count {
-                // NOTE: unify types as possible even if param counts don't match.
-                tx.logger.error(location, "arity mismatch");
-            }
-        }
-
-        (KTy::Enum(left), KTy::Enum(right)) if left == right => {}
-        (KTy::Struct(left), KTy::Struct(right)) if left == right => {}
-
-        (KTy::Unit, _)
-        | (KTy::I8, _)
-        | (KTy::I16, _)
-        | (KTy::I32, _)
-        | (KTy::I64, _)
-        | (KTy::Isize, _)
-        | (KTy::U8, _)
-        | (KTy::U16, _)
-        | (KTy::U32, _)
-        | (KTy::U64, _)
-        | (KTy::Usize, _)
-        | (KTy::F32, _)
-        | (KTy::F64, _)
-        | (KTy::C8, _)
-        | (KTy::C16, _)
-        | (KTy::C32, _)
-        | (KTy::Bool, _)
-        | (KTy::Ptr { .. }, _)
-        | (KTy::Fn { .. }, _)
-        | (KTy::Enum { .. }, _)
-        | (KTy::Struct { .. }, _) => {
-            tx.logger.error(
+            do_unify_args2(
+                ctor,
+                args,
+                right_args,
+                allow_up_cast,
                 location,
-                format!("type mismatch ({:?} vs. {:?})", left, right),
+                ty_env,
+                logger,
+            )
+        }
+
+        // 不一致
+        (KTy2::Never, _) | (KTy2::Basic(_), _) | (KTy2::App { .. }, _) => {
+            logger.error(
+                location,
+                format!(
+                    "型が一致しません ({} <- {})",
+                    left.display(ty_env),
+                    right.display(ty_env)
+                ),
             );
         }
-        (KTy::Alias(alias), _) => {
-            // FIXME: KTy::Enum などが他のモジュールのことを考慮していないのでまだ実装できない
-            let left_ty = match alias.of(&tx.outlines.aliases).referent() {
-                Some(KProjectSymbol::ModLocal { symbol, .. }) => match symbol {
-                    KModLocalSymbol::Enum(k_enum) => KTy::Enum(k_enum),
-                    KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
-                    _ => return,
-                },
-                _ => return,
-            };
-            do_unify(&left_ty, right, location, tx);
-        }
     }
+}
+
+fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
+    do_unify2(
+        &left.clone().into_ty2(tx.k_mod),
+        &right.clone().into_ty2(tx.k_mod),
+        AllowUpCast::True,
+        location,
+        &tx.ty_env,
+        &tx.logger,
+    );
 }
 
 /// left, right の型が一致するように型変数を決定する。
 /// (right 型の値を left 型の引数に代入する状況を想定する。)
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
-    do_unify(&left, &right, location, tx);
+    do_unify2(
+        &left.into_ty2(tx.k_mod),
+        &right.into_ty2(tx.k_mod),
+        AllowUpCast::True,
+        location,
+        &tx.ty_env,
+        &tx.logger,
+    );
 }
 
 fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
