@@ -417,3 +417,30 @@ impl Debug for KTy {
         }
     }
 }
+
+/// 変性
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(crate) enum Variance {
+    /// Invariant. 不変。アップキャストは許可されない。
+    In,
+    /// Covariant. 共変。アップキャストが許可される。
+    Co,
+    /// Contravariant. 反変。逆方向のアップキャストが許可される。
+    Contra,
+}
+
+/// 型引数の変性を取得する。
+pub(crate) fn ty_arg_variance(ctor: &KTyCtor, i: usize, len: usize) -> Variance {
+    match ctor {
+        KTyCtor::Ptr(KMut::Const) => Variance::Co,
+        KTyCtor::Ptr(KMut::Mut) => Variance::In,
+        KTyCtor::Fn => {
+            if i + 1 < len {
+                Variance::Co
+            } else {
+                Variance::Contra
+            }
+        }
+        KTyCtor::Enum(_, _) | KTyCtor::Struct(_, _) => Variance::In,
+    }
+}

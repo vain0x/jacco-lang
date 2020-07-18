@@ -2,9 +2,14 @@
 
 use super::*;
 use k_mod::KModLocalSymbolOutline;
-use k_ty::{KTy2, KTyCtor};
+use k_ty::{ty_arg_variance, KTy2, KTyCtor, Variance};
 use k_ty_env::KEnumOrStruct;
 use std::mem::{swap, take};
+
+enum AllowUpCast {
+    True,
+    False,
+}
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
@@ -49,33 +54,6 @@ impl<'a> Tx<'a> {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum Variance {
-    In,
-    Co,
-    Contra,
-}
-
-fn ty_arg_variance(ctor: &KTyCtor, i: usize, len: usize) -> Variance {
-    match ctor {
-        KTyCtor::Ptr(KMut::Const) => Variance::Co,
-        KTyCtor::Ptr(KMut::Mut) => Variance::In,
-        KTyCtor::Fn => {
-            if i + 1 < len {
-                Variance::Co
-            } else {
-                Variance::Contra
-            }
-        }
-        KTyCtor::Enum(_, _) | KTyCtor::Struct(_, _) => Variance::In,
-    }
-}
-
-enum AllowUpCast {
-    True,
-    False,
-}
-
 fn do_unify_args2(
     ctor: &KTyCtor,
     args: &[KTy2],
@@ -101,7 +79,6 @@ fn do_unify_args2(
 }
 
 // left 型の変数に right 型の値を代入できるか判定する。
-// FIXME: variance を考慮する
 fn do_unify2(
     left: &KTy2,
     right: &KTy2,
