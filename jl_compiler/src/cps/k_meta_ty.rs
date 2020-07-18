@@ -6,7 +6,7 @@ use std::{
     mem::replace,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KMetaTy {
     id: usize,
 }

@@ -104,7 +104,7 @@ mod cps {
 
     /// 符号付き？
     #[allow(unused)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     pub(crate) enum KIsSigned {
         Signed,
         Unsigned,
@@ -112,7 +112,7 @@ mod cps {
 
     /// ビット幅
     #[allow(unused)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     pub(crate) enum KIntBits {
         /// 8-bit
         B8,
@@ -125,14 +125,14 @@ mod cps {
     }
 
     #[allow(unused)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     pub(crate) struct KIntFlavor {
         is_signed: KIsSigned,
         bits: KIntBits,
     }
 
     #[allow(unused)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     pub(crate) enum KFloatBits {
         B16,
         B32,
@@ -141,7 +141,7 @@ mod cps {
     }
 
     #[allow(unused)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
     pub(crate) enum KCharBits {
         B8,
         B16,

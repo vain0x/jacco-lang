@@ -1,5 +1,254 @@
-use super::{KAlias, KEnum, KMetaTy, KMut, KStruct};
-use std::fmt::{self, Debug, Formatter};
+use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct};
+use std::{
+    fmt::{self, Debug, Formatter},
+    iter::once,
+    mem::take,
+};
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum KBasicTy {
+    Never,
+    Unit,
+    I8,
+    I16,
+    I32,
+    I64,
+    Isize,
+    IConst,
+    U8,
+    U16,
+    U32,
+    U64,
+    Usize,
+    UConst,
+    F32,
+    F64,
+    FConst,
+    C8,
+    C16,
+    C32,
+    CConst,
+    Bool,
+}
+
+impl KBasicTy {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            KBasicTy::Never => "never",
+            KBasicTy::Unit => "()",
+            KBasicTy::I8 => "i8",
+            KBasicTy::I16 => "i16",
+            KBasicTy::I32 => "i32",
+            KBasicTy::I64 => "i64",
+            KBasicTy::Isize => "isize",
+            KBasicTy::IConst => "{iNN}",
+            KBasicTy::U8 => "u8",
+            KBasicTy::U16 => "u16",
+            KBasicTy::U32 => "u32",
+            KBasicTy::U64 => "u64",
+            KBasicTy::Usize => "usize",
+            KBasicTy::UConst => "{uNN}",
+            KBasicTy::F32 => "f32",
+            KBasicTy::F64 => "f64",
+            KBasicTy::FConst => "{fNN}",
+            KBasicTy::C8 => "c8",
+            KBasicTy::C16 => "c16",
+            KBasicTy::C32 => "c32",
+            KBasicTy::CConst => "{cNN}",
+            KBasicTy::Bool => "bool",
+        }
+    }
+}
+
+impl Debug for KBasicTy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// 型コンストラクタ
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) enum KTyCtor {
+    Ptr(KMut),
+    Fn,
+    Enum(KMod, KEnum),
+    Struct(KMod, KStruct),
+}
+
+/// 型 (その2)
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub(crate) enum KTy2 {
+    Unresolved,
+    Meta(KMetaTy),
+    Basic(KBasicTy),
+    App { ctor: KTyCtor, args: Box<[KTy2]> },
+}
+
+impl KTy2 {
+    pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy2 {
+        KTy2::App {
+            ctor: KTyCtor::Ptr(k_mut),
+            args: Box::new([self]),
+        }
+    }
+
+    pub(crate) fn new_fn(param_tys: impl IntoIterator<Item = KTy2>, result_ty: KTy2) -> KTy2 {
+        KTy2::App {
+            ctor: KTyCtor::Fn,
+            args: param_tys.into_iter().chain(once(result_ty)).collect(),
+        }
+    }
+
+    pub(crate) fn new_enum(k_mod: KMod, k_enum: KEnum) -> KTy2 {
+        KTy2::App {
+            ctor: KTyCtor::Enum(k_mod, k_enum),
+            args: Box::default(),
+        }
+    }
+
+    pub(crate) fn new_struct(k_mod: KMod, k_struct: KStruct) -> KTy2 {
+        KTy2::App {
+            ctor: KTyCtor::Struct(k_mod, k_struct),
+            args: Box::default(),
+        }
+    }
+
+    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod) -> Self {
+        match ty {
+            KTy::Unresolved => KTy2::Unresolved,
+            KTy::Meta(meta_ty) => KTy2::Meta(meta_ty),
+            KTy::Never => KTy2::Basic(KBasicTy::Never),
+            KTy::Unit => KTy2::Basic(KBasicTy::Unit),
+            KTy::I8 => KTy2::Basic(KBasicTy::I8),
+            KTy::I16 => KTy2::Basic(KBasicTy::I16),
+            KTy::I32 => KTy2::Basic(KBasicTy::I32),
+            KTy::I64 => KTy2::Basic(KBasicTy::I64),
+            KTy::Isize => KTy2::Basic(KBasicTy::Isize),
+            KTy::U8 => KTy2::Basic(KBasicTy::U8),
+            KTy::U16 => KTy2::Basic(KBasicTy::U16),
+            KTy::U32 => KTy2::Basic(KBasicTy::U32),
+            KTy::U64 => KTy2::Basic(KBasicTy::U64),
+            KTy::Usize => KTy2::Basic(KBasicTy::Usize),
+            KTy::F32 => KTy2::Basic(KBasicTy::F32),
+            KTy::F64 => KTy2::Basic(KBasicTy::F64),
+            KTy::C8 => KTy2::Basic(KBasicTy::C8),
+            KTy::C16 => KTy2::Basic(KBasicTy::C16),
+            KTy::C32 => KTy2::Basic(KBasicTy::C32),
+            KTy::Bool => KTy2::Basic(KBasicTy::Bool),
+            KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
+            KTy::Fn {
+                param_tys,
+                result_ty,
+            } => KTy2::new_fn(
+                param_tys.into_iter().map(|ty| KTy2::from_ty1(ty, k_mod)),
+                KTy2::from_ty1(*result_ty, k_mod),
+            ),
+            KTy::Alias(_) => KTy2::Unresolved,
+            KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
+            KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
+        }
+    }
+
+    pub(crate) fn into_ty1(self) -> KTy {
+        match self {
+            KTy2::Unresolved => KTy::Unresolved,
+            KTy2::Meta(meta_ty) => KTy::Meta(meta_ty),
+            KTy2::Basic(basic_ty) => match basic_ty {
+                KBasicTy::Never => KTy::Never,
+                KBasicTy::Unit => KTy::Unit,
+                KBasicTy::I8 => KTy::I8,
+                KBasicTy::I16 => KTy::I16,
+                KBasicTy::I32 => KTy::I32,
+                KBasicTy::I64 => KTy::I64,
+                KBasicTy::Isize => KTy::Isize,
+                KBasicTy::U8 => KTy::U8,
+                KBasicTy::U16 => KTy::U16,
+                KBasicTy::U32 => KTy::U32,
+                KBasicTy::U64 => KTy::U64,
+                KBasicTy::Usize => KTy::Usize,
+                KBasicTy::F32 => KTy::F32,
+                KBasicTy::F64 => KTy::F64,
+                KBasicTy::C8 => KTy::C8,
+                KBasicTy::C16 => KTy::C16,
+                KBasicTy::C32 => KTy::C32,
+                KBasicTy::Bool => KTy::Bool,
+                KBasicTy::IConst => KTy::I32,
+                KBasicTy::UConst => KTy::Usize,
+                KBasicTy::FConst => KTy::F64,
+                KBasicTy::CConst => KTy::C8,
+            },
+            KTy2::App { ctor, mut args } => match ctor {
+                KTyCtor::Ptr(k_mut) => match &mut *args {
+                    [ty] => KTy::Ptr {
+                        k_mut,
+                        ty: Box::new(take(ty).into_ty1()),
+                    },
+                    _ => KTy::Unresolved,
+                },
+                KTyCtor::Fn => match &mut *args {
+                    [] => KTy::Unresolved,
+                    [param_tys @ .., result_ty] => KTy::Fn {
+                        param_tys: param_tys
+                            .iter_mut()
+                            .map(|param_ty| take(param_ty).into_ty1())
+                            .collect(),
+                        result_ty: Box::new(take(result_ty).into_ty1()),
+                    },
+                },
+                KTyCtor::Enum(_, k_enum) => KTy::Enum(k_enum),
+                KTyCtor::Struct(_, k_struct) => KTy::Struct(k_struct),
+            },
+        }
+    }
+}
+
+impl Default for KTy2 {
+    fn default() -> Self {
+        KTy2::Unresolved
+    }
+}
+
+impl Debug for KTy2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        fn write_ty_app(ctor: &KTyCtor, args: &[KTy2], f: &mut Formatter<'_>) -> fmt::Result {
+            static mut DEPTH: usize = 0;
+            let depth = unsafe { DEPTH };
+            if depth >= 3 {
+                return write!(f, "_");
+            }
+
+            unsafe { DEPTH = depth + 1 };
+            {
+                Debug::fmt(ctor, f)?;
+                f.debug_list().entries(args).finish()?;
+            }
+            unsafe { DEPTH = depth };
+            Ok(())
+        }
+
+        match self {
+            KTy2::Unresolved => write!(f, "{{unresolved}}"),
+            KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.id()),
+            KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
+            KTy2::App { ctor, args } => match ctor {
+                KTyCtor::Ptr(k_mut) => match &**args {
+                    [base_ty] => {
+                        match k_mut {
+                            KMut::Const => write!(f, "*")?,
+                            KMut::Mut => write!(f, "*mut ")?,
+                        }
+                        Debug::fmt(base_ty, f)
+                    }
+                    _ => write_ty_app(ctor, args, f),
+                },
+                // FIXME: 実装
+                KTyCtor::Fn => write_ty_app(ctor, args, f),
+                KTyCtor::Enum(_, _) => write_ty_app(ctor, args, f),
+                KTyCtor::Struct(_, _) => write_ty_app(ctor, args, f),
+            },
+        }
+    }
+}
 
 #[derive(Clone)]
 pub(crate) enum KTy {
