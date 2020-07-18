@@ -59,7 +59,7 @@ next_2:;
     int minus_2 = minus_1;
     int not_1 = !1;
     int not_bool_1 = not_1;
-    int not_2 = !2;
+    int not_2 = ~2;
     int not_int_1 = not_2;
     return 0;
 }

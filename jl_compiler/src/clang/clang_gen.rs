@@ -628,7 +628,18 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Deref => gen_unary_op(CUnaryOp::Deref, args, results, conts, ty_env, cx),
         KPrim::Ref | KPrim::RefMut => gen_unary_op(CUnaryOp::Ref, args, results, conts, ty_env, cx),
         KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, ty_env, cx),
-        KPrim::Not => gen_unary_op(CUnaryOp::Not, args, results, conts, ty_env, cx),
+        KPrim::Not => match args {
+            [arg] => {
+                let op = if ty_env.is_bool(&arg.ty(&cx.outlines, &VecArena::default(), &cx.locals))
+                {
+                    CUnaryOp::Not
+                } else {
+                    CUnaryOp::BitNot
+                };
+                gen_unary_op(op, args, results, conts, ty_env, cx)
+            }
+            _ => unreachable!(),
+        },
         KPrim::Add => gen_binary_op(CBinaryOp::Add, args, results, conts, ty_env, cx),
         KPrim::Sub => gen_binary_op(CBinaryOp::Sub, args, results, conts, ty_env, cx),
         KPrim::Mul => gen_binary_op(CBinaryOp::Mul, args, results, conts, ty_env, cx),

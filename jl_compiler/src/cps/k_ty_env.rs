@@ -51,6 +51,17 @@ impl KTyEnv {
         }
     }
 
+    pub(crate) fn is_bool(&self, ty: &KTy) -> bool {
+        match ty {
+            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
+                Some(ty) => self.is_bool(&*ty.borrow()),
+                None => false,
+            },
+            KTy::Bool => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn is_primitive(&self, ty: &KTy) -> bool {
         match ty {
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {

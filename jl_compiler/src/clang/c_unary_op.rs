@@ -4,6 +4,7 @@ pub(crate) enum CUnaryOp {
     Ref,
     Minus,
     Not,
+    BitNot,
 }
 
 impl CUnaryOp {
@@ -13,6 +14,7 @@ impl CUnaryOp {
             CUnaryOp::Ref => "&",
             CUnaryOp::Minus => "-",
             CUnaryOp::Not => "!",
+            CUnaryOp::BitNot => "~",
         }
     }
 }
