@@ -71,8 +71,40 @@ impl<'a> UnificationContext<'a> {
         }
     }
 
-    pub(crate) fn deny_up_cast(&mut self) {
+    fn deny_up_cast(&mut self) {
         self.allow_up_cast = AllowUpCast::False;
+    }
+
+    fn bug_unresolved(&self, other: &KTy2) {
+        log::error!(
+            "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, location={:?})",
+            other.display(&self.ty_env),
+            self.location
+        );
+    }
+
+    fn error_arity(&self, left: &KTy2, right: &KTy2) {
+        let ty_env = &self.ty_env;
+        // FIXME: エラーメッセージを改善
+        self.logger.error(
+            self.location,
+            format!(
+                "型引数の個数が一致しません {:?}",
+                (left.display(ty_env), right.display(ty_env))
+            ),
+        );
+    }
+
+    fn error_ununifiable(&self, left: &KTy2, right: &KTy2) {
+        let ty_env = &self.ty_env;
+        self.logger.error(
+            self.location,
+            format!(
+                "型が一致しません ({} <- {})",
+                left.display(ty_env),
+                right.display(ty_env)
+            ),
+        );
     }
 }
 
@@ -105,11 +137,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
     match (left, right) {
         // unresolved の出現はバグ
         (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
-            log::error!(
-                "unresolved な型は型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, location={:?})",
-                other.display(&ux.ty_env),
-                ux.location
-            );
+            ux.bug_unresolved(other);
         }
 
         // never は常に任意の型に upcast できる。
@@ -146,14 +174,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
             },
         ) if ctor == right_ctor => {
             if args.len() != right_args.len() {
-                // FIXME: エラーメッセージを改善
-                ux.logger.error(
-                    ux.location,
-                    format!(
-                        "型引数の個数が一致しません {:?}",
-                        (left.display(&ux.ty_env), right.display(&ux.ty_env))
-                    ),
-                );
+                ux.error_arity(left, right);
                 return;
             }
 
@@ -162,14 +183,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
         // 不一致
         (KTy2::Never, _) | (KTy2::Basic(_), _) | (KTy2::App { .. }, _) => {
-            ux.logger.error(
-                ux.location,
-                format!(
-                    "型が一致しません ({} <- {})",
-                    left.display(&ux.ty_env),
-                    right.display(&ux.ty_env)
-                ),
-            );
+            ux.error_ununifiable(left, right);
         }
     }
 }
