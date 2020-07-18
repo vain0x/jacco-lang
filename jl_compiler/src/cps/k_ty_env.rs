@@ -44,16 +44,6 @@ impl KTyEnv {
         }
     }
 
-    pub(crate) fn is_primitive(&self, ty: &KTy) -> bool {
-        match ty {
-            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_primitive(&ty.borrow().clone().to_ty1()),
-                None => false,
-            },
-            ty => ty.is_primitive(),
-        }
-    }
-
     pub(crate) fn is_ptr(&self, ty: &KTy) -> bool {
         self.as_ptr(ty).is_some()
     }

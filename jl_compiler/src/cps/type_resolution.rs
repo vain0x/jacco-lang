@@ -304,7 +304,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
                     *ty = KTy::I32
                 }
             }
-            assert!(ty.is_primitive());
+            assert!(ty.is_primitive(&tx.ty_env));
             ty.clone()
         }
         KTerm::Float(_) => KTy::F64,
@@ -533,12 +533,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: 同じ型へのキャストは警告?
                 if let KTy::Unresolved | KTy::Never = arg_ty {
                     // Skip.
-                } else if !tx.ty_env.is_primitive(&arg_ty) {
+                } else if !arg_ty.is_primitive(&tx.ty_env) {
                     tx.logger.error(
                         &node,
                         format!("can't cast from non-primitive type {:?}", arg_ty),
                     );
-                } else if !tx.ty_env.is_primitive(ty) {
+                } else if !ty.is_primitive(&tx.ty_env) {
                     let msg = format!("can't cast to non-primitive type {:?}", ty);
                     tx.logger.error(&node, msg);
                 }

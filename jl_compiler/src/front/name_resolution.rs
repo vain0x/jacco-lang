@@ -5,7 +5,7 @@ use crate::{
     cps::{
         KAlias, KAliasArena, KAliasOutline, KConst, KConstTag, KEnum, KEnumTag, KExternFn,
         KExternFnTag, KField, KFieldTag, KFn, KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag,
-        KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
+        KStruct, KStructTag, KSymbol, KTy, KTyEnv, KVariant, KVis,
     },
     logs::DocLogger,
     utils::{VecArena, VecArenaId},
@@ -846,7 +846,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             let value_ty = match ty_opt {
                 Some(p_ty) => {
                     let ty = gen_ty(p_ty, &nx.res.names);
-                    if !ty.is_primitive() {
+                    if !ty.is_primitive(KTyEnv::EMPTY) {
                         error_on_token(*keyword, "定数はプリミティブ型でなければいけません", nx);
                     }
                     ty
@@ -881,7 +881,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             let ty = match ty_opt {
                 Some(p_ty) => {
                     let ty = gen_ty(p_ty, &nx.res.names);
-                    if !ty.is_primitive() {
+                    if !ty.is_primitive(KTyEnv::EMPTY) {
                         error_on_token(*keyword, "定数はプリミティブ型でなければいけません", nx);
                     }
                     ty
