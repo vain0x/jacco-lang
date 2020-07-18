@@ -1,7 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
-use k_mod::KModLocalSymbolOutline;
+use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
 use k_ty::{KEnumOrStruct, KTy2, Variance};
 use std::mem::{replace, swap, take};
 
@@ -269,7 +269,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) {
     }
 }
 
-fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy {
+fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
     let outline = match alias
         .of(&tx.outlines.aliases)
         .referent_outline(&tx.mod_outlines)
@@ -280,37 +280,43 @@ fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy {
                 location,
                 "解決されていないエイリアスの型が {unresolved} になりました",
             );
-            return KTy::Unresolved;
+            return KTy2::Unresolved;
         }
     };
 
     match outline {
-        k_mod::KProjectSymbolOutline::Mod(..) => {
+        KProjectSymbolOutline::Mod(..) => {
             tx.logger.error(
                 location,
                 "モジュールを指すエイリアスを値として使うことはできません",
             );
-            KTy::Never
+            KTy2::Never
         }
-        k_mod::KProjectSymbolOutline::ModLocal { symbol_outline, .. } => match symbol_outline {
+        KProjectSymbolOutline::ModLocal {
+            k_mod,
+            symbol_outline,
+            ..
+        } => match symbol_outline {
             KModLocalSymbolOutline::Alias(alias, alias_data) => {
                 resolve_alias_term(alias, alias_data.location(), tx)
             }
-            KModLocalSymbolOutline::Const(_, const_data) => const_data.value_ty.clone(),
+            KModLocalSymbolOutline::Const(_, const_data) => const_data.value_ty.to_ty2(k_mod),
             KModLocalSymbolOutline::StaticVar(_, static_var_outline) => {
-                static_var_outline.ty.clone()
+                static_var_outline.ty.to_ty2(k_mod)
             }
-            KModLocalSymbolOutline::Fn(_, fn_outline) => fn_outline.ty(),
-            KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => extern_fn_outline.ty(),
+            KModLocalSymbolOutline::Fn(_, fn_outline) => fn_outline.ty().to_ty2(k_mod),
+            KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => {
+                extern_fn_outline.ty().to_ty2(k_mod)
+            }
             KModLocalSymbolOutline::Enum(_, _) | KModLocalSymbolOutline::Struct(_, _) => {
                 tx.logger
                     .unimpl(location, "インポートされた型の型検査は未実装です");
-                KTy::Never
+                KTy2::Never
             }
             KModLocalSymbolOutline::LocalVar(..) => {
                 tx.logger
                     .unexpected(location, "エイリアスがローカル変数を指すことはありません");
-                KTy::Never
+                KTy2::Never
             }
         },
     }
@@ -338,7 +344,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Char(_) => KTy::C8,
         KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
         KTerm::True(_) | KTerm::False(_) => KTy::Bool,
-        KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),
+        KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx).to_ty1(),
         KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts),
         KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns),
