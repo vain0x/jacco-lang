@@ -632,7 +632,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [arg] => {
                 let op = if ty_env.is_bool(&arg.ty(&cx.outlines, &VecArena::default(), &cx.locals))
                 {
-                    CUnaryOp::Not
+                    CUnaryOp::LogNot
                 } else {
                     CUnaryOp::BitNot
                 };

@@ -3,7 +3,7 @@ pub(crate) enum CUnaryOp {
     Deref,
     Ref,
     Minus,
-    Not,
+    LogNot,
     BitNot,
 }
 
@@ -13,7 +13,7 @@ impl CUnaryOp {
             CUnaryOp::Deref => "*",
             CUnaryOp::Ref => "&",
             CUnaryOp::Minus => "-",
-            CUnaryOp::Not => "!",
+            CUnaryOp::LogNot => "!",
             CUnaryOp::BitNot => "~",
         }
     }
