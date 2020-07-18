@@ -4,10 +4,54 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    source::{loc::LocResolver, TRange},
+    parse::{PLoc, PRoot},
+    source::{loc::LocResolver, Doc, TRange},
     token::{HaveLocation, Location, TokenSource},
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
+
+/// 位置情報と関連付けられたエラーメッセージ
+#[derive(Clone, Debug)]
+pub(crate) struct DocLogItem {
+    loc: PLoc,
+    message: String,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct DocLogs {
+    items: Rc<RefCell<Vec<DocLogItem>>>,
+}
+
+impl DocLogs {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn logger(&self) -> DocLogger {
+        DocLogger {
+            parent: self.clone(),
+        }
+    }
+
+    pub(crate) fn finish(self) -> Vec<DocLogItem> {
+        take(&mut self.items.try_borrow_mut().expect("can't share logs"))
+    }
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct DocLogger {
+    parent: DocLogs,
+}
+
+impl DocLogger {
+    pub(crate) fn error(&self, loc: PLoc, message: impl Into<String>) {
+        let message = message.into();
+        self.parent
+            .items
+            .borrow_mut()
+            .push(DocLogItem { loc, message });
+    }
+}
 
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]
@@ -77,6 +121,17 @@ pub(crate) struct Logger {
 }
 
 impl Logger {
+    pub(crate) fn extend_from_doc_logs(&self, doc: Doc, logs: DocLogs, root: &PRoot) {
+        let mut items = self.parent.inner.borrow_mut();
+        for item in logs.finish() {
+            let (loc, message) = (item.loc, item.message);
+            items.push(LogItem::OnLocation {
+                location: Location::new(TokenSource::File(doc), loc.resolve(root).into()),
+                message,
+            });
+        }
+    }
+
     pub(crate) fn error(&self, have_location: impl HaveLocation, message: impl Into<String>) {
         let message = message.into();
         let location = have_location.location();

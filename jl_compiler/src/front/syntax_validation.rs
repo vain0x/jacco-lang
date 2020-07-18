@@ -1,5 +1,5 @@
 use super::*;
-use std::cell::RefCell;
+use crate::logs::DocLogger;
 
 enum IsRequired {
     True(PToken),
@@ -8,15 +8,12 @@ enum IsRequired {
 
 struct Vx<'a> {
     root: &'a PRoot,
-    errors: RefCell<Vec<(PLoc, String)>>,
+    logger: DocLogger,
 }
 
 impl<'a> Vx<'a> {
-    fn new(root: &'a PRoot) -> Self {
-        Vx {
-            root,
-            errors: RefCell::default(),
-        }
+    fn new(root: &'a PRoot, logger: DocLogger) -> Self {
+        Vx { root, logger }
     }
 }
 
@@ -26,7 +23,7 @@ where
 {
     let token = PToken::from((node, &vx.root));
     let loc = PLoc::new(token);
-    vx.errors.borrow_mut().push((loc, message.into()));
+    vx.logger.error(loc, message);
 }
 
 fn error_behind_node<'a, T: 'a>(node: &'a T, message: impl Into<String>, vx: &'a Vx)
@@ -35,19 +32,17 @@ where
 {
     let token = PToken::from((node, &vx.root));
     let loc = PLoc::new(token).behind();
-    vx.errors.borrow_mut().push((loc, message.into()));
+    vx.logger.error(loc, message);
 }
 
 fn error_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    vx.errors
-        .borrow_mut()
-        .push((PLoc::new(token), message.into()));
+    let loc = PLoc::new(token);
+    vx.logger.error(loc, message);
 }
 
 fn error_behind_token(token: PToken, message: impl Into<String>, vx: &Vx) {
-    vx.errors
-        .borrow_mut()
-        .push((PLoc::new(token).behind(), message.into()));
+    let loc = PLoc::new(token).behind();
+    vx.logger.error(loc, message);
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, vx: &Vx) {
@@ -628,8 +623,7 @@ fn validate_root(root: &PRoot, vx: &Vx) {
     }
 }
 
-pub(crate) fn validate_syntax(root: &PRoot) -> Vec<(PLoc, String)> {
-    let vx = Vx::new(root);
+pub(crate) fn validate_syntax(root: &PRoot, logger: DocLogger) {
+    let vx = Vx::new(root, logger);
     validate_root(root, &vx);
-    vx.errors.into_inner()
 }

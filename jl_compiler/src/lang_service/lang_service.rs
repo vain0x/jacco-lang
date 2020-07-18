@@ -2,7 +2,7 @@ use crate::{
     cli::MyLocResolver,
     cps::{resolve_types, KModData, KModOutline, KModOutlines, KTy, KTyEnv},
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
-    logs::Logs,
+    logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
     source::{loc::LocResolver, Doc, Loc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
@@ -98,15 +98,16 @@ impl AnalysisCache {
         };
         let syntax = {
             let logs = Logs::new();
-
             let root = parse::parse_tokens(tokens, logs.logger());
-            let errors = validate_syntax(&root);
-            let logger = logs.logger();
-            for (loc, message) in errors {
-                let range = loc.resolve(&root);
-                logger.error((self.doc.into(), range), message);
-            }
-            let errors = logs_into_errors(logs, self);
+
+            let doc_logs = DocLogs::new();
+            validate_syntax(&root, doc_logs.logger());
+
+            let errors = {
+                logs.logger()
+                    .extend_from_doc_logs(self.doc, doc_logs, &root);
+                logs_into_errors(logs, self)
+            };
 
             Syntax { root, errors }
         };
@@ -124,15 +125,8 @@ impl AnalysisCache {
         let symbols = {
             let syntax = self.request_syntax();
 
-            let logs = Logs::new();
-            let (res, errors) = front::resolve_name(&mut syntax.root);
-            {
-                let logger = logs.logger();
-                for (loc, message) in errors {
-                    let range = loc.resolve(&syntax.root);
-                    logger.error((doc, range), message);
-                }
-            }
+            let doc_logs = DocLogs::new();
+            let res = front::resolve_name(&mut syntax.root, doc_logs.logger());
 
             let res = Rc::new(res);
             let occurrences = {
@@ -141,7 +135,12 @@ impl AnalysisCache {
             };
             let res = Rc::try_unwrap(res).ok().unwrap();
 
-            let errors = logs_into_errors(logs, self);
+            let errors = {
+                let logs = Logs::new();
+                logs.logger()
+                    .extend_from_doc_logs(doc, doc_logs, &syntax.root);
+                logs_into_errors(logs, self)
+            };
 
             Symbols {
                 name_resolution_opt: Some(res),
@@ -166,20 +165,18 @@ impl AnalysisCache {
             let symbols = self.symbols_opt.as_mut().unwrap();
 
             let logs = Logs::new();
-            let mut errors = vec![];
+            let doc_logs = DocLogs::new();
             let (mut outline, mut root) = front::cps_conversion(
                 &syntax.root,
                 symbols.name_resolution_opt.as_ref().unwrap(),
-                &mut errors,
+                doc_logs.logger(),
             );
+
+            logs.logger()
+                .extend_from_doc_logs(self.doc, doc_logs, &syntax.root);
 
             // FIXME: mod_outlines を用意する
             resolve_types(&outline, &mut root, &KModOutlines::default(), logs.logger());
-
-            for (loc, message) in errors {
-                let range = loc.resolve(&syntax.root);
-                logs.logger().error((self.doc, range), message);
-            }
 
             let errors = logs_into_errors(logs, self);
 

@@ -5,7 +5,7 @@ use crate::{
         KModTag,
     },
     front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
-    logs::Logs,
+    logs::{DocLogs, Logs},
     parse::{parse_tokens, PRoot, PToken, PTokens},
     source::{loc::LocResolver, Doc, TRange},
     token::{tokenize, TokenSource},
@@ -76,8 +76,6 @@ impl Project {
     /// (この呼び出しでパースされたドキュメントはパース済みとみなされるので、
     ///  unresolved_mod_names には含まれない。)
     pub fn parse(&mut self, unresolved_mod_names: &mut Vec<String>) {
-        log::trace!("parse");
-
         // FIXME: mod_name? doc_name?
         let mut mod_names = vec![];
 
@@ -124,18 +122,14 @@ impl Project {
 
         self.names = VecArena::from_iter(self.syntaxes.enumerate_mut().map(|(id, syntax)| {
             let doc = Doc::from(id.to_index());
+            let doc_logs = DocLogs::new();
             let logs = take(&mut syntax.logs);
 
-            let errors1 = validate_syntax(&syntax.root);
-            let (name_resolution, errors2) = resolve_name(&mut syntax.root);
+            validate_syntax(&syntax.root, doc_logs.logger());
+            let name_resolution = resolve_name(&mut syntax.root, doc_logs.logger());
 
-            {
-                let logger = logs.logger();
-                for (loc, message) in errors1.into_iter().chain(errors2) {
-                    let range = loc.resolve(&syntax.root);
-                    logger.error((doc, range), message);
-                }
-            }
+            logs.logger()
+                .extend_from_doc_logs(doc, doc_logs, &syntax.root);
 
             (name_resolution, logs)
         }));
@@ -150,15 +144,13 @@ impl Project {
                 continue;
             }
 
-            let mut errors = vec![];
+            let doc_logs = DocLogs::new();
             let (mut mod_outline, mod_data) =
-                cps_conversion(&syntax.root, name_resolution, &mut errors);
+                cps_conversion(&syntax.root, name_resolution, doc_logs.logger());
             mod_outline.name = self.docs[id].name.to_string();
 
-            for (loc, message) in errors {
-                let range = loc.resolve(&syntax.root);
-                logs.logger().error((doc, range), message);
-            }
+            logs.logger()
+                .extend_from_doc_logs(doc, doc_logs, &syntax.root);
 
             let k_mod = self.mod_outlines.alloc(mod_outline);
             {

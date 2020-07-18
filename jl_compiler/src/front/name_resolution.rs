@@ -7,11 +7,11 @@ use crate::{
         KExternFnTag, KField, KFieldTag, KFn, KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag,
         KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
+    logs::DocLogger,
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fmt::Debug,
     mem::{replace, take},
@@ -221,14 +221,15 @@ struct Nx {
     parent_local_vars: NLocalVarArena,
     parent_loops: NLoopArena,
     res: NameResolution,
-    errors: RefCell<Vec<(PLoc, String)>>,
+    logger: DocLogger,
 }
 
 impl Nx {
-    fn new(tokens: Rc<PTokens>, names: PNameArena) -> Self {
+    fn new(tokens: Rc<PTokens>, names: PNameArena, logger: DocLogger) -> Self {
         Self {
             tokens,
             names,
+            logger,
             ..Self::default()
         }
     }
@@ -285,14 +286,13 @@ impl Nx {
 }
 
 fn error_on_token(token: PToken, message: impl Into<String>, nx: &Nx) {
-    nx.errors
-        .borrow_mut()
-        .push((PLoc::new(token), message.into()));
+    let loc = PLoc::new(token);
+    nx.logger.error(loc, message);
 }
+
 fn error_on_name(name: PName, message: impl Into<String>, nx: &Nx) {
-    nx.errors
-        .borrow_mut()
-        .push((PLoc::new(name.of(&nx.names).token), message.into()));
+    let loc = PLoc::new(name.of(&nx.names).token);
+    nx.logger.error(loc, message);
 }
 
 fn parse_known_ty_name(s: &str) -> Option<NName> {
@@ -986,12 +986,12 @@ fn resolve_block_opt(block_opt: Option<&mut PBlock>, nx: &mut Nx) {
     }
 }
 
-pub(crate) fn resolve_name(p_root: &mut PRoot) -> (NameResolution, Vec<(PLoc, String)>) {
+pub(crate) fn resolve_name(p_root: &mut PRoot, logger: DocLogger) -> NameResolution {
     let mut nx = {
         // FIXME: clone しない
         let tokens = Rc::new(p_root.tokens.clone());
         let names = p_root.names.clone();
-        Nx::new(tokens, names)
+        Nx::new(tokens, names, logger)
     };
 
     nx.res.names = VecArena::from_iter(nx.names.iter().map(|_| NName::Unresolved));
@@ -1003,5 +1003,5 @@ pub(crate) fn resolve_name(p_root: &mut PRoot) -> (NameResolution, Vec<(PLoc, St
 
     resolve_decls(&mut p_root.decls, &mut nx);
 
-    (nx.res, nx.errors.into_inner())
+    nx.res
 }

@@ -8,12 +8,12 @@ use crate::cps::*;
 use crate::parse::*;
 use crate::{
     front::NameResolution,
+    logs::DocLogger,
     token::{HaveLocation, Location, TokenData, TokenKind},
     utils::VecArena,
 };
 use log::{error, trace};
 use std::{
-    cell::RefCell,
     iter::once,
     mem::{replace, take},
     rc::Rc,
@@ -39,7 +39,7 @@ struct Gx {
     fns: KFnArena,
     fn_loops: VecArena<KFnTag, NLoopArena>,
     extern_fns: KExternFnArena,
-    errors: RefCell<Vec<(PLoc, String)>>,
+    logger: DocLogger,
 }
 
 impl Gx {
@@ -151,14 +151,14 @@ fn new_never_term(location: Location) -> KTerm {
 }
 
 fn error_token(token: PToken, message: impl Into<String>, gx: &Gx) {
-    gx.errors
-        .borrow_mut()
-        .push((PLoc::new(token), message.into()));
+    let loc = PLoc::new(token);
+    gx.logger.error(loc, message);
 }
 
 fn error_node(node: Location, message: impl Into<String>, gx: &Gx) {
     log::error!("{} {:?}", message.into(), node);
-    error_token(PToken::from_index(0), "", gx);
+    let loc = PLoc::new(PToken::from_index(0));
+    gx.logger.error(loc, "<cps_conversion::error_node>");
 }
 
 fn fresh_loop_labels(location: Location, gx: &mut Gx) -> KLoopData {
@@ -1337,7 +1337,7 @@ fn gen_root(root: &PRoot, gx: &mut Gx) {
 pub(crate) fn cps_conversion(
     p_root: &PRoot,
     name_resolution: &NameResolution,
-    errors: &mut Vec<(PLoc, String)>,
+    logger: DocLogger,
 ) -> (KModOutline, KModData) {
     let mod_info = {
         let k_consts = name_resolution
@@ -1482,6 +1482,7 @@ pub(crate) fn cps_conversion(
             .collect();
 
         let mut gx = Gx::new();
+        gx.logger = logger;
         gx.tokens = Rc::new(p_root.tokens.clone());
         gx.names = p_root.names.clone();
         gx.name_res = name_resolution.names.clone();
@@ -1506,8 +1507,6 @@ pub(crate) fn cps_conversion(
         gx.outlines.fields = VecArena::from_vec(k_fields);
 
         gen_root(p_root, &mut gx);
-
-        errors.extend(gx.errors.into_inner());
 
         (
             gx.outlines,
