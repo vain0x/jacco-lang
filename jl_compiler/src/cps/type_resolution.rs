@@ -54,46 +54,61 @@ impl<'a> Tx<'a> {
     }
 }
 
+struct UnificationContext<'a> {
+    allow_up_cast: AllowUpCast,
+    location: Location,
+    ty_env: &'a KTyEnv,
+    logger: &'a Logger,
+}
+
+impl<'a> UnificationContext<'a> {
+    fn new(location: Location, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
+        Self {
+            allow_up_cast: AllowUpCast::True,
+            location,
+            ty_env,
+            logger,
+        }
+    }
+
+    pub(crate) fn deny_up_cast(&mut self) {
+        self.allow_up_cast = AllowUpCast::False;
+    }
+}
+
 fn do_unify_args2(
     ctor: &KTyCtor,
     args: &[KTy2],
     right_args: &[KTy2],
-    allow_up_cast: AllowUpCast,
-    location: Location,
-    ty_env: &KTyEnv,
-    logger: &Logger,
+    ux: &mut UnificationContext<'_>,
 ) {
     assert_eq!(args.len(), right_args.len());
     for ((i, left), right) in args.iter().enumerate().zip(right_args) {
-        let variance = match allow_up_cast {
+        let variance = match ux.allow_up_cast {
             AllowUpCast::True => ty_arg_variance(ctor, i, args.len()),
             AllowUpCast::False => Variance::In,
         };
 
         match variance {
-            Variance::In => do_unify2(left, right, AllowUpCast::False, location, ty_env, logger),
-            Variance::Co => do_unify2(left, right, AllowUpCast::True, location, ty_env, logger),
-            Variance::Contra => do_unify2(right, left, AllowUpCast::True, location, ty_env, logger),
+            Variance::In => {
+                ux.deny_up_cast();
+                do_unify2(left, right, ux)
+            }
+            Variance::Co => do_unify2(left, right, ux),
+            Variance::Contra => do_unify2(right, left, ux),
         }
     }
 }
 
 // left 型の変数に right 型の値を代入できるか判定する。
-fn do_unify2(
-    left: &KTy2,
-    right: &KTy2,
-    allow_up_cast: AllowUpCast,
-    location: Location,
-    ty_env: &KTyEnv,
-    logger: &Logger,
-) {
+fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
     match (left, right) {
         // unresolved の出現はバグ
         (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
             log::error!(
                 "unresolved な型は型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, location={:?})",
-                other.display(ty_env),
-                location
+                other.display(&ux.ty_env),
+                ux.location
             );
         }
 
@@ -105,33 +120,19 @@ fn do_unify2(
         (KTy2::Basic(left), KTy2::Basic(right)) if left == right => {}
 
         // メタ型変数の展開および束縛:
-        (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(ty_env) {
-            Some(ty_cell) => do_unify2(
-                left,
-                &ty_cell.borrow(),
-                allow_up_cast,
-                location,
-                ty_env,
-                logger,
-            ),
+        (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(&ux.ty_env) {
+            Some(ty_cell) => do_unify2(left, &ty_cell.borrow(), ux),
             None => {
                 // fn main() -> i32 { loop {} } などで発生する。
                 // この時点で unbound な型変数は never とみなしてよいはず?
             }
         },
         (KTy2::Meta(meta_ty), _) => {
-            match meta_ty.try_unwrap(ty_env) {
-                Some(ty_cell) => do_unify2(
-                    &ty_cell.borrow(),
-                    right,
-                    allow_up_cast,
-                    location,
-                    ty_env,
-                    logger,
-                ),
+            match meta_ty.try_unwrap(&ux.ty_env) {
+                Some(ty_cell) => do_unify2(&ty_cell.borrow(), right, ux),
                 None => {
                     // FIXME: occurrence check
-                    meta_ty.bind(right.clone(), ty_env);
+                    meta_ty.bind(right.clone(), &ux.ty_env);
                 }
             }
         }
@@ -146,35 +147,27 @@ fn do_unify2(
         ) if ctor == right_ctor => {
             if args.len() != right_args.len() {
                 // FIXME: エラーメッセージを改善
-                logger.error(
-                    location,
+                ux.logger.error(
+                    ux.location,
                     format!(
                         "型引数の個数が一致しません {:?}",
-                        (left.display(ty_env), right.display(ty_env))
+                        (left.display(&ux.ty_env), right.display(&ux.ty_env))
                     ),
                 );
                 return;
             }
 
-            do_unify_args2(
-                ctor,
-                args,
-                right_args,
-                allow_up_cast,
-                location,
-                ty_env,
-                logger,
-            )
+            do_unify_args2(ctor, args, right_args, ux)
         }
 
         // 不一致
         (KTy2::Never, _) | (KTy2::Basic(_), _) | (KTy2::App { .. }, _) => {
-            logger.error(
-                location,
+            ux.logger.error(
+                ux.location,
                 format!(
                     "型が一致しません ({} <- {})",
-                    left.display(ty_env),
-                    right.display(ty_env)
+                    left.display(&ux.ty_env),
+                    right.display(&ux.ty_env)
                 ),
             );
         }
@@ -182,27 +175,19 @@ fn do_unify2(
 }
 
 fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
+    let mut ux = UnificationContext::new(location, &tx.ty_env, &tx.logger);
     do_unify2(
         &left.clone().into_ty2(tx.k_mod),
         &right.clone().into_ty2(tx.k_mod),
-        AllowUpCast::True,
-        location,
-        &tx.ty_env,
-        &tx.logger,
+        &mut ux,
     );
 }
 
 /// left, right の型が一致するように型変数を決定する。
 /// (right 型の値を left 型の引数に代入する状況を想定する。)
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
-    do_unify2(
-        &left.into_ty2(tx.k_mod),
-        &right.into_ty2(tx.k_mod),
-        AllowUpCast::True,
-        location,
-        &tx.ty_env,
-        &tx.logger,
-    );
+    let mut ux = UnificationContext::new(location, &tx.ty_env, &tx.logger);
+    do_unify2(&left.into_ty2(tx.k_mod), &right.into_ty2(tx.k_mod), &mut ux);
 }
 
 fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
