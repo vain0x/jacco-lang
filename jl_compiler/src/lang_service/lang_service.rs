@@ -1,6 +1,6 @@
 use crate::{
     cli::MyLocResolver,
-    cps::{resolve_types, KModData, KModOutline, KModOutlines, KTy, KTyEnv},
+    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy, KTyEnv},
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
@@ -176,7 +176,13 @@ impl AnalysisCache {
                 .extend_from_doc_logs(self.doc, doc_logs, &syntax.root);
 
             // FIXME: mod_outlines を用意する
-            resolve_types(&outline, &mut root, &KModOutlines::default(), logs.logger());
+            resolve_types(
+                KMod::from_index(0),
+                &outline,
+                &mut root,
+                &KModOutlines::default(),
+                logs.logger(),
+            );
 
             let errors = logs_into_errors(logs, self);
 

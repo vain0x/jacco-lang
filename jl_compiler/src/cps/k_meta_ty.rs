@@ -1,4 +1,4 @@
-use super::{KTy, KTyEnv};
+use super::{k_ty::KTy2, KTyEnv};
 use crate::{
     token::Location,
     utils::{VecArena, VecArenaId},
@@ -16,22 +16,24 @@ pub(crate) type KMetaTy = VecArenaId<KMetaTyTag>;
 pub(crate) type KMetaTys = VecArena<KMetaTyTag, KMetaTyData>;
 
 impl KMetaTy {
-    pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy>> {
-        if ty_env.meta_ty_get(self).ty().borrow().is_unresolved() {
+    pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy2>> {
+        let cell = ty_env.meta_ty_get(self).ty();
+        if *cell.borrow() == KTy2::Unresolved {
             return None;
         }
 
-        Some(ty_env.meta_ty_get(self).ty())
+        Some(cell)
     }
 
-    pub(crate) fn bind(&mut self, new_ty: KTy, ty_env: &KTyEnv) {
+    pub(crate) fn bind(&mut self, new_ty: KTy2, ty_env: &KTyEnv) {
         debug_assert!(self.try_unwrap(ty_env).is_none());
-        debug_assert!(!new_ty.is_unresolved());
+        debug_assert_ne!(new_ty, KTy2::Unresolved);
 
         let data = ty_env.meta_ty_get(*self);
         let old = replace(&mut *data.ty().borrow_mut(), new_ty);
 
-        debug_assert!(old.is_unresolved());
+        // バインドは1回のみ。
+        debug_assert_eq!(old, KTy2::Unresolved);
     }
 }
 
@@ -39,17 +41,17 @@ impl KMetaTy {
 pub(crate) struct KMetaTyData {
     /// 型推論の単一化において、メタ型変数への参照を持ちながら他のメタ型変数への束縛を行う必要があるので、
     /// おそらく RefCell を避けるのは難しい。
-    ty: RefCell<KTy>,
+    ty: RefCell<KTy2>,
 
     location: Location,
 }
 
 impl KMetaTyData {
-    pub(crate) fn new(ty: RefCell<KTy>, location: Location) -> Self {
+    pub(crate) fn new(ty: RefCell<KTy2>, location: Location) -> Self {
         Self { ty, location }
     }
 
-    pub(crate) fn ty(&self) -> &RefCell<KTy> {
+    pub(crate) fn ty(&self) -> &RefCell<KTy2> {
         &self.ty
     }
 }

@@ -7,6 +7,7 @@ use std::mem::{swap, take};
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
+    k_mod: KMod,
     /// 現在の関数の型環境
     ty_env: KTyEnv,
     /// 現在の関数に含まれるローカル変数の情報
@@ -23,12 +24,18 @@ struct Tx<'a> {
 }
 
 impl<'a> Tx<'a> {
-    fn new(outlines: &'a KModOutline, mod_outlines: &'a KModOutlines, logger: Logger) -> Self {
+    fn new(
+        k_mod: KMod,
+        outlines: &'a KModOutline,
+        mod_outlines: &'a KModOutlines,
+        logger: Logger,
+    ) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             locals: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
+            k_mod,
             outlines,
             mod_outlines,
             logger,
@@ -56,11 +63,11 @@ fn do_unify(left: &KTy, right: &KTy, location: Location, tx: &Tx) {
         (KTy::Meta(mut meta), other) | (other, KTy::Meta(mut meta)) => {
             match meta.try_unwrap(&tx.ty_env) {
                 Some(ty) => {
-                    do_unify(&*ty.borrow(), other, location, tx);
+                    do_unify(&ty.borrow().clone().into_ty1(), other, location, tx);
                 }
                 None => {
                     // FIXME: occurrence check
-                    meta.bind(other.clone(), &tx.ty_env);
+                    meta.bind(other.clone().into_ty2(tx.k_mod), &tx.ty_env);
                 }
             }
         }
@@ -770,11 +777,12 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
 }
 
 pub(crate) fn resolve_types(
+    k_mod: KMod,
     outlines: &KModOutline,
     mod_data: &mut KModData,
     mod_outlines: &KModOutlines,
     logger: Logger,
 ) {
-    let mut tx = Tx::new(outlines, mod_outlines, logger);
+    let mut tx = Tx::new(k_mod, outlines, mod_outlines, logger);
     resolve_root(mod_data, &mut tx);
 }

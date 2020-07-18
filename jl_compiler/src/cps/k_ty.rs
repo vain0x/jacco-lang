@@ -289,6 +289,10 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
+    pub(crate) fn into_ty2(self, k_mod: KMod) -> KTy2 {
+        KTy2::from_ty1(self, k_mod)
+    }
+
     pub(crate) fn is_unresolved(&self) -> bool {
         match self {
             KTy::Unresolved => true,

@@ -36,7 +36,7 @@ impl KTyEnv {
     pub(crate) fn is_unbound(&self, ty: &KTy) -> bool {
         match ty {
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_unbound(&*ty.borrow()),
+                Some(ty) => self.is_unbound(&ty.borrow().clone().into_ty1()),
                 None => true,
             },
             _ => false,
@@ -47,7 +47,7 @@ impl KTyEnv {
         match ty {
             KTy::Unit | KTy::Never => true,
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_unit_or_never(&*ty.borrow()),
+                Some(ty) => self.is_unit_or_never(&ty.borrow().clone().into_ty1()),
                 None => false,
             },
             _ => false,
@@ -57,7 +57,7 @@ impl KTyEnv {
     pub(crate) fn is_bool(&self, ty: &KTy) -> bool {
         match ty {
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_bool(&*ty.borrow()),
+                Some(ty) => self.is_bool(&ty.borrow().clone().into_ty1()),
                 None => false,
             },
             KTy::Bool => true,
@@ -68,7 +68,7 @@ impl KTyEnv {
     pub(crate) fn is_primitive(&self, ty: &KTy) -> bool {
         match ty {
             KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_primitive(&*ty.borrow()),
+                Some(ty) => self.is_primitive(&ty.borrow().clone().into_ty1()),
                 None => false,
             },
             ty => ty.is_primitive(),
@@ -84,7 +84,7 @@ impl KTyEnv {
             KTy::Ptr { k_mut, ty } => Some((*k_mut, ty.as_ref().clone())),
             KTy::Meta(meta_ty) => {
                 let ty = meta_ty.try_unwrap(self)?;
-                self.as_ptr(&ty.borrow().clone())
+                self.as_ptr(&ty.borrow().clone().into_ty1())
             }
             _ => None,
         }
@@ -95,7 +95,7 @@ impl KTyEnv {
             KTy::Enum(k_enum) => Some(*k_enum),
             KTy::Meta(meta_ty) => {
                 let ty = meta_ty.try_unwrap(self)?;
-                self.as_enum(&ty.borrow())
+                self.as_enum(&ty.borrow().clone().into_ty1())
             }
             _ => None,
         }
@@ -106,7 +106,8 @@ impl KTyEnv {
             KTy::Enum(k_enum) => KEnumOrStruct::Enum(*k_enum),
             KTy::Struct(k_struct) => KEnumOrStruct::Struct(*k_struct),
             KTy::Meta(meta_ty) => {
-                return self.as_struct_or_enum(&meta_ty.try_unwrap(self)?.borrow());
+                return self
+                    .as_struct_or_enum(&meta_ty.try_unwrap(self)?.borrow().clone().into_ty1());
             }
             _ => return None,
         };
@@ -124,7 +125,7 @@ impl KTyEnv {
                     Some(ty) => ty,
                     None => return "{unknown}".to_string(),
                 };
-                self.display(&ty.borrow().clone(), enums, structs)
+                self.display(&ty.borrow().clone().into_ty1(), enums, structs)
             }
             KTy::Unresolved => "{unresolved}".to_string(),
             KTy::Never
