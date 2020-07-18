@@ -338,6 +338,18 @@ impl KTy {
         KTy2::from_ty1(self.clone(), k_mod)
     }
 
+    /// 型が一定の条件を満たすか判定する。
+    /// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy::Meta` が渡されることはない。
+    fn satisfies(&self, ty_env: &KTyEnv, predicate: impl Fn(&KTy) -> bool) -> bool {
+        match self {
+            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+                Some(ty) => ty.borrow().to_ty1().satisfies(ty_env, predicate),
+                None => predicate(&KTy::Unresolved),
+            },
+            _ => predicate(self),
+        }
+    }
+
     pub(crate) fn is_unresolved(&self) -> bool {
         match self {
             KTy::Unresolved => true,
@@ -345,11 +357,11 @@ impl KTy {
         }
     }
 
-    pub(crate) fn is_unit(&self) -> bool {
-        match self {
+    pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
+        self.satisfies(ty_env, |ty| match ty {
             KTy::Unit => true,
             _ => false,
-        }
+        })
     }
 
     pub(crate) fn is_primitive(&self) -> bool {
