@@ -1176,7 +1176,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
             let mut result = gen_name(name_opt.unwrap(), gx).as_symbol().unwrap();
             // FIXME: k_mod
-            *result.ty_mut(&mut gx.current_locals) = ty.into_ty2(KMod::from_index(0));
+            *result.ty_mut(&mut gx.current_locals) = ty.to_ty2(KMod::from_index(0));
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
@@ -1403,7 +1403,7 @@ pub(crate) fn cps_conversion(
                                 n_local_var_data.name.to_string(),
                                 n_local_var_data.location,
                             )
-                            .with_ty(n_local_var_data.ty.clone().into_ty2(KMod::TODO))
+                            .with_ty(n_local_var_data.ty.clone().to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),
@@ -1442,7 +1442,7 @@ pub(crate) fn cps_conversion(
                                 n_local_var_data.name.to_string(),
                                 n_local_var_data.location,
                             )
-                            .with_ty(n_local_var_data.ty.clone().into_ty2(KMod::TODO))
+                            .with_ty(n_local_var_data.ty.clone().to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),

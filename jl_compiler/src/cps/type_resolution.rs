@@ -186,7 +186,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 /// (right 型の値を left 型の引数に代入する状況を想定する。)
 fn unify(left: KTy, right: KTy, location: Location, tx: &mut Tx) {
     let mut ux = UnificationContext::new(location, &tx.ty_env, &tx.logger);
-    do_unify2(&left.into_ty2(tx.k_mod), &right.into_ty2(tx.k_mod), &mut ux);
+    do_unify2(&left.to_ty2(tx.k_mod), &right.to_ty2(tx.k_mod), &mut ux);
 }
 
 /// left 型の変数に right 型の値を代入できるか判定する。
@@ -213,13 +213,13 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.ty(&tx.locals).into_ty2(tx.k_mod);
+        let symbol_ty = symbol.ty(&tx.locals).to_ty2(tx.k_mod);
         unify2(&symbol_ty, expected_ty, symbol.location, tx);
     }
 }
 
 fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
-    let expected_ty_opt = expected_ty_opt.map(|ty| ty.clone().into_ty2(tx.k_mod));
+    let expected_ty_opt = expected_ty_opt.map(|ty| ty.clone().to_ty2(tx.k_mod));
     resolve_symbol_def2(symbol, expected_ty_opt.as_ref(), tx)
 }
 
