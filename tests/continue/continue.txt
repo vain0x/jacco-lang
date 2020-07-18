@@ -7,7 +7,6 @@ void nested_continue_1();
 int main();
 
 void continue_in_while_1() {
-    // while_result_1 is killed.
     goto continue__1;
 
 continue__1:;
@@ -33,8 +32,6 @@ next_2:;
 }
 
 void nested_continue_1() {
-    // while_result_2 is killed.
-    // while_result_3 is killed.
     goto continue__3;
 
 continue__3:;

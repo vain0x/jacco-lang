@@ -23,7 +23,6 @@ void let_with_block_init_1() {
 }
 
 void match_arm_with_block_body_1() {
-    // match_result_1 is killed.
     switch (0ULL) {
         case 0ULL: {
             goto match_next_1;

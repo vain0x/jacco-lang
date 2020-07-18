@@ -15,10 +15,6 @@ void use_extern_fn_declared_later_1();
 void f_1();
 
 int main() {
-    // if_result_1 is killed.
-    // if_result_2 is killed.
-    // if_result_3 is killed.
-    // if_result_4 is killed.
     if (1) {
         goto next_1;
     } else {
