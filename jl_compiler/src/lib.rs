@@ -54,7 +54,6 @@ mod cps {
     mod k_mut;
     mod k_node;
     mod k_prim;
-    mod k_project;
     mod k_static_var;
     mod k_struct;
     mod k_symbol;
@@ -98,8 +97,6 @@ mod cps {
         resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,
         KModOutlines, KModTag, KProjectSymbol,
     };
-    #[allow(unused)]
-    pub(crate) use k_project::{KProject, KProjectArena, KProjectData, KProjectTag};
 
     use crate::logs::Logger;
     use crate::token::{HaveLocation, Location, TokenData};
