@@ -363,11 +363,11 @@ impl KTy {
         ty_satisfies(self, ty_env, ty_is_primitive)
     }
 
-    pub(crate) fn as_struct(&self) -> Option<KStruct> {
-        match self {
+    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
+        ty_project(self, ty_env, |ty| match ty {
             KTy::Struct(k_struct) => Some(*k_struct),
             _ => None,
-        }
+        })
     }
 }
 
@@ -468,6 +468,20 @@ fn ty_is_primitive(ty: &KTy) -> bool {
         | KTy::Bool
         | KTy::Ptr { .. } => true,
         _ => false,
+    }
+}
+
+fn ty_project<'a, T: 'a>(
+    ty: &'a KTy,
+    ty_env: &'a KTyEnv,
+    f: impl Fn(&KTy) -> Option<T>,
+) -> Option<T> {
+    match ty {
+        KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+            Some(ty) => ty_project(&ty.borrow().to_ty1(), ty_env, f),
+            None => f(&KTy::Unresolved),
+        },
+        _ => f(ty),
     }
 }
 

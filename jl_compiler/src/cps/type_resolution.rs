@@ -366,7 +366,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let k_struct = ty.clone().as_struct().unwrap();
+                let k_struct = ty.clone().as_struct(&tx.ty_env).unwrap();
                 let outlines = tx.outlines.clone();
 
                 for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
