@@ -71,7 +71,7 @@ impl KTerm {
             KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts),
             KTerm::StaticVar { static_var, .. } => static_var.ty(&outlines.static_vars).clone(),
             KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns),
-            KTerm::Label { label, .. } => label.ty(labels),
+            KTerm::Label { label, .. } => label.ty(labels).to_ty1(),
             KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns),
             KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns),
             KTerm::RecordTag { k_struct, .. } => {

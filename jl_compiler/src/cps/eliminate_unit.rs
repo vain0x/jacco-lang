@@ -73,7 +73,9 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
             .retain(|param| !param.ty(&ex.locals).is_unit(&ex.ty_env));
 
         for label_sig in fn_data.label_sigs.iter_mut() {
-            label_sig.param_tys_mut().retain(|ty| !ty.is_unit());
+            label_sig
+                .param_tys_mut()
+                .retain(|ty| !ty.is_unit(&ex.ty_env));
         }
 
         for local_data in ex.locals.iter_mut() {

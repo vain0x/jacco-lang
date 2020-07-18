@@ -315,7 +315,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy {
         KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts),
         KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.outlines.static_vars).clone(),
         KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns),
-        KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
+        KTerm::Label { label, .. } => label.ty(&tx.label_sigs).to_ty1(),
         KTerm::Return { .. } => tx.return_ty_opt.clone().unwrap(),
         KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&tx.outlines.extern_fns),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
@@ -716,7 +716,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
             let param_tys = label_data
                 .params
                 .iter()
-                .map(|param| param.ty(&tx.locals).to_ty1())
+                .map(|param| param.ty(&tx.locals))
                 .collect();
             KLabelSig::new(name, param_tys)
         };
