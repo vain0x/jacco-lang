@@ -1,9 +1,5 @@
 use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct, KTyEnv};
-use std::{
-    fmt::{self, Debug, Formatter},
-    iter::once,
-    mem::take,
-};
+use std::fmt::{self, Debug, Formatter};
 
 pub(crate) enum KEnumOrStruct {
     Enum(KEnum),
@@ -73,52 +69,48 @@ impl Debug for KBasicTy {
     }
 }
 
-/// 型コンストラクタ
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum KTyCtor {
-    Ptr(KMut),
-    Fn,
-    Enum(KMod, KEnum),
-    Struct(KMod, KStruct),
-}
-
 /// 型 (その2)
+///
+/// 目的: 単一化の実装を簡略化すること、KTy::Meta を削除すること、他のモジュールの enum/struct の型を表現すること
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KTy2 {
     Unresolved,
     Never,
     Meta(KMetaTy),
     Basic(KBasicTy),
-    App { ctor: KTyCtor, args: Box<[KTy2]> },
+    Ptr {
+        k_mut: KMut,
+        base_ty: Box<KTy2>,
+    },
+    Fn {
+        param_tys: Vec<KTy2>,
+        result_ty: Box<KTy2>,
+    },
+    Enum(KMod, KEnum),
+    Struct(KMod, KStruct),
 }
 
 impl KTy2 {
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy2 {
-        KTy2::App {
-            ctor: KTyCtor::Ptr(k_mut),
-            args: Box::new([self]),
+        KTy2::Ptr {
+            k_mut,
+            base_ty: Box::new(self),
         }
     }
 
     pub(crate) fn new_fn(param_tys: impl IntoIterator<Item = KTy2>, result_ty: KTy2) -> KTy2 {
-        KTy2::App {
-            ctor: KTyCtor::Fn,
-            args: param_tys.into_iter().chain(once(result_ty)).collect(),
+        KTy2::Fn {
+            param_tys: param_tys.into_iter().collect(),
+            result_ty: Box::new(result_ty),
         }
     }
 
     pub(crate) fn new_enum(k_mod: KMod, k_enum: KEnum) -> KTy2 {
-        KTy2::App {
-            ctor: KTyCtor::Enum(k_mod, k_enum),
-            args: Box::default(),
-        }
+        KTy2::Enum(k_mod, k_enum)
     }
 
     pub(crate) fn new_struct(k_mod: KMod, k_struct: KStruct) -> KTy2 {
-        KTy2::App {
-            ctor: KTyCtor::Struct(k_mod, k_struct),
-            args: Box::default(),
-        }
+        KTy2::Struct(k_mod, k_struct)
     }
 
     pub(crate) fn from_ty1(ty: KTy, k_mod: KMod) -> Self {
@@ -185,27 +177,19 @@ impl KTy2 {
                 KBasicTy::FConst => KTy::F64,
                 KBasicTy::CConst => KTy::C8,
             },
-            KTy2::App { ctor, mut args } => match ctor {
-                KTyCtor::Ptr(k_mut) => match &mut *args {
-                    [ty] => KTy::Ptr {
-                        k_mut,
-                        ty: Box::new(take(ty).to_ty1()),
-                    },
-                    _ => KTy::Unresolved,
-                },
-                KTyCtor::Fn => match &mut *args {
-                    [] => KTy::Unresolved,
-                    [param_tys @ .., result_ty] => KTy::Fn {
-                        param_tys: param_tys
-                            .iter_mut()
-                            .map(|param_ty| take(param_ty).to_ty1())
-                            .collect(),
-                        result_ty: Box::new(take(result_ty).to_ty1()),
-                    },
-                },
-                KTyCtor::Enum(_, k_enum) => KTy::Enum(k_enum),
-                KTyCtor::Struct(_, k_struct) => KTy::Struct(k_struct),
+            KTy2::Ptr { k_mut, base_ty } => KTy::Ptr {
+                k_mut,
+                ty: Box::new(base_ty.to_ty1()),
             },
+            KTy2::Fn {
+                param_tys,
+                result_ty,
+            } => KTy::Fn {
+                param_tys: param_tys.iter().map(|param_ty| param_ty.to_ty1()).collect(),
+                result_ty: Box::new(result_ty.to_ty1()),
+            },
+            KTy2::Enum(_, k_enum) => KTy::Enum(k_enum),
+            KTy2::Struct(_, k_struct) => KTy::Struct(k_struct),
         }
     }
 
@@ -259,43 +243,22 @@ impl Default for KTy2 {
 
 impl Debug for KTy2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        fn write_ty_app(ctor: &KTyCtor, args: &[KTy2], f: &mut Formatter<'_>) -> fmt::Result {
-            static mut DEPTH: usize = 0;
-            let depth = unsafe { DEPTH };
-            if depth >= 3 {
-                return write!(f, "_");
-            }
-
-            unsafe { DEPTH = depth + 1 };
-            {
-                Debug::fmt(ctor, f)?;
-                f.debug_list().entries(args).finish()?;
-            }
-            unsafe { DEPTH = depth };
-            Ok(())
-        }
-
         match self {
             KTy2::Unresolved => write!(f, "{{unresolved}}"),
             KTy2::Never => write!(f, "!"),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
-            KTy2::App { ctor, args } => match ctor {
-                KTyCtor::Ptr(k_mut) => match &**args {
-                    [base_ty] => {
-                        match k_mut {
-                            KMut::Const => write!(f, "*")?,
-                            KMut::Mut => write!(f, "*mut ")?,
-                        }
-                        Debug::fmt(base_ty, f)
-                    }
-                    _ => write_ty_app(ctor, args, f),
-                },
-                // FIXME: 実装
-                KTyCtor::Fn => write_ty_app(ctor, args, f),
-                KTyCtor::Enum(_, _) => write_ty_app(ctor, args, f),
-                KTyCtor::Struct(_, _) => write_ty_app(ctor, args, f),
-            },
+            KTy2::Ptr { k_mut, base_ty } => {
+                match k_mut {
+                    KMut::Const => write!(f, "*")?,
+                    KMut::Mut => write!(f, "*mut ")?,
+                }
+                Debug::fmt(base_ty, f)
+            }
+            // FIXME: 実装
+            KTy2::Fn { .. } => Ok(()),
+            KTy2::Enum(_, _) => Ok(()),
+            KTy2::Struct(_, _) => Ok(()),
         }
     }
 }
@@ -387,6 +350,16 @@ impl KTy {
 
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, ty_is_primitive)
+    }
+
+    pub(crate) fn as_fn(&self, ty_env: &KTyEnv) -> Option<(Vec<KTy>, KTy)> {
+        ty_map(self, ty_env, |ty| match ty {
+            KTy::Fn {
+                param_tys,
+                result_ty,
+            } => Some((param_tys.to_owned(), (**result_ty).clone())),
+            _ => None,
+        })
     }
 
     pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KEnum> {
@@ -516,7 +489,7 @@ fn ty_is_primitive(ty: &KTy) -> bool {
 }
 
 /// 変性
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Variance {
     /// Invariant. 不変。アップキャストは許可されない。
     In,
@@ -526,18 +499,17 @@ pub(crate) enum Variance {
     Contra,
 }
 
-/// 型引数の変性を取得する。
-pub(crate) fn ty_arg_variance(ctor: &KTyCtor, i: usize, len: usize) -> Variance {
-    match ctor {
-        KTyCtor::Ptr(KMut::Const) => Variance::Co,
-        KTyCtor::Ptr(KMut::Mut) => Variance::In,
-        KTyCtor::Fn => {
-            if i + 1 < len {
-                Variance::Co
-            } else {
-                Variance::Contra
-            }
+impl Variance {
+    fn inverse(self) -> Self {
+        match self {
+            Variance::In => Variance::In,
+            Variance::Co => Variance::Contra,
+            Variance::Contra => Variance::Co,
         }
-        KTyCtor::Enum(_, _) | KTyCtor::Struct(_, _) => Variance::In,
+    }
+
+    pub(crate) fn reverse(&mut self) {
+        let it = self.inverse();
+        *self = it;
     }
 }

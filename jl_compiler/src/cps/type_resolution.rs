@@ -2,13 +2,8 @@
 
 use super::*;
 use k_mod::KModLocalSymbolOutline;
-use k_ty::{ty_arg_variance, KEnumOrStruct, KTy2, KTyCtor, Variance};
-use std::mem::{swap, take};
-
-enum AllowUpCast {
-    True,
-    False,
-}
+use k_ty::{KEnumOrStruct, KTy2, Variance};
+use std::mem::{replace, swap, take};
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
@@ -49,7 +44,7 @@ impl<'a> Tx<'a> {
 }
 
 struct UnificationContext<'a> {
-    allow_up_cast: AllowUpCast,
+    variance: Variance,
     location: Location,
     ty_env: &'a KTyEnv,
     logger: &'a Logger,
@@ -58,15 +53,23 @@ struct UnificationContext<'a> {
 impl<'a> UnificationContext<'a> {
     fn new(location: Location, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
         Self {
-            allow_up_cast: AllowUpCast::True,
+            variance: Variance::Co,
             location,
             ty_env,
             logger,
         }
     }
 
-    fn deny_up_cast(&mut self) {
-        self.allow_up_cast = AllowUpCast::False;
+    fn do_with_contra_variant(&mut self, f: impl FnOnce(&mut Self)) {
+        self.variance.reverse();
+        f(self);
+        self.variance.reverse();
+    }
+
+    fn do_with_invariant(&mut self, f: impl FnOnce(&mut Self)) {
+        let variance = replace(&mut self.variance, Variance::In);
+        f(self);
+        self.variance = variance;
     }
 
     fn bug_unresolved(&self, other: &KTy2) {
@@ -102,43 +105,23 @@ impl<'a> UnificationContext<'a> {
     }
 }
 
-fn do_unify_args2(
-    ctor: &KTyCtor,
-    args: &[KTy2],
-    right_args: &[KTy2],
-    ux: &mut UnificationContext<'_>,
-) {
-    assert_eq!(args.len(), right_args.len());
-    for ((i, left), right) in args.iter().enumerate().zip(right_args) {
-        let variance = match ux.allow_up_cast {
-            AllowUpCast::True => ty_arg_variance(ctor, i, args.len()),
-            AllowUpCast::False => Variance::In,
-        };
-
-        match variance {
-            Variance::In => {
-                ux.deny_up_cast();
-                do_unify2(left, right, ux)
-            }
-            Variance::Co => do_unify2(left, right, ux),
-            Variance::Contra => do_unify2(right, left, ux),
-        }
-    }
-}
-
 fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
+    log::trace!("unify {:?} <- {:?} ({:?})", left, right, ux.variance);
     match (left, right) {
-        // unresolved の出現はバグ
         (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
             ux.bug_unresolved(other);
         }
 
-        // never は常に任意の型に upcast できる。
-        (_, KTy2::Never) => {}
+        // never は任意の型に upcast できる。
+        (_, KTy2::Never) if ux.variance == Variance::Co => {}
+        (KTy2::Never, _) if ux.variance == Variance::Contra => {}
 
         // 左右の型が完全に一致するケース:
-        (KTy2::Meta(left), KTy2::Meta(right)) if left == right => {}
-        (KTy2::Basic(left), KTy2::Basic(right)) if left == right => {}
+        (KTy2::Meta(..), KTy2::Meta(..))
+        | (KTy2::Basic(..), KTy2::Basic(..))
+        | (KTy2::Enum(..), KTy2::Enum(..))
+        | (KTy2::Struct(..), KTy2::Struct(..))
+            if left == right => {}
 
         // メタ型変数の展開および束縛:
         (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(&ux.ty_env) {
@@ -146,6 +129,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
             None => {
                 // fn main() -> i32 { loop {} } などで発生する。
                 // この時点で unbound な型変数は never とみなしてよいはず?
+                do_unify2(left, &KTy2::Never, ux)
             }
         },
         (KTy2::Meta(meta_ty), _) => {
@@ -160,22 +144,62 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
         // その他、型ごとのルール:
         (
-            KTy2::App { ctor, args },
-            KTy2::App {
-                ctor: right_ctor,
-                args: right_args,
+            KTy2::Ptr {
+                k_mut,
+                base_ty: left,
             },
-        ) if ctor == right_ctor => {
-            if args.len() != right_args.len() {
+            KTy2::Ptr {
+                k_mut: right_mut,
+                base_ty: right,
+            },
+        ) => {
+            let ok = match ux.variance {
+                Variance::In => k_mut == right_mut,
+                Variance::Co => k_mut <= right_mut,
+                Variance::Contra => k_mut >= right_mut,
+            };
+            if !ok {
+                ux.logger
+                    .error(ux.location, "ポインタの可変性に互換性がありません");
+                return;
+            }
+
+            match k_mut {
+                KMut::Const => do_unify2(left, right, ux),
+                KMut::Mut => ux.do_with_invariant(|ux| do_unify2(left, right, ux)),
+            }
+        }
+        (
+            KTy2::Fn {
+                param_tys,
+                result_ty,
+            },
+            KTy2::Fn {
+                param_tys: right_param_tys,
+                result_ty: right_result_ty,
+            },
+        ) => {
+            if param_tys.len() != right_param_tys.len() {
                 ux.error_arity(left, right);
                 return;
             }
 
-            do_unify_args2(ctor, args, right_args, ux)
+            ux.do_with_contra_variant(|ux| {
+                for (left, right) in param_tys.iter().zip(right_param_tys) {
+                    do_unify2(left, right, ux);
+                }
+            });
+
+            do_unify2(result_ty, right_result_ty, ux);
         }
 
         // 不一致
-        (KTy2::Never, _) | (KTy2::Basic(_), _) | (KTy2::App { .. }, _) => {
+        (KTy2::Never, _)
+        | (KTy2::Basic(_), _)
+        | (KTy2::Ptr { .. }, _)
+        | (KTy2::Fn { .. }, _)
+        | (KTy2::Enum(..), _)
+        | (KTy2::Struct(..), _) => {
             ux.error_ununifiable(left, right);
         }
     }
@@ -339,27 +363,30 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             [label, args @ ..] => {
                 let def_fn_ty = resolve_term(label, tx);
                 let arg_tys = resolve_terms(args, tx);
-                let use_fn_ty = KTy::Fn {
-                    param_tys: arg_tys,
-                    result_ty: Box::new(KTy::Never),
-                };
 
-                unify(def_fn_ty, use_fn_ty, node.location, tx);
+                let (param_tys, _) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
+
+                // FIXME: 引数の個数を検査する
+
+                for (param_ty, arg_ty) in param_tys.iter().zip(arg_tys) {
+                    unify(param_ty.clone(), arg_ty.clone(), node.location, tx);
+                }
             }
             _ => unimplemented!(),
         },
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([callee, args @ ..], [result]) => {
-                resolve_symbol_def(result, None, tx);
-
                 let def_fn_ty = resolve_term(callee, tx);
                 let arg_tys = resolve_terms(args, tx);
-                let use_fn_ty = KTy::Fn {
-                    param_tys: arg_tys,
-                    result_ty: Box::new(result.ty(&tx.locals).to_ty1()),
-                };
 
-                unify(def_fn_ty, use_fn_ty, node.location, tx);
+                let (param_tys, result_ty) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
+
+                // FIXME: 引数の個数を検査する
+
+                for (param_ty, arg_ty) in param_tys.iter().zip(arg_tys) {
+                    unify(param_ty.clone(), arg_ty.clone(), node.location, tx);
+                }
+                resolve_symbol_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
