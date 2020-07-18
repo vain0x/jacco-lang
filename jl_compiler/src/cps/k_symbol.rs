@@ -1,6 +1,5 @@
 use super::{
     k_local::KLocalArena, k_ty::KTy2, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct,
-    KTy,
 };
 use crate::token::{HaveLocation, Location};
 
@@ -12,8 +11,8 @@ pub(crate) struct KSymbol {
 }
 
 impl KSymbol {
-    pub(crate) fn ty(&self, locals: &KLocalArena) -> KTy {
-        self.local.ty(locals).to_owned()
+    pub(crate) fn ty(&self, locals: &KLocalArena) -> KTy2 {
+        self.local.ty(locals)
     }
 
     pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut KLocalArena) -> &'a mut KTy2 {

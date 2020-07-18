@@ -257,7 +257,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
 fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     let name = unique_name(param, cx);
     let ty = param.ty(&cx.locals);
-    (name, gen_ty(&ty, &ty_env, cx))
+    (name, gen_ty(&ty.to_ty1(), &ty_env, cx))
 }
 
 fn gen_const_data(const_data: &KConstData) -> CExpr {
@@ -636,7 +636,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Cast => match (args, results, conts) {
             ([arg], [result], [cont]) => {
                 let arg = gen_term(arg, cx);
-                let result_ty = gen_ty(&result.ty(&cx.locals), ty_env, cx);
+                let result_ty = gen_ty(&result.ty(&cx.locals).to_ty1(), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
                 emit_var_decl(result, Some(expr), ty_env, cx);
                 gen_node(cont, ty_env, cx);
@@ -794,7 +794,11 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .iter()
             .map(|symbol| {
                 let name = symbol.local.name(&fn_data.locals).to_string();
-                let ty = gen_ty(&symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
+                let ty = gen_ty(
+                    &symbol.local.ty(&fn_data.locals).to_ty1(),
+                    &empty_ty_env,
+                    cx,
+                );
                 (name, ty)
             })
             .collect();

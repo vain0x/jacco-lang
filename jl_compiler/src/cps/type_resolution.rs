@@ -213,13 +213,13 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.ty(&tx.locals).to_ty2(tx.k_mod);
+        let symbol_ty = symbol.ty(&tx.locals);
         unify2(&symbol_ty, expected_ty, symbol.location, tx);
     }
 }
 
 fn resolve_symbol_def(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy>, tx: &mut Tx) {
-    let expected_ty_opt = expected_ty_opt.map(|ty| ty.clone().to_ty2(tx.k_mod));
+    let expected_ty_opt = expected_ty_opt.map(|ty| ty.to_ty2(tx.k_mod));
     resolve_symbol_def2(symbol, expected_ty_opt.as_ref(), tx)
 }
 
@@ -229,14 +229,14 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
         error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
     }
 
-    current_ty
+    current_ty.to_ty1()
 }
 
 fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) -> KTy {
     match pat {
         KTerm::Name(symbol) => {
             resolve_symbol_def(symbol, Some(expected_ty), tx);
-            symbol.ty(&tx.locals)
+            symbol.ty(&tx.locals).to_ty1()
         }
         _ => resolve_term(pat, tx),
     }
@@ -357,7 +357,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let arg_tys = resolve_terms(args, tx);
                 let use_fn_ty = KTy::Fn {
                     param_tys: arg_tys,
-                    result_ty: Box::new(result.ty(&tx.locals).to_owned()),
+                    result_ty: Box::new(result.ty(&tx.locals).to_ty1()),
                 };
 
                 unify(def_fn_ty, use_fn_ty, node.location, tx);
@@ -716,7 +716,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
             let param_tys = label_data
                 .params
                 .iter()
-                .map(|param| param.ty(&tx.locals))
+                .map(|param| param.ty(&tx.locals).to_ty1())
                 .collect();
             KLabelSig::new(name, param_tys)
         };

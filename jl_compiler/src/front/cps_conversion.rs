@@ -1403,7 +1403,7 @@ pub(crate) fn cps_conversion(
                                 n_local_var_data.name.to_string(),
                                 n_local_var_data.location,
                             )
-                            .with_ty(n_local_var_data.ty.clone().to_ty2(KMod::TODO))
+                            .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),
@@ -1442,7 +1442,7 @@ pub(crate) fn cps_conversion(
                                 n_local_var_data.name.to_string(),
                                 n_local_var_data.location,
                             )
-                            .with_ty(n_local_var_data.ty.clone().to_ty2(KMod::TODO))
+                            .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),

@@ -223,6 +223,18 @@ impl KTy2 {
         })
     }
 
+    pub(crate) fn is_unresolved(&self) -> bool {
+        *self == KTy2::Unresolved
+    }
+
+    pub(crate) fn is_unit(&self, _ty_env: &KTyEnv) -> bool {
+        *self == KTy2::Basic(KBasicTy::Unit)
+        // self.satisfies(ty_env, |ty| match ty {
+        //     KTy2::Basic(KBasicTy::Unit) => true,
+        //     _ => false,
+        // })
+    }
+
     pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
         self.satisfies(ty_env, |ty| match ty {
             KTy2::Unresolved | KTy2::Never | KTy2::Basic(KBasicTy::Unit) => true,

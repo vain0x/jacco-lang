@@ -1,4 +1,4 @@
-use super::{k_ty::KTy2, KTy};
+use super::k_ty::KTy2;
 use crate::{
     token::Location,
     utils::{VecArena, VecArenaId},
@@ -16,8 +16,8 @@ impl KLocal {
         &locals[self].name
     }
 
-    pub(crate) fn ty(self, locals: &KLocalArena) -> KTy {
-        locals[self].ty.to_ty1()
+    pub(crate) fn ty(self, locals: &KLocalArena) -> KTy2 {
+        locals[self].ty.clone()
     }
 }
 

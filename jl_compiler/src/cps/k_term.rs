@@ -63,7 +63,7 @@ impl KTerm {
             KTerm::Char(_) => KTy::C8,
             KTerm::Str(_) => KTy::C8.into_ptr(KMut::Const),
             KTerm::True(_) | KTerm::False(_) => KTy::Bool,
-            KTerm::Name(symbol) => symbol.local.ty(&locals).clone(),
+            KTerm::Name(symbol) => symbol.local.ty(&locals).to_ty1(),
             KTerm::Alias { .. } => {
                 // FIXME: 実装. プロジェクト全体の outlines を受け取る必要がある
                 KTy::Unresolved

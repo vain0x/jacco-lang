@@ -12,7 +12,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     match node.prim {
         KPrim::CallDirect | KPrim::Jump => node.args.retain(|arg| match arg {
             KTerm::Unit { .. } => false,
-            KTerm::Name(symbol) => !symbol.local.ty(&ex.locals).is_unit(),
+            KTerm::Name(symbol) => !symbol.local.ty(&ex.locals).is_unit(&ex.ty_env),
             _ => true,
         }),
         _ => {}
@@ -70,7 +70,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
         // unit 型の引数は捨てる。
         fn_data
             .params
-            .retain(|param| !param.ty(&ex.locals).is_unit());
+            .retain(|param| !param.ty(&ex.locals).is_unit(&ex.ty_env));
 
         for label_sig in fn_data.label_sigs.iter_mut() {
             label_sig.param_tys_mut().retain(|ty| !ty.is_unit());
@@ -87,7 +87,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
             // unit 型の引数は捨てる。
             label_data
                 .params
-                .retain(|param| !param.ty(&ex.locals).is_unit());
+                .retain(|param| !param.ty(&ex.locals).is_unit(&ex.ty_env));
 
             on_node(&mut label_data.body, &mut ex);
         }
