@@ -150,9 +150,15 @@ impl Project {
                 continue;
             }
 
+            let mut errors = vec![];
             let (mut mod_outline, mod_data) =
-                cps_conversion(&syntax.root, name_resolution, logs.logger());
+                cps_conversion(&syntax.root, name_resolution, &mut errors);
             mod_outline.name = self.docs[id].name.to_string();
+
+            for (loc, message) in errors {
+                let range = loc.resolve(&syntax.root);
+                logs.logger().error((doc, range), message);
+            }
 
             let k_mod = self.mod_outlines.alloc(mod_outline);
             {

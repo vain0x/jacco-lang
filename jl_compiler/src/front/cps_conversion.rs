@@ -8,12 +8,12 @@ use crate::cps::*;
 use crate::parse::*;
 use crate::{
     front::NameResolution,
-    logs::Logger,
     token::{HaveLocation, Location, TokenData, TokenKind},
     utils::VecArena,
 };
 use log::{error, trace};
 use std::{
+    cell::RefCell,
     iter::once,
     mem::{replace, take},
     rc::Rc,
@@ -39,15 +39,12 @@ struct Gx {
     fns: KFnArena,
     fn_loops: VecArena<KFnTag, NLoopArena>,
     extern_fns: KExternFnArena,
-    logger: Logger,
+    errors: RefCell<Vec<(PLoc, String)>>,
 }
 
 impl Gx {
-    fn new(logger: Logger) -> Self {
-        Self {
-            logger,
-            ..Self::default()
-        }
+    fn new() -> Self {
+        Self::default()
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
@@ -151,6 +148,17 @@ fn new_unit_term(location: Location) -> KTerm {
 fn new_never_term(location: Location) -> KTerm {
     // FIXME: the type is ! (never)
     KTerm::Unit { location }
+}
+
+fn error_token(token: PToken, message: impl Into<String>, gx: &Gx) {
+    gx.errors
+        .borrow_mut()
+        .push((PLoc::new(token), message.into()));
+}
+
+fn error_node(node: Location, message: impl Into<String>, gx: &Gx) {
+    log::error!("{} {:?}", message.into(), node);
+    error_token(PToken::from_index(0), "", gx);
 }
 
 fn fresh_loop_labels(location: Location, gx: &mut Gx) -> KLoopData {
@@ -304,6 +312,7 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
+    let token = name.of(&gx.names).token;
     let n_name = name.of(&gx.name_res);
     let (name, location) = (name.text(&gx.names).to_string(), name.location());
 
@@ -344,7 +353,7 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
         | NName::Bool
         | NName::Enum(_)
         | NName::Struct(_) => {
-            gx.logger.error(location, "型の名前です。");
+            error_token(token, "型の名前です。", gx);
             // FIXME: 適切にハンドル？
             KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
         }
@@ -394,7 +403,7 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
         },
         _ => {
             // FIXME: 実装
-            gx.logger.error(expr, "unimplemented");
+            log::error!("未実装の定数式です {:?}", expr);
             None
         }
     }
@@ -418,7 +427,7 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
                 // FIXME: 値を設定できるのはすべてのバリアントが const なときだけ
                 *value_slot = value.cast_as_usize()
             }
-            None => gx.logger.error(location, "invalid constant expression"),
+            None => error_node(location, "定数式として不正です", gx),
         }
     }
 
@@ -460,9 +469,10 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
             let indexed_ptr = gx.fresh_symbol("indexed_ptr", location);
 
             if arg_list.args.len() != 1 {
-                gx.logger.error(
+                error_node(
                     location,
-                    "zero or multiple arguments of indexing is unimplemented",
+                    "0個や2個以上の引数を持つインデックス式は未実装です",
+                    gx,
                 );
                 return new_never_term(location);
             }
@@ -583,9 +593,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                         arg_freq[i] += 1;
                         args[i] = term;
                     }
-                    None => gx.logger.error(
-                        field,
-                        format!("not field of {}", k_struct.name(&gx.outlines.structs)),
+                    None => error_token(
+                        field.name.of(&gx.names).token,
+                        "このフィールドは構造体に属していません",
+                        gx,
                     ),
                 }
             }
@@ -604,15 +615,23 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             if !duped.is_empty() {
                 for field_expr in fields {
                     if duped.contains(&field_expr.name.text(&gx.names)) {
-                        gx.logger.error(field_expr, "duplicated");
+                        error_token(
+                            field_expr.name.of(&gx.names).token,
+                            "フィールドへの割り当てが重複しています",
+                            gx,
+                        );
                     }
                 }
             }
 
             if !missed.is_empty() {
-                gx.logger.error(
-                    left_brace.location(&gx.tokens),
-                    format!("missed some fields: '{}'", missed.join("', '")),
+                error_token(
+                    *left_brace,
+                    format!(
+                        "フィールドへの割り当てが不足しています: '{}'",
+                        missed.join("', '")
+                    ),
+                    gx,
                 );
             }
 
@@ -631,7 +650,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             [] => new_unit_term(arg_list.location()),
             [arg] if !arg_list.is_tuple() => gen_expr(&arg.expr, gx),
             _ => {
-                gx.logger.error(arg_list, "tuple literal is unimplemented");
+                log::error!("タプルリテラルは未実装です {:?}", expr);
                 new_never_term(arg_list.location())
             }
         },
@@ -900,8 +919,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             }
             _ => {
                 let location = pipe.location(&gx.tokens);
-                gx.logger
-                    .error(location, "|> の右辺は関数呼び出しでなければいけません");
+                error_token(*pipe, "|> の右辺は関数呼び出しでなければいけません", gx);
                 new_never_term(location)
             }
         },
@@ -1176,8 +1194,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
                 None => {
-                    gx.logger
-                        .error(&init_location, "invalid constant expression");
+                    error_node(init_location, "定数式として不正です", gx);
                     None
                 }
             };
@@ -1202,8 +1219,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
                 None => {
-                    gx.logger
-                        .error(&init_location, "invalid constant expression");
+                    error_node(init_location, "定数式として不正です", gx);
                     None
                 }
             };
@@ -1321,7 +1337,7 @@ fn gen_root(root: &PRoot, gx: &mut Gx) {
 pub(crate) fn cps_conversion(
     p_root: &PRoot,
     name_resolution: &NameResolution,
-    logger: Logger,
+    errors: &mut Vec<(PLoc, String)>,
 ) -> (KModOutline, KModData) {
     let mod_info = {
         let k_consts = name_resolution
@@ -1465,7 +1481,7 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
-        let mut gx = Gx::new(logger.clone());
+        let mut gx = Gx::new();
         gx.tokens = Rc::new(p_root.tokens.clone());
         gx.names = p_root.names.clone();
         gx.name_res = name_resolution.names.clone();
@@ -1490,6 +1506,8 @@ pub(crate) fn cps_conversion(
         gx.outlines.fields = VecArena::from_vec(k_fields);
 
         gen_root(p_root, &mut gx);
+
+        errors.extend(gx.errors.into_inner());
 
         (
             gx.outlines,

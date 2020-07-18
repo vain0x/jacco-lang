@@ -166,14 +166,20 @@ impl AnalysisCache {
             let symbols = self.symbols_opt.as_mut().unwrap();
 
             let logs = Logs::new();
+            let mut errors = vec![];
             let (mut outline, mut root) = front::cps_conversion(
                 &syntax.root,
                 symbols.name_resolution_opt.as_ref().unwrap(),
-                logs.logger(),
+                &mut errors,
             );
 
             // FIXME: mod_outlines を用意する
             resolve_types(&outline, &mut root, &KModOutlines::default(), logs.logger());
+
+            for (loc, message) in errors {
+                let range = loc.resolve(&syntax.root);
+                logs.logger().error((self.doc, range), message);
+            }
 
             let errors = logs_into_errors(logs, self);
 
