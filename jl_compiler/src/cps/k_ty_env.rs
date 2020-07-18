@@ -33,17 +33,6 @@ impl KTyEnv {
         &self.meta_tys[meta_ty]
     }
 
-    pub(crate) fn is_bool(&self, ty: &KTy) -> bool {
-        match ty {
-            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(self) {
-                Some(ty) => self.is_bool(&ty.borrow().clone().to_ty1()),
-                None => false,
-            },
-            KTy::Bool => true,
-            _ => false,
-        }
-    }
-
     pub(crate) fn is_ptr(&self, ty: &KTy) -> bool {
         self.as_ptr(ty).is_some()
     }

@@ -359,6 +359,13 @@ impl KTy {
         })
     }
 
+    pub(crate) fn is_bool(&self, ty_env: &KTyEnv) -> bool {
+        ty_satisfies(self, ty_env, |ty| match ty {
+            KTy::Bool => true,
+            _ => false,
+        })
+    }
+
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_satisfies(self, ty_env, ty_is_primitive)
     }

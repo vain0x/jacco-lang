@@ -603,7 +603,9 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Minus => gen_unary_op(CUnaryOp::Minus, args, results, conts, ty_env, cx),
         KPrim::Not => match args {
             [arg] => {
-                let op = if ty_env.is_bool(&arg.ty(&cx.outlines, &VecArena::default(), &cx.locals))
+                let op = if arg
+                    .ty(&cx.outlines, &VecArena::default(), &cx.locals)
+                    .is_bool(ty_env)
                 {
                     CUnaryOp::LogNot
                 } else {
