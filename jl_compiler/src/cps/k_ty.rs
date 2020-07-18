@@ -2,8 +2,8 @@ use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct, KTyEnv};
 use std::fmt::{self, Debug, Formatter};
 
 pub(crate) enum KEnumOrStruct {
-    Enum(KEnum),
-    Struct(KStruct),
+    Enum(KMod, KEnum),
+    Struct(KMod, KStruct),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -15,23 +15,23 @@ pub(crate) enum KBasicTy {
     I64,
     Isize,
     #[allow(unused)]
-    IConst,
+    INN,
     U8,
     U16,
     U32,
     U64,
     Usize,
     #[allow(unused)]
-    UConst,
+    UNN,
     F32,
     F64,
     #[allow(unused)]
-    FConst,
+    FNN,
     C8,
     C16,
     C32,
     #[allow(unused)]
-    CConst,
+    CNN,
     Bool,
 }
 
@@ -44,20 +44,20 @@ impl KBasicTy {
             KBasicTy::I32 => "i32",
             KBasicTy::I64 => "i64",
             KBasicTy::Isize => "isize",
-            KBasicTy::IConst => "{iNN}",
+            KBasicTy::INN => "{iNN}",
             KBasicTy::U8 => "u8",
             KBasicTy::U16 => "u16",
             KBasicTy::U32 => "u32",
             KBasicTy::U64 => "u64",
             KBasicTy::Usize => "usize",
-            KBasicTy::UConst => "{uNN}",
+            KBasicTy::UNN => "{uNN}",
             KBasicTy::F32 => "f32",
             KBasicTy::F64 => "f64",
-            KBasicTy::FConst => "{fNN}",
+            KBasicTy::FNN => "{fNN}",
             KBasicTy::C8 => "c8",
             KBasicTy::C16 => "c16",
             KBasicTy::C32 => "c32",
-            KBasicTy::CConst => "{cNN}",
+            KBasicTy::CNN => "{cNN}",
             KBasicTy::Bool => "bool",
         }
     }
@@ -91,6 +91,32 @@ pub(crate) enum KTy2 {
 }
 
 impl KTy2 {
+    pub(crate) const UNIT: KTy2 = KTy2::Basic(KBasicTy::Unit);
+    pub(crate) const I8: KTy2 = KTy2::Basic(KBasicTy::I8);
+    pub(crate) const I16: KTy2 = KTy2::Basic(KBasicTy::I16);
+    pub(crate) const I32: KTy2 = KTy2::Basic(KBasicTy::I32);
+    pub(crate) const I64: KTy2 = KTy2::Basic(KBasicTy::I64);
+    pub(crate) const ISIZE: KTy2 = KTy2::Basic(KBasicTy::Isize);
+    #[allow(unused)]
+    pub(crate) const INN: KTy2 = KTy2::Basic(KBasicTy::INN);
+    pub(crate) const U8: KTy2 = KTy2::Basic(KBasicTy::U8);
+    pub(crate) const U16: KTy2 = KTy2::Basic(KBasicTy::U16);
+    pub(crate) const U32: KTy2 = KTy2::Basic(KBasicTy::U32);
+    pub(crate) const U64: KTy2 = KTy2::Basic(KBasicTy::U64);
+    pub(crate) const USIZE: KTy2 = KTy2::Basic(KBasicTy::Usize);
+    #[allow(unused)]
+    pub(crate) const UNN: KTy2 = KTy2::Basic(KBasicTy::UNN);
+    pub(crate) const F32: KTy2 = KTy2::Basic(KBasicTy::F32);
+    pub(crate) const F64: KTy2 = KTy2::Basic(KBasicTy::F64);
+    #[allow(unused)]
+    pub(crate) const FNN: KTy2 = KTy2::Basic(KBasicTy::FNN);
+    pub(crate) const C8: KTy2 = KTy2::Basic(KBasicTy::C8);
+    pub(crate) const C16: KTy2 = KTy2::Basic(KBasicTy::C16);
+    pub(crate) const C32: KTy2 = KTy2::Basic(KBasicTy::C32);
+    #[allow(unused)]
+    pub(crate) const CNN: KTy2 = KTy2::Basic(KBasicTy::CNN);
+    pub(crate) const BOOL: KTy2 = KTy2::Basic(KBasicTy::Bool);
+
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy2 {
         KTy2::Ptr {
             k_mut,
@@ -118,23 +144,23 @@ impl KTy2 {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Meta(meta_ty) => KTy2::Meta(meta_ty),
             KTy::Never => KTy2::Never,
-            KTy::Unit => KTy2::Basic(KBasicTy::Unit),
-            KTy::I8 => KTy2::Basic(KBasicTy::I8),
-            KTy::I16 => KTy2::Basic(KBasicTy::I16),
-            KTy::I32 => KTy2::Basic(KBasicTy::I32),
-            KTy::I64 => KTy2::Basic(KBasicTy::I64),
-            KTy::Isize => KTy2::Basic(KBasicTy::Isize),
-            KTy::U8 => KTy2::Basic(KBasicTy::U8),
-            KTy::U16 => KTy2::Basic(KBasicTy::U16),
-            KTy::U32 => KTy2::Basic(KBasicTy::U32),
-            KTy::U64 => KTy2::Basic(KBasicTy::U64),
-            KTy::Usize => KTy2::Basic(KBasicTy::Usize),
-            KTy::F32 => KTy2::Basic(KBasicTy::F32),
-            KTy::F64 => KTy2::Basic(KBasicTy::F64),
-            KTy::C8 => KTy2::Basic(KBasicTy::C8),
-            KTy::C16 => KTy2::Basic(KBasicTy::C16),
-            KTy::C32 => KTy2::Basic(KBasicTy::C32),
-            KTy::Bool => KTy2::Basic(KBasicTy::Bool),
+            KTy::Unit => KTy2::UNIT,
+            KTy::I8 => KTy2::I8,
+            KTy::I16 => KTy2::I16,
+            KTy::I32 => KTy2::I32,
+            KTy::I64 => KTy2::I64,
+            KTy::Isize => KTy2::ISIZE,
+            KTy::U8 => KTy2::U8,
+            KTy::U16 => KTy2::U16,
+            KTy::U32 => KTy2::U32,
+            KTy::U64 => KTy2::U64,
+            KTy::Usize => KTy2::USIZE,
+            KTy::F32 => KTy2::F32,
+            KTy::F64 => KTy2::F64,
+            KTy::C8 => KTy2::C8,
+            KTy::C16 => KTy2::C16,
+            KTy::C32 => KTy2::C32,
+            KTy::Bool => KTy2::BOOL,
             KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
             KTy::Fn {
                 param_tys,
@@ -172,10 +198,10 @@ impl KTy2 {
                 KBasicTy::C16 => KTy::C16,
                 KBasicTy::C32 => KTy::C32,
                 KBasicTy::Bool => KTy::Bool,
-                KBasicTy::IConst => KTy::I32,
-                KBasicTy::UConst => KTy::Usize,
-                KBasicTy::FConst => KTy::F64,
-                KBasicTy::CConst => KTy::C8,
+                KBasicTy::INN => KTy::I32,
+                KBasicTy::UNN => KTy::Usize,
+                KBasicTy::FNN => KTy::F64,
+                KBasicTy::CNN => KTy::C8,
             },
             KTy2::Ptr { k_mut, base_ty } => KTy::Ptr {
                 k_mut,
@@ -217,16 +243,64 @@ impl KTy2 {
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match ty {
-            KTy2::Basic(KBasicTy::Unit) => true,
+        self.satisfies(ty_env, |ty| match *ty {
+            KTy2::UNIT => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match ty {
-            KTy2::Unresolved | KTy2::Never | KTy2::Basic(KBasicTy::Unit) => true,
+        self.satisfies(ty_env, |ty| match *ty {
+            KTy2::Unresolved | KTy2::Never | KTy2::UNIT => true,
             _ => false,
+        })
+    }
+
+    // FIXME: const enum も primitive とみなす
+    pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
+        ty2_map(self, ty_env, |ty| match ty {
+            KTy2::Basic(basic_ty) => match basic_ty {
+                KBasicTy::Unit => false,
+                _ => true,
+            },
+            KTy2::Ptr { .. } => true,
+            _ => false,
+        })
+    }
+
+    pub(crate) fn is_ptr(&self, ty_env: &KTyEnv) -> bool {
+        ty2_map(self, ty_env, |ty| match ty {
+            KTy2::Ptr { .. } => true,
+            _ => false,
+        })
+    }
+
+    pub(crate) fn as_ptr(&self, ty_env: &KTyEnv) -> Option<(KMut, KTy2)> {
+        ty2_map(self, ty_env, |ty| match ty {
+            KTy2::Ptr { k_mut, base_ty } => Some((*k_mut, (**base_ty).clone())),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn as_fn(&self, ty_env: &KTyEnv) -> Option<(Vec<KTy2>, KTy2)> {
+        ty2_map(self, ty_env, |ty| match ty {
+            KTy2::Fn {
+                param_tys,
+                result_ty,
+            } => Some((param_tys.to_owned(), (**result_ty).clone())),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn is_struct_or_enum(&self, ty_env: &KTyEnv) -> bool {
+        self.as_struct_or_enum(ty_env).is_some()
+    }
+
+    pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Enum(k_mod, k_enum) => Some(KEnumOrStruct::Enum(k_mod, k_enum)),
+            KTy2::Struct(k_mod, k_struct) => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
+            _ => None,
         })
     }
 
@@ -260,6 +334,17 @@ impl Debug for KTy2 {
             KTy2::Enum(_, _) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
         }
+    }
+}
+
+/// NOTE: メタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
+fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
+    match ty {
+        KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+            Some(ty) => ty2_map(&ty.borrow(), ty_env, f),
+            None => f(&KTy2::Unresolved),
+        },
+        _ => f(ty),
     }
 }
 
@@ -334,32 +419,8 @@ impl KTy {
         })
     }
 
-    pub(crate) fn is_ptr(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Ptr { .. } => true,
-            _ => false,
-        })
-    }
-
-    pub(crate) fn as_ptr(&self, ty_env: &KTyEnv) -> Option<(KMut, KTy)> {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Ptr { k_mut, ty } => Some((*k_mut, (**ty).clone())),
-            _ => None,
-        })
-    }
-
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, ty_is_primitive)
-    }
-
-    pub(crate) fn as_fn(&self, ty_env: &KTyEnv) -> Option<(Vec<KTy>, KTy)> {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Fn {
-                param_tys,
-                result_ty,
-            } => Some((param_tys.to_owned(), (**result_ty).clone())),
-            _ => None,
-        })
     }
 
     pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KEnum> {
@@ -372,18 +433,6 @@ impl KTy {
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty_map(self, ty_env, |ty| match ty {
             KTy::Struct(k_struct) => Some(*k_struct),
-            _ => None,
-        })
-    }
-
-    pub(crate) fn is_struct_or_enum(&self, ty_env: &KTyEnv) -> bool {
-        self.as_struct_or_enum(ty_env).is_some()
-    }
-
-    pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Enum(k_enum) => Some(KEnumOrStruct::Enum(*k_enum)),
-            KTy::Struct(k_struct) => Some(KEnumOrStruct::Struct(*k_struct)),
             _ => None,
         })
     }
