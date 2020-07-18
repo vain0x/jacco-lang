@@ -400,7 +400,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
 
                 let result_ty = (|| {
-                    let (_, ty) = tx.ty_env.as_ptr(&left_ty)?;
+                    let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     let ty = match tx.ty_env.as_struct_or_enum(&ty)? {
                         KEnumOrStruct::Enum(k_enum) => k_enum
                             .variants(&tx.outlines.enums)
@@ -438,7 +438,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
 
                 let result_ty = (|| {
-                    let (k_mut, ty) = tx.ty_env.as_ptr(&left_ty)?;
+                    let (k_mut, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     if let KMut::Const = k_mut {
                         tx.logger
                             .error(&left.location(tx.outlines), "unexpected const reference");
@@ -498,7 +498,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
 
-                let result_ty_opt = tx.ty_env.as_ptr(&arg_ty).map(|(_, ty)| ty);
+                let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
                     tx.logger.error(&result.location, "expected a reference");
                 }
@@ -566,7 +566,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
 
-                if tx.ty_env.is_ptr(&left_ty) {
+                if left_ty.is_ptr(&tx.ty_env) {
                     unify(KTy::Usize, right_ty.clone(), node.location, tx);
                 } else {
                     // FIXME: iNN or uNN
@@ -619,7 +619,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let right_ty = resolve_term(right, tx);
 
                 // 左辺は lval なのでポインタ型のはず
-                let left_ty = match tx.ty_env.as_ptr(&left_ty) {
+                let left_ty = match left_ty.as_ptr(&tx.ty_env) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
                         tx.logger
@@ -640,14 +640,14 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let right_ty = resolve_term(right, tx);
 
                     // 左辺は lval なのでポインタ型のはず
-                    let (k_mut, left_ty) = tx.ty_env.as_ptr(&left_ty).unwrap();
+                    let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
                         tx.logger
                             .error(&left.location(tx.outlines), "unexpected const reference");
                     }
 
                     // FIXME: add/sub と同じ
-                    if tx.ty_env.is_ptr(&left_ty) {
+                    if left_ty.is_ptr(&tx.ty_env) {
                         unify(KTy::Usize, right_ty.clone(), node.location, tx);
                     } else {
                         // FIXME: iNN or uNN
@@ -671,7 +671,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let right_ty = resolve_term(right, tx);
 
                     // 左辺は lval なのでポインタ型のはず
-                    let (k_mut, left_ty) = tx.ty_env.as_ptr(&left_ty).unwrap();
+                    let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
                         tx.logger
                             .error(&left.location(tx.outlines), "unexpected const reference");

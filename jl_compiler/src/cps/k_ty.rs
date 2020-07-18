@@ -353,25 +353,39 @@ impl KTy {
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        ty_satisfies(self, ty_env, |ty| match ty {
+        ty_map(self, ty_env, |ty| match ty {
             KTy::Unit => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_bool(&self, ty_env: &KTyEnv) -> bool {
-        ty_satisfies(self, ty_env, |ty| match ty {
+        ty_map(self, ty_env, |ty| match ty {
             KTy::Bool => true,
             _ => false,
         })
     }
 
+    pub(crate) fn is_ptr(&self, ty_env: &KTyEnv) -> bool {
+        ty_map(self, ty_env, |ty| match ty {
+            KTy::Ptr { .. } => true,
+            _ => false,
+        })
+    }
+
+    pub(crate) fn as_ptr(&self, ty_env: &KTyEnv) -> Option<(KMut, KTy)> {
+        ty_map(self, ty_env, |ty| match ty {
+            KTy::Ptr { k_mut, ty } => Some((*k_mut, (**ty).clone())),
+            _ => None,
+        })
+    }
+
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
-        ty_satisfies(self, ty_env, ty_is_primitive)
+        ty_map(self, ty_env, ty_is_primitive)
     }
 
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
-        ty_project(self, ty_env, |ty| match ty {
+        ty_map(self, ty_env, |ty| match ty {
             KTy::Struct(k_struct) => Some(*k_struct),
             _ => None,
         })
@@ -443,15 +457,14 @@ impl Debug for KTy {
     }
 }
 
-/// 型が一定の条件を満たすか判定する。
-/// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy::Meta` が渡されることはない。
-fn ty_satisfies(ty: &KTy, ty_env: &KTyEnv, predicate: impl Fn(&KTy) -> bool) -> bool {
+/// NOTE: 束縛済みのメタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
+fn ty_map<T>(ty: &KTy, ty_env: &KTyEnv, f: impl Fn(&KTy) -> T) -> T {
     match ty {
         KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-            Some(ty) => ty_satisfies(&ty.borrow().to_ty1(), ty_env, predicate),
-            None => predicate(&KTy::Unresolved),
+            Some(ty) => ty_map(&ty.borrow().to_ty1(), ty_env, f),
+            None => f(&KTy::Unresolved),
         },
-        _ => predicate(ty),
+        _ => f(ty),
     }
 }
 
@@ -475,20 +488,6 @@ fn ty_is_primitive(ty: &KTy) -> bool {
         | KTy::Bool
         | KTy::Ptr { .. } => true,
         _ => false,
-    }
-}
-
-fn ty_project<'a, T: 'a>(
-    ty: &'a KTy,
-    ty_env: &'a KTyEnv,
-    f: impl Fn(&KTy) -> Option<T>,
-) -> Option<T> {
-    match ty {
-        KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-            Some(ty) => ty_project(&ty.borrow().to_ty1(), ty_env, f),
-            None => f(&KTy::Unresolved),
-        },
-        _ => f(ty),
     }
 }
 

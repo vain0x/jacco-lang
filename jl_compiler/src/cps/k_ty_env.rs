@@ -33,21 +33,6 @@ impl KTyEnv {
         &self.meta_tys[meta_ty]
     }
 
-    pub(crate) fn is_ptr(&self, ty: &KTy) -> bool {
-        self.as_ptr(ty).is_some()
-    }
-
-    pub(crate) fn as_ptr(&self, ty: &KTy) -> Option<(KMut, KTy)> {
-        match ty {
-            KTy::Ptr { k_mut, ty } => Some((*k_mut, ty.as_ref().clone())),
-            KTy::Meta(meta_ty) => {
-                let ty = meta_ty.try_unwrap(self)?;
-                self.as_ptr(&ty.borrow().clone().to_ty1())
-            }
-            _ => None,
-        }
-    }
-
     pub(crate) fn as_enum(&self, ty: &KTy) -> Option<KEnum> {
         match ty {
             KTy::Enum(k_enum) => Some(*k_enum),
