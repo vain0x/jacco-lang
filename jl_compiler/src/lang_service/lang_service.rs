@@ -1,6 +1,6 @@
 use crate::{
     cli::MyLocResolver,
-    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy, KTyEnv},
+    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy, KTy2, KTyEnv},
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
@@ -310,7 +310,7 @@ impl LangService {
         let cps = self.request_cps(doc)?;
         let ty = name.ty(&cps.root);
         let ty_env = name.ty_env(&cps.root);
-        Some(display_ty(&ty, ty_env, &cps.outline))
+        Some(ty.display(ty_env))
     }
 
     pub fn references(
@@ -411,27 +411,22 @@ impl NParentFn {
 }
 
 impl NAbsName {
-    pub(crate) fn ty(self, k_root: &KModData) -> KTy {
+    pub(crate) fn ty(self, k_root: &KModData) -> &KTy2 {
         let name = match self {
-            NAbsName::Unresolved => return KTy::Unresolved,
+            NAbsName::Unresolved => return &KTy2::Unresolved,
             NAbsName::LocalVar {
                 parent_fn: NParentFn::Fn(k_fn),
                 local,
-            } => return local.of(&k_fn.of(&k_root.fns).locals).ty.to_ty1(),
+            } => return &local.of(&k_fn.of(&k_root.fns).locals).ty,
             NAbsName::LocalVar {
                 parent_fn: NParentFn::ExternFn(extern_fn),
                 local,
-            } => {
-                return local
-                    .of(&extern_fn.of(&k_root.extern_fns).locals)
-                    .ty
-                    .to_ty1()
-            }
+            } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
             NAbsName::Other(name) => name,
         };
 
         // FIXME: 実装
-        KTy::Unresolved
+        &KTy2::Unresolved
     }
 
     pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {
