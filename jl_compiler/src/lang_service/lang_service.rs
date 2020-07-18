@@ -310,7 +310,7 @@ impl LangService {
         let cps = self.request_cps(doc)?;
         let ty = name.ty(&cps.root);
         let ty_env = name.ty_env(&cps.root);
-        Some(display_ty(ty, ty_env, &cps.outline))
+        Some(display_ty(&ty, ty_env, &cps.outline))
     }
 
     pub fn references(
@@ -411,21 +411,27 @@ impl NParentFn {
 }
 
 impl NAbsName {
-    pub(crate) fn ty(self, k_root: &KModData) -> &KTy {
+    pub(crate) fn ty(self, k_root: &KModData) -> KTy {
         let name = match self {
-            NAbsName::Unresolved => return &KTy::Unresolved,
+            NAbsName::Unresolved => return KTy::Unresolved,
             NAbsName::LocalVar {
                 parent_fn: NParentFn::Fn(k_fn),
                 local,
-            } => return &local.of(&k_fn.of(&k_root.fns).locals).ty,
+            } => return local.of(&k_fn.of(&k_root.fns).locals).ty.to_ty1(),
             NAbsName::LocalVar {
                 parent_fn: NParentFn::ExternFn(extern_fn),
                 local,
-            } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
+            } => {
+                return local
+                    .of(&extern_fn.of(&k_root.extern_fns).locals)
+                    .ty
+                    .to_ty1()
+            }
             NAbsName::Other(name) => name,
         };
 
-        &KTy::Unresolved
+        // FIXME: 実装
+        KTy::Unresolved
     }
 
     pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {

@@ -152,8 +152,8 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn into_ty1(self) -> KTy {
-        match self {
+    pub(crate) fn to_ty1(&self) -> KTy {
+        match self.clone() {
             KTy2::Unresolved => KTy::Unresolved,
             KTy2::Never => KTy::Never,
             KTy2::Meta(meta_ty) => KTy::Meta(meta_ty),
@@ -184,7 +184,7 @@ impl KTy2 {
                 KTyCtor::Ptr(k_mut) => match &mut *args {
                     [ty] => KTy::Ptr {
                         k_mut,
-                        ty: Box::new(take(ty).into_ty1()),
+                        ty: Box::new(take(ty).to_ty1()),
                     },
                     _ => KTy::Unresolved,
                 },
@@ -193,15 +193,41 @@ impl KTy2 {
                     [param_tys @ .., result_ty] => KTy::Fn {
                         param_tys: param_tys
                             .iter_mut()
-                            .map(|param_ty| take(param_ty).into_ty1())
+                            .map(|param_ty| take(param_ty).to_ty1())
                             .collect(),
-                        result_ty: Box::new(take(result_ty).into_ty1()),
+                        result_ty: Box::new(take(result_ty).to_ty1()),
                     },
                 },
                 KTyCtor::Enum(_, k_enum) => KTy::Enum(k_enum),
                 KTyCtor::Struct(_, k_struct) => KTy::Struct(k_struct),
             },
         }
+    }
+
+    /// 型が一定の条件を満たすか判定する。
+    /// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy2::Meta` が渡されることはない。
+    fn satisfies(&self, ty_env: &KTyEnv, predicate: impl Fn(&KTy2) -> bool) -> bool {
+        match self {
+            KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+                Some(ty) => ty.borrow().satisfies(ty_env, predicate),
+                None => predicate(&KTy2::Unresolved),
+            },
+            _ => predicate(self),
+        }
+    }
+
+    pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
+        self.satisfies(ty_env, |ty| match ty {
+            KTy2::Unresolved => true,
+            _ => false,
+        })
+    }
+
+    pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
+        self.satisfies(ty_env, |ty| match ty {
+            KTy2::Unresolved | KTy2::Never | KTy2::Basic(KBasicTy::Unit) => true,
+            _ => false,
+        })
     }
 
     pub(crate) fn display(&self, _ty_env: &KTyEnv) -> String {

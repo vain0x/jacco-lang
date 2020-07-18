@@ -23,7 +23,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
         // FIXME: never 型の変数は never リテラル (?) に置き換える？
         if let KTerm::Name(symbol) = arg {
             let local_data = &mut ex.locals[symbol.local];
-            if ex.ty_env.is_unit_or_never(&local_data.ty) {
+            if local_data.ty.is_unit_or_never(&ex.ty_env) {
                 local_data.is_alive = false;
                 let location = symbol.location;
                 *arg = KTerm::Unit { location };
@@ -77,7 +77,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
         }
 
         for local_data in ex.locals.iter_mut() {
-            if ex.ty_env.is_unit_or_never(&local_data.ty) {
+            if local_data.ty.is_unit_or_never(&ex.ty_env) {
                 local_data.is_alive = false;
             }
         }

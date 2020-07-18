@@ -208,7 +208,7 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
             Some(ty) => ty.clone(),
         };
 
-        *symbol.ty_mut(&mut tx.locals) = expected_ty.into_ty1();
+        *symbol.ty_mut(&mut tx.locals) = expected_ty;
         return;
     }
 
@@ -787,8 +787,8 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
         }
 
         for local_data in tx.locals.iter_mut() {
-            if tx.ty_env.is_unbound(&local_data.ty) {
-                local_data.ty = KTy::Never;
+            if local_data.ty.is_unbound(&tx.ty_env) {
+                local_data.ty = KTy2::Never;
             }
         }
 

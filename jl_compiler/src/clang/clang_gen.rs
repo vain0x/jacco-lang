@@ -207,7 +207,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* unresolved */ void")
         }
         KTy::Meta(meta) => match meta.try_unwrap(&ty_env) {
-            Some(ty) => gen_ty(&ty.borrow().clone().into_ty1(), ty_env, cx),
+            Some(ty) => gen_ty(&ty.borrow().to_ty1(), ty_env, cx),
             None => {
                 error!("Unexpected free type {:?}", meta);
                 CTy::Other("/* free */ void")
@@ -794,7 +794,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .iter()
             .map(|symbol| {
                 let name = symbol.local.name(&fn_data.locals).to_string();
-                let ty = gen_ty(symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
+                let ty = gen_ty(&symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
                 (name, ty)
             })
             .collect();

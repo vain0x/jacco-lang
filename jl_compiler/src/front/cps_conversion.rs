@@ -48,12 +48,9 @@ impl Gx {
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
-        let local = self.current_locals.alloc(KLocalData {
-            name: hint.to_string(),
-            ty: KTy::Unresolved,
-            location,
-            is_alive: true,
-        });
+        let local = self
+            .current_locals
+            .alloc(KLocalData::new(hint.to_string(), location));
 
         KSymbol { local, location }
     }
@@ -1178,7 +1175,8 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
 
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
             let mut result = gen_name(name_opt.unwrap(), gx).as_symbol().unwrap();
-            *result.ty_mut(&mut gx.current_locals) = ty;
+            // FIXME: k_mod
+            *result.ty_mut(&mut gx.current_locals) = ty.into_ty2(KMod::from_index(0));
 
             gx.push_prim_1(KPrim::Let, vec![k_init], result);
         }
@@ -1400,11 +1398,12 @@ pub(crate) fn cps_conversion(
                     fn_data
                         .local_vars
                         .iter()
-                        .map(|n_local_var_data| KLocalData {
-                            name: n_local_var_data.name.to_string(),
-                            ty: n_local_var_data.ty.clone(),
-                            location: n_local_var_data.location,
-                            is_alive: true,
+                        .map(|n_local_var_data| {
+                            KLocalData::new(
+                                n_local_var_data.name.to_string(),
+                                n_local_var_data.location,
+                            )
+                            .with_ty(n_local_var_data.ty.clone().into_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),
@@ -1438,11 +1437,12 @@ pub(crate) fn cps_conversion(
                     extern_fn_data
                         .local_vars
                         .iter()
-                        .map(|n_local_var_data| KLocalData {
-                            name: n_local_var_data.name.to_string(),
-                            ty: n_local_var_data.ty.clone(),
-                            location: n_local_var_data.location,
-                            is_alive: true,
+                        .map(|n_local_var_data| {
+                            KLocalData::new(
+                                n_local_var_data.name.to_string(),
+                                n_local_var_data.location,
+                            )
+                            .with_ty(n_local_var_data.ty.clone().into_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),

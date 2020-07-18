@@ -45,6 +45,9 @@ impl<Tag> VecArenaId<Tag> {
     #[allow(unused)]
     pub(crate) const MAX: Self = Self::from_inner(ID_MAX);
 
+    #[allow(unused)]
+    pub(crate) const TODO: Self = Self::from_inner(ID_MAX);
+
     const fn from_inner(inner: NonZeroU32) -> Self {
         Self {
             inner,
