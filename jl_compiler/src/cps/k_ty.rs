@@ -345,18 +345,6 @@ impl KTy {
         }
     }
 
-    /// 型が一定の条件を満たすか判定する。
-    /// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy::Meta` が渡されることはない。
-    fn satisfies(&self, ty_env: &KTyEnv, predicate: impl Fn(&KTy) -> bool) -> bool {
-        match self {
-            KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-                Some(ty) => ty.borrow().to_ty1().satisfies(ty_env, predicate),
-                None => predicate(&KTy::Unresolved),
-            },
-            _ => predicate(self),
-        }
-    }
-
     pub(crate) fn is_unresolved(&self) -> bool {
         match self {
             KTy::Unresolved => true,
@@ -365,37 +353,14 @@ impl KTy {
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match ty {
+        ty_satisfies(self, ty_env, |ty| match ty {
             KTy::Unit => true,
             _ => false,
         })
     }
 
-    fn do_is_primitive(&self) -> bool {
-        match self {
-            KTy::I8
-            | KTy::I16
-            | KTy::I32
-            | KTy::I64
-            | KTy::Isize
-            | KTy::U8
-            | KTy::U16
-            | KTy::U32
-            | KTy::U64
-            | KTy::Usize
-            | KTy::F32
-            | KTy::F64
-            | KTy::C8
-            | KTy::C16
-            | KTy::C32
-            | KTy::Bool
-            | KTy::Ptr { .. } => true,
-            _ => false,
-        }
-    }
-
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, KTy::do_is_primitive)
+        ty_satisfies(self, ty_env, ty_is_primitive)
     }
 
     pub(crate) fn as_struct(&self) -> Option<KStruct> {
@@ -468,6 +433,41 @@ impl Debug for KTy {
                 write!(f, "struct {}", k_struct.to_index())
             }
         }
+    }
+}
+
+/// 型が一定の条件を満たすか判定する。
+/// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy::Meta` が渡されることはない。
+fn ty_satisfies(ty: &KTy, ty_env: &KTyEnv, predicate: impl Fn(&KTy) -> bool) -> bool {
+    match ty {
+        KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+            Some(ty) => ty_satisfies(&ty.borrow().to_ty1(), ty_env, predicate),
+            None => predicate(&KTy::Unresolved),
+        },
+        _ => predicate(ty),
+    }
+}
+
+fn ty_is_primitive(ty: &KTy) -> bool {
+    match ty {
+        KTy::I8
+        | KTy::I16
+        | KTy::I32
+        | KTy::I64
+        | KTy::Isize
+        | KTy::U8
+        | KTy::U16
+        | KTy::U32
+        | KTy::U64
+        | KTy::Usize
+        | KTy::F32
+        | KTy::F64
+        | KTy::C8
+        | KTy::C16
+        | KTy::C32
+        | KTy::Bool
+        | KTy::Ptr { .. } => true,
+        _ => false,
     }
 }
 
