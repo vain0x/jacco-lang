@@ -258,13 +258,14 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy {
     current_ty.to_ty1()
 }
 
-fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) -> KTy {
+fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy, tx: &mut Tx) {
     match pat {
         KTerm::Name(symbol) => {
             resolve_symbol_def(symbol, Some(expected_ty), tx);
-            symbol.ty(&tx.locals).to_ty1()
         }
-        _ => resolve_term(pat, tx),
+        _ => {
+            resolve_term(pat, tx);
+        }
     }
 }
 
@@ -511,7 +512,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let cond_ty = resolve_term(cond, tx);
 
                 for pat in pats {
-                    let _pat_ty = resolve_pat(pat, &cond_ty, tx);
+                    resolve_pat(pat, &cond_ty, tx);
                 }
             }
             _ => unimplemented!(),
