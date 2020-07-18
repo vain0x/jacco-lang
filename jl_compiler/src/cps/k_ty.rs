@@ -5,6 +5,11 @@ use std::{
     mem::take,
 };
 
+pub(crate) enum KEnumOrStruct {
+    Enum(KEnum),
+    Struct(KStruct),
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KBasicTy {
     Unit,
@@ -394,6 +399,18 @@ impl KTy {
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty_map(self, ty_env, |ty| match ty {
             KTy::Struct(k_struct) => Some(*k_struct),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn is_struct_or_enum(&self, ty_env: &KTyEnv) -> bool {
+        self.as_struct_or_enum(ty_env).is_some()
+    }
+
+    pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
+        ty_map(self, ty_env, |ty| match ty {
+            KTy::Enum(k_enum) => Some(KEnumOrStruct::Enum(*k_enum)),
+            KTy::Struct(k_struct) => Some(KEnumOrStruct::Struct(*k_struct)),
             _ => None,
         })
     }

@@ -2,8 +2,7 @@
 
 use super::*;
 use k_mod::KModLocalSymbolOutline;
-use k_ty::{ty_arg_variance, KTy2, KTyCtor, Variance};
-use k_ty_env::KEnumOrStruct;
+use k_ty::{ty_arg_variance, KEnumOrStruct, KTy2, KTyCtor, Variance};
 use std::mem::{swap, take};
 
 enum AllowUpCast {
@@ -382,7 +381,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let ty = k_struct.ty(&outlines.structs);
                 resolve_symbol_def(result, Some(&ty), tx);
 
-                if !tx.ty_env.is_struct_or_enum(&ty) {
+                if !ty.is_struct_or_enum(&tx.ty_env) {
                     tx.logger
                         .error(result, format!("struct or enum type required {:?}", ty));
                 }
@@ -401,7 +400,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty = (|| {
                     let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
-                    let ty = match tx.ty_env.as_struct_or_enum(&ty)? {
+                    let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_enum) => k_enum
                             .variants(&tx.outlines.enums)
                             .iter()
@@ -444,7 +443,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                             .error(&left.location(tx.outlines), "unexpected const reference");
                     }
 
-                    let ty = match tx.ty_env.as_struct_or_enum(&ty)? {
+                    let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_enum) => k_enum
                             .variants(&tx.outlines.enums)
                             .iter()

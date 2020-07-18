@@ -1,14 +1,8 @@
 use super::{
-    k_enum::KEnumArena, k_meta_ty::KMetaTys, KEnum, KMetaTy, KMetaTyData, KMut, KStruct,
-    KStructArena, KTy,
+    k_enum::KEnumArena, k_meta_ty::KMetaTys, KMetaTy, KMetaTyData, KMut, KStructArena, KTy,
 };
 use crate::token::Location;
 use std::cell::RefCell;
-
-pub(crate) enum KEnumOrStruct {
-    Enum(KEnum),
-    Struct(KStruct),
-}
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KTyEnv {
@@ -31,23 +25,6 @@ impl KTyEnv {
 
     pub(crate) fn meta_ty_get(&self, meta_ty: KMetaTy) -> &KMetaTyData {
         &self.meta_tys[meta_ty]
-    }
-
-    pub(crate) fn as_struct_or_enum(&self, ty: &KTy) -> Option<KEnumOrStruct> {
-        let enum_or_struct = match ty {
-            KTy::Enum(k_enum) => KEnumOrStruct::Enum(*k_enum),
-            KTy::Struct(k_struct) => KEnumOrStruct::Struct(*k_struct),
-            KTy::Meta(meta_ty) => {
-                return self
-                    .as_struct_or_enum(&meta_ty.try_unwrap(self)?.borrow().clone().to_ty1());
-            }
-            _ => return None,
-        };
-        Some(enum_or_struct)
-    }
-
-    pub(crate) fn is_struct_or_enum(&self, ty: &KTy) -> bool {
-        self.as_struct_or_enum(ty).is_some()
     }
 
     pub(crate) fn display(&self, ty: &KTy, enums: &KEnumArena, structs: &KStructArena) -> String {
