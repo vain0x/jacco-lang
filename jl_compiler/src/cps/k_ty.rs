@@ -228,7 +228,7 @@ impl Debug for KTy2 {
 
         match self {
             KTy2::Unresolved => write!(f, "{{unresolved}}"),
-            KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.id()),
+            KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy2::App { ctor, args } => match ctor {
                 KTyCtor::Ptr(k_mut) => match &**args {

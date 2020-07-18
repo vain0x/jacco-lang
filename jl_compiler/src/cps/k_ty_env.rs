@@ -1,4 +1,7 @@
-use super::{k_enum::KEnumArena, KEnum, KMetaTy, KMetaTyData, KMut, KStruct, KStructArena, KTy};
+use super::{
+    k_enum::KEnumArena, k_meta_ty::KMetaTys, KEnum, KMetaTy, KMetaTyData, KMut, KStruct,
+    KStructArena, KTy,
+};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -9,25 +12,25 @@ pub(crate) enum KEnumOrStruct {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct KTyEnv {
-    meta_tys: Vec<KMetaTyData>,
+    meta_tys: KMetaTys,
 }
 
 impl KTyEnv {
-    pub(crate) const EMPTY: &'static KTyEnv = &KTyEnv { meta_tys: vec![] };
+    pub(crate) const EMPTY: &'static KTyEnv = &KTyEnv {
+        meta_tys: KMetaTys::new(),
+    };
 
     pub(crate) fn is_empty(&self) -> bool {
         self.meta_tys.is_empty()
     }
 
     pub(crate) fn meta_ty_new(&mut self, location: Location) -> KMetaTy {
-        let id = self.meta_tys.len();
         self.meta_tys
-            .push(KMetaTyData::new(RefCell::default(), location));
-        KMetaTy::new(id)
+            .alloc(KMetaTyData::new(RefCell::default(), location))
     }
 
     pub(crate) fn meta_ty_get(&self, meta_ty: KMetaTy) -> &KMetaTyData {
-        &self.meta_tys[meta_ty.id()]
+        &self.meta_tys[meta_ty]
     }
 
     pub(crate) fn is_unbound(&self, ty: &KTy) -> bool {

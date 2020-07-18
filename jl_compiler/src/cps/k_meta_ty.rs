@@ -1,25 +1,21 @@
 use super::{KTy, KTyEnv};
-use crate::token::Location;
+use crate::{
+    token::Location,
+    utils::{VecArena, VecArenaId},
+};
 use std::{
     cell::RefCell,
     fmt::{self, Debug, Formatter},
     mem::replace,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KMetaTy {
-    id: usize,
-}
+pub(crate) struct KMetaTyTag;
+
+pub(crate) type KMetaTy = VecArenaId<KMetaTyTag>;
+
+pub(crate) type KMetaTys = VecArena<KMetaTyTag, KMetaTyData>;
 
 impl KMetaTy {
-    pub(crate) fn new(id: usize) -> Self {
-        Self { id }
-    }
-
-    pub(crate) fn id(self) -> usize {
-        self.id
-    }
-
     pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy>> {
         if ty_env.meta_ty_get(self).ty().borrow().is_unresolved() {
             return None;
