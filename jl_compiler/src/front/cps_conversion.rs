@@ -302,7 +302,10 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
             ..
         }) => {
             let k_mut = gen_mut(mut_opt.as_ref());
-            let base_ty = gen_ty(ty_opt.as_deref().unwrap(), name_res);
+            let base_ty = match ty_opt.as_deref() {
+                Some(ty) => gen_ty(ty, name_res),
+                None => return KTy::Unresolved,
+            };
             match rep {
                 OneOrTwo::One => base_ty.into_ptr(k_mut),
                 OneOrTwo::Two => base_ty.into_ptr(k_mut).into_ptr(KMut::Const),
