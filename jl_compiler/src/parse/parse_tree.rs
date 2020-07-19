@@ -29,7 +29,7 @@ impl PLoc {
         }
     }
 
-    pub(crate) fn resolve(self, root: &PRoot) -> TRange {
+    pub(crate) fn range(self, root: &PRoot) -> TRange {
         match self {
             PLoc::Token(token) => token.of(&root.tokens).location().range(),
             PLoc::TokenBehind(token) => token.of(&root.tokens).location().range().behind(),
