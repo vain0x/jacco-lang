@@ -5,9 +5,7 @@ mod logs;
 pub mod rust_api {
     pub use super::cli::{compile, Project};
     pub use super::lang_service::lang_service::LangService;
-    pub use super::source::{
-        doc::Doc, pos::Pos, range::Range, t_pos::TPos, t_pos16::TPos16, t_range::TRange,
-    };
+    pub use super::source::{doc::Doc, t_pos::TPos, t_pos16::TPos16, t_range::TRange};
 }
 
 mod clang {
@@ -219,8 +217,6 @@ mod source {
 
     pub(crate) mod doc;
     pub(crate) mod loc;
-    pub(crate) mod pos;
-    pub(crate) mod range;
     pub(crate) mod t_pos;
     pub(crate) mod t_pos16;
     pub(crate) mod t_range;
@@ -230,14 +226,8 @@ mod source {
 
     pub(crate) use doc::Doc;
     pub(crate) use loc::{Loc, LocPart};
-    pub(crate) use pos::Pos;
-    pub(crate) use range::Range;
-
-    #[allow(unused)]
     pub(crate) use t_pos::TPos;
-    #[allow(unused)]
     pub(crate) use t_pos16::TPos16;
-    #[allow(unused)]
     pub(crate) use t_range::TRange;
 
     #[allow(unused)]
@@ -270,7 +260,7 @@ mod token {
     pub(crate) use token_source::TokenSource;
     pub(crate) use tokenize_rules::tokenize;
 
-    use crate::source::{Pos, Range, SourceCode};
+    use crate::source::SourceCode;
 }
 
 mod utils {

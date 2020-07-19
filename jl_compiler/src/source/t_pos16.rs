@@ -5,6 +5,7 @@ use std::{
 };
 
 /// テキスト上の位置を UTF-16 ベースで計算したもの。
+/// 主に LSP で使う。
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct TPos16 {
     /// 行番号: テキスト中の改行の個数。0 から始まる。

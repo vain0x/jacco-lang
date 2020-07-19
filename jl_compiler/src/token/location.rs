@@ -28,11 +28,6 @@ impl Location {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn start(&self) -> Pos {
-        self.range().start().into()
-    }
-
-    #[allow(dead_code)]
     pub(crate) fn unite(self, other: Location) -> Location {
         match (self, other) {
             (Location::Default(_), Location::Default(_)) => self,
@@ -67,16 +62,6 @@ impl TakeOut for Location {
 
 pub(crate) trait HaveLocation {
     fn location(&self) -> Location;
-}
-
-impl HaveLocation for (Doc, Range) {
-    fn location(&self) -> Location {
-        let (doc, range) = *self;
-        Location::Loc(Loc::Range {
-            doc,
-            range: range.into(),
-        })
-    }
 }
 
 impl HaveLocation for (Doc, TRange) {
