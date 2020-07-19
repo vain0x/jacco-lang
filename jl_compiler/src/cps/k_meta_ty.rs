@@ -1,4 +1,4 @@
-use super::{k_ty::KTy2, KTyEnv};
+use super::k_ty::KTy2;
 use crate::{
     token::Location,
     utils::{VecArena, VecArenaId},
@@ -13,11 +13,11 @@ pub(crate) struct KMetaTyTag;
 
 pub(crate) type KMetaTy = VecArenaId<KMetaTyTag>;
 
-pub(crate) type KMetaTys = VecArena<KMetaTyTag, KMetaTyData>;
+pub(crate) type KTyEnv = VecArena<KMetaTyTag, KMetaTyData>;
 
 impl KMetaTy {
     pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy2>> {
-        let cell = ty_env.meta_ty_get(self).ty();
+        let cell = ty_env[self].ty();
         if *cell.borrow() == KTy2::Unresolved {
             return None;
         }
@@ -29,7 +29,7 @@ impl KMetaTy {
         debug_assert!(self.try_unwrap(ty_env).is_none());
         debug_assert_ne!(new_ty, KTy2::Unresolved);
 
-        let data = ty_env.meta_ty_get(self);
+        let data = &ty_env[self];
         let old = replace(&mut *data.ty().borrow_mut(), new_ty);
 
         // バインドは1回のみ。
@@ -66,4 +66,8 @@ impl Debug for KMetaTyData {
         // FIXME: need env
         Debug::fmt(&self.ty, f)
     }
+}
+
+impl KTyEnv {
+    pub(crate) const EMPTY: &'static Self = &Self::new();
 }

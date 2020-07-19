@@ -59,7 +59,6 @@ mod cps {
     mod k_symbol;
     mod k_term;
     mod k_ty;
-    mod k_ty_env;
     mod k_vis;
     mod type_resolution;
 
@@ -79,7 +78,7 @@ mod cps {
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };
     pub(crate) use k_local::{KLocal, KLocalArena, KLocalData, KLocalTag};
-    pub(crate) use k_meta_ty::{KMetaTy, KMetaTyData};
+    pub(crate) use k_meta_ty::{KMetaTy, KTyEnv};
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::KPrim;
@@ -88,7 +87,6 @@ mod cps {
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;
     pub(crate) use k_ty::{KBasicTy, KTy, KTy2};
-    pub(crate) use k_ty_env::KTyEnv;
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 

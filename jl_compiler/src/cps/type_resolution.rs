@@ -1,9 +1,13 @@
 //! 型推論・型検査
 
 use super::*;
+use k_meta_ty::KMetaTyData;
 use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
 use k_ty::{KEnumOrStruct, KTy2, Variance};
-use std::mem::{replace, swap, take};
+use std::{
+    cell::RefCell,
+    mem::{replace, swap, take},
+};
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
@@ -216,7 +220,9 @@ fn unify2(left: &KTy2, right: &KTy2, location: Location, tx: &mut Tx) {
 }
 
 fn fresh_meta_ty(location: Location, tx: &mut Tx) -> KTy2 {
-    let meta_ty = tx.ty_env.meta_ty_new(location);
+    let meta_ty = tx
+        .ty_env
+        .alloc(KMetaTyData::new(RefCell::default(), location));
     KTy2::Meta(meta_ty)
 }
 
