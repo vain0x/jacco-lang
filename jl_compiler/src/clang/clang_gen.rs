@@ -289,7 +289,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             match &enum_outline.repr {
                 KEnumRepr::Never => CTy::Other("/* never enum */ void"),
                 KEnumRepr::Unit => CTy::Void,
-                KEnumRepr::Const { value_ty } => gen_ty2(&value_ty.to_ty2(k_mod), ty_env, cx),
+                KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
                 KEnumRepr::Sum { .. } => {
                     // FIXME: unique_enum_name を事前に計算しておく
                     let name = enum_outline.name.to_string();
