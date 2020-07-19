@@ -324,10 +324,7 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
 
     match result {
         Ok((_, number_ty)) => {
-            let (text, location) = {
-                let token_data = token.of(&gx.tokens);
-                (token_data.text().to_string(), token_data.location())
-            };
+            let (text, location) = token.decompose(&gx.tokens);
             let ty = KTy2::Number(number_ty);
             match number_ty {
                 KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => {
