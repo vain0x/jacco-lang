@@ -1,5 +1,5 @@
 use super::*;
-use crate::source::{TPos, TRange};
+use crate::source::{Loc, SourceCode, TPos, TRange};
 use std::{cmp::min, rc::Rc};
 
 /// Tokenization context. 字句解析の文脈
@@ -82,7 +82,7 @@ impl TokenizeContext {
 
         let current_pos = self.last_pos + TPos::from(text.as_str());
         let range = TRange::new(self.last_pos, current_pos);
-        let location = Location::new(self.source.clone(), range);
+        let location = Loc::new(self.source.clone(), range);
         let token = TokenData::new(token, text, location);
 
         self.push_token(token);

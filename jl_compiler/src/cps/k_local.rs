@@ -1,6 +1,6 @@
 use super::k_ty::KTy2;
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -25,12 +25,12 @@ impl KLocal {
 pub(crate) struct KLocalData {
     pub(crate) name: String,
     pub(crate) ty: KTy2,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
     pub(crate) is_alive: bool,
 }
 
 impl KLocalData {
-    pub(crate) fn new(name: String, location: Location) -> Self {
+    pub(crate) fn new(name: String, location: Loc) -> Self {
         Self {
             name,
             ty: KTy2::Unresolved,

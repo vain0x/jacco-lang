@@ -1,13 +1,14 @@
 //! シンボルの出現箇所を収集する。
 
 use super::*;
+use crate::source::Loc;
 use name_resolution::{DefOrUse, NAbsName};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Default)]
 pub(crate) struct Occurrences {
-    pub(crate) def_sites: HashMap<NAbsName, Vec<Location>>,
-    pub(crate) use_sites: HashMap<NAbsName, Vec<Location>>,
+    pub(crate) def_sites: HashMap<NAbsName, Vec<Loc>>,
+    pub(crate) use_sites: HashMap<NAbsName, Vec<Loc>>,
     // pub(crate) field_uses: Vec<(String, Location)>,
 }
 

@@ -1,6 +1,6 @@
 use super::{k_enum::KEnumReprs, KConstValue, KEnum, KField, KTy};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -64,5 +64,5 @@ pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) parent_opt: Option<KStructParent>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }

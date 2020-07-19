@@ -1,7 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
-use crate::token::{HaveLocation, Location};
+use crate::{source::HaveLocation, source::Loc};
 use k_meta_ty::KMetaTyData;
 use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
 use k_ty::{KEnumOrStruct, KTy2, Variance};
@@ -50,13 +50,13 @@ impl<'a> Tx<'a> {
 
 struct UnificationContext<'a> {
     variance: Variance,
-    location: Location,
+    location: Loc,
     ty_env: &'a KTyEnv,
     logger: &'a Logger,
 }
 
 impl<'a> UnificationContext<'a> {
-    fn new(location: Location, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
+    fn new(location: Loc, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
         Self {
             variance: Variance::Co,
             location,
@@ -227,12 +227,12 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
-fn unify2(left: &KTy2, right: &KTy2, location: Location, tx: &mut Tx) {
+fn unify2(left: &KTy2, right: &KTy2, location: Loc, tx: &mut Tx) {
     let mut ux = UnificationContext::new(location, &tx.ty_env, &tx.logger);
     do_unify2(&left, &right, &mut ux);
 }
 
-fn fresh_meta_ty(location: Location, tx: &mut Tx) -> KTy2 {
+fn fresh_meta_ty(location: Loc, tx: &mut Tx) -> KTy2 {
     let meta_ty = tx
         .ty_env
         .alloc(KMetaTyData::new(RefCell::default(), location));
@@ -276,7 +276,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
     }
 }
 
-fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
+fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
     let outline = match alias
         .of(&tx.mod_outline.aliases)
         .referent_outline(&tx.mod_outlines)

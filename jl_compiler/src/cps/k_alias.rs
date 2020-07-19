@@ -1,6 +1,6 @@
 use super::{KModLocalSymbol, KProjectSymbol};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -14,12 +14,12 @@ pub(crate) type KAliasArena = VecArena<KAliasTag, KAliasOutline>;
 pub(crate) struct KAliasOutline {
     name: String,
     path: Vec<String>,
-    location: Location,
+    location: Loc,
     referent_opt: Option<KProjectSymbol>,
 }
 
 impl KAliasOutline {
-    pub(crate) fn new(name: String, path: Vec<String>, location: Location) -> KAliasOutline {
+    pub(crate) fn new(name: String, path: Vec<String>, location: Loc) -> KAliasOutline {
         KAliasOutline {
             name,
             path,
@@ -37,7 +37,7 @@ impl KAliasOutline {
         &self.path
     }
 
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) fn location(&self) -> Loc {
         self.location
     }
 

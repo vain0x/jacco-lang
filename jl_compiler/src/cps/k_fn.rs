@@ -1,6 +1,6 @@
 use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KNode, KSymbol, KTy, KTyEnv, KVis};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -48,7 +48,7 @@ pub(crate) struct KFnOutline {
     pub(crate) vis_opt: Option<KVis>,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 impl KFnOutline {

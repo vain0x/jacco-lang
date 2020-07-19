@@ -157,7 +157,6 @@ mod front {
     pub(crate) use syntax_validation::validate_syntax;
 
     use crate::parse::*;
-    use crate::token::{HaveLocation, Location};
 }
 
 mod lang_service {
@@ -188,7 +187,7 @@ mod parse {
     use crate::logs::Logger;
     use crate::{
         cps::{KMut, KVis},
-        token::{HaveLocation, Location, TokenData, TokenKind},
+        token::{TokenData, TokenKind},
     };
     use parse_context::Px;
     use parse_decl::parse_semi;
@@ -224,7 +223,7 @@ mod source {
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::Loc;
+    pub(crate) use loc::{HaveLocation, Loc};
     pub(crate) use t_pos::TPos;
     pub(crate) use t_pos16::TPos16;
     pub(crate) use t_range::TRange;
@@ -243,7 +242,6 @@ mod token {
     mod lit_binary;
     mod lit_decimal;
     mod lit_hex;
-    mod location;
     mod punctuation;
     mod token_data;
     mod token_kind;
@@ -253,13 +251,10 @@ mod token {
 
     pub(crate) use keyword::Keyword;
     pub(crate) use lit_decimal::{eval_number, LitErr};
-    pub(crate) use location::{HaveLocation, Location};
     pub(crate) use token_data::TokenData;
     pub(crate) use token_kind::TokenKind;
     pub(crate) use token_source::TokenSource;
     pub(crate) use tokenize_rules::tokenize;
-
-    use crate::source::SourceCode;
 }
 
 mod utils {

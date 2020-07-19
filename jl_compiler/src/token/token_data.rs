@@ -1,5 +1,5 @@
 use super::*;
-use crate::utils::TakeOut;
+use crate::{source::Loc, utils::TakeOut};
 use std::fmt::{self, Debug, Formatter};
 
 /// 字句データ
@@ -7,11 +7,11 @@ use std::fmt::{self, Debug, Formatter};
 pub(crate) struct TokenData {
     kind: TokenKind,
     text: String,
-    location: Location,
+    location: Loc,
 }
 
 impl TokenData {
-    pub(crate) fn new(kind: TokenKind, text: String, location: Location) -> Self {
+    pub(crate) fn new(kind: TokenKind, text: String, location: Loc) -> Self {
         TokenData {
             kind,
             text,
@@ -27,7 +27,7 @@ impl TokenData {
         &self.text
     }
 
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) fn location(&self) -> Loc {
         self.location
     }
 }

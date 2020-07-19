@@ -5,8 +5,8 @@
 
 use crate::{
     parse::{PLoc, PRoot},
-    source::{loc::LocResolver, Doc, TRange},
-    token::{HaveLocation, Location, TokenSource},
+    source::{loc::LocResolver, Doc, HaveLocation, Loc, TRange},
+    token::TokenSource,
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
 
@@ -56,7 +56,7 @@ impl DocLogger {
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]
 pub(crate) enum LogItem {
-    OnLocation { message: String, location: Location },
+    OnLocation { message: String, location: Loc },
 }
 
 impl LogItem {
@@ -66,7 +66,7 @@ impl LogItem {
         }
     }
 
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) fn location(&self) -> Loc {
         match self {
             LogItem::OnLocation { location, .. } => *location,
         }
@@ -75,7 +75,7 @@ impl LogItem {
     pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
         match self {
             LogItem::OnLocation { message, location } => {
-                let path_opt = match location.into_loc().doc_opt() {
+                let path_opt = match location.doc_opt() {
                     Ok(doc) => resolver.doc_path(doc).map(PathBuf::from),
                     Err(name) => Some(PathBuf::from(name)),
                 };
@@ -126,7 +126,7 @@ impl Logger {
         for item in logs.finish() {
             let (loc, message) = (item.loc, item.message);
             items.push(LogItem::OnLocation {
-                location: Location::new(TokenSource::File(doc), loc.range(root)),
+                location: Loc::new(TokenSource::File(doc), loc.range(root)),
                 message,
             });
         }

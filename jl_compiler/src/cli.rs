@@ -210,7 +210,7 @@ impl Project {
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {
-                let doc = match item.location().into_loc() {
+                let doc = match item.location() {
                     Loc::Unknown(name) => {
                         error!("'{}' {}", name, item.message());
                         continue;

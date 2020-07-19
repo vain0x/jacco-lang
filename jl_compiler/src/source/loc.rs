@@ -1,6 +1,10 @@
 use super::{Doc, TRange};
-use crate::parse::PToken;
-use std::{fmt::Debug, path::Path};
+use crate::{
+    parse::PToken,
+    token::{TokenData, TokenSource},
+    utils::TakeOut,
+};
+use std::{fmt::Debug, mem::replace, path::Path};
 
 /// 位置情報
 ///
@@ -16,6 +20,7 @@ pub(crate) enum Loc {
         doc: Doc,
         token: PToken,
     },
+    #[allow(unused)]
     TokenBehind {
         doc: Doc,
         token: PToken,
@@ -27,13 +32,14 @@ pub(crate) enum Loc {
     },
 }
 
-impl Default for Loc {
-    fn default() -> Loc {
-        Loc::Unknown("<Loc::default>")
-    }
-}
-
 impl Loc {
+    pub(crate) fn new(source: TokenSource, range: TRange) -> Loc {
+        match source {
+            TokenSource::Special(name) => Loc::Unknown(name),
+            TokenSource::File(doc) => Loc::Range { doc, range },
+        }
+    }
+
     pub(crate) fn new_token_range(doc: Doc, first: PToken, last: PToken) -> Self {
         assert!(first <= last);
         if first == last {
@@ -64,6 +70,23 @@ impl Loc {
             Loc::Token { .. } | Loc::TokenBehind { .. } | Loc::TokenRange { .. } => {
                 Err("<Loc::range_opt>")
             }
+        }
+    }
+
+    pub(crate) fn range(self) -> TRange {
+        self.range_opt().unwrap_or(TRange::ZERO)
+    }
+
+    #[allow(unused)]
+    pub(crate) fn behind(self) -> Self {
+        match self {
+            Loc::Range { doc, range } => Loc::Range {
+                doc,
+                range: range.behind(),
+            },
+            Loc::Token { doc, token } => Loc::TokenBehind { doc, token },
+            Loc::TokenRange { doc, last, .. } => Loc::TokenBehind { doc, token: last },
+            Loc::Unknown(..) | Loc::TokenBehind { .. } => self,
         }
     }
 
@@ -109,17 +132,15 @@ impl Loc {
     }
 }
 
-impl Loc {
-    pub(crate) fn behind(self) -> Self {
-        match self {
-            Loc::Range { doc, range } => Loc::Range {
-                doc,
-                range: range.behind(),
-            },
-            Loc::Token { doc, token } => Loc::TokenBehind { doc, token },
-            Loc::TokenRange { doc, last, .. } => Loc::TokenBehind { doc, token: last },
-            Loc::Unknown(..) | Loc::TokenBehind { .. } => self,
-        }
+impl Default for Loc {
+    fn default() -> Loc {
+        Loc::Unknown("<Loc::default>")
+    }
+}
+
+impl TakeOut for Loc {
+    fn take_out(&mut self) -> Loc {
+        replace(self, Loc::Unknown("<Loc::take_out>"))
     }
 }
 
@@ -127,4 +148,39 @@ pub(crate) trait LocResolver {
     fn doc_path(&self, doc: Doc) -> Option<&Path>;
 
     fn token_range(&self, doc: Doc, token: PToken) -> TRange;
+}
+
+pub(crate) trait HaveLocation {
+    fn location(&self) -> Loc;
+}
+
+impl HaveLocation for (Doc, TRange) {
+    fn location(&self) -> Loc {
+        let (doc, range) = *self;
+        Loc::Range { doc, range }
+    }
+}
+
+impl<'a, T: HaveLocation> HaveLocation for &'a T {
+    fn location(&self) -> Loc {
+        T::location(*self)
+    }
+}
+
+impl<'a, T: HaveLocation> HaveLocation for &'a mut T {
+    fn location(&self) -> Loc {
+        T::location(*self)
+    }
+}
+
+impl HaveLocation for Loc {
+    fn location(&self) -> Loc {
+        *self
+    }
+}
+
+impl HaveLocation for TokenData {
+    fn location(&self) -> Loc {
+        TokenData::location(self)
+    }
 }

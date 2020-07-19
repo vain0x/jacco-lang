@@ -1,6 +1,6 @@
 use super::{k_const::KConstArena, k_struct::KStructArena, KConst, KConstValue, KStruct, KTy};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 use std::fmt::{self, Debug, Formatter};
@@ -128,7 +128,7 @@ impl KEnumRepr {
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 impl KEnumOutline {

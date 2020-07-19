@@ -1,13 +1,13 @@
 use super::{
     k_local::KLocalArena, k_ty::KTy2, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct,
 };
-use crate::token::{HaveLocation, Location};
+use crate::{source::HaveLocation, source::Loc};
 
 /// ローカル変数の出現
 #[derive(Clone, Debug)]
 pub(crate) struct KSymbol {
     pub(crate) local: KLocal,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 impl KSymbol {
@@ -21,7 +21,7 @@ impl KSymbol {
 }
 
 impl HaveLocation for KSymbol {
-    fn location(&self) -> Location {
+    fn location(&self) -> Loc {
         self.location
     }
 }
@@ -30,19 +30,13 @@ impl HaveLocation for KSymbol {
 #[derive(Clone, Debug)]
 pub(crate) enum KSymbolExt {
     Unresolved,
-    Alias {
-        alias: KAlias,
-        location: Location,
-    },
+    Alias { alias: KAlias, location: Loc },
     Symbol(KSymbol),
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(KFn),
     ExternFn(KExternFn),
-    UnitLikeStruct {
-        k_struct: KStruct,
-        location: Location,
-    },
+    UnitLikeStruct { k_struct: KStruct, location: Loc },
 }
 
 impl KSymbolExt {

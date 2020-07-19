@@ -9,7 +9,8 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::DocLogger,
-    token::{eval_number, HaveLocation, LitErr, Location},
+    source::{HaveLocation, Loc},
+    token::{eval_number, LitErr},
     utils::VecArena,
 };
 use log::{error, trace};
@@ -63,7 +64,7 @@ impl<'a> Gx<'a> {
         }
     }
 
-    fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
+    fn fresh_symbol(&mut self, hint: &str, location: Loc) -> KSymbol {
         let local = self
             .current_locals
             .alloc(KLocalData::new(hint.to_string(), location));
@@ -71,7 +72,7 @@ impl<'a> Gx<'a> {
         KSymbol { local, location }
     }
 
-    fn fresh_label(&mut self, hint: &str, _location: Location) -> KLabel {
+    fn fresh_label(&mut self, hint: &str, _location: Loc) -> KLabel {
         let name = hint.to_string();
 
         self.current_labels.alloc(KLabelData {
@@ -107,7 +108,7 @@ impl<'a> Gx<'a> {
         label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
-        location: Location,
+        location: Loc,
     ) {
         self.push(KCommand::Node {
             prim: KPrim::Jump,
@@ -119,12 +120,7 @@ impl<'a> Gx<'a> {
         });
     }
 
-    fn push_jump(
-        &mut self,
-        label: KLabel,
-        args: impl IntoIterator<Item = KTerm>,
-        location: Location,
-    ) {
+    fn push_jump(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>, location: Loc) {
         self.do_push_jump(label, args, 0, location);
     }
 
@@ -132,25 +128,25 @@ impl<'a> Gx<'a> {
         &mut self,
         label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
-        location: Location,
+        location: Loc,
     ) {
         self.do_push_jump(label, args, 1, location);
     }
 }
 
-fn new_false_term(location: Location) -> KTerm {
+fn new_false_term(location: Loc) -> KTerm {
     KTerm::False { location }
 }
 
-fn new_true_term(location: Location) -> KTerm {
+fn new_true_term(location: Loc) -> KTerm {
     KTerm::True { location }
 }
 
-fn new_unit_term(location: Location) -> KTerm {
+fn new_unit_term(location: Loc) -> KTerm {
     KTerm::Unit { location }
 }
 
-fn new_never_term(location: Location) -> KTerm {
+fn new_never_term(location: Loc) -> KTerm {
     // FIXME: the type is ! (never)
     KTerm::Unit { location }
 }
@@ -160,13 +156,13 @@ fn error_token(token: PToken, message: impl Into<String>, gx: &Gx) {
     gx.logger.error(loc, message);
 }
 
-fn error_node(node: Location, message: impl Into<String>, gx: &Gx) {
+fn error_node(node: Loc, message: impl Into<String>, gx: &Gx) {
     log::error!("{} {:?}", message.into(), node);
     let loc = PLoc::new(PToken::from_index(0));
     gx.logger.error(loc, "<cps_conversion::error_node>");
 }
 
-fn fresh_loop_labels(location: Location, gx: &mut Gx) -> KLoopData {
+fn fresh_loop_labels(location: Loc, gx: &mut Gx) -> KLoopData {
     let continue_label = gx.fresh_label("continue_", location);
     let break_label = gx.fresh_label("next", location);
     KLoopData {
@@ -175,7 +171,7 @@ fn fresh_loop_labels(location: Location, gx: &mut Gx) -> KLoopData {
     }
 }
 
-fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: Location, gx: &mut Gx) -> KTerm {
+fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: Loc, gx: &mut Gx) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
 
     let arg = gen_expr(arg_opt.unwrap(), gx);
@@ -189,7 +185,7 @@ fn emit_compound_assign(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: Location,
+    location: Loc,
     gx: &mut Gx,
 ) -> KTerm {
     let left = gen_expr_lval(left, KMut::Mut, location, gx);
@@ -211,7 +207,7 @@ fn emit_binary_op(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: Location,
+    location: Loc,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol(&prim.hint_str(), location);
@@ -228,7 +224,7 @@ fn emit_if(
     cond: &PExpr,
     gen_body: impl FnOnce(&mut Gx) -> KTerm,
     gen_alt: impl FnOnce(&mut Gx) -> KTerm,
-    location: Location,
+    location: Loc,
     gx: &mut Gx,
 ) -> KTerm {
     let result = gx.fresh_symbol("if_result", location);
@@ -492,7 +488,7 @@ fn gen_variant(decl: &PVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KVar
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
-fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> KTerm {
+fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Loc, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Tuple(PTupleExpr { arg_list }) if !arg_list.is_tuple() => {
             let arg = &arg_list.args[0];

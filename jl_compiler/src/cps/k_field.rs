@@ -1,6 +1,6 @@
 use super::KTy;
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -9,7 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 // とりあえず KFieldTag を使いまわしてる。
@@ -26,7 +26,7 @@ impl KField {
         &fields[self].ty
     }
 
-    pub(crate) fn location(self, fields: &KFieldArena) -> Location {
+    pub(crate) fn location(self, fields: &KFieldArena) -> Loc {
         fields[self].location
     }
 }
@@ -35,5 +35,5 @@ impl KField {
 pub(crate) struct KFieldOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }

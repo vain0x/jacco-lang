@@ -1,70 +1,70 @@
 use super::*;
-use crate::token::Location;
+use crate::source::Loc;
 use std::fmt::{self, Debug};
 
 /// CPS 原子項
 #[derive(Clone)]
 pub(crate) enum KTerm {
     Unit {
-        location: Location,
+        location: Loc,
     },
     Int {
         text: String,
         ty: KTy2,
-        location: Location,
+        location: Loc,
     },
     Float {
         text: String,
         ty: KTy2,
-        location: Location,
+        location: Loc,
     },
     Char {
         text: String,
         ty: KTy2,
-        location: Location,
+        location: Loc,
     },
     Str {
         text: String,
-        location: Location,
+        location: Loc,
     },
     True {
-        location: Location,
+        location: Loc,
     },
     False {
-        location: Location,
+        location: Loc,
     },
     Name(KSymbol),
     Alias {
         alias: KAlias,
-        location: Location,
+        location: Loc,
     },
     Const {
         k_const: KConst,
-        location: Location,
+        location: Loc,
     },
     StaticVar {
         static_var: KStaticVar,
-        location: Location,
+        location: Loc,
     },
     Fn {
         k_fn: KFn,
-        location: Location,
+        location: Loc,
     },
     Label {
         label: KLabel,
-        location: Location,
+        location: Loc,
     },
     Return {
         k_fn: KFn,
-        location: Location,
+        location: Loc,
     },
     ExternFn {
         extern_fn: KExternFn,
-        location: Location,
+        location: Loc,
     },
     RecordTag {
         k_struct: KStruct,
-        location: Location,
+        location: Loc,
     },
     FieldTag(KFieldTag),
 }
@@ -109,7 +109,7 @@ impl KTerm {
         }
     }
 
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) fn location(&self) -> Loc {
         match self {
             KTerm::Unit { location }
             | KTerm::Int { location, .. }

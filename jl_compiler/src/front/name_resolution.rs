@@ -8,6 +8,7 @@ use crate::{
         KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
     logs::DocLogger,
+    source::{HaveLocation, Loc},
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
@@ -26,13 +27,13 @@ pub(crate) type NLoopArena = VecArena<NLoopTag, NLoopData>;
 
 #[derive(Clone)]
 pub(crate) struct NLoopData {
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) struct NLocalVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) type NLocalVarArena = VecArena<KLocalTag, NLocalVarData>;
@@ -43,7 +44,7 @@ pub(crate) struct NConstData {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
@@ -51,7 +52,7 @@ pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
 pub(crate) struct NStaticVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) type NFnArena = VecArena<KFnTag, NFnData>;
@@ -61,7 +62,7 @@ pub(crate) struct NFnData {
     pub(crate) vis_opt: Option<KVis>,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: NLocalVarArena,
     pub(crate) loops: NLoopArena,
@@ -73,7 +74,7 @@ pub(crate) struct NExternFnData {
     pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
     pub(crate) local_vars: NLocalVarArena,
 }
 
@@ -82,7 +83,7 @@ pub(crate) type NEnumArena = VecArena<KEnumTag, NEnumData>;
 pub(crate) struct NEnumData {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) type NStructArena = VecArena<KStructTag, NStructData>;
@@ -91,7 +92,7 @@ pub(crate) struct NStructData {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
@@ -99,7 +100,7 @@ pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
 pub(crate) struct NFieldData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 #[derive(Copy, Clone)]
@@ -256,7 +257,7 @@ impl Nx {
         self.local_env = parent_env;
     }
 
-    fn enter_loop(&mut self, location: Location, do_resolve: impl FnOnce(&mut Nx, NLoop)) {
+    fn enter_loop(&mut self, location: Loc, do_resolve: impl FnOnce(&mut Nx, NLoop)) {
         let n_loop = self.parent_loops.alloc(NLoopData { location });
 
         let parent_loop = replace(&mut self.parent_loop, Some(n_loop));

@@ -1,7 +1,7 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
 use crate::{
-    source::TRange,
-    token::{HaveLocation, Location, TokenSource},
+    source::{HaveLocation, Loc, TRange},
+    token::TokenSource,
 };
 use std::fmt::{self, Debug, Formatter};
 
@@ -12,7 +12,7 @@ pub(crate) struct KNode {
     pub(crate) args: Vec<KTerm>,
     pub(crate) results: Vec<KSymbol>,
     pub(crate) conts: Vec<KNode>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 impl Debug for KNode {
@@ -79,13 +79,13 @@ impl Default for KNode {
             args: Default::default(),
             results: Default::default(),
             conts: Default::default(),
-            location: Location::new(TokenSource::Special("<KNode::default>"), TRange::ZERO),
+            location: Loc::new(TokenSource::Special("<KNode::default>"), TRange::ZERO),
         }
     }
 }
 
 impl HaveLocation for KNode {
-    fn location(&self) -> Location {
+    fn location(&self) -> Loc {
         self.location
     }
 }

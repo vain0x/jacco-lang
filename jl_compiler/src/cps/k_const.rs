@@ -1,6 +1,6 @@
 use super::{KEnum, KTy};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 use std::fmt::{self, Debug, Formatter};
@@ -31,7 +31,7 @@ pub(crate) struct KConstData {
     pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 #[derive(Clone, Debug, PartialEq)]

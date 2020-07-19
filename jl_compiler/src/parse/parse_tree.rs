@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::{
-    source::TRange,
+    source::{HaveLocation, Loc, TRange},
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
@@ -552,8 +552,8 @@ macro_rules! impl_node {
     ($($node_ty:ty),* $(,)?) => {
         $(
             impl HaveLocation for $node_ty {
-                fn location(&self) -> Location {
-                    Location::new(TokenSource::Special(stringify!($node_ty)), TRange::ZERO)
+                fn location(&self) -> Loc {
+                    Loc::new(TokenSource::Special(stringify!($node_ty)), TRange::ZERO)
                 }
             }
 

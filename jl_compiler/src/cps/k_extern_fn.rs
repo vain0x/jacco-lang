@@ -1,6 +1,6 @@
 use super::{KLocalArena, KSymbol, KTy};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -35,7 +35,7 @@ pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
 
 impl KExternFnOutline {

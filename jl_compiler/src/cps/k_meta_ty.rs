@@ -1,6 +1,6 @@
 use super::k_ty::KTy2;
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 use std::{
@@ -43,11 +43,11 @@ pub(crate) struct KMetaTyData {
     /// おそらく RefCell を避けるのは難しい。
     ty: RefCell<KTy2>,
 
-    location: Location,
+    location: Loc,
 }
 
 impl KMetaTyData {
-    pub(crate) fn new(ty: RefCell<KTy2>, location: Location) -> Self {
+    pub(crate) fn new(ty: RefCell<KTy2>, location: Loc) -> Self {
         Self { ty, location }
     }
 

@@ -1,6 +1,6 @@
 use super::{KConstValue, KTy};
 use crate::{
-    token::Location,
+    source::Loc,
     utils::{VecArena, VecArenaId},
 };
 
@@ -25,5 +25,5 @@ pub(crate) struct KStaticVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
-    pub(crate) location: Location,
+    pub(crate) location: Loc,
 }
