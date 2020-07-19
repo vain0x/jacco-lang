@@ -78,7 +78,7 @@ impl KTerm {
             KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns).to_ty2(k_mod),
             KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns).to_ty2(k_mod),
             KTerm::RecordTag { k_struct, .. } => k_struct
-                .tag_ty(&outlines.structs, &outlines.enums)
+                .tag_ty(&outlines.structs, &outlines.enum_reprs)
                 .to_ty2(k_mod),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);

@@ -1,8 +1,8 @@
 use crate::{
     clang::clang_dump,
     cps::{
-        eliminate_unit, resolve_aliases, resolve_types, KEnumOutline, KModData, KModOutline,
-        KModTag,
+        eliminate_unit, resolve_aliases, resolve_types, KEnumOutline, KEnumRepr, KEnumReprs,
+        KModData, KModOutline, KModTag,
     },
     front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
     logs::{DocLogs, Logs},
@@ -184,6 +184,15 @@ impl Project {
             k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
         }
 
+        for mod_outline in self.mod_outlines.iter_mut() {
+            assert!(mod_outline.enum_reprs.is_empty());
+            let enum_reprs =
+                KEnumReprs::from_iter(mod_outline.enums.iter().map(|enum_data| {
+                    KEnumRepr::determine(&enum_data.variants, &mod_outline.consts)
+                }));
+            mod_outline.enum_reprs = enum_reprs;
+        }
+
         let mut mods = take(&mut self.mods);
         for ((k_mod, mod_outline), ref mut mod_data) in
             self.mod_outlines.enumerate().zip(mods.iter_mut())
@@ -221,6 +230,7 @@ impl Project {
             KEnumOutline::determine_tags(
                 &mut mod_outline.consts,
                 &mut mod_outline.enums,
+                &mut mod_outline.enum_reprs,
                 &mut mod_outline.structs,
             );
 

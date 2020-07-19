@@ -1310,7 +1310,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             assert_eq!(name.text(&gx.names), k_enum.name(&gx.outlines.enums));
 
             let mut next_value = 0_usize;
-            let k_variants = variants
+            let _k_variants = variants
                 .into_iter()
                 .map(|variant_decl| {
                     let k_variant = gen_variant(variant_decl, &mut next_value, gx);
@@ -1318,9 +1318,6 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                     k_variant
                 })
                 .collect::<Vec<_>>();
-
-            let repr = KEnumRepr::determine(&k_variants, &gx.outlines.consts);
-            k_enum.of_mut(&mut gx.outlines.enums).repr = repr;
         }
         PDecl::Struct(PStructDecl { variant_opt, .. }) => {
             if let Some(variant) = variant_opt {
@@ -1471,10 +1468,6 @@ pub(crate) fn cps_conversion(
             .map(|n_enum_data| KEnumOutline {
                 name: n_enum_data.name.to_string(),
                 variants: n_enum_data.variants.clone(),
-                repr: {
-                    // FIXME: determine?
-                    KEnumRepr::Never
-                },
                 location: n_enum_data.location,
             })
             .collect();

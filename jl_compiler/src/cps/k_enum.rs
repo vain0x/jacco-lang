@@ -57,6 +57,8 @@ pub(crate) type KEnum = VecArenaId<KEnumTag>;
 
 pub(crate) type KEnumArena = VecArena<KEnumTag, KEnumOutline>;
 
+pub(crate) type KEnumReprs = VecArena<KEnumTag, KEnumRepr>;
+
 impl KEnum {
     pub(crate) fn name(self, enums: &KEnumArena) -> &str {
         &enums[self].name
@@ -67,16 +69,16 @@ impl KEnum {
         &enums[self].variants
     }
 
-    pub(crate) fn repr(self, enums: &KEnumArena) -> &KEnumRepr {
-        &enums[self].repr
+    pub(crate) fn repr(self, enums: &KEnumReprs) -> &KEnumRepr {
+        &enums[self]
     }
 
-    pub(crate) fn is_tagged_union(self, enums: &KEnumArena) -> bool {
+    pub(crate) fn is_tagged_union(self, enums: &KEnumReprs) -> bool {
         self.repr(enums).is_tagged_union()
     }
 
-    pub(crate) fn tag_ty(self, enums: &KEnumArena) -> &KTy {
-        match self.repr(enums) {
+    pub(crate) fn tag_ty(self, enums: &KEnumReprs) -> &KTy {
+        match &self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
             KEnumRepr::Unit => &KTy::UNIT,
             KEnumRepr::Const { value_ty } => value_ty,
@@ -127,7 +129,6 @@ impl KEnumRepr {
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
-    pub(crate) repr: KEnumRepr,
     pub(crate) location: Location,
 }
 
@@ -135,10 +136,11 @@ impl KEnumOutline {
     pub(crate) fn determine_tags(
         consts: &mut KConstArena,
         enums: &mut KEnumArena,
+        enum_reprs: &KEnumReprs,
         structs: &mut KStructArena,
     ) {
-        for enum_data in enums.iter_mut() {
-            if !enum_data.repr.is_tagged_union() {
+        for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
+            if !repr.is_tagged_union() {
                 // FIXME: const バリアントの未指定の値を埋める処理をここに移動する？
                 continue;
             }

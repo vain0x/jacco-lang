@@ -1,9 +1,13 @@
 use super::{
-    k_const::KConstArena, k_enum::KEnumArena, k_extern_fn::KExternFnOutlineArena,
-    k_fn::KFnOutlineArena, k_static_var::KStaticVarArena, k_struct::KStructArena, KAlias,
-    KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn, KExternFnArena,
-    KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLocal, KStaticVar, KStaticVarData,
-    KStruct, KStructOutline,
+    k_const::KConstArena,
+    k_enum::{KEnumArena, KEnumReprs},
+    k_extern_fn::KExternFnOutlineArena,
+    k_fn::KFnOutlineArena,
+    k_static_var::KStaticVarArena,
+    k_struct::KStructArena,
+    KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
+    KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLocal, KStaticVar,
+    KStaticVarData, KStruct, KStructOutline,
 };
 use crate::{
     logs::Logger,
@@ -28,6 +32,7 @@ pub(crate) struct KModOutline {
     pub(crate) fns: KFnOutlineArena,
     pub(crate) extern_fns: KExternFnOutlineArena,
     pub(crate) enums: KEnumArena,
+    pub(crate) enum_reprs: KEnumReprs,
     pub(crate) structs: KStructArena,
     pub(crate) fields: KFieldArena,
 }
