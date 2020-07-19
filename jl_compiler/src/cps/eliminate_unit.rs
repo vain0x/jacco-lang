@@ -43,7 +43,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
         .fields
         .enumerate()
         .filter_map(|(k_field, field_data)| {
-            if field_data.ty.is_unit(&ex.ty_env) {
+            if field_data.ty.is_unit() {
                 Some(k_field)
             } else {
                 None
@@ -60,7 +60,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
     // FIXME: zero-sized type の引数はすべて捨てていい。
     // unit 型の引数は捨てる。
     for fn_outline in outlines.fns.iter_mut() {
-        fn_outline.param_tys.retain(|ty| !ty.is_unit(&ex.ty_env));
+        fn_outline.param_tys.retain(|ty| !ty.is_unit());
     }
 
     for fn_data in k_root.fns.iter_mut() {

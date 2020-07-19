@@ -361,26 +361,26 @@ impl KTy {
         }
     }
 
-    pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, |ty| match *ty {
+    pub(crate) fn is_unit(&self) -> bool {
+        match self {
             KTy::Unit => true,
             _ => false,
-        })
+        }
     }
 
-    pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, |ty| match *ty {
+    pub(crate) fn is_primitive(&self) -> bool {
+        match self {
             KTy::Number(_) => true,
             KTy::Ptr { .. } => true,
             _ => false,
-        })
+        }
     }
 
-    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
-        ty_map(self, ty_env, |ty| match ty {
+    pub(crate) fn as_struct(&self) -> Option<KStruct> {
+        match self {
             KTy::Struct(k_struct) => Some(*k_struct),
             _ => None,
-        })
+        }
     }
 }
 
@@ -431,11 +431,6 @@ impl Debug for KTy {
             }
         }
     }
-}
-
-/// NOTE: 束縛済みのメタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
-fn ty_map<T>(ty: &KTy, _ty_env: &KTyEnv, f: impl Fn(&KTy) -> T) -> T {
-    f(ty)
 }
 
 /// 変性

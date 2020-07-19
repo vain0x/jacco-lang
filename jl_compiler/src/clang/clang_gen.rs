@@ -570,7 +570,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Record => match (tys, results, conts) {
             ([ty], [result], [cont]) => {
-                let k_struct = ty.as_struct(ty_env).unwrap();
+                let k_struct = ty.as_struct().unwrap();
 
                 let (name, ty) = gen_param(result, ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {
