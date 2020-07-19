@@ -29,7 +29,7 @@ fn do_eval_binary_slow(s: &str) -> Result<(KNumber, KNumberTy), LitErr> {
     }
 
     let (body, suffix) = s.split_at(digit_len);
-    let ty = match parse_number_suffix(suffix) {
+    let _ty = match parse_number_suffix(suffix) {
         None | Some(KNumberTy::F32) | Some(KNumberTy::F64) => return Err(LitErr::UnknownSuffix),
         Some(ty) => Some(ty),
     };

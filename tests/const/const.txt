@@ -4,13 +4,13 @@ int main();
 
 int main() {
     int if_result_1;
-    int equal_1 = 42 == 42;
+    int equal_1 = 42ULL == 42;
     // call_result_1 is killed.
     assert(equal_1);
-    int equal_2 = 84 == 84;
+    int equal_2 = 84ULL == 84;
     // call_result_2 is killed.
     assert(equal_2);
-    int equal_3 = 126 == 126;
+    int equal_3 = 126ULL == 126;
     // call_result_3 is killed.
     assert(equal_3);
     int notequal_1 = 9223372036854775807LL != 0LL;

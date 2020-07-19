@@ -9,7 +9,7 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::DocLogger,
-    token::{HaveLocation, Location, TokenData, TokenKind},
+    token::{eval_number, HaveLocation, LitErr, Location, TokenData, TokenKind},
     utils::VecArena,
 };
 use log::{error, trace};
@@ -327,6 +327,36 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
     }
 }
 
+fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
+    let result = eval_number(token.text(gx.tokens));
+
+    match result {
+        Ok((_, number_ty)) => {
+            let token_data = token.of(&gx.tokens).clone();
+            let ty = KTy2::from(number_ty);
+            match number_ty {
+                KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float(token_data, ty),
+                KNumberTy::C8 | KNumberTy::C16 | KNumberTy::C32 | KNumberTy::CNN => {
+                    KTerm::Char(token_data, ty)
+                }
+                KNumberTy::UNN => {
+                    // FIXME: 後続のパスが UNN をうまく処理できなくて、unsigned long long になってしまう。いまのところ、ここで i32 にしておく
+                    KTerm::Int(token_data, KTy2::I32)
+                }
+                _ => KTerm::Int(token_data, ty),
+            }
+        }
+        Err(err) => {
+            let message = match err {
+                LitErr::Flow => "不正な値です",
+                LitErr::UnknownSuffix => "不正なサフィックスです",
+            };
+            gx.logger.error(PLoc::new(token), message);
+            new_never_term(token.location(gx.tokens))
+        }
+    }
+}
+
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
     let token = name.of(&gx.names).token;
     let n_name = name.of(&gx.name_res);
@@ -382,16 +412,24 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
 }
 
 fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
-    fn strip_suffix<'a>(s: &'a str, suffix: &'static str) -> Option<&'a str> {
-        if s.ends_with(suffix) {
-            Some(&s[..s.len() - suffix.len()])
-        } else {
-            None
-        }
-    }
-
     match expr {
-        PExpr::Number(PNumberExpr { token }) => todo!(),
+        PExpr::Number(PNumberExpr { token }) => match eval_number(token.text(&gx.tokens)) {
+            Ok((value, _)) => {
+                // FIXME: 型を見る？
+                let value = match value {
+                    KNumber::INN(value) => KConstValue::I64(value),
+                    KNumber::UNN(value) => KConstValue::Usize(value as usize),
+                    KNumber::FNN(value) => KConstValue::F64(value),
+                    KNumber::CNN(value) => KConstValue::I32(value as i32),
+                };
+                Some(value)
+            }
+            Err(err) => {
+                // FIXME: エラーハンドリング
+                log::error!("{:?}", err);
+                None
+            }
+        },
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
         PExpr::Name(name) => match gen_name(*name, gx) {
@@ -519,11 +557,8 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
 
 fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Number(PNumberExpr { token }) => {
-            todo!()
-            // KTerm::Int(token.get(&gx.tokens), KTy2::Unresolved)
-        }
-        PExpr::Char(PCharExpr { token }) => KTerm::Char(token.get(&gx.tokens)),
+        PExpr::Number(PNumberExpr { token }) => gen_number_lit(*token, gx),
+        PExpr::Char(PCharExpr { token }) => KTerm::Char(token.get(&gx.tokens), KTy2::C8),
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token.get(&gx.tokens)),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token.get(&gx.tokens)),
         PExpr::False(PFalseExpr(token)) => KTerm::False(token.get(&gx.tokens)),
@@ -1016,7 +1051,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             // 比較される値を計算する。
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
-                    PPat::Char(token) => KTerm::Char(token.of(&gx.tokens).clone()),
+                    PPat::Char(token) => KTerm::Char(token.of(&gx.tokens).clone(), KTy2::C8),
                     PPat::Name(name) => {
                         let location = name.location();
                         match *name.of(&gx.name_res) {

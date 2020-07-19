@@ -1,4 +1,4 @@
-use super::{KBasicTy, KEnum, KTy};
+use super::{KBasicTy, KEnum, KTy, KTy2};
 use crate::{
     token::Location,
     utils::{VecArena, VecArenaId},
@@ -115,6 +115,12 @@ impl From<KNumberTy> for KBasicTy {
     }
 }
 
+impl From<KNumberTy> for KTy2 {
+    fn from(ty: KNumberTy) -> Self {
+        KTy2::Basic(KBasicTy::from(ty))
+    }
+}
+
 impl Debug for KNumberTy {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Debug::fmt(&KBasicTy::from(*self), f)
@@ -129,17 +135,6 @@ pub(crate) enum KNumber {
     CNN(u32),
 }
 
-impl KNumber {
-    pub(crate) fn to_basic_value_with_ty(self, _ty: KTy) -> KBasicValue {
-        match self {
-            KNumber::INN(value) => KBasicValue::INN(value),
-            KNumber::UNN(value) => KBasicValue::UNN(value),
-            KNumber::FNN(value) => KBasicValue::FNN(value),
-            KNumber::CNN(value) => KBasicValue::CNN(value),
-        }
-    }
-}
-
 impl Debug for KNumber {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -151,6 +146,7 @@ impl Debug for KNumber {
     }
 }
 
+#[allow(unused)]
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum KBasicValue {
     Unit,

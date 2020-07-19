@@ -8,7 +8,7 @@ int main();
 
 int main() {
     switch (42) {
-        case 42: {
+        case 42ULL: {
             // call_result_1 is killed.
             print_str((unsigned char const*)"ok");
             goto match_next_1;

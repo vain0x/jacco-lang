@@ -41,6 +41,16 @@ fn u8_is_ascii_float_char(c: u8) -> bool {
     }
 }
 
+pub(crate) fn eval_number(s: &str) -> Result<(KNumber, KNumberTy), LitErr> {
+    if s.starts_with("0b") {
+        super::lit_binary::eval_binary(s)
+    } else if s.starts_with("0x") {
+        super::lit_hex::eval_hex(s)
+    } else {
+        eval_decimal(s)
+    }
+}
+
 pub(crate) fn eval_decimal(s: &str) -> Result<(KNumber, KNumberTy), LitErr> {
     // fast path for integer
     if s.bytes().all(u8_is_ascii_digit) {

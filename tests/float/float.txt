@@ -5,9 +5,9 @@ double f64_abs(double value_1);
 int main();
 
 int main() {
-    double mul_1 = 3.14159 * 2.0;
+    double mul_1 = 3.14159 * 2;
     double tau_1 = mul_1;
-    double eps_1 = 1e-9;
+    double eps_1 = 0.000000001;
     double sub_1 = tau_1 - 6.28;
     double call_result_1 = f64_abs(sub_1);
     int lessthan_1 = call_result_1 < eps_1;

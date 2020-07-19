@@ -114,6 +114,11 @@ impl<'a> UnificationContext<'a> {
     }
 }
 
+fn can_cast_number(_left: &KBasicTy, _right: &KBasicTy, _ux: &mut UnificationContext<'_>) -> bool {
+    // FIXME: right が不特定型(INN/UNN/FNN/CNN)なら左辺の型へのキャストを試みる。丸め誤差が生じたりオーバーフローが起こるなら false。変性に注意
+    true
+}
+
 fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
     match (left, right) {
         (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
@@ -150,7 +155,8 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
             }
         }
 
-        // その他、型ごとのルール:
+        // その他、型ごとのルール
+        (KTy2::Basic(left), KTy2::Basic(right)) if can_cast_number(left, right, ux) => {}
         (
             KTy2::Ptr {
                 k_mut,
@@ -319,23 +325,9 @@ fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
     match term {
         KTerm::Unit { .. } => KTy2::UNIT,
-        KTerm::Int(token, ty) => {
-            // FIXME: i8 などに対応
-            if ty.is_unresolved() {
-                if token.text().ends_with("i64") {
-                    *ty = KTy2::I64;
-                } else if token.text().ends_with("usize") {
-                    *ty = KTy2::USIZE;
-                } else {
-                    // FIXME: untyped int
-                    *ty = KTy2::I32
-                }
-            }
-            assert!(ty.is_primitive(&tx.ty_env));
-            ty.clone()
-        }
-        KTerm::Float(_) => KTy2::F64,
-        KTerm::Char(_) => KTy2::C8,
+        KTerm::Int(_, ty) => ty.clone(),
+        KTerm::Float(_, ty) => ty.clone(),
+        KTerm::Char(_, ty) => ty.clone(),
         KTerm::Str(_) => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True(_) | KTerm::False(_) => KTy2::BOOL,
         KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),

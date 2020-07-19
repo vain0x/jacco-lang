@@ -1,6 +1,6 @@
-static int LAST_ID_1 = 0;
+static int LAST_ID_1 = 0ULL;
 
-static int ERR_NO_1 = 0;
+static int ERR_NO_1 = 0ULL;
 
 void assert(int cond_1);
 

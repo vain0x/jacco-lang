@@ -258,9 +258,7 @@ mod token {
     mod tokenize_rules;
 
     pub(crate) use keyword::Keyword;
-    pub(crate) use lit_binary::eval_binary;
-    pub(crate) use lit_decimal::eval_decimal;
-    pub(crate) use lit_hex::eval_hex;
+    pub(crate) use lit_decimal::{eval_number, LitErr};
     pub(crate) use location::{HaveLocation, Location};
     pub(crate) use token_data::TokenData;
     pub(crate) use token_kind::TokenKind;

@@ -1,7 +1,7 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
-use crate::utils::VecArena;
+use crate::{token::eval_number, utils::VecArena};
 use c_stmt::CStorageModifier;
 use std::{
     collections::HashMap,
@@ -329,31 +329,54 @@ fn gen_extern_fn_term(extern_fn: KExternFn, cx: &mut Cx) -> CExpr {
     CExpr::Name(unique_extern_fn_name(extern_fn, cx))
 }
 
+fn gen_number(s: &str, ty: &KTy2) -> CExpr {
+    let (value, _) = match eval_number(s) {
+        Ok(pair) => pair,
+        Err(_) => return CExpr::Other("/* error number */ (void)0"),
+    };
+
+    match (value, ty) {
+        (KNumber::INN(value), &KTy2::I8)
+        | (KNumber::INN(value), &KTy2::I16)
+        | (KNumber::INN(value), &KTy2::I32) => CExpr::IntLit(value.to_string()),
+        (KNumber::UNN(value), &KTy2::U8)
+        | (KNumber::UNN(value), &KTy2::U16)
+        | (KNumber::UNN(value), &KTy2::U32) => CExpr::IntLit(value.to_string()),
+        (KNumber::FNN(value), &KTy2::C16)
+        | (KNumber::FNN(value), &KTy2::C32)
+        | (KNumber::FNN(value), &KTy2::CNN) => CExpr::IntLit(value.to_string()),
+        (KNumber::INN(value), &KTy2::I64)
+        | (KNumber::INN(value), &KTy2::ISIZE)
+        | (KNumber::INN(value), &KTy2::INN) => CExpr::LongLongLit(value.to_string()),
+        (KNumber::UNN(value), &KTy2::U64)
+        | (KNumber::UNN(value), &KTy2::USIZE)
+        | (KNumber::UNN(value), &KTy2::UNN) => CExpr::UnsignedLongLongLit(value.to_string()),
+        (KNumber::FNN(value), &KTy2::F32)
+        | (KNumber::FNN(value), &KTy2::F64)
+        | (KNumber::FNN(value), &KTy2::FNN) => CExpr::DoubleLit(value.to_string()),
+        (KNumber::FNN(value), &KTy2::C8) => {
+            CExpr::IntLit(value.to_string()).into_cast(CTy::UnsignedChar)
+        }
+        (KNumber::UNN(value), &KTy2::I32) => {
+            // FIXME: CPS 変換のパッチワークをハンドル
+            CExpr::IntLit(value.to_string())
+        }
+        _ => {
+            log::error!("[BUG] invalid number literal {:?}", s);
+            CExpr::Other("/* invalid number */ (void)0")
+        }
+    }
+}
+
 fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => {
             // FIXME: error!
             CExpr::Other("(void)0")
         }
-        KTerm::Int(token, KTy2::I64) | KTerm::Int(token, KTy2::ISIZE) => CExpr::LongLongLit(
-            token
-                .text()
-                .replace("_", "")
-                .replace("i64", "")
-                .replace("isize", ""),
-        ),
-        KTerm::Int(token, KTy2::U64) | KTerm::Int(token, KTy2::USIZE) => {
-            CExpr::UnsignedLongLongLit(
-                token
-                    .text()
-                    .replace("_", "")
-                    .replace("u64", "")
-                    .replace("usize", ""),
-            )
-        }
-        KTerm::Int(token, _) => CExpr::IntLit(token.text().replace("_", "").replace("i32", "")),
-        KTerm::Float(token) => CExpr::DoubleLit(token.text().replace("_", "")),
-        KTerm::Char(token) => CExpr::CharLit(token.text().to_string()),
+        KTerm::Int(token, ty) => gen_number(token.text(), ty),
+        KTerm::Float(token, ty) => gen_number(token.text(), ty),
+        KTerm::Char(token, _) => CExpr::CharLit(token.text().to_string()),
         KTerm::Str(token) => CExpr::Cast {
             ty: CTy::UnsignedChar.into_const().into_ptr(),
             arg: Box::new(CExpr::StrLit(token.text().to_string())),
