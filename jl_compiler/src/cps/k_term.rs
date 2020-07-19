@@ -109,7 +109,7 @@ impl KTerm {
         }
     }
 
-    pub(crate) fn location(&self, _outlines: &KModOutline) -> Location {
+    pub(crate) fn location(&self) -> Location {
         match self {
             KTerm::Unit { location }
             | KTerm::Int { location, .. }
