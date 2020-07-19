@@ -24,11 +24,6 @@ impl KVariant {
         self.as_const().is_some()
     }
 
-    pub(crate) fn is_const_zero(self, consts: &KConstArena) -> bool {
-        self.as_const()
-            .map_or(false, |k_const| k_const.is_zero(consts))
-    }
-
     pub(crate) fn as_record(self) -> Option<KStruct> {
         match self {
             KVariant::Record(k_struct) => Some(k_struct),
@@ -39,6 +34,16 @@ impl KVariant {
     pub(crate) fn as_record_with_name(self, name: &str, structs: &KStructArena) -> Option<KStruct> {
         self.as_record()
             .filter(|&k_struct| k_struct.name(structs) == name)
+    }
+
+    pub(crate) fn is_unit_like(self, consts: &KConstArena) -> bool {
+        match self {
+            KVariant::Const(k_const) => !k_const.has_value(consts),
+            KVariant::Record(_) => {
+                // FIXME: unit-like record なら true
+                false
+            }
+        }
     }
 }
 
@@ -105,7 +110,7 @@ impl KEnumRepr {
     pub(crate) fn determine(variants: &[KVariant], consts: &KConstArena) -> KEnumRepr {
         match variants {
             [] => KEnumRepr::Never,
-            [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
+            [variant] if variant.is_unit_like(consts) => KEnumRepr::Unit,
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
                 // FIXME: 値を見て決定する
                 value_ty: KTy::USIZE,

@@ -19,11 +19,8 @@ impl KConst {
         }
     }
 
-    pub(crate) fn is_zero(self, consts: &KConstArena) -> bool {
-        match &consts[self].value_opt {
-            Some(value) => value.is_zero(),
-            None => true,
-        }
+    pub(crate) fn has_value(self, consts: &KConstArena) -> bool {
+        consts[self].value_opt.is_some()
     }
 }
 
@@ -46,10 +43,6 @@ pub(crate) enum KConstValue {
 }
 
 impl KConstValue {
-    pub(crate) fn is_zero(&self) -> bool {
-        self.cast_as_usize() == 0
-    }
-
     pub(crate) fn cast_as_usize(&self) -> usize {
         match self {
             KConstValue::I32(value) => *value as usize,
