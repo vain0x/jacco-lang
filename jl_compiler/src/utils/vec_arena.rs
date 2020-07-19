@@ -8,7 +8,6 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-#[allow(unused)]
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
 
 const fn id_from_index(index: usize) -> NonZeroU32 {
@@ -186,12 +185,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.resize_with(new_len, default_fn);
     }
 
-    #[allow(unused)]
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.inner.iter()
     }
 
-    #[allow(unused)]
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.inner.iter_mut()
     }
@@ -203,7 +200,6 @@ impl<Tag, T> VecArena<Tag, T> {
         id.to_index() < self.inner.len()
     }
 
-    #[allow(unused)]
     pub(crate) fn alloc(&mut self, value: T) -> VecArenaId<Tag> {
         let id = id_from_index(self.inner.len()).into();
         self.inner.push(value);
@@ -220,12 +216,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.get_mut(id.to_index())
     }
 
-    #[allow(unused)]
     pub(crate) fn keys(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
         (1..=self.inner.len() as u32).map(|id| unsafe { VecArenaId::new_unchecked(id) })
     }
 
-    #[allow(unused)]
     pub(crate) fn enumerate(&self) -> impl Iterator<Item = (VecArenaId<Tag>, &T)> {
         self.keys().zip(&self.inner)
     }
@@ -256,7 +250,6 @@ impl<Tag, T: Clone> Clone for VecArena<Tag, T> {
     }
 }
 
-// NOTE: これと衝突するので、RawId を引数に取るインスタンスは宣言できない。
 impl<Tag, T> Index<VecArenaId<Tag>> for VecArena<Tag, T> {
     type Output = T;
 

@@ -8,6 +8,7 @@ pub struct Uri {
 }
 
 impl Uri {
+    #[allow(unused)]
     pub fn from_file_path(path: &Path) -> Option<Self> {
         let to_uri = |path: &Path| Url::from_file_path(path).ok().map(|url| Uri { inner: url });
 

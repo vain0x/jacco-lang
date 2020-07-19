@@ -1,3 +1,7 @@
+#![allow(unused)]
+
+// 未使用・未実装
+
 use super::uri::Uri;
 use fs::OpenOptions;
 use jl_compiler::rust_api::Doc;

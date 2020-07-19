@@ -13,13 +13,10 @@ use std::collections::HashMap;
 
 pub(crate) struct KModTag;
 
-#[allow(unused)]
 pub(crate) type KMod = VecArenaId<KModTag>;
 
-#[allow(unused)]
 pub(crate) type KModOutlines = VecArena<KModTag, KModOutline>;
 
-#[allow(unused)]
 pub(crate) type KModArena = VecArena<KModTag, KModData>;
 
 #[derive(Debug, Default)]
@@ -49,10 +46,10 @@ pub(crate) enum KLocalVarParent {
     ExternFn(KExternFn),
 }
 
-#[allow(unused)]
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KModLocalSymbol {
+    #[allow(unused)]
     LocalVar {
         parent: KLocalVarParent,
         local_var: KLocal,
@@ -63,6 +60,7 @@ pub(crate) enum KModLocalSymbol {
     ExternFn(KExternFn),
     Enum(KEnum),
     Struct(KStruct),
+    #[allow(unused)]
     Alias(KAlias),
 }
 
@@ -110,10 +108,10 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
     Alias(KAlias, &'a KAliasOutline),
 }
 
-#[allow(unused)]
 /// プロジェクト内で定義されるシンボルの名前。それが属するプロジェクトを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KProjectSymbol {
+    #[allow(unused)]
     Mod(KMod),
     ModLocal {
         k_mod: KMod,

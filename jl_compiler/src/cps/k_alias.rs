@@ -1,8 +1,5 @@
-#![allow(unused)]
-
 use super::{KModLocalSymbol, KProjectSymbol};
 use crate::{
-    front::NName,
     token::Location,
     utils::{VecArena, VecArenaId},
 };
@@ -31,6 +28,7 @@ impl KAliasOutline {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
@@ -58,7 +56,7 @@ impl KAliasOutline {
                     );
                     false
                 }
-                KModLocalSymbol::Alias(alias) => {
+                KModLocalSymbol::Alias(_) => {
                     log::error!("エイリアスにエイリアスをバインドしようとしていますが、無視されます。再エクスポート (pub use) は未実装です {:?}", referent);
                     false
                 }

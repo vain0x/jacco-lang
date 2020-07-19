@@ -75,7 +75,7 @@ impl<W: Write> LspHandler<W> {
                     doc,
                     version,
                     text,
-                    path,
+                    path: _,
                 } => {
                     self.service.open_doc(doc, version, text);
                     dirty_docs.insert(doc);
@@ -215,6 +215,7 @@ impl<W: Write> LspHandler<W> {
     //     )
     // }
 
+    #[allow(unused)]
     fn completion_item_resolve(&mut self, completion_item: CompletionItem) -> CompletionItem {
         completion_item
     }
@@ -256,7 +257,6 @@ impl<W: Write> LspHandler<W> {
         let pos = from_lsp_pos(params.position);
 
         (|| {
-            let uri = doc.uri.clone();
             let doc = self.docs.url_to_doc(&doc.uri)?;
 
             let (def_sites, use_sites) = self.service.document_highlight(doc, pos)?;

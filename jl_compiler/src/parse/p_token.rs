@@ -1,13 +1,6 @@
-#![allow(unused)]
-
 use crate::{
-    token::{HaveLocation, Location, TokenData, TokenKind},
+    token::{Location, TokenData, TokenKind},
     utils::{TakeOut, VecArena, VecArenaId},
-};
-use std::{
-    fmt::{self, Debug, Formatter},
-    num::NonZeroU32,
-    ops::Index,
 };
 
 pub struct PTokenTag;
@@ -20,6 +13,7 @@ impl PToken {
         tokens[self].clone()
     }
 
+    #[allow(unused)]
     pub(crate) fn kind(self, tokens: &PTokens) -> TokenKind {
         tokens[self].kind()
     }
@@ -32,6 +26,7 @@ impl PToken {
         tokens[self].location()
     }
 
+    #[allow(unused)]
     pub(crate) fn take_out(self, tokens: &mut PTokens) -> TokenData {
         (self, tokens).take_out()
     }

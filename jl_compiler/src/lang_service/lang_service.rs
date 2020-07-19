@@ -1,13 +1,11 @@
 use crate::{
-    cli::MyLocResolver,
-    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy, KTy2, KTyEnv},
+    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy2, KTyEnv},
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
-    source::{loc::LocResolver, Doc, Loc, Pos, Range, TPos, TRange},
+    source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
     token::{self, TokenSource},
 };
-use log::{error, trace};
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
@@ -15,13 +13,8 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Copy, Clone, Debug)]
-pub enum DefOrUse {
-    Def,
-    Use,
-}
-
 pub struct Location {
+    #[allow(unused)]
     doc: Doc,
     range: Range,
 }
@@ -47,6 +40,7 @@ struct Symbols {
     errors: Vec<(Range, String)>,
 }
 
+#[allow(unused)]
 struct Cps {
     outline: KModOutline,
     root: KModData,
@@ -64,11 +58,11 @@ struct AnalysisCache {
 }
 
 impl LocResolver for AnalysisCache {
-    fn doc_path(&self, doc: Doc) -> Option<&Path> {
+    fn doc_path(&self, _doc: Doc) -> Option<&Path> {
         Some(self.source_path.as_ref())
     }
 
-    fn token_range(&self, doc: Doc, token: PToken) -> TRange {
+    fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
         match &self.syntax_opt {
             Some(syntax) => token.location(&syntax.root.tokens).range().into(),
             None => TPos::ZERO.to_empty_range(),
@@ -154,6 +148,7 @@ impl AnalysisCache {
     }
 
     /// FIXME: rename to request_typed_cps?
+    #[allow(unused)]
     fn request_cps(&mut self) -> &mut Cps {
         if self.cps_opt.is_some() {
             return self.cps_opt.as_mut().unwrap();
@@ -217,6 +212,7 @@ impl LangService {
         self.docs.get(&doc).map(|cache| cache.version)
     }
 
+    #[allow(unused)]
     fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
@@ -225,12 +221,13 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
-    fn request_cps(&mut self, doc: Doc) -> Option<&mut Cps> {
+    fn request_cps(&mut self, _doc: Doc) -> Option<&mut Cps> {
         // 頻繁にクラッシュするので無効化
         // self.docs.get_mut(&doc).map(|cache| cache.request_cps())
         None
     }
 
+    #[allow(unused)]
     fn hit_test(&mut self, doc: Doc, pos: Pos) -> Option<(NAbsName, Location)> {
         let symbols = self.request_symbols(doc)?;
         hit_test(doc, pos, symbols)
@@ -265,7 +262,7 @@ impl LangService {
         self.dirty_sources.remove(&doc);
     }
 
-    pub fn completion(&mut self, doc: Doc, pos: Pos) -> Vec<()> {
+    pub fn completion(&mut self, _doc: Doc, _pos: Pos) -> Vec<()> {
         vec![]
     }
 
@@ -344,7 +341,7 @@ impl LangService {
         Some(references)
     }
 
-    pub fn prepare_rename(&mut self, doc: Doc, pos: Pos) -> Option<()> {
+    pub fn prepare_rename(&mut self, _doc: Doc, _pos: Pos) -> Option<()> {
         None
     }
 
@@ -405,14 +402,14 @@ impl NParentFn {
     fn ty_env(self, k_root: &KModData) -> &KTyEnv {
         match self {
             NParentFn::Fn(k_fn) => &k_fn.of(&k_root.fns).ty_env,
-            NParentFn::ExternFn(extern_fn) => KTyEnv::EMPTY,
+            NParentFn::ExternFn(_) => KTyEnv::EMPTY,
         }
     }
 }
 
 impl NAbsName {
     pub(crate) fn ty(self, k_root: &KModData) -> &KTy2 {
-        let name = match self {
+        match self {
             NAbsName::Unresolved => return &KTy2::Unresolved,
             NAbsName::LocalVar {
                 parent_fn: NParentFn::Fn(k_fn),
@@ -422,11 +419,11 @@ impl NAbsName {
                 parent_fn: NParentFn::ExternFn(extern_fn),
                 local,
             } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
-            NAbsName::Other(name) => name,
-        };
-
-        // FIXME: 実装
-        &KTy2::Unresolved
+            NAbsName::Other(_) => {
+                // FIXME: 実装
+                &KTy2::Unresolved
+            }
+        }
     }
 
     pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {

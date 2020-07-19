@@ -115,7 +115,6 @@ impl Debug for Loc {
 }
 
 impl Loc {
-    #[allow(unused)]
     pub(crate) fn behind(self) -> Self {
         match self {
             Loc::Range { doc, range } => Loc::Range {

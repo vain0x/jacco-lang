@@ -1,9 +1,6 @@
 use super::{lsp_handler::LspHandler, lsp_receiver::LspReceiver, lsp_sender::LspSender};
 use jl_compiler::rust_api::LangService;
-use std::{
-    io::{stdin, stdout},
-    path::PathBuf,
-};
+use std::io::{stdin, stdout};
 
 pub fn start_lsp_server() -> ! {
     let stdin = stdin();

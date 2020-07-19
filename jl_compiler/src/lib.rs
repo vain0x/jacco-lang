@@ -64,8 +64,7 @@ mod cps {
 
     pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
-    #[allow(unused)]
-    pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline, KAliasTag};
+    pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_command::KCommand;
     pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue};
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumTag, KVariant};
@@ -79,6 +78,10 @@ mod cps {
     };
     pub(crate) use k_local::{KLocal, KLocalArena, KLocalData, KLocalTag};
     pub(crate) use k_meta_ty::{KMetaTy, KTyEnv};
+    pub(crate) use k_mod::{
+        resolve_aliases, KMod, KModArena, KModData, KModLocalSymbol, KModOutline, KModOutlines,
+        KModTag, KProjectSymbol,
+    };
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::KPrim;
@@ -89,12 +92,6 @@ mod cps {
     pub(crate) use k_ty::{KBasicTy, KTy, KTy2};
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
-
-    #[allow(unused)]
-    pub(crate) use k_mod::{
-        resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,
-        KModOutlines, KModTag, KProjectSymbol,
-    };
 
     use crate::logs::Logger;
     use crate::token::{HaveLocation, Location, TokenData};
@@ -166,8 +163,6 @@ mod front {
 
 mod lang_service {
     //! 入力支援機能 (LSP サーバーの内部実装)
-
-    #![allow(unused)]
 
     pub(crate) mod lang_service;
 }

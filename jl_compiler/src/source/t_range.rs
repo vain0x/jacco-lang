@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::TPos;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -14,6 +12,7 @@ pub struct TRange {
 }
 
 impl TRange {
+    #[allow(unused)]
     pub(crate) const ZERO: TRange = TRange {
         start: TPos::ZERO,
         end: TPos::ZERO,
@@ -42,10 +41,6 @@ impl TRange {
             start: self.start.min(other.start),
             end: self.start.max(other.end),
         }
-    }
-
-    pub(crate) fn ahead(self) -> TRange {
-        self.start.to_empty_range()
     }
 
     pub(crate) fn behind(self) -> TRange {

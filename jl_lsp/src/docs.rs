@@ -1,5 +1,5 @@
 use crate::utils::Uri;
-use jl_compiler::rust_api::{Doc, LangService};
+use jl_compiler::rust_api::Doc;
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 use url::Url;
 

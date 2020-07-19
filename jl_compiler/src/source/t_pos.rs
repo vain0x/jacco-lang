@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::TRange;
 use std::{
     cmp::Ordering,

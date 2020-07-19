@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod docs;
 mod lsp_server;
 
