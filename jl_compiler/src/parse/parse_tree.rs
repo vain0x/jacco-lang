@@ -201,12 +201,7 @@ pub(crate) struct PBlock {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PIntExpr {
-    pub(crate) token: PToken,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct PFloatExpr {
+pub(crate) struct PNumberExpr {
     pub(crate) token: PToken,
 }
 
@@ -362,8 +357,7 @@ pub(crate) struct PLoopExpr {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PExpr {
-    Int(PIntExpr),
-    Float(PFloatExpr),
+    Number(PNumberExpr),
     Char(PCharExpr),
     Str(PStrExpr),
     True(PTrueExpr),
@@ -592,8 +586,7 @@ impl_node! {
     PArg,
     PArgList,
     PBlock,
-    PIntExpr,
-    PFloatExpr,
+    PNumberExpr,
     PCharExpr,
     PStrExpr,
     PTrueExpr,
@@ -720,13 +713,7 @@ impl PBlock {
     }
 }
 
-impl PIntExpr {
-    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
-        self.token
-    }
-}
-
-impl PFloatExpr {
+impl PNumberExpr {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
         self.token
     }
@@ -961,8 +948,7 @@ impl PPat {
 impl PExpr {
     pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
         match self {
-            PExpr::Int(inner) => inner.some_token(root),
-            PExpr::Float(inner) => inner.some_token(root),
+            PExpr::Number(inner) => inner.some_token(root),
             PExpr::Char(inner) => inner.some_token(root),
             PExpr::Str(inner) => inner.some_token(root),
             PExpr::True(inner) => inner.some_token(root),

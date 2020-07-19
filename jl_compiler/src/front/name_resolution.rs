@@ -432,12 +432,7 @@ fn resolve_pat_opt(pat_opt: Option<&mut PPat>, nx: &mut Nx) {
 
 fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
     match expr {
-        PExpr::Int(_)
-        | PExpr::Float(_)
-        | PExpr::Char(_)
-        | PExpr::Str(_)
-        | PExpr::True(_)
-        | PExpr::False(_) => {}
+        PExpr::Number(_) | PExpr::Char(_) | PExpr::Str(_) | PExpr::True(_) | PExpr::False(_) => {}
         PExpr::Name(name) => {
             resolve_name_use(*name, nx);
         }

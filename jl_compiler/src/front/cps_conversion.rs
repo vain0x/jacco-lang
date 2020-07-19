@@ -391,26 +391,7 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
     }
 
     match expr {
-        PExpr::Int(PIntExpr { token }) => {
-            let text = &token.text(&gx.tokens).replace("_", "");
-            strip_suffix(text, "i32")
-                .and_then(|text| text.parse::<i32>().ok().map(KConstValue::I32))
-                .or_else(|| {
-                    strip_suffix(text, "i64")
-                        .and_then(|text| text.parse::<i64>().ok().map(KConstValue::I64))
-                })
-                .or_else(|| {
-                    strip_suffix(text, "usize")
-                        .and_then(|text| text.parse::<usize>().ok().map(KConstValue::Usize))
-                })
-                .or_else(|| text.parse::<i32>().ok().map(KConstValue::I32))
-        }
-        PExpr::Float(PFloatExpr { token }) => token
-            .text(&gx.tokens)
-            .replace("_", "")
-            .parse::<f64>()
-            .ok()
-            .map(KConstValue::F64),
+        PExpr::Number(PNumberExpr { token }) => todo!(),
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
         PExpr::Name(name) => match gen_name(*name, gx) {
@@ -538,8 +519,10 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
 
 fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
-        PExpr::Int(PIntExpr { token }) => KTerm::Int(token.get(&gx.tokens), KTy2::Unresolved),
-        PExpr::Float(PFloatExpr { token }) => KTerm::Float(token.get(&gx.tokens)),
+        PExpr::Number(PNumberExpr { token }) => {
+            todo!()
+            // KTerm::Int(token.get(&gx.tokens), KTy2::Unresolved)
+        }
         PExpr::Char(PCharExpr { token }) => KTerm::Char(token.get(&gx.tokens)),
         PExpr::Str(PStrExpr { token }) => KTerm::Str(token.get(&gx.tokens)),
         PExpr::True(PTrueExpr(token)) => KTerm::True(token.get(&gx.tokens)),

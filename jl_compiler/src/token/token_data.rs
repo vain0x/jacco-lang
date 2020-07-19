@@ -46,9 +46,8 @@ impl Debug for TokenData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.kind() {
             TokenKind::Comment
-            | TokenKind::Int
             | TokenKind::Space
-            | TokenKind::Float
+            | TokenKind::Number
             | TokenKind::Char
             | TokenKind::Str
             | TokenKind::Ident => write!(f, "{:?}", self.text()),

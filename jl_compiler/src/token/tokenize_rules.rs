@@ -58,15 +58,13 @@ fn tokenize_digits(tx: &mut Tx) {
 fn tokenize_number(tx: &mut Tx) {
     assert!(tx.next().is_ascii_digit());
 
-    let mut kind = TokenKind::Int;
+    let mut kind = TokenKind::Number;
 
     tokenize_digits(tx);
 
     if tx.next() == '.' {
         tx.bump();
         tokenize_digits(tx);
-
-        kind = TokenKind::Float;
     }
 
     let e = tx.next();
@@ -78,10 +76,8 @@ fn tokenize_number(tx: &mut Tx) {
         if is_sign && tx.nth(1).is_ascii_alphanumeric() {
             tx.bump();
             tokenize_digits(tx);
-            kind = TokenKind::Float;
         } else if sign_or_digit.is_ascii_alphanumeric() {
             tokenize_digits(tx);
-            kind = TokenKind::Float;
         } else {
             kind = TokenKind::Other;
         }
