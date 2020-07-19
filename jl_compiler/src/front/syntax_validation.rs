@@ -153,9 +153,7 @@ fn validate_block(block: &PBlock, vx: &Vx) {
 
 fn validate_expr(expr: &PExpr, vx: &Vx) {
     match expr {
-        PExpr::Number(_) | PExpr::Char(_) | PExpr::Str(_) => {
-            // FIXME: should verify
-        }
+        PExpr::Number(_) | PExpr::Char(_) | PExpr::Str(_) => {}
         PExpr::True(_) | PExpr::False(_) => {}
         PExpr::Name(_) => {}
         PExpr::Record(PRecordExpr {

@@ -1379,7 +1379,7 @@ pub(crate) fn cps_conversion(
                 name: n_const_data.name.to_string(),
                 value_ty: n_const_data.value_ty.clone(),
                 value_opt: {
-                    // FIXME: calc here?
+                    // この段階では定数式は計算できない。
                     None
                 },
                 parent_opt: n_const_data.parent_opt,
@@ -1394,7 +1394,7 @@ pub(crate) fn cps_conversion(
                 name: n_static_var_data.name.to_string(),
                 ty: n_static_var_data.ty.clone(),
                 value_opt: {
-                    // FIXME: calc here?
+                    // この段階では定数式は計算できない。
                     None
                 },
                 location: n_static_var_data.location,

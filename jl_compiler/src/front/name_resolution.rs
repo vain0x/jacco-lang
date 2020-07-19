@@ -610,10 +610,7 @@ fn resolve_variant(
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: name.text(&nx.names).to_string(),
-                value_ty: {
-                    // FIXME: 値を見て型を決める？
-                    KTy::USIZE
-                },
+                value_ty: KTy::Unresolved,
                 parent_opt,
                 location: name.location(),
             });
