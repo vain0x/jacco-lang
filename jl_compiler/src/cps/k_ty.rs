@@ -174,20 +174,8 @@ impl KTy2 {
         }
     }
 
-    /// 型が一定の条件を満たすか判定する。
-    /// 束縛済みのメタ型変数は自動で展開されるので、`predicate` に `KTy2::Meta` が渡されることはない。
-    fn satisfies(&self, ty_env: &KTyEnv, predicate: impl Fn(&KTy2) -> bool) -> bool {
-        match self {
-            KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-                Some(ty) => ty.borrow().satisfies(ty_env, predicate),
-                None => predicate(&KTy2::Unresolved),
-            },
-            _ => predicate(self),
-        }
-    }
-
     pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match ty {
+        ty2_map(self, ty_env, |ty| match ty {
             KTy2::Unresolved => true,
             _ => false,
         })
@@ -198,14 +186,14 @@ impl KTy2 {
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match *ty {
+        ty2_map(self, ty_env, |ty| match *ty {
             KTy2::UNIT => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
-        self.satisfies(ty_env, |ty| match *ty {
+        ty2_map(self, ty_env, |ty| match *ty {
             KTy2::Unresolved | KTy2::Never | KTy2::UNIT => true,
             _ => false,
         })
