@@ -36,10 +36,10 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     }
 }
 
-pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) {
+pub(crate) fn eliminate_unit(mod_outline: &mut KModOutline, k_root: &mut KModData) {
     let mut ex = Ex::default();
 
-    let unit_fields = outlines
+    let unit_fields = mod_outline
         .fields
         .enumerate()
         .filter_map(|(k_field, field_data)| {
@@ -51,7 +51,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
         })
         .collect::<HashSet<_>>();
 
-    for struct_data in outlines.structs.iter_mut() {
+    for struct_data in mod_outline.structs.iter_mut() {
         struct_data
             .fields
             .retain(|k_field| !unit_fields.contains(&k_field));
@@ -59,7 +59,7 @@ pub(crate) fn eliminate_unit(outlines: &mut KModOutline, k_root: &mut KModData) 
 
     // FIXME: zero-sized type の引数はすべて捨てていい。
     // unit 型の引数は捨てる。
-    for fn_outline in outlines.fns.iter_mut() {
+    for fn_outline in mod_outline.fns.iter_mut() {
         fn_outline.param_tys.retain(|ty| !ty.is_unit());
     }
 

@@ -42,7 +42,7 @@ struct Symbols {
 
 #[allow(unused)]
 struct Cps {
-    outline: KModOutline,
+    mod_outline: KModOutline,
     root: KModData,
     errors: Vec<(TRange, String)>,
 }
@@ -182,7 +182,7 @@ impl AnalysisCache {
             let errors = logs_into_errors(logs, self);
 
             Cps {
-                outline,
+                mod_outline: outline,
                 root,
                 errors,
             }

@@ -73,7 +73,7 @@ impl KTerm {
     pub(crate) fn ty<'a>(
         &self,
         k_mod: KMod,
-        outlines: &KModOutline,
+        mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         locals: &KLocalArena,
     ) -> KTy2 {
@@ -86,19 +86,21 @@ impl KTerm {
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
             KTerm::Name(symbol) => symbol.local.ty(&locals),
             KTerm::Alias { .. } => {
-                // FIXME: 実装. プロジェクト全体の outlines を受け取る必要がある
+                // FIXME: 実装. mod_outlines を受け取る必要がある
                 KTy2::Unresolved
             }
-            KTerm::Const { k_const, .. } => k_const.ty(&outlines.consts).to_ty2(k_mod),
+            KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).to_ty2(k_mod),
             KTerm::StaticVar { static_var, .. } => {
-                static_var.ty(&outlines.static_vars).to_ty2(k_mod)
+                static_var.ty(&mod_outline.static_vars).to_ty2(k_mod)
             }
-            KTerm::Fn { k_fn, .. } => k_fn.ty(&outlines.fns).to_ty2(k_mod),
+            KTerm::Fn { k_fn, .. } => k_fn.ty(&mod_outline.fns).to_ty2(k_mod),
             KTerm::Label { label, .. } => label.ty(labels),
-            KTerm::Return { k_fn, .. } => k_fn.return_ty(&outlines.fns).to_ty2(k_mod),
-            KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&outlines.extern_fns).to_ty2(k_mod),
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).to_ty2(k_mod),
+            KTerm::ExternFn { extern_fn, .. } => {
+                extern_fn.ty(&mod_outline.extern_fns).to_ty2(k_mod)
+            }
             KTerm::RecordTag { k_struct, .. } => k_struct
-                .tag_ty(&outlines.structs, &outlines.enum_reprs)
+                .tag_ty(&mod_outline.structs, &mod_outline.enum_reprs)
                 .to_ty2(k_mod),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);

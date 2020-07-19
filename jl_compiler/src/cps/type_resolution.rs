@@ -22,7 +22,7 @@ struct Tx<'a> {
     /// 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
     /// 検査対象のモジュールのアウトライン
-    outlines: &'a KModOutline,
+    mod_outline: &'a KModOutline,
     /// プロジェクト内のモジュールのアウトライン
     mod_outlines: &'a KModOutlines,
     logger: Logger,
@@ -31,7 +31,7 @@ struct Tx<'a> {
 impl<'a> Tx<'a> {
     fn new(
         k_mod: KMod,
-        outlines: &'a KModOutline,
+        mod_outline: &'a KModOutline,
         mod_outlines: &'a KModOutlines,
         logger: Logger,
     ) -> Self {
@@ -41,7 +41,7 @@ impl<'a> Tx<'a> {
             label_sigs: Default::default(),
             return_ty_opt: None,
             k_mod,
-            outlines,
+            mod_outline: mod_outline,
             mod_outlines,
             logger,
         }
@@ -278,7 +278,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
 
 fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
     let outline = match alias
-        .of(&tx.outlines.aliases)
+        .of(&tx.mod_outline.aliases)
         .referent_outline(&tx.mod_outlines)
     {
         Some(outline) => outline,
@@ -338,17 +338,19 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
         KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),
-        KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts).to_ty2(tx.k_mod),
+        KTerm::Const { k_const, .. } => k_const.ty(&tx.mod_outline.consts).to_ty2(tx.k_mod),
         KTerm::StaticVar { static_var, .. } => {
-            static_var.ty(&tx.outlines.static_vars).to_ty2(tx.k_mod)
+            static_var.ty(&tx.mod_outline.static_vars).to_ty2(tx.k_mod)
         }
-        KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.outlines.fns).to_ty2(tx.k_mod),
+        KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.mod_outline.fns).to_ty2(tx.k_mod),
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx.return_ty_opt.clone().unwrap().to_ty2(tx.k_mod),
-        KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&tx.outlines.extern_fns).to_ty2(tx.k_mod),
+        KTerm::ExternFn { extern_fn, .. } => {
+            extern_fn.ty(&tx.mod_outline.extern_fns).to_ty2(tx.k_mod)
+        }
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::RecordTag { k_struct, .. } => k_struct
-            .tag_ty(&tx.outlines.structs, &tx.outlines.enum_reprs)
+            .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.enum_reprs)
             .to_ty2(tx.k_mod),
         KTerm::FieldTag(_) => unreachable!(),
     }
@@ -398,19 +400,22 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
                 let k_struct = ty.as_struct().unwrap();
-                let outlines = tx.outlines.clone();
 
-                for (arg, field) in node.args.iter_mut().zip(k_struct.fields(&outlines.structs)) {
+                for (arg, field) in node
+                    .args
+                    .iter_mut()
+                    .zip(k_struct.fields(&tx.mod_outline.structs))
+                {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
-                        &field.ty(&tx.outlines.fields).to_ty2(tx.k_mod),
+                        &field.ty(&tx.mod_outline.fields).to_ty2(tx.k_mod),
                         &arg_ty,
                         node.location,
                         tx,
                     );
                 }
 
-                let ty = k_struct.ty(&outlines.structs).to_ty2(tx.k_mod);
+                let ty = k_struct.ty(&tx.mod_outline.structs).to_ty2(tx.k_mod);
                 resolve_symbol_def2(result, Some(&ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
@@ -434,18 +439,18 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
-                            .variants(&tx.outlines.enums)
+                            .variants(&tx.mod_outline.enums)
                             .iter()
                             .find_map(|k_variant| {
                                 k_variant
-                                    .as_record_with_name(&field_name, &tx.outlines.structs)
+                                    .as_record_with_name(&field_name, &tx.mod_outline.structs)
                                     .map(|k_struct| KTy2::Struct(k_mod, k_struct))
                             })?,
                         KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&tx.outlines.structs)
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| field.name(&tx.outlines.fields) == *field_name)
-                            .map(|field| field.ty(&tx.outlines.fields).to_ty2(k_mod))?,
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
+                            .map(|field| field.ty(&tx.mod_outline.fields).to_ty2(k_mod))?,
                     };
                     Some(ty.into_ptr(KMut::Const))
                 })()
@@ -472,23 +477,23 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let (k_mut, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     if let KMut::Const = k_mut {
                         tx.logger
-                            .error(&left.location(tx.outlines), "unexpected const reference");
+                            .error(&left.location(tx.mod_outline), "unexpected const reference");
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
-                            .variants(&tx.outlines.enums)
+                            .variants(&tx.mod_outline.enums)
                             .iter()
                             .find_map(|k_variant| {
                                 k_variant
-                                    .as_record_with_name(&field_name, &tx.outlines.structs)
+                                    .as_record_with_name(&field_name, &tx.mod_outline.structs)
                                     .map(|k_struct| KTy2::Struct(k_mod, k_struct))
                             })?,
                         KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&tx.outlines.structs)
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| field.name(&tx.outlines.fields) == *field_name)
-                            .map(|field| field.ty(&tx.outlines.fields).to_ty2(k_mod))?,
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
+                            .map(|field| field.ty(&tx.mod_outline.fields).to_ty2(k_mod))?,
                     };
                     Some(ty.into_ptr(k_mut))
                 })()
@@ -655,7 +660,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
                         tx.logger
-                            .error(&left.location(tx.outlines), "expected mutable reference");
+                            .error(&left.location(tx.mod_outline), "expected mutable reference");
                         left_ty
                     }
                     None => KTy2::Never,
@@ -675,7 +680,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
                         tx.logger
-                            .error(&left.location(tx.outlines), "unexpected const reference");
+                            .error(&left.location(tx.mod_outline), "unexpected const reference");
                     }
 
                     // FIXME: add/sub と同じ
@@ -706,7 +711,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
                         tx.logger
-                            .error(&left.location(tx.outlines), "unexpected const reference");
+                            .error(&left.location(tx.mod_outline), "unexpected const reference");
                     }
 
                     // FIXME: mul/div/etc. と同じ
@@ -724,14 +729,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 }
 
 fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
-    let outlines = tx.outlines.clone();
-
     assert!(tx.ty_env.is_empty());
     assert!(fn_data.ty_env.is_empty());
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        let param_ty = &k_fn.param_tys(&outlines.fns)[i].to_ty2(tx.k_mod);
+        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2(tx.k_mod);
         resolve_symbol_def2(param, Some(param_ty), tx);
     }
 
@@ -761,21 +764,19 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 }
 
 fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
-    let outlines = tx.outlines.clone();
-
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
-        let param_ty = &extern_fn.param_tys(&outlines.extern_fns)[i].to_ty2(tx.k_mod);
+        let param_ty = &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2(tx.k_mod);
         resolve_symbol_def2(param, Some(&param_ty), tx);
     }
 }
 
 fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
-    for field in k_struct.fields(&tx.outlines.structs) {
-        if field.ty(&tx.outlines.fields).is_unresolved() {
+    for field in k_struct.fields(&tx.mod_outline.structs) {
+        if field.ty(&tx.mod_outline.fields).is_unresolved() {
             // FIXME: handle correctly. unresolved type crashes on unification for now
             tx.logger.error(
-                &field.location(&tx.outlines.fields),
+                &field.location(&tx.mod_outline.fields),
                 "unresolved field type",
             );
         }
@@ -783,9 +784,7 @@ fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
 }
 
 fn resolve_root(root: &mut KModData, tx: &mut Tx) {
-    let outlines = tx.outlines;
-
-    for k_struct in outlines.structs.keys() {
+    for k_struct in tx.mod_outline.structs.keys() {
         prepare_struct(k_struct, tx);
     }
 
@@ -807,7 +806,7 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
 
     // 項の型を解決する。
     for (k_fn, fn_data) in root.fns.enumerate_mut() {
-        tx.return_ty_opt = Some(k_fn.return_ty(&outlines.fns));
+        tx.return_ty_opt = Some(k_fn.return_ty(&tx.mod_outline.fns));
         swap(&mut tx.locals, &mut fn_data.locals);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
@@ -833,11 +832,11 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
 
 pub(crate) fn resolve_types(
     k_mod: KMod,
-    outlines: &KModOutline,
+    mod_outline: &KModOutline,
     mod_data: &mut KModData,
     mod_outlines: &KModOutlines,
     logger: Logger,
 ) {
-    let mut tx = Tx::new(k_mod, outlines, mod_outlines, logger);
+    let mut tx = Tx::new(k_mod, mod_outline, mod_outlines, logger);
     resolve_root(mod_data, &mut tx);
 }

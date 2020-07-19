@@ -26,7 +26,7 @@ struct KLoopData {
 
 /// Code generation context.
 struct Gx<'a> {
-    outlines: KModOutline,
+    mod_outline: KModOutline,
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
     current_loops: VecArena<NLoopTag, KLoopData>,
@@ -48,7 +48,7 @@ impl<'a> Gx<'a> {
         logger: DocLogger,
     ) -> Self {
         Self {
-            outlines: Default::default(),
+            mod_outline: Default::default(),
             current_commands: Default::default(),
             current_locals: Default::default(),
             current_loops: Default::default(),
@@ -376,7 +376,7 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
         NName::ExternFn(extern_fn) => KSymbolExt::ExternFn(extern_fn),
         NName::Const(n_const) => KSymbolExt::Const(n_const),
         NName::StaticVar(n_static_var) => KSymbolExt::StaticVar(n_static_var),
-        NName::Struct(n_struct) if n_struct.fields(&gx.outlines.structs).is_empty() => {
+        NName::Struct(n_struct) if n_struct.fields(&gx.mod_outline.structs).is_empty() => {
             KSymbolExt::UnitLikeStruct {
                 k_struct: n_struct,
                 location,
@@ -434,7 +434,7 @@ fn gen_constant(expr: &PExpr, gx: &mut Gx) -> Option<KConstValue> {
         PExpr::True(_) => Some(KConstValue::Bool(true)),
         PExpr::False(_) => Some(KConstValue::Bool(false)),
         PExpr::Name(name) => match gen_name(*name, gx) {
-            KSymbolExt::Const(k_const) => k_const.of(&gx.outlines.consts).value_opt.clone(),
+            KSymbolExt::Const(k_const) => k_const.of(&gx.mod_outline.consts).value_opt.clone(),
             _ => None,
         },
         _ => {
@@ -454,7 +454,10 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
         NName::Const(n_const) => n_const,
         _ => unreachable!(),
     };
-    assert_eq!(name.text(&gx.names), k_const.of(&gx.outlines.consts).name);
+    assert_eq!(
+        name.text(&gx.names),
+        k_const.of(&gx.mod_outline.consts).name
+    );
 
     if let Some(value) = value_opt.as_deref() {
         let location = value.location();
@@ -467,7 +470,7 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
         }
     }
 
-    k_const.of_mut(&mut gx.outlines.consts).value_opt = Some(KConstValue::Usize(*value_slot));
+    k_const.of_mut(&mut gx.mod_outline.consts).value_opt = Some(KConstValue::Usize(*value_slot));
 
     k_const
 }
@@ -479,7 +482,7 @@ fn gen_record_variant(decl: &PRecordVariantDecl, gx: &mut Gx) -> KStruct {
         NName::Struct(n_struct) => n_struct,
         n_name_opt => unreachable!("{:?}", n_name_opt),
     };
-    assert_eq!(name.text(&gx.names), k_struct.name(&gx.outlines.structs));
+    assert_eq!(name.text(&gx.names), k_struct.name(&gx.mod_outline.structs));
 
     k_struct
 }
@@ -598,7 +601,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 },
                 KSymbolExt::UnitLikeStruct { k_struct, location } => {
                     let ty = KTy::Struct(k_struct);
-                    let name = k_struct.name(&gx.outlines.structs).to_string();
+                    let name = k_struct.name(&gx.mod_outline.structs).to_string();
                     let result = gx.fresh_symbol(&name, location);
                     gx.push(KCommand::Node {
                         prim: KPrim::Record,
@@ -627,7 +630,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let (name, location) = (name.text(&gx.names).to_string(), name.location());
             let result = gx.fresh_symbol(&name, location);
 
-            let field_count = k_struct.fields(&gx.outlines.structs).len();
+            let field_count = k_struct.fields(&gx.mod_outline.structs).len();
             let mut args = vec![KTerm::Unit { location }; field_count];
             let mut arg_freq = vec![0_u8; field_count];
 
@@ -636,7 +639,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
                 match (0..field_count).find(|&i| {
                     field.name.text(&gx.names).to_string()
-                        == k_struct.fields(&gx.outlines.structs)[i].name(&gx.outlines.fields)
+                        == k_struct.fields(&gx.mod_outline.structs)[i].name(&gx.mod_outline.fields)
                 }) {
                     Some(i) => {
                         arg_freq[i] += 1;
@@ -653,11 +656,14 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             // フィールドへの割り当ての過不足を計算する。
             let mut missed = vec![];
             let mut duped = vec![];
-            for (freq, k_field) in arg_freq.iter().zip(k_struct.fields(&gx.outlines.structs)) {
+            for (freq, k_field) in arg_freq
+                .iter()
+                .zip(k_struct.fields(&gx.mod_outline.structs))
+            {
                 match freq {
-                    0 => missed.push(k_field.name(&gx.outlines.fields)),
+                    0 => missed.push(k_field.name(&gx.mod_outline.fields)),
                     1 => {}
-                    _ => duped.push(k_field.name(&gx.outlines.fields)),
+                    _ => duped.push(k_field.name(&gx.mod_outline.fields)),
                 }
             }
 
@@ -1244,31 +1250,9 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 NName::Const(n_const) => n_const,
                 _ => unreachable!(),
             };
-            assert_eq!(name.text(&gx.names), k_const.of(&gx.outlines.consts).name);
-
-            let init = init_opt.as_ref().unwrap();
-            let init_location = init.location();
-            let value_opt = match gen_constant(init, gx) {
-                Some(value) => Some(value),
-                None => {
-                    error_node(init_location, "定数式として不正です", gx);
-                    None
-                }
-            };
-
-            k_const.of_mut(&mut gx.outlines.consts).value_opt = value_opt;
-        }
-        PDecl::Static(PStaticDecl {
-            name_opt, init_opt, ..
-        }) => {
-            let name = name_opt.clone().unwrap();
-            let static_var = match *name.of(&gx.name_res) {
-                NName::StaticVar(n_static_var) => n_static_var,
-                _ => unreachable!(),
-            };
             assert_eq!(
                 name.text(&gx.names),
-                static_var.name(&gx.outlines.static_vars)
+                k_const.of(&gx.mod_outline.consts).name
             );
 
             let init = init_opt.as_ref().unwrap();
@@ -1281,7 +1265,32 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 }
             };
 
-            static_var.of_mut(&mut gx.outlines.static_vars).value_opt = value_opt;
+            k_const.of_mut(&mut gx.mod_outline.consts).value_opt = value_opt;
+        }
+        PDecl::Static(PStaticDecl {
+            name_opt, init_opt, ..
+        }) => {
+            let name = name_opt.clone().unwrap();
+            let static_var = match *name.of(&gx.name_res) {
+                NName::StaticVar(n_static_var) => n_static_var,
+                _ => unreachable!(),
+            };
+            assert_eq!(
+                name.text(&gx.names),
+                static_var.name(&gx.mod_outline.static_vars)
+            );
+
+            let init = init_opt.as_ref().unwrap();
+            let init_location = init.location();
+            let value_opt = match gen_constant(init, gx) {
+                Some(value) => Some(value),
+                None => {
+                    error_node(init_location, "定数式として不正です", gx);
+                    None
+                }
+            };
+
+            static_var.of_mut(&mut gx.mod_outline.static_vars).value_opt = value_opt;
         }
         PDecl::Fn(PFnDecl {
             keyword,
@@ -1347,7 +1356,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 NName::Enum(n_enum) => n_enum,
                 n_name_opt => unreachable!("{:?}", n_name_opt),
             };
-            assert_eq!(name.text(&gx.names), k_enum.name(&gx.outlines.enums));
+            assert_eq!(name.text(&gx.names), k_enum.name(&gx.mod_outline.enums));
 
             let mut next_value = 0_usize;
             let _k_variants = variants
@@ -1540,29 +1549,29 @@ pub(crate) fn cps_conversion(
             logger,
         );
 
-        gx.outlines.aliases = name_resolution.aliases.clone();
+        gx.mod_outline.aliases = name_resolution.aliases.clone();
 
-        gx.outlines.consts = VecArena::from_vec(k_consts);
+        gx.mod_outline.consts = VecArena::from_vec(k_consts);
 
-        gx.outlines.static_vars = VecArena::from_vec(static_vars);
+        gx.mod_outline.static_vars = VecArena::from_vec(static_vars);
 
         gx.fns = VecArena::from_vec(fns);
         gx.fn_loops = VecArena::from_vec(fn_loops);
-        gx.outlines.fns = VecArena::from_vec(fn_outlines);
+        gx.mod_outline.fns = VecArena::from_vec(fn_outlines);
 
         gx.extern_fns = VecArena::from_vec(k_extern_fns);
-        gx.outlines.extern_fns = VecArena::from_vec(extern_fn_outlines);
+        gx.mod_outline.extern_fns = VecArena::from_vec(extern_fn_outlines);
 
-        gx.outlines.enums = VecArena::from_vec(k_enums);
+        gx.mod_outline.enums = VecArena::from_vec(k_enums);
 
-        gx.outlines.structs = VecArena::from_vec(k_structs);
+        gx.mod_outline.structs = VecArena::from_vec(k_structs);
 
-        gx.outlines.fields = VecArena::from_vec(k_fields);
+        gx.mod_outline.fields = VecArena::from_vec(k_fields);
 
         gen_root(p_root, &mut gx);
 
         (
-            gx.outlines,
+            gx.mod_outline,
             KModData {
                 extern_fns: gx.extern_fns,
                 fns: gx.fns,
