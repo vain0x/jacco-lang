@@ -1,4 +1,4 @@
-use super::TPos;
+use super::{Pos, TPos};
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// テキスト上の範囲
@@ -34,6 +34,10 @@ impl TRange {
 
     pub fn contains_loosely(self, pos: TPos) -> bool {
         self.start <= pos && pos <= self.end
+    }
+
+    pub fn contains_loosely_pos(self, pos: Pos) -> bool {
+        Pos::from(self.start) <= pos && pos <= Pos::from(self.end)
     }
 
     pub(crate) fn unite(self, other: &Self) -> TRange {

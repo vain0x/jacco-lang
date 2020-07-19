@@ -20,17 +20,16 @@ impl Location {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn range(&self) -> Range {
+    pub(crate) fn range(&self) -> TRange {
         match self {
-            Location::Loc(Loc::Range { range, .. }) => (*range).into(),
-            _ => Range::default(),
+            Location::Loc(Loc::Range { range, .. }) => *range,
+            _ => TRange::ZERO,
         }
     }
 
     #[allow(dead_code)]
     pub(crate) fn start(&self) -> Pos {
-        self.range().start
+        self.range().start().into()
     }
 
     #[allow(dead_code)]

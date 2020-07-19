@@ -443,12 +443,12 @@ fn hit_test(doc: Doc, pos: Pos, symbols: &Symbols) -> Option<(NAbsName, Location
         .chain(symbols.occurrences.use_sites.iter())
         .find_map(|(&name, locations)| {
             locations.iter().find_map(|&location| {
-                if location.range().contains_loosely(pos) {
+                if location.range().contains_loosely_pos(pos) {
                     Some((
                         name,
                         Location {
                             doc,
-                            range: location.range(),
+                            range: location.range().into(),
                         },
                     ))
                 } else {
@@ -471,7 +471,7 @@ fn collect_def_sites(
             .get(&name)
             .iter()
             .flat_map(|locations| locations.iter().map(|location| location.range()))
-            .map(|range| Location::new(doc, range)),
+            .map(|range| Location::new(doc, range.into())),
     );
 }
 
@@ -488,7 +488,7 @@ fn collect_use_sites(
             .get(&name)
             .iter()
             .flat_map(|locations| locations.iter().map(|location| location.range()))
-            .map(|range| Location::new(doc, range)),
+            .map(|range| Location::new(doc, range.into())),
     );
 }
 
