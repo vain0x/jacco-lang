@@ -1,4 +1,5 @@
 use super::*;
+use crate::source::{TPos, TRange};
 use std::{cmp::min, rc::Rc};
 
 /// Tokenization context. 字句解析の文脈
@@ -7,7 +8,7 @@ pub(crate) struct TokenizeContext {
     source_code: Rc<SourceCode>,
     current_index: usize,
     last_index: usize,
-    last_pos: Pos,
+    last_pos: TPos,
     tokens: Vec<TokenData>,
 }
 
@@ -18,7 +19,7 @@ impl TokenizeContext {
             source_code,
             current_index: 0,
             last_index: 0,
-            last_pos: Pos::ZERO,
+            last_pos: TPos::ZERO,
             tokens: vec![],
         }
     }
@@ -79,9 +80,9 @@ impl TokenizeContext {
     pub(crate) fn commit(&mut self, token: TokenKind) {
         let text = self.current_text().to_string();
 
-        let current_pos = self.last_pos + Pos::from(text.as_str());
-        let range = Range::new(self.last_pos, current_pos);
-        let location = Location::new(self.source.clone(), range);
+        let current_pos = self.last_pos + TPos::from(text.as_str());
+        let range = TRange::new(self.last_pos, current_pos);
+        let location = Location::new(self.source.clone(), range.into());
         let token = TokenData::new(token, text, location);
 
         self.push_token(token);
