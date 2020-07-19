@@ -30,14 +30,14 @@ fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::Pos {
     jl_compiler::rust_api::Pos::new(position.line as usize, position.character as usize, 0)
 }
 
-fn to_lsp_pos(pos: jl_compiler::rust_api::Pos) -> Position {
+fn to_lsp_pos(pos: jl_compiler::rust_api::TPos) -> Position {
     Position {
-        line: pos.line() as u64,
-        character: pos.character() as u64,
+        line: pos.row() as u64,
+        character: pos.column16() as u64,
     }
 }
 
-fn to_lsp_range(range: jl_compiler::rust_api::Range) -> Range {
+fn to_lsp_range(range: jl_compiler::rust_api::TRange) -> Range {
     Range {
         start: to_lsp_pos(range.start()),
         end: to_lsp_pos(range.end()),

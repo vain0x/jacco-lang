@@ -3,7 +3,7 @@ use crate::{
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
-    source::{loc::LocResolver, Doc, Pos, Range, TPos, TRange},
+    source::{loc::LocResolver, Doc, Pos, TPos, TRange},
     token::{self, TokenSource},
 };
 use std::{
@@ -16,35 +16,35 @@ use std::{
 pub struct Location {
     #[allow(unused)]
     doc: Doc,
-    range: Range,
+    range: TRange,
 }
 
 impl Location {
-    pub(crate) fn new(doc: Doc, range: Range) -> Self {
+    pub(crate) fn new(doc: Doc, range: TRange) -> Self {
         Self { doc, range }
     }
 
-    pub fn range(&self) -> Range {
+    pub fn range(&self) -> TRange {
         self.range
     }
 }
 
 struct Syntax {
     root: PRoot,
-    errors: Vec<(Range, String)>,
+    errors: Vec<(TRange, String)>,
 }
 
 struct Symbols {
     name_resolution_opt: Option<NameResolution>,
     occurrences: Occurrences,
-    errors: Vec<(Range, String)>,
+    errors: Vec<(TRange, String)>,
 }
 
 #[allow(unused)]
 struct Cps {
     outline: KModOutline,
     root: KModData,
-    errors: Vec<(Range, String)>,
+    errors: Vec<(TRange, String)>,
 }
 
 struct AnalysisCache {
@@ -277,7 +277,7 @@ impl LangService {
         Some(def_sites)
     }
 
-    pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<Range>, Vec<Range>)> {
+    pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<TRange>, Vec<TRange>)> {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
@@ -367,7 +367,7 @@ impl LangService {
         Some(edits)
     }
 
-    pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(Range, String)>) {
+    pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(TRange, String)>) {
         self.docs
             .get_mut(&doc)
             .map(|analysis| {
@@ -388,7 +388,7 @@ impl LangService {
     }
 }
 
-fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(Range, String)> {
+fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(TRange, String)> {
     logs.finish()
         .into_iter()
         .map(|item| {
