@@ -1,5 +1,8 @@
 use super::{KPrim, KSymbol, KTerm, KTy};
-use crate::token::{HaveLocation, Location, TokenSource};
+use crate::{
+    source::TRange,
+    token::{HaveLocation, Location, TokenSource},
+};
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone)]
@@ -76,7 +79,7 @@ impl Default for KNode {
             args: Default::default(),
             results: Default::default(),
             conts: Default::default(),
-            location: Location::new(TokenSource::Special("<KNode::default>"), Default::default()),
+            location: Location::new(TokenSource::Special("<KNode::default>"), TRange::ZERO),
         }
     }
 }

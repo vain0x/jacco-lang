@@ -13,13 +13,10 @@ pub(crate) enum Location {
 }
 
 impl Location {
-    pub(crate) fn new(source: TokenSource, range: Range) -> Location {
+    pub(crate) fn new(source: TokenSource, range: TRange) -> Location {
         match source {
             TokenSource::Special(name) => Location::Default(name),
-            TokenSource::File(doc) => Location::Loc(Loc::Range {
-                doc,
-                range: range.into(),
-            }),
+            TokenSource::File(doc) => Location::Loc(Loc::Range { doc, range }),
         }
     }
 

@@ -126,7 +126,7 @@ impl Logger {
         for item in logs.finish() {
             let (loc, message) = (item.loc, item.message);
             items.push(LogItem::OnLocation {
-                location: Location::new(TokenSource::File(doc), loc.resolve(root).into()),
+                location: Location::new(TokenSource::File(doc), loc.resolve(root)),
                 message,
             });
         }
