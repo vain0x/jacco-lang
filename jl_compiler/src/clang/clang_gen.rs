@@ -184,7 +184,6 @@ fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx:
 
 fn gen_basic_ty(basic_ty: KBasicTy) -> CTy {
     match basic_ty {
-        KBasicTy::Unit => CTy::Void,
         KBasicTy::I8 => CTy::SignedChar,
         KBasicTy::I16 => CTy::Short,
         KBasicTy::I32 | KBasicTy::CNN | KBasicTy::Bool => CTy::Int,
@@ -230,6 +229,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             // FIXME: error!
             CTy::Other("/* never */ void")
         }
+        KTy::Unit => CTy::Void,
         KTy::Fn { .. } => {
             // FIXME: この時点で fn 型は除去されているべき
             error!("Unexpected fn type {:?}", ty);
@@ -271,6 +271,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
         },
         KTy2::Never => CTy::Other("/* never */ void"),
+        KTy2::Unit => CTy::Void,
         KTy2::Basic(basic_ty) => gen_basic_ty(*basic_ty),
         KTy2::Fn { .. } => {
             // FIXME: この時点で fn 型は除去されているべき

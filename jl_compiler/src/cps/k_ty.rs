@@ -8,7 +8,6 @@ pub(crate) enum KEnumOrStruct {
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KBasicTy {
-    Unit,
     I8,
     I16,
     I32,
@@ -39,16 +38,8 @@ pub(crate) enum KBasicTy {
 }
 
 impl KBasicTy {
-    pub(crate) fn is_primitive(self) -> bool {
-        match self {
-            KBasicTy::Unit => false,
-            _ => true,
-        }
-    }
-
     pub(crate) fn as_str(self) -> &'static str {
         match self {
-            KBasicTy::Unit => "()",
             KBasicTy::I8 => "i8",
             KBasicTy::I16 => "i16",
             KBasicTy::I32 => "i32",
@@ -85,8 +76,9 @@ impl Debug for KBasicTy {
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KTy2 {
     Unresolved,
-    Never,
     Meta(KMetaTy),
+    Never,
+    Unit,
     Basic(KBasicTy),
     Ptr {
         k_mut: KMut,
@@ -101,7 +93,6 @@ pub(crate) enum KTy2 {
 }
 
 impl KTy2 {
-    pub(crate) const UNIT: KTy2 = KTy2::Basic(KBasicTy::Unit);
     #[allow(unused)]
     pub(crate) const I8: KTy2 = KTy2::Basic(KBasicTy::I8);
     #[allow(unused)]
@@ -161,6 +152,7 @@ impl KTy2 {
         match ty {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Never => KTy2::Never,
+            KTy::Unit => KTy2::Unit,
             KTy::Basic(basic_ty) => KTy2::Basic(basic_ty),
             KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
             KTy::Fn {
@@ -189,14 +181,14 @@ impl KTy2 {
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::UNIT => true,
+            KTy2::Unit => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Unresolved | KTy2::Never | KTy2::UNIT => true,
+            KTy2::Unresolved | KTy2::Never | KTy2::Unit => true,
             _ => false,
         })
     }
@@ -211,7 +203,7 @@ impl KTy2 {
     // FIXME: const enum も primitive とみなす
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
-            KTy2::Basic(basic_ty) => basic_ty.is_primitive(),
+            KTy2::Basic(_) => true,
             KTy2::Ptr { .. } => true,
             _ => false,
         })
@@ -283,8 +275,9 @@ impl Debug for KTy2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             KTy2::Unresolved => write!(f, "{{unresolved}}"),
-            KTy2::Never => write!(f, "!"),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
+            KTy2::Never => write!(f, "!"),
+            KTy2::Unit => write!(f, "()"),
             KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy2::Ptr { k_mut, base_ty } => {
                 match k_mut {
@@ -316,6 +309,7 @@ fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
 pub(crate) enum KTy {
     Unresolved,
     Never,
+    Unit,
     Basic(KBasicTy),
     Ptr {
         k_mut: KMut,
@@ -331,7 +325,6 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
-    pub(crate) const UNIT: KTy = KTy::Basic(KBasicTy::Unit);
     pub(crate) const I8: KTy = KTy::Basic(KBasicTy::I8);
     pub(crate) const I16: KTy = KTy::Basic(KBasicTy::I16);
     pub(crate) const I32: KTy = KTy::Basic(KBasicTy::I32);
@@ -369,14 +362,14 @@ impl KTy {
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, |ty| match *ty {
-            KTy::UNIT => true,
+            KTy::Unit => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, |ty| match *ty {
-            KTy::Basic(basic_ty) => basic_ty.is_primitive(),
+            KTy::Basic(_) => true,
             KTy::Ptr { .. } => true,
             _ => false,
         })
@@ -401,6 +394,7 @@ impl Debug for KTy {
         match self {
             KTy::Unresolved => write!(f, "???"),
             KTy::Never => write!(f, "never"),
+            KTy::Unit => write!(f, "()"),
             KTy::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;

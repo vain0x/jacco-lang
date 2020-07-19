@@ -307,7 +307,7 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
     match ty {
         PTy::Name(name) => gen_ty_name(*name, name_res),
         PTy::Never(_) => KTy::Never,
-        PTy::Unit(_) => KTy::UNIT,
+        PTy::Unit(_) => KTy::Unit,
         PTy::Ptr(PPtrTy {
             ty_opt,
             mut_opt,

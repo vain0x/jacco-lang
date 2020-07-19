@@ -131,6 +131,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
         // 左右の型が完全に一致するケース:
         (KTy2::Meta(..), KTy2::Meta(..))
+        | (KTy2::Unit, KTy2::Unit)
         | (KTy2::Basic(..), KTy2::Basic(..))
         | (KTy2::Enum(..), KTy2::Enum(..))
         | (KTy2::Struct(..), KTy2::Struct(..))
@@ -208,6 +209,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
         // 不一致
         (KTy2::Never, _)
+        | (KTy2::Unit, _)
         | (KTy2::Basic(_), _)
         | (KTy2::Ptr { .. }, _)
         | (KTy2::Fn { .. }, _)
@@ -324,7 +326,7 @@ fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
 
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
     match term {
-        KTerm::Unit { .. } => KTy2::UNIT,
+        KTerm::Unit { .. } => KTy2::Unit,
         KTerm::Int(_, ty) => ty.clone(),
         KTerm::Float(_, ty) => ty.clone(),
         KTerm::Char(_, ty) => ty.clone(),

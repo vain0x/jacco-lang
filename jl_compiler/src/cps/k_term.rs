@@ -58,7 +58,7 @@ impl KTerm {
         locals: &KLocalArena,
     ) -> KTy2 {
         match self {
-            KTerm::Unit { .. } => KTy2::UNIT,
+            KTerm::Unit { .. } => KTy2::Unit,
             KTerm::Int(_, ty) => ty.clone(),
             KTerm::Float(_, ty) => ty.clone(),
             KTerm::Char(_, ty) => ty.clone(),

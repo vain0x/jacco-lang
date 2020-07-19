@@ -84,7 +84,7 @@ impl KEnum {
     pub(crate) fn tag_ty(self, enums: &KEnumReprs) -> &KTy {
         match &self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
-            KEnumRepr::Unit => &KTy::UNIT,
+            KEnumRepr::Unit => &KTy::Unit,
             KEnumRepr::Const { value_ty } => value_ty,
             KEnumRepr::TaggedUnion { tag_ty } => tag_ty,
         }
