@@ -220,6 +220,7 @@ mod source {
     pub(crate) mod pos;
     pub(crate) mod range;
     pub(crate) mod t_pos;
+    pub(crate) mod t_pos16;
     pub(crate) mod t_range;
 
     #[cfg(test)]
@@ -230,6 +231,8 @@ mod source {
     pub(crate) use pos::Pos;
     pub(crate) use range::Range;
 
+    #[allow(unused)]
+    pub(crate) use t_pos16::TPos16;
     #[allow(unused)]
     pub(crate) use t_pos::TPos;
     #[allow(unused)]
