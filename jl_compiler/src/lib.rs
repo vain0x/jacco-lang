@@ -94,7 +94,7 @@ mod cps {
     pub(crate) use type_resolution::resolve_types;
 
     use crate::logs::Logger;
-    use crate::token::{HaveLocation, Location, TokenData};
+    use crate::token::{HaveLocation, Location};
     use log::{error, trace};
 
     /// 符号付き？

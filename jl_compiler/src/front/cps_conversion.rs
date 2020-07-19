@@ -9,7 +9,7 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::DocLogger,
-    token::{eval_number, HaveLocation, LitErr, Location, TokenData, TokenKind},
+    token::{eval_number, HaveLocation, LitErr, Location},
     utils::VecArena,
 };
 use log::{error, trace};
@@ -139,19 +139,11 @@ impl<'a> Gx<'a> {
 }
 
 fn new_false_term(location: Location) -> KTerm {
-    KTerm::False(TokenData::new(
-        TokenKind::False,
-        "false".to_string(),
-        location,
-    ))
+    KTerm::False { location }
 }
 
 fn new_true_term(location: Location) -> KTerm {
-    KTerm::True(TokenData::new(
-        TokenKind::True,
-        "true".to_string(),
-        location,
-    ))
+    KTerm::True { location }
 }
 
 fn new_unit_term(location: Location) -> KTerm {
@@ -332,18 +324,27 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
 
     match result {
         Ok((_, number_ty)) => {
-            let token_data = token.of(&gx.tokens).clone();
+            let (text, location) = {
+                let token_data = token.of(&gx.tokens);
+                (token_data.text().to_string(), token_data.location())
+            };
             let ty = KTy2::Number(number_ty);
             match number_ty {
-                KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float(token_data, ty),
+                KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => {
+                    KTerm::Float { text, ty, location }
+                }
                 KNumberTy::C8 | KNumberTy::C16 | KNumberTy::C32 | KNumberTy::CNN => {
-                    KTerm::Char(token_data, ty)
+                    KTerm::Char { text, ty, location }
                 }
                 KNumberTy::UNN => {
                     // FIXME: 後続のパスが UNN をうまく処理できなくて、unsigned long long になってしまう。いまのところ、ここで i32 にしておく
-                    KTerm::Int(token_data, KTy2::I32)
+                    KTerm::Int {
+                        text,
+                        ty: KTy2::I32,
+                        location,
+                    }
                 }
-                _ => KTerm::Int(token_data, ty),
+                _ => KTerm::Int { text, ty, location },
             }
         }
         Err(err) => {
@@ -558,10 +559,24 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Location, gx: &mut Gx) -> 
 fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Number(PNumberExpr { token }) => gen_number_lit(*token, gx),
-        PExpr::Char(PCharExpr { token }) => KTerm::Char(token.get(&gx.tokens), KTy2::C8),
-        PExpr::Str(PStrExpr { token }) => KTerm::Str(token.get(&gx.tokens)),
-        PExpr::True(PTrueExpr(token)) => KTerm::True(token.get(&gx.tokens)),
-        PExpr::False(PFalseExpr(token)) => KTerm::False(token.get(&gx.tokens)),
+        PExpr::Char(PCharExpr { token }) => {
+            let (text, location) = token.decompose(&gx.tokens);
+            KTerm::Char {
+                text,
+                ty: KTy2::C8,
+                location,
+            }
+        }
+        PExpr::Str(PStrExpr { token }) => {
+            let (text, location) = token.decompose(&gx.tokens);
+            KTerm::Str { text, location }
+        }
+        PExpr::True(PTrueExpr(token)) => KTerm::True {
+            location: token.location(&gx.tokens),
+        },
+        PExpr::False(PFalseExpr(token)) => KTerm::False {
+            location: token.location(&gx.tokens),
+        },
         PExpr::Name(name) => {
             let location = name.of(&gx.names).token.of(&gx.tokens).location();
             match gen_name(*name, gx) {
@@ -1051,7 +1066,14 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             // 比較される値を計算する。
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
-                    PPat::Char(token) => KTerm::Char(token.of(&gx.tokens).clone(), KTy2::C8),
+                    PPat::Char(token) => {
+                        let (text, location) = token.decompose(&gx.tokens);
+                        KTerm::Char {
+                            text,
+                            ty: KTy2::C8,
+                            location,
+                        }
+                    }
                     PPat::Name(name) => {
                         let location = name.location();
                         match *name.of(&gx.name_res) {

@@ -7,12 +7,31 @@ pub(crate) enum KTerm {
     Unit {
         location: Location,
     },
-    Int(TokenData, KTy2),
-    Float(TokenData, KTy2),
-    Char(TokenData, KTy2),
-    Str(TokenData),
-    True(TokenData),
-    False(TokenData),
+    Int {
+        text: String,
+        ty: KTy2,
+        location: Location,
+    },
+    Float {
+        text: String,
+        ty: KTy2,
+        location: Location,
+    },
+    Char {
+        text: String,
+        ty: KTy2,
+        location: Location,
+    },
+    Str {
+        text: String,
+        location: Location,
+    },
+    True {
+        location: Location,
+    },
+    False {
+        location: Location,
+    },
     Name(KSymbol),
     Alias {
         alias: KAlias,
@@ -59,11 +78,11 @@ impl KTerm {
     ) -> KTy2 {
         match self {
             KTerm::Unit { .. } => KTy2::Unit,
-            KTerm::Int(_, ty) => ty.clone(),
-            KTerm::Float(_, ty) => ty.clone(),
-            KTerm::Char(_, ty) => ty.clone(),
-            KTerm::Str(_) => KTy2::C8.into_ptr(KMut::Const),
-            KTerm::True(_) | KTerm::False(_) => KTy2::BOOL,
+            KTerm::Int { ty, .. } => ty.clone(),
+            KTerm::Float { ty, .. } => ty.clone(),
+            KTerm::Char { ty, .. } => ty.clone(),
+            KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
+            KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
             KTerm::Name(symbol) => symbol.local.ty(&locals),
             KTerm::Alias { .. } => {
                 // FIXME: 実装. プロジェクト全体の outlines を受け取る必要がある
@@ -89,14 +108,14 @@ impl KTerm {
 
     pub(crate) fn location(&self, _outlines: &KModOutline) -> Location {
         match self {
-            KTerm::Unit { location } => *location,
-            KTerm::Int(token, _) => token.location(),
-            KTerm::Float(token, _) => token.location(),
-            KTerm::Char(token, _) => token.location(),
-            KTerm::Str(token) => token.location(),
-            KTerm::True(token) => token.location(),
-            KTerm::False(token) => token.location(),
-            KTerm::Name(KSymbol { location, .. })
+            KTerm::Unit { location }
+            | KTerm::Int { location, .. }
+            | KTerm::Float { location, .. }
+            | KTerm::Char { location, .. }
+            | KTerm::Str { location, .. }
+            | KTerm::True { location }
+            | KTerm::False { location }
+            | KTerm::Name(KSymbol { location, .. })
             | KTerm::Alias { location, .. }
             | KTerm::Const { location, .. }
             | KTerm::StaticVar { location, .. }
@@ -114,12 +133,12 @@ impl Debug for KTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
-            KTerm::Int(token, _) => write!(f, "{}", token.text()),
-            KTerm::Float(token, _) => write!(f, "{}", token.text()),
-            KTerm::Char(token, _) => write!(f, "{}", token.text()),
-            KTerm::Str(token) => write!(f, "{}", token.text()),
-            KTerm::True(token) => write!(f, "{}", token.text()),
-            KTerm::False(token) => write!(f, "{}", token.text()),
+            KTerm::Int { text, .. } => write!(f, "{}", text),
+            KTerm::Float { text, .. } => write!(f, "{}", text),
+            KTerm::Char { text, .. } => write!(f, "{}", text),
+            KTerm::Str { text, .. } => write!(f, "{}", text),
+            KTerm::True { .. } => write!(f, "true"),
+            KTerm::False { .. } => write!(f, "false"),
             KTerm::Name(symbol) => Debug::fmt(symbol, f),
             KTerm::Alias { alias, .. } => write!(f, "alias#{}", alias.to_index()),
             KTerm::Const { k_const, .. } => write!(f, "const#{}", k_const.to_index()),

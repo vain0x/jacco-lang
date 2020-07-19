@@ -375,15 +375,15 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             // FIXME: error!
             CExpr::Other("(void)0")
         }
-        KTerm::Int(token, ty) => gen_number(token.text(), ty),
-        KTerm::Float(token, ty) => gen_number(token.text(), ty),
-        KTerm::Char(token, _) => CExpr::CharLit(token.text().to_string()),
-        KTerm::Str(token) => CExpr::Cast {
+        KTerm::Int { text, ty, .. } => gen_number(text, ty),
+        KTerm::Float { text, ty, .. } => gen_number(text, ty),
+        KTerm::Char { text, .. } => CExpr::CharLit(text.to_string()),
+        KTerm::Str { text, .. } => CExpr::Cast {
             ty: CTy::UnsignedChar.into_const().into_ptr(),
-            arg: Box::new(CExpr::StrLit(token.text().to_string())),
+            arg: Box::new(CExpr::StrLit(text.to_string())),
         },
-        KTerm::True(_) => CExpr::BoolLit("1"),
-        KTerm::False(_) => CExpr::BoolLit("0"),
+        KTerm::True { .. } => CExpr::BoolLit("1"),
+        KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, location } => match alias.of(&cx.outlines.aliases).referent() {
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
                 KModLocalSymbol::Const(k_const) => {

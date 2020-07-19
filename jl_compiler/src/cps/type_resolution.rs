@@ -331,11 +331,11 @@ fn resolve_alias_term(alias: KAlias, location: Location, tx: &mut Tx) -> KTy2 {
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
     match term {
         KTerm::Unit { .. } => KTy2::Unit,
-        KTerm::Int(_, ty) => ty.clone(),
-        KTerm::Float(_, ty) => ty.clone(),
-        KTerm::Char(_, ty) => ty.clone(),
-        KTerm::Str(_) => KTy2::C8.into_ptr(KMut::Const),
-        KTerm::True(_) | KTerm::False(_) => KTy2::BOOL,
+        KTerm::Int { ty, .. } => ty.clone(),
+        KTerm::Float { ty, .. } => ty.clone(),
+        KTerm::Char { ty, .. } => ty.clone(),
+        KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
+        KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
         KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),
         KTerm::Const { k_const, .. } => k_const.ty(&tx.outlines.consts).to_ty2(tx.k_mod),
         KTerm::StaticVar { static_var, .. } => {
