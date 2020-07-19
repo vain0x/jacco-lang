@@ -87,7 +87,7 @@ impl KEnum {
             KEnumRepr::Never => &KTy::Never,
             KEnumRepr::Unit => &KTy::UNIT,
             KEnumRepr::Const { value_ty } => value_ty,
-            KEnumRepr::Sum { tag_ty } => tag_ty,
+            KEnumRepr::TaggedUnion { tag_ty } => tag_ty,
         }
     }
 }
@@ -97,13 +97,8 @@ impl KEnum {
 pub(crate) enum KEnumRepr {
     Never,
     Unit,
-    Const {
-        value_ty: KTy,
-    },
-    /// tagged union
-    Sum {
-        tag_ty: KTy,
-    },
+    Const { value_ty: KTy },
+    TaggedUnion { tag_ty: KTy },
 }
 
 impl KEnumRepr {
@@ -117,14 +112,14 @@ impl KEnumRepr {
             },
             _ => {
                 // FIXME: たいていの場合は u8 で十分
-                KEnumRepr::Sum { tag_ty: KTy::USIZE }
+                KEnumRepr::TaggedUnion { tag_ty: KTy::USIZE }
             }
         }
     }
 
     pub(crate) fn is_tagged_union(&self) -> bool {
         match self {
-            KEnumRepr::Sum { .. } => true,
+            KEnumRepr::TaggedUnion { .. } => true,
             _ => false,
         }
     }

@@ -251,7 +251,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             KEnumRepr::Unit => CTy::Other("/* unit-like enum */ void"),
             KEnumRepr::Never => CTy::Other("/* never enum */ void"),
             KEnumRepr::Const { value_ty } => gen_ty(value_ty, ty_env, cx),
-            KEnumRepr::Sum { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
+            KEnumRepr::TaggedUnion { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
         },
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(*k_struct, cx)),
     }
@@ -289,7 +289,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 KEnumRepr::Never => CTy::Other("/* never enum */ void"),
                 KEnumRepr::Unit => CTy::Void,
                 KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
-                KEnumRepr::Sum { .. } => {
+                KEnumRepr::TaggedUnion { .. } => {
                     // FIXME: unique_enum_name を事前に計算しておく
                     let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
                     CTy::Struct(name)
@@ -786,7 +786,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
     for ((k_enum, enum_data), repr) in outlines.enums.enumerate().zip(outlines.enum_reprs.iter()) {
         match repr {
             KEnumRepr::Never | KEnumRepr::Unit | KEnumRepr::Const { .. } => continue,
-            KEnumRepr::Sum { tag_ty } => {
+            KEnumRepr::TaggedUnion { tag_ty } => {
                 let name = unique_enum_name(k_enum, cx);
                 let fields = {
                     let tag_ty = gen_ty(tag_ty, &empty_ty_env, cx);
