@@ -29,13 +29,6 @@ impl KTyEnv {
 
     pub(crate) fn display(&self, ty: &KTy, enums: &KEnumArena, structs: &KStructArena) -> String {
         match ty {
-            KTy::Meta(meta_ty) => {
-                let ty = match meta_ty.try_unwrap(self) {
-                    Some(ty) => ty,
-                    None => return "{unknown}".to_string(),
-                };
-                self.display(&ty.borrow().clone().to_ty1(), enums, structs)
-            }
             KTy::Unresolved => "{unresolved}".to_string(),
             KTy::Never
             | KTy::Unit

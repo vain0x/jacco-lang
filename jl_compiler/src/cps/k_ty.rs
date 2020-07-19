@@ -71,7 +71,7 @@ impl Debug for KBasicTy {
 
 /// 型 (その2)
 ///
-/// 目的: 単一化の実装を簡略化すること、KTy::Meta を削除すること、他のモジュールの enum/struct の型を表現すること
+/// 目的: 単一化の実装を簡略化すること、メタ型変数を含むこと、他のモジュールの enum/struct の型を表現すること
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KTy2 {
     Unresolved,
@@ -142,7 +142,6 @@ impl KTy2 {
     pub(crate) fn from_ty1(ty: KTy, k_mod: KMod) -> Self {
         match ty {
             KTy::Unresolved => KTy2::Unresolved,
-            KTy::Meta(meta_ty) => KTy2::Meta(meta_ty),
             KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::UNIT,
             KTy::I8 => KTy2::I8,
@@ -172,50 +171,6 @@ impl KTy2 {
             KTy::Alias(_) => KTy2::Unresolved,
             KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
-        }
-    }
-
-    pub(crate) fn to_ty1(&self) -> KTy {
-        match self.clone() {
-            KTy2::Unresolved => KTy::Unresolved,
-            KTy2::Never => KTy::Never,
-            KTy2::Meta(meta_ty) => KTy::Meta(meta_ty),
-            KTy2::Basic(basic_ty) => match basic_ty {
-                KBasicTy::Unit => KTy::Unit,
-                KBasicTy::I8 => KTy::I8,
-                KBasicTy::I16 => KTy::I16,
-                KBasicTy::I32 => KTy::I32,
-                KBasicTy::I64 => KTy::I64,
-                KBasicTy::Isize => KTy::Isize,
-                KBasicTy::U8 => KTy::U8,
-                KBasicTy::U16 => KTy::U16,
-                KBasicTy::U32 => KTy::U32,
-                KBasicTy::U64 => KTy::U64,
-                KBasicTy::Usize => KTy::Usize,
-                KBasicTy::F32 => KTy::F32,
-                KBasicTy::F64 => KTy::F64,
-                KBasicTy::C8 => KTy::C8,
-                KBasicTy::C16 => KTy::C16,
-                KBasicTy::C32 => KTy::C32,
-                KBasicTy::Bool => KTy::Bool,
-                KBasicTy::INN => KTy::I32,
-                KBasicTy::UNN => KTy::Usize,
-                KBasicTy::FNN => KTy::F64,
-                KBasicTy::CNN => KTy::C8,
-            },
-            KTy2::Ptr { k_mut, base_ty } => KTy::Ptr {
-                k_mut,
-                ty: Box::new(base_ty.to_ty1()),
-            },
-            KTy2::Fn {
-                param_tys,
-                result_ty,
-            } => KTy::Fn {
-                param_tys: param_tys.iter().map(|param_ty| param_ty.to_ty1()).collect(),
-                result_ty: Box::new(result_ty.to_ty1()),
-            },
-            KTy2::Enum(_, k_enum) => KTy::Enum(k_enum),
-            KTy2::Struct(_, k_struct) => KTy::Struct(k_struct),
         }
     }
 
@@ -373,7 +328,6 @@ fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
 #[derive(Clone)]
 pub(crate) enum KTy {
     Unresolved,
-    Meta(KMetaTy),
     Never,
     Unit,
     I8,
@@ -456,7 +410,6 @@ impl Debug for KTy {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             KTy::Unresolved => write!(f, "???"),
-            KTy::Meta(meta) => Debug::fmt(meta, f),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::Bool => write!(f, "bool"),
@@ -512,14 +465,8 @@ impl Debug for KTy {
 }
 
 /// NOTE: 束縛済みのメタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
-fn ty_map<T>(ty: &KTy, ty_env: &KTyEnv, f: impl Fn(&KTy) -> T) -> T {
-    match ty {
-        KTy::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-            Some(ty) => ty_map(&ty.borrow().to_ty1(), ty_env, f),
-            None => f(&KTy::Unresolved),
-        },
-        _ => f(ty),
-    }
+fn ty_map<T>(ty: &KTy, _ty_env: &KTyEnv, f: impl Fn(&KTy) -> T) -> T {
+    f(ty)
 }
 
 fn ty_is_primitive(ty: &KTy) -> bool {

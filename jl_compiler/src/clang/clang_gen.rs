@@ -210,13 +210,6 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             error!("Unexpected unresolved type {:?}", ty);
             CTy::Other("/* unresolved */ void")
         }
-        KTy::Meta(meta) => match meta.try_unwrap(&ty_env) {
-            Some(ty) => gen_ty2(&ty.borrow(), ty_env, cx),
-            None => {
-                error!("Unexpected free type {:?}", meta);
-                CTy::Other("/* free */ void")
-            }
-        },
         KTy::Never => {
             // FIXME: error!
             CTy::Other("/* never */ void")
