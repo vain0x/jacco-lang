@@ -225,7 +225,7 @@ mod source {
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::{Loc, LocPart};
+    pub(crate) use loc::Loc;
     pub(crate) use t_pos::TPos;
     pub(crate) use t_pos16::TPos16;
     pub(crate) use t_range::TRange;

@@ -6,21 +6,6 @@ use std::{
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub(crate) enum LocPart {
-    Range,
-    Behind,
-}
-
-impl LocPart {
-    pub(crate) fn apply(self, range: TRange) -> TRange {
-        match self {
-            LocPart::Range => range,
-            LocPart::Behind => range.behind(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum Loc {
     Range {
         doc: Doc,

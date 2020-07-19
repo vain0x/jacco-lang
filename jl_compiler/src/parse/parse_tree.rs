@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::{
-    source::{LocPart, TRange},
+    source::TRange,
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
@@ -12,40 +12,40 @@ use std::{
 };
 
 #[derive(Copy, Clone)]
-pub(crate) struct PLoc {
-    token: PToken,
-    part: LocPart,
+pub(crate) enum PLoc {
+    Token(PToken),
+    TokenBehind(PToken),
 }
 
 impl PLoc {
     pub(crate) fn new(token: PToken) -> Self {
-        Self {
-            token,
-            part: LocPart::Range,
-        }
+        PLoc::Token(token)
     }
 
     pub(crate) fn behind(self) -> Self {
-        Self {
-            part: LocPart::Behind,
-            ..self
+        match self {
+            PLoc::Token(token) => PLoc::TokenBehind(token),
+            PLoc::TokenBehind(_) => self,
         }
     }
 
     pub(crate) fn resolve(self, root: &PRoot) -> TRange {
-        let range = self.token.of(&root.tokens).location().range().into();
-        self.part.apply(range)
+        match self {
+            PLoc::Token(token) => token.of(&root.tokens).location().range(),
+            PLoc::TokenBehind(token) => token.of(&root.tokens).location().range().behind(),
+        }
     }
 }
 
 impl Debug for PLoc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        PToken::fmt(&self.token, f)?;
+        let (token, suffix) = match self {
+            PLoc::Token(token) => (token, ""),
+            PLoc::TokenBehind(token) => (token, ":behind"),
+        };
 
-        match self.part {
-            LocPart::Range => Ok(()),
-            LocPart::Behind => write!(f, ":behind"),
-        }
+        Debug::fmt(&token, f)?;
+        write!(f, "{}", suffix)
     }
 }
 
