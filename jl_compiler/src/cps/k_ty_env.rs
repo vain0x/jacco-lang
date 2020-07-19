@@ -1,6 +1,4 @@
-use super::{
-    k_enum::KEnumArena, k_meta_ty::KMetaTys, KMetaTy, KMetaTyData, KMut, KStructArena, KTy,
-};
+use super::{k_meta_ty::KMetaTys, KMetaTy, KMetaTyData};
 use crate::token::Location;
 use std::cell::RefCell;
 
@@ -25,55 +23,5 @@ impl KTyEnv {
 
     pub(crate) fn meta_ty_get(&self, meta_ty: KMetaTy) -> &KMetaTyData {
         &self.meta_tys[meta_ty]
-    }
-
-    pub(crate) fn display(&self, ty: &KTy, enums: &KEnumArena, structs: &KStructArena) -> String {
-        match ty {
-            KTy::Unresolved => "{unresolved}".to_string(),
-            KTy::Never
-            | KTy::Unit
-            | KTy::I8
-            | KTy::I16
-            | KTy::I32
-            | KTy::I64
-            | KTy::Isize
-            | KTy::U8
-            | KTy::U16
-            | KTy::U32
-            | KTy::U64
-            | KTy::Usize
-            | KTy::F32
-            | KTy::F64
-            | KTy::C8
-            | KTy::C16
-            | KTy::C32
-            | KTy::Bool => format!("{:?}", ty),
-            KTy::Ptr { k_mut, ty } => format!(
-                "*{}{}",
-                match k_mut {
-                    KMut::Const => "",
-                    KMut::Mut => "mut ",
-                },
-                self.display(ty, enums, structs)
-            ),
-            KTy::Fn {
-                param_tys,
-                result_ty,
-            } => format!(
-                "|{}| -> {}",
-                param_tys
-                    .iter()
-                    .map(|ty| self.display(ty, enums, structs))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                self.display(result_ty, enums, structs)
-            ),
-            KTy::Alias(_) => {
-                // FIXME: 実装. aliases を引数にとる？
-                "{alias}".to_string()
-            }
-            KTy::Enum(k_enum) => k_enum.name(enums).to_string(),
-            KTy::Struct(k_struct) => k_struct.name(structs).to_string(),
-        }
     }
 }

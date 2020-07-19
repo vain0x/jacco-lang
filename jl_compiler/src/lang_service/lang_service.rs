@@ -495,12 +495,6 @@ fn collect_use_sites(
     );
 }
 
-fn display_ty(ty: &KTy, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
-    let enums = &mod_outline.enums;
-    let structs = &mod_outline.structs;
-    ty_env.display(ty, enums, structs)
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Doc, LangService};
