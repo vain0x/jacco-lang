@@ -66,7 +66,7 @@ mod cps {
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_command::KCommand;
-    pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue};
+    pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue, KNumber, KNumberTy};
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KEnumTag, KVariant};
     pub(crate) use k_extern_fn::{
         KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnTag,
@@ -246,6 +246,9 @@ mod token {
     //! 字句・字句解析
 
     mod keyword;
+    mod lit_binary;
+    mod lit_decimal;
+    mod lit_hex;
     mod location;
     mod punctuation;
     mod token_data;
@@ -255,6 +258,9 @@ mod token {
     mod tokenize_rules;
 
     pub(crate) use keyword::Keyword;
+    pub(crate) use lit_binary::eval_binary;
+    pub(crate) use lit_decimal::eval_decimal;
+    pub(crate) use lit_hex::eval_hex;
     pub(crate) use location::{HaveLocation, Location};
     pub(crate) use token_data::TokenData;
     pub(crate) use token_kind::TokenKind;
