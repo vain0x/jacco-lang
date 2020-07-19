@@ -82,8 +82,8 @@ impl TokenizeContext {
 
         let current_pos = self.last_pos + TPos::from(text.as_str());
         let range = TRange::new(self.last_pos, current_pos);
-        let location = Loc::new(self.source.clone(), range);
-        let token = TokenData::new(token, text, location);
+        let loc = Loc::new(self.source.clone(), range);
+        let token = TokenData::new(token, text, loc);
 
         self.push_token(token);
 

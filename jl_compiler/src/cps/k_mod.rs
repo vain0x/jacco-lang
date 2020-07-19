@@ -177,7 +177,7 @@ pub(crate) fn resolve_aliases(
             [mod_name, entity_name] => (mod_name, entity_name),
             _ => {
                 logger.error(
-                    alias_data.location(),
+                    alias_data.loc(),
                     "use mod_name::entity_name; 以外の形式の use は未実装です",
                 );
                 continue;
@@ -187,7 +187,7 @@ pub(crate) fn resolve_aliases(
         let k_mod = match mod_map.get(mod_name.as_str()) {
             Some(k_mod) => *k_mod,
             None => {
-                logger.error(alias_data.location(), "モジュール名が不明です");
+                logger.error(alias_data.loc(), "モジュール名が不明です");
                 continue;
             }
         };
@@ -230,7 +230,7 @@ pub(crate) fn resolve_aliases(
         let referent = match lookup(entity_name.as_str()) {
             Some(symbol) => KProjectSymbol::ModLocal { k_mod, symbol },
             None => {
-                logger.error(alias_data.location(), "名前が見つかりません");
+                logger.error(alias_data.loc(), "名前が見つかりません");
                 continue;
             }
         };

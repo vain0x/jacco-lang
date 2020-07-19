@@ -9,7 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 // とりあえず KFieldTag を使いまわしてる。
@@ -26,8 +26,8 @@ impl KField {
         &fields[self].ty
     }
 
-    pub(crate) fn location(self, fields: &KFieldArena) -> Loc {
-        fields[self].location
+    pub(crate) fn loc(self, fields: &KFieldArena) -> Loc {
+        fields[self].loc
     }
 }
 
@@ -35,5 +35,5 @@ impl KField {
 pub(crate) struct KFieldOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }

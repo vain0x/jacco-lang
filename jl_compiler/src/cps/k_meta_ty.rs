@@ -43,12 +43,12 @@ pub(crate) struct KMetaTyData {
     /// おそらく RefCell を避けるのは難しい。
     ty: RefCell<KTy2>,
 
-    location: Loc,
+    loc: Loc,
 }
 
 impl KMetaTyData {
-    pub(crate) fn new(ty: RefCell<KTy2>, location: Loc) -> Self {
-        Self { ty, location }
+    pub(crate) fn new(ty: RefCell<KTy2>, loc: Loc) -> Self {
+        Self { ty, loc }
     }
 
     pub(crate) fn ty(&self) -> &RefCell<KTy2> {

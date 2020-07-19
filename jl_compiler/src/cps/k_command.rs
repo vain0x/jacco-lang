@@ -9,7 +9,7 @@ pub(crate) enum KCommand {
         args: Vec<KTerm>,
         result_opt: Option<KSymbol>,
         cont_count: usize,
-        location: Loc,
+        loc: Loc,
     },
     Label {
         label: KLabel,

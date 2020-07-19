@@ -14,13 +14,13 @@ impl PToken {
         tokens[self].text()
     }
 
-    pub(crate) fn location(self, tokens: &PTokens) -> Loc {
-        tokens[self].location()
+    pub(crate) fn loc(self, tokens: &PTokens) -> Loc {
+        tokens[self].loc()
     }
 
     pub(crate) fn decompose(self, tokens: &PTokens) -> (String, Loc) {
         let token_data = self.of(tokens);
-        (token_data.text().to_string(), token_data.location())
+        (token_data.text().to_string(), token_data.loc())
     }
 
     #[allow(unused)]

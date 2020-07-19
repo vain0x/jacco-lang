@@ -25,16 +25,16 @@ impl KLocal {
 pub(crate) struct KLocalData {
     pub(crate) name: String,
     pub(crate) ty: KTy2,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
     pub(crate) is_alive: bool,
 }
 
 impl KLocalData {
-    pub(crate) fn new(name: String, location: Loc) -> Self {
+    pub(crate) fn new(name: String, loc: Loc) -> Self {
         Self {
             name,
             ty: KTy2::Unresolved,
-            location,
+            loc,
             is_alive: true,
         }
     }

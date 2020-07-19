@@ -5,7 +5,7 @@
 
 use crate::{
     parse::{PLoc, PRoot},
-    source::{loc::LocResolver, Doc, HaveLocation, Loc, TRange},
+    source::{loc::LocResolver, Doc, HaveLoc, Loc, TRange},
     token::TokenSource,
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
@@ -56,30 +56,30 @@ impl DocLogger {
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone, Debug)]
 pub(crate) enum LogItem {
-    OnLocation { message: String, location: Loc },
+    OnLoc { message: String, loc: Loc },
 }
 
 impl LogItem {
     pub(crate) fn message(&self) -> &str {
         match self {
-            LogItem::OnLocation { message, .. } => message,
+            LogItem::OnLoc { message, .. } => message,
         }
     }
 
-    pub(crate) fn location(&self) -> Loc {
+    pub(crate) fn loc(&self) -> Loc {
         match self {
-            LogItem::OnLocation { location, .. } => *location,
+            LogItem::OnLoc { loc, .. } => *loc,
         }
     }
 
     pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
         match self {
-            LogItem::OnLocation { message, location } => {
-                let path_opt = match location.doc_opt() {
+            LogItem::OnLoc { message, loc } => {
+                let path_opt = match loc.doc_opt() {
                     Ok(doc) => resolver.doc_path(doc).map(PathBuf::from),
                     Err(name) => Some(PathBuf::from(name)),
                 };
-                let range = TRange::from(location.range());
+                let range = TRange::from(loc.range());
                 (message, path_opt, range)
             }
         }
@@ -125,25 +125,25 @@ impl Logger {
         let mut items = self.parent.inner.borrow_mut();
         for item in logs.finish() {
             let (loc, message) = (item.loc, item.message);
-            items.push(LogItem::OnLocation {
-                location: Loc::new(TokenSource::File(doc), loc.range(root)),
+            items.push(LogItem::OnLoc {
+                loc: Loc::new(TokenSource::File(doc), loc.range(root)),
                 message,
             });
         }
     }
 
-    pub(crate) fn error(&self, have_location: impl HaveLocation, message: impl Into<String>) {
+    pub(crate) fn error(&self, node: impl HaveLoc, message: impl Into<String>) {
         let message = message.into();
-        let location = have_location.location();
+        let loc = node.loc();
         let mut inner = self.parent.inner.borrow_mut();
-        inner.push(LogItem::OnLocation { message, location });
+        inner.push(LogItem::OnLoc { message, loc });
     }
 
-    pub(crate) fn unexpected(&self, have_location: impl HaveLocation, message: impl Into<String>) {
-        self.error(have_location, format!("[バグ?] {}", message.into()))
+    pub(crate) fn unexpected(&self, node: impl HaveLoc, message: impl Into<String>) {
+        self.error(node, format!("[バグ?] {}", message.into()))
     }
 
-    pub(crate) fn unimpl(&self, have_location: impl HaveLocation, message: impl Into<String>) {
-        self.error(have_location, format!("[未実装?] {}", message.into()))
+    pub(crate) fn unimpl(&self, node: impl HaveLoc, message: impl Into<String>) {
+        self.error(node, format!("[未実装?] {}", message.into()))
     }
 }

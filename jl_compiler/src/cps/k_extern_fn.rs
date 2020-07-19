@@ -35,7 +35,7 @@ pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 impl KExternFnOutline {

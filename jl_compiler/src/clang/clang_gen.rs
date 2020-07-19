@@ -384,7 +384,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         },
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
-        KTerm::Alias { alias, location } => match alias.of(&cx.mod_outline.aliases).referent() {
+        KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
                 KModLocalSymbol::Const(k_const) => {
                     gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
@@ -402,16 +402,16 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 | KModLocalSymbol::Alias(_)
                 | KModLocalSymbol::Enum(_)
                 | KModLocalSymbol::Struct(_) => {
-                    error!("別名の参照先が不正です {:?}", (symbol, location));
+                    error!("別名の参照先が不正です {:?}", (symbol, loc));
                     CExpr::Other("/* error: invalid alias term ")
                 }
             },
             Some(KProjectSymbol::Mod(_)) => {
-                error!("モジュールを指す別名はCの式になりません {:?}", location);
+                error!("モジュールを指す別名はCの式になりません {:?}", loc);
                 CExpr::Other("/* error: mod alias */")
             }
             None => {
-                error!("未解決の別名をCの式にしようとしました {:?}", location);
+                error!("未解決の別名をCの式にしようとしました {:?}", loc);
                 CExpr::Other("/* error: unresolved alias */")
             }
         },
@@ -426,8 +426,8 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::ExternFn { extern_fn, .. } => gen_extern_fn_term(*extern_fn, cx),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
         KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.mod_outline.structs),
-        KTerm::FieldTag(KFieldTag { name, location }) => {
-            error!("can't gen field term to c {} ({:?})", name, location);
+        KTerm::FieldTag(KFieldTag { name, loc }) => {
+            error!("can't gen field term to c {} ({:?})", name, loc);
             CExpr::Other("/* error */ 0")
         }
     }

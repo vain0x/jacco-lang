@@ -9,7 +9,7 @@ use crate::parse::*;
 use crate::{
     front::NameResolution,
     logs::DocLogger,
-    source::{HaveLocation, Loc},
+    source::{HaveLoc, Loc},
     token::{eval_number, LitErr},
     utils::VecArena,
 };
@@ -64,15 +64,15 @@ impl<'a> Gx<'a> {
         }
     }
 
-    fn fresh_symbol(&mut self, hint: &str, location: Loc) -> KSymbol {
+    fn fresh_symbol(&mut self, hint: &str, loc: Loc) -> KSymbol {
         let local = self
             .current_locals
-            .alloc(KLocalData::new(hint.to_string(), location));
+            .alloc(KLocalData::new(hint.to_string(), loc));
 
-        KSymbol { local, location }
+        KSymbol { local, loc }
     }
 
-    fn fresh_label(&mut self, hint: &str, _location: Loc) -> KLabel {
+    fn fresh_label(&mut self, hint: &str, _loc: Loc) -> KLabel {
         let name = hint.to_string();
 
         self.current_labels.alloc(KLabelData {
@@ -92,14 +92,14 @@ impl<'a> Gx<'a> {
 
     // ちょうど1つの継続を持つプリミティブノードを生成する。
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
-        let location = result.location;
+        let loc = result.loc;
         self.push(KCommand::Node {
             prim,
             tys: vec![],
             args,
             result_opt: Some(result),
             cont_count: 1,
-            location,
+            loc,
         });
     }
 
@@ -108,47 +108,47 @@ impl<'a> Gx<'a> {
         label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
         cont_count: usize,
-        location: Loc,
+        loc: Loc,
     ) {
         self.push(KCommand::Node {
             prim: KPrim::Jump,
             tys: vec![],
-            args: once(KTerm::Label { label, location }).chain(args).collect(),
+            args: once(KTerm::Label { label, loc }).chain(args).collect(),
             result_opt: None,
             cont_count,
-            location,
+            loc,
         });
     }
 
-    fn push_jump(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>, location: Loc) {
-        self.do_push_jump(label, args, 0, location);
+    fn push_jump(&mut self, label: KLabel, args: impl IntoIterator<Item = KTerm>, loc: Loc) {
+        self.do_push_jump(label, args, 0, loc);
     }
 
     fn push_jump_with_cont(
         &mut self,
         label: KLabel,
         args: impl IntoIterator<Item = KTerm>,
-        location: Loc,
+        loc: Loc,
     ) {
-        self.do_push_jump(label, args, 1, location);
+        self.do_push_jump(label, args, 1, loc);
     }
 }
 
-fn new_false_term(location: Loc) -> KTerm {
-    KTerm::False { location }
+fn new_false_term(loc: Loc) -> KTerm {
+    KTerm::False { loc }
 }
 
-fn new_true_term(location: Loc) -> KTerm {
-    KTerm::True { location }
+fn new_true_term(loc: Loc) -> KTerm {
+    KTerm::True { loc }
 }
 
-fn new_unit_term(location: Loc) -> KTerm {
-    KTerm::Unit { location }
+fn new_unit_term(loc: Loc) -> KTerm {
+    KTerm::Unit { loc }
 }
 
-fn new_never_term(location: Loc) -> KTerm {
+fn new_never_term(loc: Loc) -> KTerm {
     // FIXME: the type is ! (never)
-    KTerm::Unit { location }
+    KTerm::Unit { loc }
 }
 
 fn error_token(token: PToken, message: impl Into<String>, gx: &Gx) {
@@ -162,17 +162,17 @@ fn error_node(node: Loc, message: impl Into<String>, gx: &Gx) {
     gx.logger.error(loc, "<cps_conversion::error_node>");
 }
 
-fn fresh_loop_labels(location: Loc, gx: &mut Gx) -> KLoopData {
-    let continue_label = gx.fresh_label("continue_", location);
-    let break_label = gx.fresh_label("next", location);
+fn fresh_loop_labels(loc: Loc, gx: &mut Gx) -> KLoopData {
+    let continue_label = gx.fresh_label("continue_", loc);
+    let break_label = gx.fresh_label("next", loc);
     KLoopData {
         break_label,
         continue_label,
     }
 }
 
-fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, location: Loc, gx: &mut Gx) -> KTerm {
-    let result = gx.fresh_symbol(&prim.hint_str(), location);
+fn emit_unary_op(prim: KPrim, arg_opt: Option<&PExpr>, loc: Loc, gx: &mut Gx) -> KTerm {
+    let result = gx.fresh_symbol(&prim.hint_str(), loc);
 
     let arg = gen_expr(arg_opt.unwrap(), gx);
 
@@ -185,10 +185,10 @@ fn emit_compound_assign(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: Loc,
+    loc: Loc,
     gx: &mut Gx,
 ) -> KTerm {
-    let left = gen_expr_lval(left, KMut::Mut, location, gx);
+    let left = gen_expr_lval(left, KMut::Mut, loc, gx);
     let right = gen_expr(right_opt.unwrap(), gx);
 
     gx.push(KCommand::Node {
@@ -197,20 +197,20 @@ fn emit_compound_assign(
         args: vec![left, right],
         result_opt: None,
         cont_count: 1,
-        location,
+        loc,
     });
 
-    new_unit_term(location)
+    new_unit_term(loc)
 }
 
 fn emit_binary_op(
     prim: KPrim,
     left: &PExpr,
     right_opt: Option<&PExpr>,
-    location: Loc,
+    loc: Loc,
     gx: &mut Gx,
 ) -> KTerm {
-    let result = gx.fresh_symbol(&prim.hint_str(), location);
+    let result = gx.fresh_symbol(&prim.hint_str(), loc);
 
     let left = gen_expr(left, gx);
     let right = gen_expr(right_opt.unwrap(), gx);
@@ -224,11 +224,11 @@ fn emit_if(
     cond: &PExpr,
     gen_body: impl FnOnce(&mut Gx) -> KTerm,
     gen_alt: impl FnOnce(&mut Gx) -> KTerm,
-    location: Loc,
+    loc: Loc,
     gx: &mut Gx,
 ) -> KTerm {
-    let result = gx.fresh_symbol("if_result", location);
-    let next_label = gx.fresh_label("next", location);
+    let result = gx.fresh_symbol("if_result", loc);
+    let next_label = gx.fresh_label("next", loc);
 
     let k_cond = gen_expr(cond, gx);
 
@@ -238,19 +238,19 @@ fn emit_if(
         args: vec![k_cond],
         result_opt: None,
         cont_count: 2,
-        location,
+        loc,
     });
 
     // body
     {
         let body = gen_body(gx);
-        gx.push_jump(next_label, vec![body], location);
+        gx.push_jump(next_label, vec![body], loc);
     }
 
     // alt
     {
         let alt = gen_alt(gx);
-        gx.push_jump(next_label, vec![alt], location);
+        gx.push_jump(next_label, vec![alt], loc);
     }
 
     gx.push_label(next_label, vec![result.clone()]);
@@ -320,24 +320,22 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
 
     match result {
         Ok((_, number_ty)) => {
-            let (text, location) = token.decompose(&gx.tokens);
+            let (text, loc) = token.decompose(&gx.tokens);
             let ty = KTy2::Number(number_ty);
             match number_ty {
-                KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => {
-                    KTerm::Float { text, ty, location }
-                }
+                KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float { text, ty, loc },
                 KNumberTy::C8 | KNumberTy::C16 | KNumberTy::C32 | KNumberTy::CNN => {
-                    KTerm::Char { text, ty, location }
+                    KTerm::Char { text, ty, loc }
                 }
                 KNumberTy::UNN => {
                     // FIXME: 後続のパスが UNN をうまく処理できなくて、unsigned long long になってしまう。いまのところ、ここで i32 にしておく
                     KTerm::Int {
                         text,
                         ty: KTy2::I32,
-                        location,
+                        loc,
                     }
                 }
-                _ => KTerm::Int { text, ty, location },
+                _ => KTerm::Int { text, ty, loc },
             }
         }
         Err(err) => {
@@ -346,7 +344,7 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
                 LitErr::UnknownSuffix => "不正なサフィックスです",
             };
             gx.logger.error(PLoc::new(token), message);
-            new_never_term(token.location(gx.tokens))
+            new_never_term(token.loc(gx.tokens))
         }
     }
 }
@@ -354,16 +352,16 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
     let token = name.of(&gx.names).token;
     let n_name = name.of(&gx.name_res);
-    let (name, location) = (name.text(&gx.names).to_string(), name.location());
+    let (name, loc) = (name.text(&gx.names).to_string(), name.loc());
 
     match *n_name {
-        NName::Alias(alias) => KSymbolExt::Alias { alias, location },
+        NName::Alias(alias) => KSymbolExt::Alias { alias, loc },
         NName::LocalVar(local) => {
             let local_data = &mut gx.current_locals[local];
             local_data.name = name.to_string();
             local_data.is_alive = true;
 
-            KSymbolExt::Symbol(KSymbol { local, location })
+            KSymbolExt::Symbol(KSymbol { local, loc })
         }
         NName::Fn(k_fn) => KSymbolExt::Fn(k_fn),
         NName::ExternFn(extern_fn) => KSymbolExt::ExternFn(extern_fn),
@@ -372,7 +370,7 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
         NName::Struct(n_struct) if n_struct.fields(&gx.mod_outline.structs).is_empty() => {
             KSymbolExt::UnitLikeStruct {
                 k_struct: n_struct,
-                location,
+                loc,
             }
         }
         NName::I8
@@ -395,11 +393,11 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
         | NName::Struct(_) => {
             error_token(token, "型の名前です。", gx);
             // FIXME: 適切にハンドル？
-            KSymbolExt::Symbol(gx.fresh_symbol(&name, location))
+            KSymbolExt::Symbol(gx.fresh_symbol(&name, loc))
         }
         NName::Unresolved => {
             // Unresolved ならエラーなのでコード生成には来ないはず。
-            error!("cannot gen_name {:?}", (&name, location, n_name));
+            error!("cannot gen_name {:?}", (&name, loc, n_name));
             KSymbolExt::Unresolved
         }
     }
@@ -453,13 +451,13 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
     );
 
     if let Some(value) = value_opt.as_deref() {
-        let location = value.location();
+        let loc = value.loc();
         match gen_constant(value, gx) {
             Some(value) => {
                 // FIXME: 値を設定できるのはすべてのバリアントが const なときだけ
                 *value_slot = value.cast_as_usize()
             }
-            None => error_node(location, "定数式として不正です", gx),
+            None => error_node(loc, "定数式として不正です", gx),
         }
     }
 
@@ -488,25 +486,25 @@ fn gen_variant(decl: &PVariantDecl, value_slot: &mut usize, gx: &mut Gx) -> KVar
 }
 
 /// 式を左辺値とみなして変換する。(結果として、ポインタ型の項を期待している。)
-fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Loc, gx: &mut Gx) -> KTerm {
+fn gen_expr_lval(expr: &PExpr, k_mut: KMut, loc: Loc, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Tuple(PTupleExpr { arg_list }) if !arg_list.is_tuple() => {
             let arg = &arg_list.args[0];
-            gen_expr_lval(&arg.expr, k_mut, location, gx)
+            gen_expr_lval(&arg.expr, k_mut, loc, gx)
         }
         PExpr::Index(PIndexExpr { left, arg_list }) => {
             // a[i] ==> *(a + i)
 
-            let location = arg_list.left_paren.location(&gx.tokens);
-            let indexed_ptr = gx.fresh_symbol("indexed_ptr", location);
+            let loc = arg_list.left_paren.loc(&gx.tokens);
+            let indexed_ptr = gx.fresh_symbol("indexed_ptr", loc);
 
             if arg_list.args.len() != 1 {
                 error_node(
-                    location,
+                    loc,
                     "0個や2個以上の引数を持つインデックス式は未実装です",
                     gx,
                 );
-                return new_never_term(location);
+                return new_never_term(loc);
             }
 
             let k_left = gen_expr(&left, gx);
@@ -525,14 +523,14 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Loc, gx: &mut Gx) -> KTerm
         }
         PExpr::DotField(PDotFieldExpr { left, name_opt, .. }) => {
             // x.foo は `&(&x)->foo` のような形にコンパイルする。
-            let (name, location) = name_opt
+            let (name, loc) = name_opt
                 .as_ref()
-                .map(|name| (name.text(&gx.tokens).to_string(), name.location(&gx.tokens)))
+                .map(|name| (name.text(&gx.tokens).to_string(), name.loc(&gx.tokens)))
                 .unwrap();
-            let result = gx.fresh_symbol(&format!("{}_ptr", name), location);
+            let result = gx.fresh_symbol(&format!("{}_ptr", name), loc);
 
-            let left = gen_expr_lval(left.as_ref(), k_mut, location, gx);
-            let field = KTerm::FieldTag(KFieldTag { name, location });
+            let left = gen_expr_lval(left.as_ref(), k_mut, loc, gx);
+            let field = KTerm::FieldTag(KFieldTag { name, loc });
 
             let get_field_prim = match k_mut {
                 KMut::Const => KPrim::GetField,
@@ -547,7 +545,7 @@ fn gen_expr_lval(expr: &PExpr, k_mut: KMut, location: Loc, gx: &mut Gx) -> KTerm
                 KMut::Const => KPrim::Ref,
                 KMut::Mut => KPrim::RefMut,
             };
-            emit_unary_op(prim, Some(expr), location, gx)
+            emit_unary_op(prim, Some(expr), loc, gx)
         }
     }
 }
@@ -556,53 +554,47 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
     match expr {
         PExpr::Number(PNumberExpr { token }) => gen_number_lit(*token, gx),
         PExpr::Char(PCharExpr { token }) => {
-            let (text, location) = token.decompose(&gx.tokens);
+            let (text, loc) = token.decompose(&gx.tokens);
             KTerm::Char {
                 text,
                 ty: KTy2::C8,
-                location,
+                loc,
             }
         }
         PExpr::Str(PStrExpr { token }) => {
-            let (text, location) = token.decompose(&gx.tokens);
-            KTerm::Str { text, location }
+            let (text, loc) = token.decompose(&gx.tokens);
+            KTerm::Str { text, loc }
         }
         PExpr::True(PTrueExpr(token)) => KTerm::True {
-            location: token.location(&gx.tokens),
+            loc: token.loc(&gx.tokens),
         },
         PExpr::False(PFalseExpr(token)) => KTerm::False {
-            location: token.location(&gx.tokens),
+            loc: token.loc(&gx.tokens),
         },
         PExpr::Name(name) => {
-            let location = name.of(&gx.names).token.of(&gx.tokens).location();
+            let loc = name.of(&gx.names).token.of(&gx.tokens).loc();
             match gen_name(*name, gx) {
                 KSymbolExt::Unresolved => {
-                    error!("unresolved name {:?}", (name, location));
-                    new_unit_term(location)
+                    error!("unresolved name {:?}", (name, loc));
+                    new_unit_term(loc)
                 }
-                KSymbolExt::Alias { alias, location } => KTerm::Alias { alias, location },
+                KSymbolExt::Alias { alias, loc } => KTerm::Alias { alias, loc },
                 KSymbolExt::Symbol(symbol) => KTerm::Name(symbol),
-                KSymbolExt::Const(k_const) => KTerm::Const { k_const, location },
-                KSymbolExt::StaticVar(static_var) => KTerm::StaticVar {
-                    static_var,
-                    location,
-                },
-                KSymbolExt::Fn(k_fn) => KTerm::Fn { k_fn, location },
-                KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn {
-                    extern_fn,
-                    location,
-                },
-                KSymbolExt::UnitLikeStruct { k_struct, location } => {
+                KSymbolExt::Const(k_const) => KTerm::Const { k_const, loc },
+                KSymbolExt::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
+                KSymbolExt::Fn(k_fn) => KTerm::Fn { k_fn, loc },
+                KSymbolExt::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
+                KSymbolExt::UnitLikeStruct { k_struct, loc } => {
                     let ty = KTy::Struct(k_struct);
                     let name = k_struct.name(&gx.mod_outline.structs).to_string();
-                    let result = gx.fresh_symbol(&name, location);
+                    let result = gx.fresh_symbol(&name, loc);
                     gx.push(KCommand::Node {
                         prim: KPrim::Record,
                         tys: vec![ty],
                         args: vec![],
                         result_opt: Some(result.clone()),
                         cont_count: 1,
-                        location,
+                        loc,
                     });
                     KTerm::Name(result)
                 }
@@ -620,11 +612,11 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 n_name => unreachable!("{:?}", n_name),
             };
 
-            let (name, location) = (name.text(&gx.names).to_string(), name.location());
-            let result = gx.fresh_symbol(&name, location);
+            let (name, loc) = (name.text(&gx.names).to_string(), name.loc());
+            let result = gx.fresh_symbol(&name, loc);
 
             let field_count = k_struct.fields(&gx.mod_outline.structs).len();
-            let mut args = vec![KTerm::Unit { location }; field_count];
+            let mut args = vec![KTerm::Unit { loc }; field_count];
             let mut arg_freq = vec![0_u8; field_count];
 
             for field in fields {
@@ -689,39 +681,38 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location,
+                loc,
             });
 
             KTerm::Name(result)
         }
         PExpr::Tuple(PTupleExpr { arg_list }) => match arg_list.args.as_slice() {
-            [] => new_unit_term(arg_list.location()),
+            [] => new_unit_term(arg_list.loc()),
             [arg] if !arg_list.is_tuple() => gen_expr(&arg.expr, gx),
             _ => {
                 log::error!("タプルリテラルは未実装です {:?}", expr);
-                new_never_term(arg_list.location())
+                new_never_term(arg_list.loc())
             }
         },
         PExpr::DotField(..) => {
-            let (text, location) = match expr {
+            let (text, loc) = match expr {
                 PExpr::DotField(PDotFieldExpr {
                     name_opt: Some(name),
                     ..
-                }) => (name.text(&gx.tokens).to_string(), name.location(&gx.tokens)),
+                }) => (name.text(&gx.tokens).to_string(), name.loc(&gx.tokens)),
                 _ => unreachable!(),
             };
 
-            // FIXME: Location
-            let result1 = gen_expr_lval(expr, KMut::Const, location, gx);
-            let result2 = gx.fresh_symbol(&text, location);
+            let result1 = gen_expr_lval(expr, KMut::Const, loc, gx);
+            let result2 = gx.fresh_symbol(&text, loc);
 
             gx.push_prim_1(KPrim::Deref, vec![result1], result2.clone());
 
             KTerm::Name(result2)
         }
         PExpr::Call(PCallExpr { left, arg_list }) => {
-            let location = arg_list.left_paren.location(&gx.tokens);
-            let result = gx.fresh_symbol("call_result", location);
+            let loc = arg_list.left_paren.loc(&gx.tokens);
+            let result = gx.fresh_symbol("call_result", loc);
 
             let k_left = gen_expr(&left, gx);
 
@@ -736,10 +727,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             KTerm::Name(result)
         }
         PExpr::Index(PIndexExpr { .. }) => {
-            let location = expr.location();
-            let result = gx.fresh_symbol("index_result", location);
+            let loc = expr.loc();
+            let result = gx.fresh_symbol("index_result", loc);
 
-            let indexed_ptr = gen_expr_lval(expr, KMut::Const, expr.location(), gx);
+            let indexed_ptr = gen_expr_lval(expr, KMut::Const, expr.loc(), gx);
             gx.push_prim_1(KPrim::Deref, vec![indexed_ptr], result.clone());
             KTerm::Name(result)
         }
@@ -749,8 +740,8 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             ty_opt,
             ..
         }) => {
-            let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("cast", location);
+            let loc = keyword.loc(&gx.tokens);
+            let result = gx.fresh_symbol("cast", loc);
 
             let left = gen_expr(&left, gx);
             let ty = gen_ty(ty_opt.as_ref().unwrap(), &gx.name_res);
@@ -761,7 +752,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![left],
                 result_opt: Some(result.clone()),
                 cont_count: 1,
-                location,
+                loc,
             });
 
             KTerm::Name(result)
@@ -772,22 +763,22 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             mut_opt,
             arg_opt,
         }) => {
-            let location = op_token.location(&gx.tokens);
+            let loc = op_token.loc(&gx.tokens);
             match op {
-                PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx),
+                PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), loc, gx),
                 PUnaryOp::DerefDeref => {
-                    let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), location, gx);
+                    let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), loc, gx);
 
-                    let result = gx.fresh_symbol("deref", location);
+                    let result = gx.fresh_symbol("deref", loc);
                     gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
                     KTerm::Name(result)
                 }
                 PUnaryOp::Ref => {
                     let k_mut = gen_mut(mut_opt.as_ref());
-                    gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, location, gx)
+                    gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, loc, gx)
                 }
-                PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), location, gx),
-                PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), location, gx),
+                PUnaryOp::Minus => emit_unary_op(KPrim::Minus, arg_opt.as_deref(), loc, gx),
+                PUnaryOp::Not => emit_unary_op(KPrim::Not, arg_opt.as_deref(), loc, gx),
             }
         }
         PExpr::BinaryOp(PBinaryOpExpr {
@@ -796,10 +787,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             left,
             right_opt,
         }) => {
-            let location = op_token.location(&gx.tokens);
+            let loc = op_token.loc(&gx.tokens);
             match op {
                 PBinaryOp::Assign => {
-                    let left = gen_expr_lval(&left, KMut::Mut, location, gx);
+                    let left = gen_expr_lval(&left, KMut::Mut, loc, gx);
                     let right = gen_expr(right_opt.as_ref().unwrap(), gx);
 
                     gx.push(KCommand::Node {
@@ -808,134 +799,106 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                         args: vec![left, right],
                         result_opt: None,
                         cont_count: 1,
-                        location,
+                        loc,
                     });
 
-                    new_unit_term(location)
+                    new_unit_term(loc)
                 }
                 PBinaryOp::AddAssign => {
-                    emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), location, gx)
+                    emit_compound_assign(KPrim::AddAssign, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::SubAssign => {
-                    emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), location, gx)
+                    emit_compound_assign(KPrim::SubAssign, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::MulAssign => {
-                    emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), location, gx)
+                    emit_compound_assign(KPrim::MulAssign, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::DivAssign => {
-                    emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), location, gx)
+                    emit_compound_assign(KPrim::DivAssign, left, right_opt.as_deref(), loc, gx)
                 }
-                PBinaryOp::ModuloAssign => emit_compound_assign(
-                    KPrim::ModuloAssign,
-                    left,
-                    right_opt.as_deref(),
-                    location,
-                    gx,
-                ),
-                PBinaryOp::BitAndAssign => emit_compound_assign(
-                    KPrim::BitAndAssign,
-                    left,
-                    right_opt.as_deref(),
-                    location,
-                    gx,
-                ),
-                PBinaryOp::BitOrAssign => emit_compound_assign(
-                    KPrim::BitOrAssign,
-                    left,
-                    right_opt.as_deref(),
-                    location,
-                    gx,
-                ),
-                PBinaryOp::BitXorAssign => emit_compound_assign(
-                    KPrim::BitXorAssign,
-                    left,
-                    right_opt.as_deref(),
-                    location,
-                    gx,
-                ),
+                PBinaryOp::ModuloAssign => {
+                    emit_compound_assign(KPrim::ModuloAssign, left, right_opt.as_deref(), loc, gx)
+                }
+                PBinaryOp::BitAndAssign => {
+                    emit_compound_assign(KPrim::BitAndAssign, left, right_opt.as_deref(), loc, gx)
+                }
+                PBinaryOp::BitOrAssign => {
+                    emit_compound_assign(KPrim::BitOrAssign, left, right_opt.as_deref(), loc, gx)
+                }
+                PBinaryOp::BitXorAssign => {
+                    emit_compound_assign(KPrim::BitXorAssign, left, right_opt.as_deref(), loc, gx)
+                }
                 PBinaryOp::LeftShiftAssign => emit_compound_assign(
                     KPrim::LeftShiftAssign,
                     left,
                     right_opt.as_deref(),
-                    location,
+                    loc,
                     gx,
                 ),
                 PBinaryOp::RightShiftAssign => emit_compound_assign(
                     KPrim::RightShiftAssign,
                     left,
                     right_opt.as_deref(),
-                    location,
+                    loc,
                     gx,
                 ),
-                PBinaryOp::Add => {
-                    emit_binary_op(KPrim::Add, left, right_opt.as_deref(), location, gx)
-                }
-                PBinaryOp::Sub => {
-                    emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), location, gx)
-                }
-                PBinaryOp::Mul => {
-                    emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), location, gx)
-                }
-                PBinaryOp::Div => {
-                    emit_binary_op(KPrim::Div, left, right_opt.as_deref(), location, gx)
-                }
+                PBinaryOp::Add => emit_binary_op(KPrim::Add, left, right_opt.as_deref(), loc, gx),
+                PBinaryOp::Sub => emit_binary_op(KPrim::Sub, left, right_opt.as_deref(), loc, gx),
+                PBinaryOp::Mul => emit_binary_op(KPrim::Mul, left, right_opt.as_deref(), loc, gx),
+                PBinaryOp::Div => emit_binary_op(KPrim::Div, left, right_opt.as_deref(), loc, gx),
                 PBinaryOp::Modulo => {
-                    emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::Modulo, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::BitAnd => {
-                    emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::BitAnd, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::BitOr => {
-                    emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::BitOr, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::BitXor => {
-                    emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::BitXor, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::LeftShift => {
-                    emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::LeftShift, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::RightShift => {
-                    emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::RightShift, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::Equal => {
-                    emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::Equal, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::NotEqual => {
-                    emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::NotEqual, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::LessThan => {
-                    emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::LessThan, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::LessEqual => {
-                    emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::LessEqual, left, right_opt.as_deref(), loc, gx)
                 }
                 PBinaryOp::GreaterThan => {
-                    emit_binary_op(KPrim::GreaterThan, left, right_opt.as_deref(), location, gx)
+                    emit_binary_op(KPrim::GreaterThan, left, right_opt.as_deref(), loc, gx)
                 }
-                PBinaryOp::GreaterEqual => emit_binary_op(
-                    KPrim::GreaterEqual,
-                    left,
-                    right_opt.as_deref(),
-                    location,
-                    gx,
-                ),
+                PBinaryOp::GreaterEqual => {
+                    emit_binary_op(KPrim::GreaterEqual, left, right_opt.as_deref(), loc, gx)
+                }
                 PBinaryOp::LogAnd => {
-                    let false_term = new_false_term(location);
+                    let false_term = new_false_term(loc);
                     emit_if(
                         &left,
                         |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
                         move |_| false_term,
-                        location,
+                        loc,
                         gx,
                     )
                 }
                 PBinaryOp::LogOr => {
-                    let true_term = new_true_term(location);
+                    let true_term = new_true_term(loc);
                     emit_if(
                         &left,
                         move |_| true_term,
                         |gx| gen_expr(right_opt.as_deref().unwrap(), gx),
-                        location,
+                        loc,
                         gx,
                     )
                 }
@@ -949,8 +912,8 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             Some(PExpr::Call(PCallExpr { left, arg_list })) => {
                 // FIXME: call expr の生成と共通化
                 let result = {
-                    let location = pipe.location(&gx.tokens);
-                    gx.fresh_symbol("call_result", location)
+                    let loc = pipe.loc(&gx.tokens);
+                    gx.fresh_symbol("call_result", loc)
                 };
 
                 let k_arg = gen_expr(&arg, gx);
@@ -966,9 +929,9 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 KTerm::Name(result)
             }
             _ => {
-                let location = pipe.location(&gx.tokens);
+                let loc = pipe.loc(&gx.tokens);
                 error_token(*pipe, "|> の右辺は関数呼び出しでなければいけません", gx);
-                new_never_term(location)
+                new_never_term(loc)
             }
         },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
@@ -977,43 +940,43 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             arg_opt,
             loop_id_opt,
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             let n_loop = NLoop::from_index(loop_id_opt.unwrap());
 
             let label = gx.current_loops[n_loop].break_label;
             let arg = match arg_opt {
                 Some(arg) => gen_expr(&arg, gx),
-                None => new_unit_term(location),
+                None => new_unit_term(loc),
             };
-            gx.push_jump_with_cont(label, vec![arg], location);
+            gx.push_jump_with_cont(label, vec![arg], loc);
 
-            new_never_term(location)
+            new_never_term(loc)
         }
         PExpr::Continue(PContinueExpr {
             keyword,
             loop_id_opt,
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             let n_loop = NLoop::from_index(loop_id_opt.unwrap());
 
             let label = gx.current_loops[n_loop].continue_label;
-            gx.push_jump_with_cont(label, vec![], location);
+            gx.push_jump_with_cont(label, vec![], loc);
 
-            new_never_term(location)
+            new_never_term(loc)
         }
         PExpr::Return(PReturnExpr {
             keyword,
             arg_opt,
             fn_id_opt,
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let args = {
-                let return_term = KTerm::Return { k_fn, location };
+                let return_term = KTerm::Return { k_fn, loc };
                 let arg = match arg_opt {
                     Some(arg) => gen_expr(&arg, gx),
-                    None => new_unit_term(location),
+                    None => new_unit_term(loc),
                 };
                 vec![return_term, arg]
             };
@@ -1023,10 +986,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: None,
                 cont_count: 1,
-                location,
+                loc,
             });
 
-            new_never_term(location)
+            new_never_term(loc)
         }
         PExpr::If(PIfExpr {
             keyword,
@@ -1035,15 +998,15 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             alt_opt,
             ..
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             emit_if(
                 &cond_opt.as_ref().unwrap(),
                 |gx| gen_block(body_opt.as_ref().unwrap(), gx),
                 move |gx| match alt_opt {
                     Some(alt) => gen_expr(&alt, gx),
-                    None => new_unit_term(location),
+                    None => new_unit_term(loc),
                 },
-                location,
+                loc,
                 gx,
             )
         }
@@ -1053,44 +1016,44 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             arms,
             ..
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             let k_cond = gen_expr(cond_opt.as_ref().unwrap(), gx);
             if arms.is_empty() {
-                return new_never_term(location).clone();
+                return new_never_term(loc).clone();
             }
 
-            let result = gx.fresh_symbol("match_result", location);
-            let next_label = gx.fresh_label("match_next", location);
+            let result = gx.fresh_symbol("match_result", loc);
+            let next_label = gx.fresh_label("match_next", loc);
 
             // 比較される値を計算する。
             let args = once(k_cond.clone())
                 .chain(arms.iter().map(|arm| match &arm.pat {
                     PPat::Char(token) => {
-                        let (text, location) = token.decompose(&gx.tokens);
+                        let (text, loc) = token.decompose(&gx.tokens);
                         KTerm::Char {
                             text,
                             ty: KTy2::C8,
-                            location,
+                            loc,
                         }
                     }
                     PPat::Name(name) => {
-                        let location = name.location();
+                        let loc = name.loc();
                         match *name.of(&gx.name_res) {
-                            NName::Const(k_const) => KTerm::Const { k_const, location },
+                            NName::Const(k_const) => KTerm::Const { k_const, loc },
                             NName::LocalVar(_) => match gen_name(*name, gx).as_symbol() {
                                 Some(symbol) => KTerm::Name(symbol),
-                                None => new_never_term(location),
+                                None => new_never_term(loc),
                             },
                             _ => {
                                 error!("unimplemented pat {:?}", arm);
-                                new_never_term(location)
+                                new_never_term(loc)
                             }
                         }
                     }
                     PPat::Record(PRecordPat { name, .. }) => {
-                        let location = name.location();
+                        let loc = name.loc();
                         let k_struct = name.of(&gx.name_res).as_struct().unwrap();
-                        KTerm::RecordTag { k_struct, location }
+                        KTerm::RecordTag { k_struct, loc }
                     }
                 }))
                 .collect();
@@ -1102,7 +1065,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args,
                 result_opt: None,
                 cont_count,
-                location,
+                loc,
             });
 
             // 分岐後の処理を生成する。
@@ -1123,7 +1086,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 }
 
                 let body = gen_expr(arm.body_opt.as_deref().unwrap(), gx);
-                gx.push_jump(next_label, vec![body], arm.location());
+                gx.push_jump(next_label, vec![body], arm.loc());
             }
 
             gx.push_label(next_label, vec![result.clone()]);
@@ -1136,21 +1099,21 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("while_result", location);
-            let unit_term = new_unit_term(location);
+            let loc = keyword.loc(&gx.tokens);
+            let result = gx.fresh_symbol("while_result", loc);
+            let unit_term = new_unit_term(loc);
 
             let KLoopData {
                 break_label: next_label,
                 continue_label,
             } = {
                 let n_loop = NLoop::from_index(loop_id_opt.unwrap());
-                let loop_data = fresh_loop_labels(location, gx);
+                let loop_data = fresh_loop_labels(loc, gx);
                 gx.current_loops[n_loop] = loop_data.clone();
                 loop_data
             };
 
-            gx.push_jump(continue_label, vec![], location);
+            gx.push_jump(continue_label, vec![], loc);
 
             gx.push_label(continue_label, vec![]);
 
@@ -1162,16 +1125,16 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 args: vec![k_cond],
                 result_opt: None,
                 cont_count: 2,
-                location,
+                loc,
             });
 
             // body:
             gen_block(body_opt.as_ref().unwrap(), gx);
 
-            gx.push_jump(continue_label, vec![], location);
+            gx.push_jump(continue_label, vec![], loc);
 
             // alt:
-            gx.push_jump(next_label, vec![unit_term.clone()], location);
+            gx.push_jump(next_label, vec![unit_term.clone()], loc);
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -1183,27 +1146,27 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             body_opt,
             loop_id_opt,
         }) => {
-            let location = keyword.location(&gx.tokens);
-            let result = gx.fresh_symbol("loop_result", location);
+            let loc = keyword.loc(&gx.tokens);
+            let result = gx.fresh_symbol("loop_result", loc);
 
             let KLoopData {
                 break_label: next_label,
                 continue_label,
             } = {
                 let n_loop = NLoop::from_index(loop_id_opt.unwrap());
-                let loop_data = fresh_loop_labels(location, gx);
+                let loop_data = fresh_loop_labels(loc, gx);
                 gx.current_loops[n_loop] = loop_data.clone();
                 loop_data
             };
 
-            gx.push_jump(continue_label.clone(), vec![], location);
+            gx.push_jump(continue_label.clone(), vec![], loc);
 
             gx.push_label(continue_label.clone(), vec![]);
 
             // body:
             gen_block(body_opt.as_ref().unwrap(), gx);
 
-            gx.push_jump(continue_label.clone(), vec![], location);
+            gx.push_jump(continue_label.clone(), vec![], loc);
 
             // next:
             gx.push_label(next_label, vec![result.clone()]);
@@ -1249,11 +1212,11 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             );
 
             let init = init_opt.as_ref().unwrap();
-            let init_location = init.location();
+            let init_loc = init.loc();
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
                 None => {
-                    error_node(init_location, "定数式として不正です", gx);
+                    error_node(init_loc, "定数式として不正です", gx);
                     None
                 }
             };
@@ -1274,11 +1237,11 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             );
 
             let init = init_opt.as_ref().unwrap();
-            let init_location = init.location();
+            let init_loc = init.loc();
             let value_opt = match gen_constant(init, gx) {
                 Some(value) => Some(value),
                 None => {
-                    error_node(init_location, "定数式として不正です", gx);
+                    error_node(init_loc, "定数式として不正です", gx);
                     None
                 }
             };
@@ -1291,7 +1254,7 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             fn_id_opt,
             ..
         }) => {
-            let location = keyword.location(&gx.tokens);
+            let loc = keyword.loc(&gx.tokens);
             let k_fn = KFn::from_index(fn_id_opt.unwrap());
 
             let parent_local_vars = {
@@ -1319,10 +1282,10 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
                 gx.push(KCommand::Node {
                     prim: KPrim::Jump,
                     tys: vec![],
-                    args: vec![KTerm::Return { k_fn, location }, result],
+                    args: vec![KTerm::Return { k_fn, loc }, result],
                     result_opt: None,
                     cont_count: 1,
-                    location,
+                    loc,
                 });
 
                 let commands = replace(&mut gx.current_commands, parent_commands);
@@ -1378,8 +1341,8 @@ fn gen_block(block: &PBlock, gx: &mut Gx) -> KTerm {
     match &block.last_opt {
         Some(last) => gen_expr(last, gx),
         None => {
-            let location = block.left_brace.location(&gx.tokens);
-            new_unit_term(location)
+            let loc = block.left_brace.loc(&gx.tokens);
+            new_unit_term(loc)
         }
     }
 }
@@ -1407,7 +1370,7 @@ pub(crate) fn cps_conversion(
                     None
                 },
                 parent_opt: n_const_data.parent_opt,
-                location: n_const_data.location,
+                loc: n_const_data.loc,
             })
             .collect();
 
@@ -1421,7 +1384,7 @@ pub(crate) fn cps_conversion(
                     // この段階では定数式は計算できない。
                     None
                 },
-                location: n_static_var_data.location,
+                loc: n_static_var_data.loc,
             })
             .collect();
 
@@ -1442,7 +1405,7 @@ pub(crate) fn cps_conversion(
                     .map(|symbol| symbol.local.of(&data.local_vars).ty.clone())
                     .collect(),
                 result_ty: data.result_ty.clone(),
-                location: data.location,
+                loc: data.loc,
             })
             .collect();
         let fns = n_fns
@@ -1454,11 +1417,8 @@ pub(crate) fn cps_conversion(
                         .local_vars
                         .iter()
                         .map(|n_local_var_data| {
-                            KLocalData::new(
-                                n_local_var_data.name.to_string(),
-                                n_local_var_data.location,
-                            )
-                            .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
+                            KLocalData::new(n_local_var_data.name.to_string(), n_local_var_data.loc)
+                                .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),
@@ -1481,7 +1441,7 @@ pub(crate) fn cps_conversion(
                     .map(|symbol| symbol.local.of(&data.local_vars).ty.clone())
                     .collect(),
                 result_ty: data.result_ty.clone(),
-                location: data.location,
+                loc: data.loc,
             })
             .collect();
         let k_extern_fns = n_extern_fns
@@ -1493,11 +1453,8 @@ pub(crate) fn cps_conversion(
                         .local_vars
                         .iter()
                         .map(|n_local_var_data| {
-                            KLocalData::new(
-                                n_local_var_data.name.to_string(),
-                                n_local_var_data.location,
-                            )
-                            .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
+                            KLocalData::new(n_local_var_data.name.to_string(), n_local_var_data.loc)
+                                .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
                         })
                         .collect(),
                 ),
@@ -1510,7 +1467,7 @@ pub(crate) fn cps_conversion(
             .map(|n_enum_data| KEnumOutline {
                 name: n_enum_data.name.to_string(),
                 variants: n_enum_data.variants.clone(),
-                location: n_enum_data.location,
+                loc: n_enum_data.loc,
             })
             .collect();
 
@@ -1521,7 +1478,7 @@ pub(crate) fn cps_conversion(
                 name: n_struct_data.name.to_string(),
                 fields: n_struct_data.fields.clone(),
                 parent_opt: n_struct_data.parent_opt.map(KStructParent::new),
-                location: n_struct_data.location,
+                loc: n_struct_data.loc,
             })
             .collect();
 
@@ -1531,7 +1488,7 @@ pub(crate) fn cps_conversion(
             .map(|n_field_data| KFieldOutline {
                 name: n_field_data.name.to_string(),
                 ty: n_field_data.ty.clone(),
-                location: n_field_data.location,
+                loc: n_field_data.loc,
             })
             .collect();
 

@@ -31,7 +31,7 @@ pub(crate) struct KConstData {
     pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 #[derive(Clone, Debug, PartialEq)]

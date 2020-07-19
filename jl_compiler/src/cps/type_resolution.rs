@@ -1,7 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
-use crate::{source::HaveLocation, source::Loc};
+use crate::{source::HaveLoc, source::Loc};
 use k_meta_ty::KMetaTyData;
 use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
 use k_ty::{KEnumOrStruct, KTy2, Variance};
@@ -50,16 +50,16 @@ impl<'a> Tx<'a> {
 
 struct UnificationContext<'a> {
     variance: Variance,
-    location: Loc,
+    loc: Loc,
     ty_env: &'a KTyEnv,
     logger: &'a Logger,
 }
 
 impl<'a> UnificationContext<'a> {
-    fn new(location: Loc, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
+    fn new(loc: Loc, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
         Self {
             variance: Variance::Co,
-            location,
+            loc,
             ty_env,
             logger,
         }
@@ -79,22 +79,22 @@ impl<'a> UnificationContext<'a> {
 
     fn bug_unresolved(&self, other: &KTy2) {
         log::error!(
-            "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, location={:?})",
+            "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?})",
             other.display(&self.ty_env),
-            self.location
+            self.loc
         );
     }
 
     fn error_ptr_mut(&self) {
         self.logger
-            .error(self.location, "ポインタの可変性に互換性がありません");
+            .error(self.loc, "ポインタの可変性に互換性がありません");
     }
 
     fn error_arity(&self, left: &KTy2, right: &KTy2) {
         let ty_env = &self.ty_env;
         // FIXME: エラーメッセージを改善
         self.logger.error(
-            self.location,
+            self.loc,
             format!(
                 "型引数の個数が一致しません {:?}",
                 (left.display(ty_env), right.display(ty_env))
@@ -105,7 +105,7 @@ impl<'a> UnificationContext<'a> {
     fn error_ununifiable(&self, left: &KTy2, right: &KTy2) {
         let ty_env = &self.ty_env;
         self.logger.error(
-            self.location,
+            self.loc,
             format!(
                 "型が一致しません ({} <- {})",
                 left.display(ty_env),
@@ -227,22 +227,20 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
-fn unify2(left: &KTy2, right: &KTy2, location: Loc, tx: &mut Tx) {
-    let mut ux = UnificationContext::new(location, &tx.ty_env, &tx.logger);
+fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
+    let mut ux = UnificationContext::new(loc, &tx.ty_env, &tx.logger);
     do_unify2(&left, &right, &mut ux);
 }
 
-fn fresh_meta_ty(location: Loc, tx: &mut Tx) -> KTy2 {
-    let meta_ty = tx
-        .ty_env
-        .alloc(KMetaTyData::new(RefCell::default(), location));
+fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
+    let meta_ty = tx.ty_env.alloc(KMetaTyData::new(RefCell::default(), loc));
     KTy2::Meta(meta_ty)
 }
 
 fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
     if symbol.ty(&tx.locals).is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(symbol.location(), tx),
+            None => fresh_meta_ty(symbol.loc(), tx),
             Some(ty) => ty.clone(),
         };
 
@@ -252,7 +250,7 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
 
     if let Some(expected_ty) = expected_ty_opt {
         let symbol_ty = symbol.ty(&tx.locals);
-        unify2(&symbol_ty, expected_ty, symbol.location, tx);
+        unify2(&symbol_ty, expected_ty, symbol.loc, tx);
     }
 }
 
@@ -276,7 +274,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
     }
 }
 
-fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
+fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     let outline = match alias
         .of(&tx.mod_outline.aliases)
         .referent_outline(&tx.mod_outlines)
@@ -284,7 +282,7 @@ fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
         Some(outline) => outline,
         None => {
             tx.logger.error(
-                location,
+                loc,
                 "解決されていないエイリアスの型が {unresolved} になりました",
             );
             return KTy2::Unresolved;
@@ -294,7 +292,7 @@ fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
     match outline {
         KProjectSymbolOutline::Mod(..) => {
             tx.logger.error(
-                location,
+                loc,
                 "モジュールを指すエイリアスを値として使うことはできません",
             );
             KTy2::Never
@@ -305,7 +303,7 @@ fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
             ..
         } => match symbol_outline {
             KModLocalSymbolOutline::Alias(alias, alias_data) => {
-                resolve_alias_term(alias, alias_data.location(), tx)
+                resolve_alias_term(alias, alias_data.loc(), tx)
             }
             KModLocalSymbolOutline::Const(_, const_data) => const_data.value_ty.to_ty2(k_mod),
             KModLocalSymbolOutline::StaticVar(_, static_var_outline) => {
@@ -317,12 +315,12 @@ fn resolve_alias_term(alias: KAlias, location: Loc, tx: &mut Tx) -> KTy2 {
             }
             KModLocalSymbolOutline::Enum(_, _) | KModLocalSymbolOutline::Struct(_, _) => {
                 tx.logger
-                    .unimpl(location, "インポートされた型の型検査は未実装です");
+                    .unimpl(loc, "インポートされた型の型検査は未実装です");
                 KTy2::Never
             }
             KModLocalSymbolOutline::LocalVar(..) => {
                 tx.logger
-                    .unexpected(location, "エイリアスがローカル変数を指すことはありません");
+                    .unexpected(loc, "エイリアスがローカル変数を指すことはありません");
                 KTy2::Never
             }
         },
@@ -337,7 +335,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Char { ty, .. } => ty.clone(),
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
-        KTerm::Alias { alias, location } => resolve_alias_term(*alias, *location, tx),
+        KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
         KTerm::Const { k_const, .. } => k_const.ty(&tx.mod_outline.consts).to_ty2(tx.k_mod),
         KTerm::StaticVar { static_var, .. } => {
             static_var.ty(&tx.mod_outline.static_vars).to_ty2(tx.k_mod)
@@ -376,7 +374,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: 引数の個数を検査する
 
                 for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
-                    unify2(param_ty, arg_ty, node.location, tx);
+                    unify2(param_ty, arg_ty, node.loc, tx);
                 }
             }
             _ => unimplemented!(),
@@ -391,7 +389,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: 引数の個数を検査する
 
                 for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
-                    unify2(param_ty, arg_ty, node.location, tx);
+                    unify2(param_ty, arg_ty, node.loc, tx);
                 }
                 resolve_symbol_def2(result, Some(&result_ty), tx);
             }
@@ -410,7 +408,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify2(
                         &field.ty(&tx.mod_outline.fields).to_ty2(tx.k_mod),
                         &arg_ty,
-                        node.location,
+                        node.loc,
                         tx,
                     );
                 }
@@ -429,7 +427,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             (
                 [left, KTerm::FieldTag(KFieldTag {
                     name: field_name,
-                    location,
+                    loc,
                 })],
                 [result],
             ) => {
@@ -455,7 +453,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     Some(ty.into_ptr(KMut::Const))
                 })()
                 .unwrap_or_else(|| {
-                    tx.logger.error(location, "bad type");
+                    tx.logger.error(loc, "bad type");
                     KTy2::Never
                 });
 
@@ -467,7 +465,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             (
                 [left, KTerm::FieldTag(KFieldTag {
                     name: field_name,
-                    location,
+                    loc,
                 })],
                 [result],
             ) => {
@@ -476,8 +474,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let result_ty = (|| {
                     let (k_mut, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     if let KMut::Const = k_mut {
-                        tx.logger
-                            .error(&left.location(), "unexpected const reference");
+                        tx.logger.error(&left.loc(), "unexpected const reference");
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
@@ -498,7 +495,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     Some(ty.into_ptr(k_mut))
                 })()
                 .unwrap_or_else(|| {
-                    tx.logger.error(location, "bad type");
+                    tx.logger.error(loc, "bad type");
                     KTy2::Never
                 });
 
@@ -509,7 +506,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::If => match node.args.as_mut_slice() {
             [cond] => {
                 let cond_ty = resolve_term(cond, tx);
-                unify2(&KTy2::BOOL, &cond_ty, node.location, tx);
+                unify2(&KTy2::BOOL, &cond_ty, node.loc, tx);
             }
             _ => unimplemented!(),
         },
@@ -536,7 +533,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
-                    tx.logger.error(&result.location, "expected a reference");
+                    tx.logger.error(&result.loc, "expected a reference");
                 }
                 resolve_symbol_def2(result, result_ty_opt.as_ref(), tx);
             }
@@ -604,10 +601,10 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let right_ty = resolve_term(right, tx);
 
                 if left_ty.is_ptr(&tx.ty_env) {
-                    unify2(&KTy2::USIZE, &right_ty, node.location, tx);
+                    unify2(&KTy2::USIZE, &right_ty, node.loc, tx);
                 } else {
                     // FIXME: iNN or uNN
-                    unify2(&left_ty, &right_ty, node.location, tx);
+                    unify2(&left_ty, &right_ty, node.loc, tx);
                 }
 
                 resolve_symbol_def2(result, Some(&left_ty), tx);
@@ -626,7 +623,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = resolve_term(left, tx);
                 let right_ty = resolve_term(right, tx);
                 // FIXME: iNN or uNN
-                unify2(&left_ty, &right_ty, node.location, tx);
+                unify2(&left_ty, &right_ty, node.loc, tx);
 
                 resolve_symbol_def2(result, Some(&left_ty), tx);
             }
@@ -643,7 +640,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let left_ty = resolve_term(left, tx);
                     let right_ty = resolve_term(right, tx);
                     // FIXME: Eq/Ord only
-                    unify2(&left_ty, &right_ty, node.location, tx);
+                    unify2(&left_ty, &right_ty, node.loc, tx);
 
                     resolve_symbol_def2(result, Some(&KTy2::BOOL), tx);
                 }
@@ -659,14 +656,13 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = match left_ty.as_ptr(&tx.ty_env) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
-                        tx.logger
-                            .error(&left.location(), "expected mutable reference");
+                        tx.logger.error(&left.loc(), "expected mutable reference");
                         left_ty
                     }
                     None => KTy2::Never,
                 };
 
-                unify2(&left_ty, &right_ty, node.location, tx);
+                unify2(&left_ty, &right_ty, node.loc, tx);
             }
             _ => unimplemented!(),
         },
@@ -679,16 +675,15 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // 左辺は lval なのでポインタ型のはず
                     let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
-                        tx.logger
-                            .error(&left.location(), "unexpected const reference");
+                        tx.logger.error(&left.loc(), "unexpected const reference");
                     }
 
                     // FIXME: add/sub と同じ
                     if left_ty.is_ptr(&tx.ty_env) {
-                        unify2(&KTy2::USIZE, &right_ty, node.location, tx);
+                        unify2(&KTy2::USIZE, &right_ty, node.loc, tx);
                     } else {
                         // FIXME: iNN or uNN
-                        unify2(&left_ty, &right_ty, node.location, tx);
+                        unify2(&left_ty, &right_ty, node.loc, tx);
                     }
                 }
                 _ => unimplemented!(),
@@ -710,13 +705,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // 左辺は lval なのでポインタ型のはず
                     let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
-                        tx.logger
-                            .error(&left.location(), "unexpected const reference");
+                        tx.logger.error(&left.loc(), "unexpected const reference");
                     }
 
                     // FIXME: mul/div/etc. と同じ
                     // FIXME: iNN or uNN
-                    unify2(&left_ty, &right_ty, node.location, tx);
+                    unify2(&left_ty, &right_ty, node.loc, tx);
                 }
                 _ => unimplemented!(),
             }
@@ -775,10 +769,8 @@ fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
     for field in k_struct.fields(&tx.mod_outline.structs) {
         if field.ty(&tx.mod_outline.fields).is_unresolved() {
             // FIXME: handle correctly. unresolved type crashes on unification for now
-            tx.logger.error(
-                &field.location(&tx.mod_outline.fields),
-                "unresolved field type",
-            );
+            tx.logger
+                .error(&field.loc(&tx.mod_outline.fields), "unresolved field type");
         }
     }
 }

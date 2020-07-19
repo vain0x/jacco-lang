@@ -18,7 +18,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
                 args,
                 result_opt,
                 cont_count,
-                location,
+                loc,
             } => {
                 let conts = repeat_with(|| do_fold(commands, fx))
                     .take(cont_count)
@@ -30,7 +30,7 @@ fn do_fold(commands: &mut Vec<KCommand>, fx: &mut Fx) -> KNode {
                     args,
                     results: result_opt.into_iter().collect(),
                     conts,
-                    location,
+                    loc,
                 };
             }
             KCommand::Label { label, params } => {

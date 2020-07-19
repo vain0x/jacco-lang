@@ -128,7 +128,7 @@ impl KEnumRepr {
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 impl KEnumOutline {

@@ -150,37 +150,37 @@ pub(crate) trait LocResolver {
     fn token_range(&self, doc: Doc, token: PToken) -> TRange;
 }
 
-pub(crate) trait HaveLocation {
-    fn location(&self) -> Loc;
+pub(crate) trait HaveLoc {
+    fn loc(&self) -> Loc;
 }
 
-impl HaveLocation for (Doc, TRange) {
-    fn location(&self) -> Loc {
+impl HaveLoc for (Doc, TRange) {
+    fn loc(&self) -> Loc {
         let (doc, range) = *self;
         Loc::Range { doc, range }
     }
 }
 
-impl<'a, T: HaveLocation> HaveLocation for &'a T {
-    fn location(&self) -> Loc {
-        T::location(*self)
+impl<'a, T: HaveLoc> HaveLoc for &'a T {
+    fn loc(&self) -> Loc {
+        T::loc(*self)
     }
 }
 
-impl<'a, T: HaveLocation> HaveLocation for &'a mut T {
-    fn location(&self) -> Loc {
-        T::location(*self)
+impl<'a, T: HaveLoc> HaveLoc for &'a mut T {
+    fn loc(&self) -> Loc {
+        T::loc(*self)
     }
 }
 
-impl HaveLocation for Loc {
-    fn location(&self) -> Loc {
+impl HaveLoc for Loc {
+    fn loc(&self) -> Loc {
         *self
     }
 }
 
-impl HaveLocation for TokenData {
-    fn location(&self) -> Loc {
-        TokenData::location(self)
+impl HaveLoc for TokenData {
+    fn loc(&self) -> Loc {
+        TokenData::loc(self)
     }
 }

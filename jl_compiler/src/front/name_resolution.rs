@@ -8,7 +8,7 @@ use crate::{
         KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
     },
     logs::DocLogger,
-    source::{HaveLocation, Loc},
+    source::{HaveLoc, Loc},
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
@@ -27,13 +27,13 @@ pub(crate) type NLoopArena = VecArena<NLoopTag, NLoopData>;
 
 #[derive(Clone)]
 pub(crate) struct NLoopData {
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) struct NLocalVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) type NLocalVarArena = VecArena<KLocalTag, NLocalVarData>;
@@ -44,7 +44,7 @@ pub(crate) struct NConstData {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
@@ -52,7 +52,7 @@ pub(crate) type NStaticVarArena = VecArena<KStaticVarTag, NStaticVarData>;
 pub(crate) struct NStaticVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) type NFnArena = VecArena<KFnTag, NFnData>;
@@ -62,7 +62,7 @@ pub(crate) struct NFnData {
     pub(crate) vis_opt: Option<KVis>,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
     // FIXME: クロージャのように関数境界を超えるローカル変数があると困るかもしれない
     pub(crate) local_vars: NLocalVarArena,
     pub(crate) loops: NLoopArena,
@@ -74,7 +74,7 @@ pub(crate) struct NExternFnData {
     pub(crate) name: String,
     pub(crate) params: Vec<KSymbol>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
     pub(crate) local_vars: NLocalVarArena,
 }
 
@@ -83,7 +83,7 @@ pub(crate) type NEnumArena = VecArena<KEnumTag, NEnumData>;
 pub(crate) struct NEnumData {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) type NStructArena = VecArena<KStructTag, NStructData>;
@@ -92,7 +92,7 @@ pub(crate) struct NStructData {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) parent_opt: Option<KEnum>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
@@ -100,7 +100,7 @@ pub(crate) type NFieldArena = VecArena<KFieldTag, NFieldData>;
 pub(crate) struct NFieldData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 #[derive(Copy, Clone)]
@@ -257,8 +257,8 @@ impl Nx {
         self.local_env = parent_env;
     }
 
-    fn enter_loop(&mut self, location: Loc, do_resolve: impl FnOnce(&mut Nx, NLoop)) {
-        let n_loop = self.parent_loops.alloc(NLoopData { location });
+    fn enter_loop(&mut self, loc: Loc, do_resolve: impl FnOnce(&mut Nx, NLoop)) {
+        let n_loop = self.parent_loops.alloc(NLoopData { loc });
 
         let parent_loop = replace(&mut self.parent_loop, Some(n_loop));
 
@@ -373,7 +373,7 @@ fn resolve_local_var_def(name: PName, nx: &mut Nx) -> KLocal {
     let local_var = nx.parent_local_vars.alloc(NLocalVarData {
         name: name.text(&nx.names).to_string(),
         ty: KTy::Unresolved,
-        location: name.location(),
+        loc: name.loc(),
     });
 
     resolve_name_def(name, NName::LocalVar(local_var), nx);
@@ -545,11 +545,11 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.location(nx.tokens());
+            let loc = keyword.loc(nx.tokens());
 
             resolve_expr_opt(cond_opt.as_deref_mut(), nx);
 
-            nx.enter_loop(location, |nx, n_loop| {
+            nx.enter_loop(loc, |nx, n_loop| {
                 *loop_id_opt = Some(n_loop.to_index());
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
@@ -560,9 +560,9 @@ fn resolve_expr(expr: &mut PExpr, nx: &mut Nx) {
             loop_id_opt,
             ..
         }) => {
-            let location = keyword.location(nx.tokens());
+            let loc = keyword.loc(nx.tokens());
 
-            nx.enter_loop(location, |nx, n_loop| {
+            nx.enter_loop(loc, |nx, n_loop| {
                 *loop_id_opt = Some(n_loop.to_index());
                 resolve_block_opt(body_opt.as_mut(), nx);
             });
@@ -593,7 +593,7 @@ fn resolve_param_list_opt(
 
         k_params.push(KSymbol {
             local,
-            location: param.name.location(),
+            loc: param.name.loc(),
         });
     }
 }
@@ -613,7 +613,7 @@ fn resolve_variant(
                 name: name.text(&nx.names).to_string(),
                 value_ty: KTy::Unresolved,
                 parent_opt,
-                location: name.location(),
+                loc: name.loc(),
             });
 
             resolve_qualified_name_def(*name, parent_name_opt, NName::Const(n_const), nx);
@@ -629,7 +629,7 @@ fn resolve_variant(
                 name: name.text(&nx.names).to_string(),
                 fields: vec![],
                 parent_opt,
-                location: name.location(),
+                loc: name.loc(),
             });
 
             resolve_qualified_name_def(*name, parent_name_opt, NName::Struct(n_struct), nx);
@@ -640,7 +640,7 @@ fn resolve_variant(
                 let n_field = nx.res.fields.alloc(NFieldData {
                     name: field.name.text(&nx.names).to_string(),
                     ty: KTy::Unresolved,
-                    location: name.location(),
+                    loc: name.loc(),
                 });
                 field.field_id_opt = Some(n_field.to_index());
                 n_fields.push(n_field);
@@ -682,7 +682,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 fn_id_opt,
                 ..
             }) => {
-                let location = keyword.location(nx.tokens());
+                let loc = keyword.loc(nx.tokens());
 
                 // alloc fn
                 let k_fn = nx.res.fns.alloc(NFnData {
@@ -690,7 +690,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     vis_opt: Default::default(),
                     params: Default::default(),
                     result_ty: Default::default(),
-                    location,
+                    loc,
                     local_vars: Default::default(),
                     loops: Default::default(),
                 });
@@ -709,16 +709,16 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 extern_fn_id_opt,
                 ..
             }) => {
-                let location = extern_keyword
-                    .location(nx.tokens())
-                    .unite(fn_keyword.location(nx.tokens()));
+                let loc = extern_keyword
+                    .loc(nx.tokens())
+                    .unite(fn_keyword.loc(nx.tokens()));
 
                 // alloc extern fn
                 let extern_fn = nx.res.extern_fns.alloc(NExternFnData {
                     name: Default::default(),
                     params: Default::default(),
                     result_ty: Default::default(),
-                    location,
+                    loc,
                     local_vars: Default::default(),
                 });
                 *extern_fn_id_opt = Some(extern_fn.to_index());
@@ -739,7 +739,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 let n_enum = nx.res.enums.alloc(NEnumData {
                     name: Default::default(),
                     variants: Default::default(),
-                    location: keyword.location(&nx.tokens()),
+                    loc: keyword.loc(&nx.tokens()),
                 });
 
                 let mut enum_name = String::new();
@@ -767,13 +767,11 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                 if let Some(p_name) = name_opt {
                     // alloc alias
                     let alias = {
-                        let location = p_name.of(&nx.names).token.of(&nx.tokens).location();
+                        let loc = p_name.of(&nx.names).token.of(&nx.tokens).loc();
                         let path = p_name.name_path(&nx.names, &nx.tokens);
                         let name = p_name.text(&nx.names).to_string();
 
-                        nx.res
-                            .aliases
-                            .alloc(KAliasOutline::new(name, path, location))
+                        nx.res.aliases.alloc(KAliasOutline::new(name, path, loc))
                     };
 
                     resolve_name_def(*p_name, NName::Alias(alias), nx);
@@ -824,7 +822,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                 name: String::new(),
                 value_ty: KTy::Unresolved,
                 parent_opt: None,
-                location: keyword.location(&nx.tokens()),
+                loc: keyword.loc(&nx.tokens()),
             });
 
             resolve_ty_opt(ty_opt.as_mut(), nx);
@@ -859,7 +857,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             let n_static_var = nx.res.static_vars.alloc(NStaticVarData {
                 name: String::new(),
                 ty: KTy::Unresolved,
-                location: keyword.location(&nx.tokens()),
+                loc: keyword.loc(&nx.tokens()),
             });
 
             resolve_ty_opt(ty_opt.as_mut(), nx);

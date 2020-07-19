@@ -9,7 +9,7 @@ use std::{collections::HashMap, rc::Rc};
 pub(crate) struct Occurrences {
     pub(crate) def_sites: HashMap<NAbsName, Vec<Loc>>,
     pub(crate) use_sites: HashMap<NAbsName, Vec<Loc>>,
-    // pub(crate) field_uses: Vec<(String, Location)>,
+    // pub(crate) field_uses: Vec<(String, Loc)>,
 }
 
 pub(crate) fn collect_occurrences(p_root: &PRoot, res: Rc<NameResolution>) -> Occurrences {
@@ -17,7 +17,7 @@ pub(crate) fn collect_occurrences(p_root: &PRoot, res: Rc<NameResolution>) -> Oc
     let mut occurrences = Occurrences::default();
 
     for (p_name, &(abs_name, def_or_use)) in res.occurrences.enumerate() {
-        let location = p_name.of(&p_root.names).token.of(&p_root.tokens).location();
+        let loc = p_name.of(&p_root.names).token.of(&p_root.tokens).loc();
 
         match def_or_use {
             DefOrUse::Def => {
@@ -25,14 +25,14 @@ pub(crate) fn collect_occurrences(p_root: &PRoot, res: Rc<NameResolution>) -> Oc
                     .def_sites
                     .entry(abs_name)
                     .or_insert(vec![])
-                    .push(location);
+                    .push(loc);
             }
             DefOrUse::Use => {
                 occurrences
                     .use_sites
                     .entry(abs_name)
                     .or_insert(vec![])
-                    .push(location);
+                    .push(loc);
             }
         }
     }

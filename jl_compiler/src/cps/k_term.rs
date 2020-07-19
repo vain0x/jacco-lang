@@ -5,67 +5,22 @@ use std::fmt::{self, Debug};
 /// CPS 原子項
 #[derive(Clone)]
 pub(crate) enum KTerm {
-    Unit {
-        location: Loc,
-    },
-    Int {
-        text: String,
-        ty: KTy2,
-        location: Loc,
-    },
-    Float {
-        text: String,
-        ty: KTy2,
-        location: Loc,
-    },
-    Char {
-        text: String,
-        ty: KTy2,
-        location: Loc,
-    },
-    Str {
-        text: String,
-        location: Loc,
-    },
-    True {
-        location: Loc,
-    },
-    False {
-        location: Loc,
-    },
+    Unit { loc: Loc },
+    Int { text: String, ty: KTy2, loc: Loc },
+    Float { text: String, ty: KTy2, loc: Loc },
+    Char { text: String, ty: KTy2, loc: Loc },
+    Str { text: String, loc: Loc },
+    True { loc: Loc },
+    False { loc: Loc },
     Name(KSymbol),
-    Alias {
-        alias: KAlias,
-        location: Loc,
-    },
-    Const {
-        k_const: KConst,
-        location: Loc,
-    },
-    StaticVar {
-        static_var: KStaticVar,
-        location: Loc,
-    },
-    Fn {
-        k_fn: KFn,
-        location: Loc,
-    },
-    Label {
-        label: KLabel,
-        location: Loc,
-    },
-    Return {
-        k_fn: KFn,
-        location: Loc,
-    },
-    ExternFn {
-        extern_fn: KExternFn,
-        location: Loc,
-    },
-    RecordTag {
-        k_struct: KStruct,
-        location: Loc,
-    },
+    Alias { alias: KAlias, loc: Loc },
+    Const { k_const: KConst, loc: Loc },
+    StaticVar { static_var: KStaticVar, loc: Loc },
+    Fn { k_fn: KFn, loc: Loc },
+    Label { label: KLabel, loc: Loc },
+    Return { k_fn: KFn, loc: Loc },
+    ExternFn { extern_fn: KExternFn, loc: Loc },
+    RecordTag { k_struct: KStruct, loc: Loc },
     FieldTag(KFieldTag),
 }
 
@@ -109,25 +64,25 @@ impl KTerm {
         }
     }
 
-    pub(crate) fn location(&self) -> Loc {
+    pub(crate) fn loc(&self) -> Loc {
         match self {
-            KTerm::Unit { location }
-            | KTerm::Int { location, .. }
-            | KTerm::Float { location, .. }
-            | KTerm::Char { location, .. }
-            | KTerm::Str { location, .. }
-            | KTerm::True { location }
-            | KTerm::False { location }
-            | KTerm::Name(KSymbol { location, .. })
-            | KTerm::Alias { location, .. }
-            | KTerm::Const { location, .. }
-            | KTerm::StaticVar { location, .. }
-            | KTerm::Fn { location, .. }
-            | KTerm::Label { location, .. }
-            | KTerm::Return { location, .. }
-            | KTerm::ExternFn { location, .. }
-            | KTerm::RecordTag { location, .. }
-            | KTerm::FieldTag(KFieldTag { location, .. }) => *location,
+            KTerm::Unit { loc }
+            | KTerm::Int { loc, .. }
+            | KTerm::Float { loc, .. }
+            | KTerm::Char { loc, .. }
+            | KTerm::Str { loc, .. }
+            | KTerm::True { loc }
+            | KTerm::False { loc }
+            | KTerm::Name(KSymbol { loc, .. })
+            | KTerm::Alias { loc, .. }
+            | KTerm::Const { loc, .. }
+            | KTerm::StaticVar { loc, .. }
+            | KTerm::Fn { loc, .. }
+            | KTerm::Label { loc, .. }
+            | KTerm::Return { loc, .. }
+            | KTerm::ExternFn { loc, .. }
+            | KTerm::RecordTag { loc, .. }
+            | KTerm::FieldTag(KFieldTag { loc, .. }) => *loc,
         }
     }
 }

@@ -48,7 +48,7 @@ pub(crate) struct KFnOutline {
     pub(crate) vis_opt: Option<KVis>,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }
 
 impl KFnOutline {

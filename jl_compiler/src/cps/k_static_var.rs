@@ -25,5 +25,5 @@ pub(crate) struct KStaticVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }

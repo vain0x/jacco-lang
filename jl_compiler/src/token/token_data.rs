@@ -7,16 +7,12 @@ use std::fmt::{self, Debug, Formatter};
 pub(crate) struct TokenData {
     kind: TokenKind,
     text: String,
-    location: Loc,
+    loc: Loc,
 }
 
 impl TokenData {
-    pub(crate) fn new(kind: TokenKind, text: String, location: Loc) -> Self {
-        TokenData {
-            kind,
-            text,
-            location,
-        }
+    pub(crate) fn new(kind: TokenKind, text: String, loc: Loc) -> Self {
+        TokenData { kind, text, loc }
     }
 
     pub(crate) fn kind(&self) -> TokenKind {
@@ -27,8 +23,8 @@ impl TokenData {
         &self.text
     }
 
-    pub(crate) fn location(&self) -> Loc {
-        self.location
+    pub(crate) fn loc(&self) -> Loc {
+        self.loc
     }
 }
 
@@ -37,7 +33,7 @@ impl TakeOut for TokenData {
         TokenData::new(
             self.kind.take_out(),
             self.text.take_out(),
-            self.location.take_out(),
+            self.loc.take_out(),
         )
     }
 }

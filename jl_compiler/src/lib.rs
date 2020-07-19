@@ -223,7 +223,7 @@ mod source {
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::{HaveLocation, Loc};
+    pub(crate) use loc::{HaveLoc, Loc};
     pub(crate) use t_pos::TPos;
     pub(crate) use t_pos16::TPos16;
     pub(crate) use t_range::TRange;

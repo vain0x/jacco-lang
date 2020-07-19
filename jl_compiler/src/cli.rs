@@ -168,7 +168,7 @@ impl Project {
             for (doc, items) in logs_list {
                 let doc_data = &self.docs[doc.inner()];
                 for item in items {
-                    let range = TRange::from(item.location().range());
+                    let range = TRange::from(item.loc().range());
                     let message = item.message().to_string();
                     errors.push((doc, doc_data.path.as_path(), range, message));
                 }
@@ -210,7 +210,7 @@ impl Project {
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {
-                let doc = match item.location() {
+                let doc = match item.loc() {
                     Loc::Unknown(name) => {
                         error!("'{}' {}", name, item.message());
                         continue;
@@ -219,7 +219,7 @@ impl Project {
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();
-                let range = TRange::from(item.location().range());
+                let range = TRange::from(item.loc().range());
                 let message = item.message().to_string();
                 errors.push((doc, path, range, message));
             }
@@ -331,7 +331,7 @@ impl<'a> LocResolver for MyLocResolver<'a> {
     }
 
     fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
-        token.location(self.tokens).range().into()
+        token.loc(self.tokens).range().into()
     }
 }
 

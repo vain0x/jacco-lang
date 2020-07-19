@@ -64,5 +64,5 @@ pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
     pub(crate) parent_opt: Option<KStructParent>,
-    pub(crate) location: Loc,
+    pub(crate) loc: Loc,
 }

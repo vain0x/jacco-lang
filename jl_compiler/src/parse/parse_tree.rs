@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::{
-    source::{HaveLocation, Loc, TRange},
+    source::{HaveLoc, Loc, TRange},
     token::TokenSource,
     utils::{VecArena, VecArenaId},
 };
@@ -31,8 +31,8 @@ impl PLoc {
 
     pub(crate) fn range(self, root: &PRoot) -> TRange {
         match self {
-            PLoc::Token(token) => token.of(&root.tokens).location().range(),
-            PLoc::TokenBehind(token) => token.of(&root.tokens).location().range().behind(),
+            PLoc::Token(token) => token.of(&root.tokens).loc().range(),
+            PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().behind(),
         }
     }
 }
@@ -551,8 +551,8 @@ impl PRoot {
 macro_rules! impl_node {
     ($($node_ty:ty),* $(,)?) => {
         $(
-            impl HaveLocation for $node_ty {
-                fn location(&self) -> Loc {
+            impl HaveLoc for $node_ty {
+                fn loc(&self) -> Loc {
                     Loc::new(TokenSource::Special(stringify!($node_ty)), TRange::ZERO)
                 }
             }

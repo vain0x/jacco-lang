@@ -335,7 +335,7 @@ fn parse_decl_with_vis(vis: PVis, px: &mut Px) -> Option<PDecl> {
         TokenKind::Enum => PDecl::Enum(parse_enum_decl(Some(vis), px)),
         _ => {
             px.logger()
-                .error(&vis.1.location(px.tokens()), "unexpected visibility");
+                .error(&vis.1.loc(px.tokens()), "unexpected visibility");
             return None;
         }
     };
