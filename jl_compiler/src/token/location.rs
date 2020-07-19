@@ -7,50 +7,37 @@ use std::fmt::{self, Debug, Formatter};
 
 /// トークンや構文木の位置情報
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum Location {
-    Default(&'static str),
-    Loc(Loc),
-}
+pub(crate) struct Location(Loc);
 
 impl Location {
     pub(crate) fn new(source: TokenSource, range: TRange) -> Location {
         match source {
-            TokenSource::Special(name) => Location::Default(name),
-            TokenSource::File(doc) => Location::Loc(Loc::Range { doc, range }),
+            TokenSource::Special(name) => Location(Loc::Unknown(name)),
+            TokenSource::File(doc) => Location(Loc::Range { doc, range }),
         }
+    }
+
+    pub(crate) fn into_loc(self) -> Loc {
+        self.0
     }
 
     pub(crate) fn range(&self) -> TRange {
-        match self {
-            Location::Loc(Loc::Range { range, .. }) => *range,
-            _ => TRange::ZERO,
-        }
+        self.0.range_opt().unwrap_or(TRange::ZERO)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn unite(self, other: Location) -> Location {
-        match (self, other) {
-            (Location::Default(_), Location::Default(_)) => self,
-            (Location::Loc(left), Location::Loc(right)) => Location::Loc(left.unite(right)),
-            (Location::Loc(loc), _) | (_, Location::Loc(loc)) => Location::Loc(loc),
-        }
+        Location(self.0.unite(other.into_loc()))
     }
 
     #[allow(unused)]
     pub(crate) fn behind(self) -> Location {
-        match self {
-            Location::Default(_) => self,
-            Location::Loc(loc) => Location::Loc(loc.behind()),
-        }
+        Location(self.0.behind())
     }
 }
 
 impl Debug for Location {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Location::Default(name) => write!(f, "{}", name),
-            Location::Loc(loc) => Debug::fmt(loc, f),
-        }
+        Debug::fmt(&self.0, f)
     }
 }
 
@@ -67,7 +54,7 @@ pub(crate) trait HaveLocation {
 impl HaveLocation for (Doc, TRange) {
     fn location(&self) -> Location {
         let (doc, range) = *self;
-        Location::Loc(Loc::Range { doc, range })
+        Location(Loc::Range { doc, range })
     }
 }
 

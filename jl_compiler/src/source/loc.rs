@@ -1,12 +1,13 @@
 use super::{Doc, TRange};
 use crate::parse::PToken;
-use std::{
-    fmt::{self, Debug, Formatter},
-    path::Path,
-};
+use std::{fmt::Debug, path::Path};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+/// 位置情報
+///
+/// QUESTION: 中間表現がトークンの番号を参照することの是非?
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum Loc {
+    Unknown(&'static str),
     Range {
         doc: Doc,
         range: TRange,
@@ -26,16 +27,13 @@ pub(crate) enum Loc {
     },
 }
 
-impl Loc {
-    pub(crate) fn doc(self) -> Doc {
-        match self {
-            Loc::Range { doc, .. } => doc,
-            Loc::Token { doc, .. } => doc,
-            Loc::TokenBehind { doc, .. } => doc,
-            Loc::TokenRange { doc, .. } => doc,
-        }
+impl Default for Loc {
+    fn default() -> Loc {
+        Loc::Unknown("<Loc::default>")
     }
+}
 
+impl Loc {
     pub(crate) fn new_token_range(doc: Doc, first: PToken, last: PToken) -> Self {
         assert!(first <= last);
         if first == last {
@@ -45,16 +43,42 @@ impl Loc {
         Loc::TokenRange { doc, first, last }
     }
 
+    pub(crate) fn doc_opt(self) -> Result<Doc, &'static str> {
+        match self {
+            Loc::Unknown(hint) => Err(hint),
+            Loc::Range { doc, .. }
+            | Loc::Token { doc, .. }
+            | Loc::TokenBehind { doc, .. }
+            | Loc::TokenRange { doc, .. } => Ok(doc),
+        }
+    }
+
+    pub(crate) fn doc(self) -> Doc {
+        self.doc_opt().unwrap_or(Doc::MAX)
+    }
+
+    pub(crate) fn range_opt(self) -> Result<TRange, &'static str> {
+        match self {
+            Loc::Range { range, .. } => Ok(range),
+            Loc::Unknown(hint) => Err(hint),
+            Loc::Token { .. } | Loc::TokenBehind { .. } | Loc::TokenRange { .. } => {
+                Err("<Loc::range_opt>")
+            }
+        }
+    }
+
     pub(crate) fn unite(self, other: Loc) -> Self {
         if self.doc() != other.doc() {
             log::error!(
-                "異なるドキュメントのロケーションを併合できません {:?}",
+                "[BUG] 異なるドキュメントのロケーションを併合できません {:?}",
                 (self, other)
             );
             return self;
         }
 
         match (self, other) {
+            (Loc::Unknown(..), Loc::Unknown(..)) => self,
+            (Loc::Unknown(..), other) | (other, Loc::Unknown(..)) => other,
             (Loc::Range { doc, range }, Loc::Range { range: other, .. }) => Loc::Range {
                 doc,
                 range: range.unite(&other),
@@ -74,28 +98,14 @@ impl Loc {
                     ..
                 },
             ) => Loc::new_token_range(doc, first.min(other_first), last.max(other_last)),
-            _ => {
+            (Loc::Range { .. }, _)
+            | (_, Loc::Range { .. })
+            | (Loc::TokenBehind { .. }, _)
+            | (_, Loc::TokenBehind { .. }) => {
                 log::error!("ロケーションを併合できません ({:?})", (self, other));
                 self
             }
         }
-    }
-}
-
-impl Debug for Loc {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        // Debug::fmt(&self.doc, f)?;
-
-        // FIXME: base の位置情報
-        // write!(f, " ")?;
-        // Debug::fmt(&self.token, f)?;
-
-        // match self.part {
-        //     LocPart::Range => {}
-        //     LocPart::Ahead => write!(f, ":ahead")?,
-        //     LocPart::Behind => write!(f, ":behind")?,
-        // }
-        Ok(())
     }
 }
 
@@ -107,8 +117,8 @@ impl Loc {
                 range: range.behind(),
             },
             Loc::Token { doc, token } => Loc::TokenBehind { doc, token },
-            Loc::TokenBehind { .. } => self,
             Loc::TokenRange { doc, last, .. } => Loc::TokenBehind { doc, token: last },
+            Loc::Unknown(..) | Loc::TokenBehind { .. } => self,
         }
     }
 }

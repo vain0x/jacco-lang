@@ -10,6 +10,8 @@ pub struct Doc {
 }
 
 impl Doc {
+    pub(crate) const MAX: Doc = Doc { raw_id: RawId::MAX };
+
     pub(crate) const fn new(id: usize) -> Self {
         Self {
             raw_id: RawId::from_index(id),

@@ -75,9 +75,9 @@ impl LogItem {
     pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
         match self {
             LogItem::OnLocation { message, location } => {
-                let path_opt = match location {
-                    Location::Default(name) => Some(PathBuf::from(name)),
-                    Location::Loc(loc) => resolver.doc_path(loc.doc()).map(PathBuf::from),
+                let path_opt = match location.into_loc().doc_opt() {
+                    Ok(doc) => resolver.doc_path(doc).map(PathBuf::from),
+                    Err(name) => Some(PathBuf::from(name)),
                 };
                 let range = TRange::from(location.range());
                 (message, path_opt, range)
