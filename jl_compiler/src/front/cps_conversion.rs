@@ -333,7 +333,7 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
     match result {
         Ok((_, number_ty)) => {
             let token_data = token.of(&gx.tokens).clone();
-            let ty = KTy2::from(number_ty);
+            let ty = KTy2::Number(number_ty);
             match number_ty {
                 KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float(token_data, ty),
                 KNumberTy::C8 | KNumberTy::C16 | KNumberTy::C32 | KNumberTy::CNN => {

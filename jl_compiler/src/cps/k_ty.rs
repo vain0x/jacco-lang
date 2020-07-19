@@ -6,8 +6,9 @@ pub(crate) enum KEnumOrStruct {
     Struct(KMod, KStruct),
 }
 
+/// 組み込みの数値型
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub(crate) enum KBasicTy {
+pub(crate) enum KNumberTy {
     I8,
     I16,
     I32,
@@ -37,34 +38,34 @@ pub(crate) enum KBasicTy {
     Bool,
 }
 
-impl KBasicTy {
+impl KNumberTy {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
-            KBasicTy::I8 => "i8",
-            KBasicTy::I16 => "i16",
-            KBasicTy::I32 => "i32",
-            KBasicTy::I64 => "i64",
-            KBasicTy::Isize => "isize",
-            KBasicTy::INN => "{iNN}",
-            KBasicTy::U8 => "u8",
-            KBasicTy::U16 => "u16",
-            KBasicTy::U32 => "u32",
-            KBasicTy::U64 => "u64",
-            KBasicTy::Usize => "usize",
-            KBasicTy::UNN => "{uNN}",
-            KBasicTy::F32 => "f32",
-            KBasicTy::F64 => "f64",
-            KBasicTy::FNN => "{fNN}",
-            KBasicTy::C8 => "c8",
-            KBasicTy::C16 => "c16",
-            KBasicTy::C32 => "c32",
-            KBasicTy::CNN => "{cNN}",
-            KBasicTy::Bool => "bool",
+            KNumberTy::I8 => "i8",
+            KNumberTy::I16 => "i16",
+            KNumberTy::I32 => "i32",
+            KNumberTy::I64 => "i64",
+            KNumberTy::Isize => "isize",
+            KNumberTy::INN => "{iNN}",
+            KNumberTy::U8 => "u8",
+            KNumberTy::U16 => "u16",
+            KNumberTy::U32 => "u32",
+            KNumberTy::U64 => "u64",
+            KNumberTy::Usize => "usize",
+            KNumberTy::UNN => "{uNN}",
+            KNumberTy::F32 => "f32",
+            KNumberTy::F64 => "f64",
+            KNumberTy::FNN => "{fNN}",
+            KNumberTy::C8 => "c8",
+            KNumberTy::C16 => "c16",
+            KNumberTy::C32 => "c32",
+            KNumberTy::CNN => "{cNN}",
+            KNumberTy::Bool => "bool",
         }
     }
 }
 
-impl Debug for KBasicTy {
+impl Debug for KNumberTy {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }
@@ -79,7 +80,7 @@ pub(crate) enum KTy2 {
     Meta(KMetaTy),
     Never,
     Unit,
-    Basic(KBasicTy),
+    Number(KNumberTy),
     Ptr {
         k_mut: KMut,
         base_ty: Box<KTy2>,
@@ -94,37 +95,37 @@ pub(crate) enum KTy2 {
 
 impl KTy2 {
     #[allow(unused)]
-    pub(crate) const I8: KTy2 = KTy2::Basic(KBasicTy::I8);
+    pub(crate) const I8: KTy2 = KTy2::Number(KNumberTy::I8);
     #[allow(unused)]
-    pub(crate) const I16: KTy2 = KTy2::Basic(KBasicTy::I16);
-    pub(crate) const I32: KTy2 = KTy2::Basic(KBasicTy::I32);
-    pub(crate) const I64: KTy2 = KTy2::Basic(KBasicTy::I64);
-    pub(crate) const ISIZE: KTy2 = KTy2::Basic(KBasicTy::Isize);
+    pub(crate) const I16: KTy2 = KTy2::Number(KNumberTy::I16);
+    pub(crate) const I32: KTy2 = KTy2::Number(KNumberTy::I32);
+    pub(crate) const I64: KTy2 = KTy2::Number(KNumberTy::I64);
+    pub(crate) const ISIZE: KTy2 = KTy2::Number(KNumberTy::Isize);
     #[allow(unused)]
-    pub(crate) const INN: KTy2 = KTy2::Basic(KBasicTy::INN);
+    pub(crate) const INN: KTy2 = KTy2::Number(KNumberTy::INN);
     #[allow(unused)]
-    pub(crate) const U8: KTy2 = KTy2::Basic(KBasicTy::U8);
+    pub(crate) const U8: KTy2 = KTy2::Number(KNumberTy::U8);
     #[allow(unused)]
-    pub(crate) const U16: KTy2 = KTy2::Basic(KBasicTy::U16);
+    pub(crate) const U16: KTy2 = KTy2::Number(KNumberTy::U16);
     #[allow(unused)]
-    pub(crate) const U32: KTy2 = KTy2::Basic(KBasicTy::U32);
-    pub(crate) const U64: KTy2 = KTy2::Basic(KBasicTy::U64);
-    pub(crate) const USIZE: KTy2 = KTy2::Basic(KBasicTy::Usize);
+    pub(crate) const U32: KTy2 = KTy2::Number(KNumberTy::U32);
+    pub(crate) const U64: KTy2 = KTy2::Number(KNumberTy::U64);
+    pub(crate) const USIZE: KTy2 = KTy2::Number(KNumberTy::Usize);
     #[allow(unused)]
-    pub(crate) const UNN: KTy2 = KTy2::Basic(KBasicTy::UNN);
+    pub(crate) const UNN: KTy2 = KTy2::Number(KNumberTy::UNN);
     #[allow(unused)]
-    pub(crate) const F32: KTy2 = KTy2::Basic(KBasicTy::F32);
-    pub(crate) const F64: KTy2 = KTy2::Basic(KBasicTy::F64);
+    pub(crate) const F32: KTy2 = KTy2::Number(KNumberTy::F32);
+    pub(crate) const F64: KTy2 = KTy2::Number(KNumberTy::F64);
     #[allow(unused)]
-    pub(crate) const FNN: KTy2 = KTy2::Basic(KBasicTy::FNN);
-    pub(crate) const C8: KTy2 = KTy2::Basic(KBasicTy::C8);
+    pub(crate) const FNN: KTy2 = KTy2::Number(KNumberTy::FNN);
+    pub(crate) const C8: KTy2 = KTy2::Number(KNumberTy::C8);
     #[allow(unused)]
-    pub(crate) const C16: KTy2 = KTy2::Basic(KBasicTy::C16);
+    pub(crate) const C16: KTy2 = KTy2::Number(KNumberTy::C16);
     #[allow(unused)]
-    pub(crate) const C32: KTy2 = KTy2::Basic(KBasicTy::C32);
+    pub(crate) const C32: KTy2 = KTy2::Number(KNumberTy::C32);
     #[allow(unused)]
-    pub(crate) const CNN: KTy2 = KTy2::Basic(KBasicTy::CNN);
-    pub(crate) const BOOL: KTy2 = KTy2::Basic(KBasicTy::Bool);
+    pub(crate) const CNN: KTy2 = KTy2::Number(KNumberTy::CNN);
+    pub(crate) const BOOL: KTy2 = KTy2::Number(KNumberTy::Bool);
 
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy2 {
         KTy2::Ptr {
@@ -153,7 +154,7 @@ impl KTy2 {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::Unit,
-            KTy::Basic(basic_ty) => KTy2::Basic(basic_ty),
+            KTy::Number(basic_ty) => KTy2::Number(basic_ty),
             KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
             KTy::Fn {
                 param_tys,
@@ -203,7 +204,7 @@ impl KTy2 {
     // FIXME: const enum も primitive とみなす
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
-            KTy2::Basic(_) => true,
+            KTy2::Number(_) => true,
             KTy2::Ptr { .. } => true,
             _ => false,
         })
@@ -278,7 +279,7 @@ impl Debug for KTy2 {
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Never => write!(f, "!"),
             KTy2::Unit => write!(f, "()"),
-            KTy2::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
+            KTy2::Number(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy2::Ptr { k_mut, base_ty } => {
                 match k_mut {
                     KMut::Const => write!(f, "*")?,
@@ -310,7 +311,7 @@ pub(crate) enum KTy {
     Unresolved,
     Never,
     Unit,
-    Basic(KBasicTy),
+    Number(KNumberTy),
     Ptr {
         k_mut: KMut,
         ty: Box<KTy>,
@@ -325,22 +326,22 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
-    pub(crate) const I8: KTy = KTy::Basic(KBasicTy::I8);
-    pub(crate) const I16: KTy = KTy::Basic(KBasicTy::I16);
-    pub(crate) const I32: KTy = KTy::Basic(KBasicTy::I32);
-    pub(crate) const I64: KTy = KTy::Basic(KBasicTy::I64);
-    pub(crate) const ISIZE: KTy = KTy::Basic(KBasicTy::Isize);
-    pub(crate) const U8: KTy = KTy::Basic(KBasicTy::U8);
-    pub(crate) const U16: KTy = KTy::Basic(KBasicTy::U16);
-    pub(crate) const U32: KTy = KTy::Basic(KBasicTy::U32);
-    pub(crate) const U64: KTy = KTy::Basic(KBasicTy::U64);
-    pub(crate) const USIZE: KTy = KTy::Basic(KBasicTy::Usize);
-    pub(crate) const F32: KTy = KTy::Basic(KBasicTy::F32);
-    pub(crate) const F64: KTy = KTy::Basic(KBasicTy::F64);
-    pub(crate) const C8: KTy = KTy::Basic(KBasicTy::C8);
-    pub(crate) const C16: KTy = KTy::Basic(KBasicTy::C16);
-    pub(crate) const C32: KTy = KTy::Basic(KBasicTy::C32);
-    pub(crate) const BOOL: KTy = KTy::Basic(KBasicTy::Bool);
+    pub(crate) const I8: KTy = KTy::Number(KNumberTy::I8);
+    pub(crate) const I16: KTy = KTy::Number(KNumberTy::I16);
+    pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
+    pub(crate) const I64: KTy = KTy::Number(KNumberTy::I64);
+    pub(crate) const ISIZE: KTy = KTy::Number(KNumberTy::Isize);
+    pub(crate) const U8: KTy = KTy::Number(KNumberTy::U8);
+    pub(crate) const U16: KTy = KTy::Number(KNumberTy::U16);
+    pub(crate) const U32: KTy = KTy::Number(KNumberTy::U32);
+    pub(crate) const U64: KTy = KTy::Number(KNumberTy::U64);
+    pub(crate) const USIZE: KTy = KTy::Number(KNumberTy::Usize);
+    pub(crate) const F32: KTy = KTy::Number(KNumberTy::F32);
+    pub(crate) const F64: KTy = KTy::Number(KNumberTy::F64);
+    pub(crate) const C8: KTy = KTy::Number(KNumberTy::C8);
+    pub(crate) const C16: KTy = KTy::Number(KNumberTy::C16);
+    pub(crate) const C32: KTy = KTy::Number(KNumberTy::C32);
+    pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
 
     pub(crate) fn to_ty2(&self, k_mod: KMod) -> KTy2 {
         KTy2::from_ty1(self.clone(), k_mod)
@@ -369,7 +370,7 @@ impl KTy {
 
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty_map(self, ty_env, |ty| match *ty {
-            KTy::Basic(_) => true,
+            KTy::Number(_) => true,
             KTy::Ptr { .. } => true,
             _ => false,
         })
@@ -395,7 +396,7 @@ impl Debug for KTy {
             KTy::Unresolved => write!(f, "???"),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
-            KTy::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
+            KTy::Number(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;
                 if let KMut::Mut = k_mut {

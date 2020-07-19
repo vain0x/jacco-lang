@@ -114,7 +114,11 @@ impl<'a> UnificationContext<'a> {
     }
 }
 
-fn can_cast_number(_left: &KBasicTy, _right: &KBasicTy, _ux: &mut UnificationContext<'_>) -> bool {
+fn can_cast_number(
+    _left: &KNumberTy,
+    _right: &KNumberTy,
+    _ux: &mut UnificationContext<'_>,
+) -> bool {
     // FIXME: right が不特定型(INN/UNN/FNN/CNN)なら左辺の型へのキャストを試みる。丸め誤差が生じたりオーバーフローが起こるなら false。変性に注意
     true
 }
@@ -132,7 +136,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         // 左右の型が完全に一致するケース:
         (KTy2::Meta(..), KTy2::Meta(..))
         | (KTy2::Unit, KTy2::Unit)
-        | (KTy2::Basic(..), KTy2::Basic(..))
+        | (KTy2::Number(..), KTy2::Number(..))
         | (KTy2::Enum(..), KTy2::Enum(..))
         | (KTy2::Struct(..), KTy2::Struct(..))
             if left == right => {}
@@ -157,7 +161,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         }
 
         // その他、型ごとのルール
-        (KTy2::Basic(left), KTy2::Basic(right)) if can_cast_number(left, right, ux) => {}
+        (KTy2::Number(left), KTy2::Number(right)) if can_cast_number(left, right, ux) => {}
         (
             KTy2::Ptr {
                 k_mut,
@@ -210,7 +214,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         // 不一致
         (KTy2::Never, _)
         | (KTy2::Unit, _)
-        | (KTy2::Basic(_), _)
+        | (KTy2::Number(_), _)
         | (KTy2::Ptr { .. }, _)
         | (KTy2::Fn { .. }, _)
         | (KTy2::Enum(..), _)

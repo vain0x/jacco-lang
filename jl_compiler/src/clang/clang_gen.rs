@@ -182,18 +182,18 @@ fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx:
     });
 }
 
-fn gen_basic_ty(basic_ty: KBasicTy) -> CTy {
+fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     match basic_ty {
-        KBasicTy::I8 => CTy::SignedChar,
-        KBasicTy::I16 => CTy::Short,
-        KBasicTy::I32 | KBasicTy::CNN | KBasicTy::Bool => CTy::Int,
-        KBasicTy::I64 | KBasicTy::Isize | KBasicTy::INN => CTy::LongLong,
-        KBasicTy::U8 | KBasicTy::C8 => CTy::UnsignedChar,
-        KBasicTy::U16 | KBasicTy::C16 => CTy::UnsignedShort,
-        KBasicTy::U32 | KBasicTy::C32 => CTy::UnsignedInt,
-        KBasicTy::U64 | KBasicTy::Usize | KBasicTy::UNN => CTy::UnsignedLongLong,
-        KBasicTy::F32 => CTy::Float,
-        KBasicTy::F64 | KBasicTy::FNN => CTy::Double,
+        KNumberTy::I8 => CTy::SignedChar,
+        KNumberTy::I16 => CTy::Short,
+        KNumberTy::I32 | KNumberTy::CNN | KNumberTy::Bool => CTy::Int,
+        KNumberTy::I64 | KNumberTy::Isize | KNumberTy::INN => CTy::LongLong,
+        KNumberTy::U8 | KNumberTy::C8 => CTy::UnsignedChar,
+        KNumberTy::U16 | KNumberTy::C16 => CTy::UnsignedShort,
+        KNumberTy::U32 | KNumberTy::C32 => CTy::UnsignedInt,
+        KNumberTy::U64 | KNumberTy::Usize | KNumberTy::UNN => CTy::UnsignedLongLong,
+        KNumberTy::F32 => CTy::Float,
+        KNumberTy::F64 | KNumberTy::FNN => CTy::Double,
     }
 }
 
@@ -235,7 +235,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             error!("Unexpected fn type {:?}", ty);
             CTy::Other("/* fn */ void")
         }
-        KTy::Basic(basic_ty) => gen_basic_ty(*basic_ty),
+        KTy::Number(basic_ty) => gen_basic_ty(*basic_ty),
         KTy::Ptr { k_mut, ty } => {
             let mut ty = gen_ty(&ty, ty_env, cx);
             if let KMut::Const = k_mut {
@@ -272,7 +272,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         },
         KTy2::Never => CTy::Other("/* never */ void"),
         KTy2::Unit => CTy::Void,
-        KTy2::Basic(basic_ty) => gen_basic_ty(*basic_ty),
+        KTy2::Number(basic_ty) => gen_basic_ty(*basic_ty),
         KTy2::Fn { .. } => {
             // FIXME: この時点で fn 型は除去されているべき
             error!("Unexpected fn type {:?}", ty);

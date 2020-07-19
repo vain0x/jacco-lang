@@ -66,7 +66,7 @@ mod cps {
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_command::KCommand;
-    pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue, KNumber, KNumberTy};
+    pub(crate) use k_const::{KConst, KConstData, KConstTag, KConstValue, KNumber};
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KEnumTag, KVariant};
     pub(crate) use k_extern_fn::{
         KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnTag,
@@ -89,7 +89,7 @@ mod cps {
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;
-    pub(crate) use k_ty::{KBasicTy, KTy, KTy2};
+    pub(crate) use k_ty::{KNumberTy, KTy, KTy2};
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 

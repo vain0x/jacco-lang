@@ -108,7 +108,7 @@ fn eval_decimal_with_ty(s: &str, ty: KNumberTy) -> Option<(KNumber, KNumberTy)> 
     let value = match ty {
         KNumberTy::I8 => KNumber::INN(s.parse::<i8>().ok()? as i64),
         KNumberTy::I16 => KNumber::INN(s.parse::<i16>().ok()? as i64),
-        KNumberTy::I32 => KNumber::INN(s.parse::<i32>().ok()? as i64),
+        KNumberTy::I32 | KNumberTy::Bool => KNumber::INN(s.parse::<i32>().ok()? as i64),
         KNumberTy::I64 | KNumberTy::INN => KNumber::INN(s.parse::<i64>().ok()?),
         KNumberTy::Isize => KNumber::INN(s.parse::<isize>().ok()? as i64),
         KNumberTy::U8 => KNumber::UNN(s.parse::<u8>().ok()? as u64),
