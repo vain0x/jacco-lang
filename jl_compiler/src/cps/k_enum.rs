@@ -13,10 +13,9 @@ pub(crate) enum KVariant {
 
 impl KVariant {
     pub(crate) fn as_const(self) -> Option<KConst> {
-        if let KVariant::Const(k_const) = self {
-            Some(k_const)
-        } else {
-            None
+        match self {
+            KVariant::Const(k_const) => Some(k_const),
+            _ => None,
         }
     }
 
