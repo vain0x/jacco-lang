@@ -617,7 +617,7 @@ fn resolve_variant(
                 name: name.text(&nx.names).to_string(),
                 value_ty: {
                     // FIXME: 値を見て型を決める？
-                    KTy::Usize
+                    KTy::USIZE
                 },
                 parent_opt,
                 location: name.location(),
@@ -910,7 +910,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                     resolve_ty_opt(result_ty_opt.as_mut(), nx);
                     result_ty = result_ty_opt
                         .as_ref()
-                        .map_or(KTy::Unit, |ty| gen_ty(ty, &nx.res.names));
+                        .map_or(KTy::UNIT, |ty| gen_ty(ty, &nx.res.names));
 
                     resolve_block_opt(block_opt.as_mut(), nx);
                 });
@@ -939,7 +939,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
                 result_ty = result_ty_opt
                     .as_ref()
-                    .map_or(KTy::Unit, |ty| gen_ty(ty, &nx.res.names));
+                    .map_or(KTy::UNIT, |ty| gen_ty(ty, &nx.res.names));
             });
 
             nx.parent_fn = parent_fn;

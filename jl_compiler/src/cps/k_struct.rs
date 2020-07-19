@@ -46,7 +46,7 @@ impl KStruct {
     pub(crate) fn tag_ty<'a>(self, structs: &KStructArena, enums: &'a KEnumArena) -> &'a KTy {
         match &structs[self].parent_opt {
             Some(parent) => parent.k_enum.tag_ty(enums),
-            None => &KTy::Unit,
+            None => &KTy::UNIT,
         }
     }
 

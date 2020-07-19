@@ -182,6 +182,22 @@ fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx:
     });
 }
 
+fn gen_basic_ty(basic_ty: KBasicTy) -> CTy {
+    match basic_ty {
+        KBasicTy::Unit => CTy::Void,
+        KBasicTy::I8 => CTy::SignedChar,
+        KBasicTy::I16 => CTy::Short,
+        KBasicTy::I32 | KBasicTy::CNN | KBasicTy::Bool => CTy::Int,
+        KBasicTy::I64 | KBasicTy::Isize | KBasicTy::INN => CTy::LongLong,
+        KBasicTy::U8 | KBasicTy::C8 => CTy::UnsignedChar,
+        KBasicTy::U16 | KBasicTy::C16 => CTy::UnsignedShort,
+        KBasicTy::U32 | KBasicTy::C32 => CTy::UnsignedInt,
+        KBasicTy::U64 | KBasicTy::Usize | KBasicTy::UNN => CTy::UnsignedLongLong,
+        KBasicTy::F32 => CTy::Float,
+        KBasicTy::F64 | KBasicTy::FNN => CTy::Double,
+    }
+}
+
 fn gen_constant_value(value: &KConstValue) -> CExpr {
     match value {
         KConstValue::I32(value) => CExpr::IntLit(value.to_string()),
@@ -219,17 +235,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             error!("Unexpected fn type {:?}", ty);
             CTy::Other("/* fn */ void")
         }
-        KTy::Unit => CTy::Void,
-        KTy::I8 => CTy::SignedChar,
-        KTy::I16 => CTy::Short,
-        KTy::I32 | KTy::Bool => CTy::Int,
-        KTy::I64 | KTy::Isize => CTy::LongLong,
-        KTy::U8 | KTy::C8 => CTy::UnsignedChar,
-        KTy::U16 | KTy::C16 => CTy::UnsignedShort,
-        KTy::U32 | KTy::C32 => CTy::UnsignedInt,
-        KTy::U64 | KTy::Usize => CTy::UnsignedLongLong,
-        KTy::F32 => CTy::Float,
-        KTy::F64 => CTy::Double,
+        KTy::Basic(basic_ty) => gen_basic_ty(*basic_ty),
         KTy::Ptr { k_mut, ty } => {
             let mut ty = gen_ty(&ty, ty_env, cx);
             if let KMut::Const = k_mut {
@@ -265,19 +271,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
         },
         KTy2::Never => CTy::Other("/* never */ void"),
-        KTy2::Basic(basic_ty) => match basic_ty {
-            KBasicTy::Unit => CTy::Void,
-            KBasicTy::I8 => CTy::SignedChar,
-            KBasicTy::I16 => CTy::Short,
-            KBasicTy::I32 | KBasicTy::CNN | KBasicTy::Bool => CTy::Int,
-            KBasicTy::I64 | KBasicTy::Isize | KBasicTy::INN => CTy::LongLong,
-            KBasicTy::U8 | KBasicTy::C8 => CTy::UnsignedChar,
-            KBasicTy::U16 | KBasicTy::C16 => CTy::UnsignedShort,
-            KBasicTy::U32 | KBasicTy::C32 => CTy::UnsignedInt,
-            KBasicTy::U64 | KBasicTy::Usize | KBasicTy::UNN => CTy::UnsignedLongLong,
-            KBasicTy::F32 => CTy::Float,
-            KBasicTy::F64 | KBasicTy::FNN => CTy::Double,
-        },
+        KTy2::Basic(basic_ty) => gen_basic_ty(*basic_ty),
         KTy2::Fn { .. } => {
             // FIXME: この時点で fn 型は除去されているべき
             error!("Unexpected fn type {:?}", ty);

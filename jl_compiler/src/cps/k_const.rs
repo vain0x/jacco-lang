@@ -65,9 +65,9 @@ impl KConstValue {
         match self {
             KConstValue::I32(_) => KTy::I32,
             KConstValue::I64(_) => KTy::I64,
-            KConstValue::Usize(_) => KTy::Usize,
+            KConstValue::Usize(_) => KTy::USIZE,
             KConstValue::F64(_) => KTy::F64,
-            KConstValue::Bool(_) => KTy::Bool,
+            KConstValue::Bool(_) => KTy::BOOL,
         }
     }
 }

@@ -27,8 +27,11 @@ pub(crate) enum KBasicTy {
     F64,
     #[allow(unused)]
     FNN,
+    /// UTF-8 のコードユニット。(符号なし8ビット整数。C++ の `char8_t`)
     C8,
+    /// UTF-16 のコードユニット
     C16,
+    /// Unicode scalar value. (Rust の `char`)
     C32,
     #[allow(unused)]
     CNN,
@@ -36,7 +39,14 @@ pub(crate) enum KBasicTy {
 }
 
 impl KBasicTy {
-    pub(crate) fn as_str(&self) -> &'static str {
+    pub(crate) fn is_primitive(self) -> bool {
+        match self {
+            KBasicTy::Unit => false,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             KBasicTy::Unit => "()",
             KBasicTy::I8 => "i8",
@@ -92,26 +102,34 @@ pub(crate) enum KTy2 {
 
 impl KTy2 {
     pub(crate) const UNIT: KTy2 = KTy2::Basic(KBasicTy::Unit);
+    #[allow(unused)]
     pub(crate) const I8: KTy2 = KTy2::Basic(KBasicTy::I8);
+    #[allow(unused)]
     pub(crate) const I16: KTy2 = KTy2::Basic(KBasicTy::I16);
     pub(crate) const I32: KTy2 = KTy2::Basic(KBasicTy::I32);
     pub(crate) const I64: KTy2 = KTy2::Basic(KBasicTy::I64);
     pub(crate) const ISIZE: KTy2 = KTy2::Basic(KBasicTy::Isize);
     #[allow(unused)]
     pub(crate) const INN: KTy2 = KTy2::Basic(KBasicTy::INN);
+    #[allow(unused)]
     pub(crate) const U8: KTy2 = KTy2::Basic(KBasicTy::U8);
+    #[allow(unused)]
     pub(crate) const U16: KTy2 = KTy2::Basic(KBasicTy::U16);
+    #[allow(unused)]
     pub(crate) const U32: KTy2 = KTy2::Basic(KBasicTy::U32);
     pub(crate) const U64: KTy2 = KTy2::Basic(KBasicTy::U64);
     pub(crate) const USIZE: KTy2 = KTy2::Basic(KBasicTy::Usize);
     #[allow(unused)]
     pub(crate) const UNN: KTy2 = KTy2::Basic(KBasicTy::UNN);
+    #[allow(unused)]
     pub(crate) const F32: KTy2 = KTy2::Basic(KBasicTy::F32);
     pub(crate) const F64: KTy2 = KTy2::Basic(KBasicTy::F64);
     #[allow(unused)]
     pub(crate) const FNN: KTy2 = KTy2::Basic(KBasicTy::FNN);
     pub(crate) const C8: KTy2 = KTy2::Basic(KBasicTy::C8);
+    #[allow(unused)]
     pub(crate) const C16: KTy2 = KTy2::Basic(KBasicTy::C16);
+    #[allow(unused)]
     pub(crate) const C32: KTy2 = KTy2::Basic(KBasicTy::C32);
     #[allow(unused)]
     pub(crate) const CNN: KTy2 = KTy2::Basic(KBasicTy::CNN);
@@ -143,23 +161,7 @@ impl KTy2 {
         match ty {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Never => KTy2::Never,
-            KTy::Unit => KTy2::UNIT,
-            KTy::I8 => KTy2::I8,
-            KTy::I16 => KTy2::I16,
-            KTy::I32 => KTy2::I32,
-            KTy::I64 => KTy2::I64,
-            KTy::Isize => KTy2::ISIZE,
-            KTy::U8 => KTy2::U8,
-            KTy::U16 => KTy2::U16,
-            KTy::U32 => KTy2::U32,
-            KTy::U64 => KTy2::U64,
-            KTy::Usize => KTy2::USIZE,
-            KTy::F32 => KTy2::F32,
-            KTy::F64 => KTy2::F64,
-            KTy::C8 => KTy2::C8,
-            KTy::C16 => KTy2::C16,
-            KTy::C32 => KTy2::C32,
-            KTy::Bool => KTy2::BOOL,
+            KTy::Basic(basic_ty) => KTy2::Basic(basic_ty),
             KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
             KTy::Fn {
                 param_tys,
@@ -209,10 +211,7 @@ impl KTy2 {
     // FIXME: const enum も primitive とみなす
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
-            KTy2::Basic(basic_ty) => match basic_ty {
-                KBasicTy::Unit => false,
-                _ => true,
-            },
+            KTy2::Basic(basic_ty) => basic_ty.is_primitive(),
             KTy2::Ptr { .. } => true,
             _ => false,
         })
@@ -313,30 +312,11 @@ fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub(crate) enum KTy {
     Unresolved,
     Never,
-    Unit,
-    I8,
-    I16,
-    I32,
-    I64,
-    Isize,
-    U8,
-    U16,
-    U32,
-    U64,
-    Usize,
-    F32,
-    F64,
-    /// UTF-8 のコードユニット。(符号なし8ビット整数。C++ の `char8_t`)
-    C8,
-    /// UTF-16 のコードユニット
-    C16,
-    /// Unicode scalar value. (Rust の `char`)
-    C32,
-    Bool,
+    Basic(KBasicTy),
     Ptr {
         k_mut: KMut,
         ty: Box<KTy>,
@@ -351,6 +331,24 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
+    pub(crate) const UNIT: KTy = KTy::Basic(KBasicTy::Unit);
+    pub(crate) const I8: KTy = KTy::Basic(KBasicTy::I8);
+    pub(crate) const I16: KTy = KTy::Basic(KBasicTy::I16);
+    pub(crate) const I32: KTy = KTy::Basic(KBasicTy::I32);
+    pub(crate) const I64: KTy = KTy::Basic(KBasicTy::I64);
+    pub(crate) const ISIZE: KTy = KTy::Basic(KBasicTy::Isize);
+    pub(crate) const U8: KTy = KTy::Basic(KBasicTy::U8);
+    pub(crate) const U16: KTy = KTy::Basic(KBasicTy::U16);
+    pub(crate) const U32: KTy = KTy::Basic(KBasicTy::U32);
+    pub(crate) const U64: KTy = KTy::Basic(KBasicTy::U64);
+    pub(crate) const USIZE: KTy = KTy::Basic(KBasicTy::Usize);
+    pub(crate) const F32: KTy = KTy::Basic(KBasicTy::F32);
+    pub(crate) const F64: KTy = KTy::Basic(KBasicTy::F64);
+    pub(crate) const C8: KTy = KTy::Basic(KBasicTy::C8);
+    pub(crate) const C16: KTy = KTy::Basic(KBasicTy::C16);
+    pub(crate) const C32: KTy = KTy::Basic(KBasicTy::C32);
+    pub(crate) const BOOL: KTy = KTy::Basic(KBasicTy::Bool);
+
     pub(crate) fn to_ty2(&self, k_mod: KMod) -> KTy2 {
         KTy2::from_ty1(self.clone(), k_mod)
     }
@@ -370,14 +368,18 @@ impl KTy {
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, |ty| match ty {
-            KTy::Unit => true,
+        ty_map(self, ty_env, |ty| match *ty {
+            KTy::UNIT => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
-        ty_map(self, ty_env, ty_is_primitive)
+        ty_map(self, ty_env, |ty| match *ty {
+            KTy::Basic(basic_ty) => basic_ty.is_primitive(),
+            KTy::Ptr { .. } => true,
+            _ => false,
+        })
     }
 
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
@@ -399,23 +401,7 @@ impl Debug for KTy {
         match self {
             KTy::Unresolved => write!(f, "???"),
             KTy::Never => write!(f, "never"),
-            KTy::Unit => write!(f, "()"),
-            KTy::Bool => write!(f, "bool"),
-            KTy::I8 => write!(f, "i8"),
-            KTy::I16 => write!(f, "i16"),
-            KTy::I32 => write!(f, "i32"),
-            KTy::I64 => write!(f, "i64"),
-            KTy::Isize => write!(f, "isize"),
-            KTy::U8 => write!(f, "u8"),
-            KTy::U16 => write!(f, "u16"),
-            KTy::U32 => write!(f, "u32"),
-            KTy::U64 => write!(f, "u64"),
-            KTy::Usize => write!(f, "usize"),
-            KTy::F32 => write!(f, "f32"),
-            KTy::F64 => write!(f, "f64"),
-            KTy::C8 => write!(f, "c8"),
-            KTy::C16 => write!(f, "c16"),
-            KTy::C32 => write!(f, "c32"),
+            KTy::Basic(basic_ty) => write!(f, "{}", basic_ty.as_str()),
             KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;
                 if let KMut::Mut = k_mut {
@@ -455,29 +441,6 @@ impl Debug for KTy {
 /// NOTE: 束縛済みのメタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
 fn ty_map<T>(ty: &KTy, _ty_env: &KTyEnv, f: impl Fn(&KTy) -> T) -> T {
     f(ty)
-}
-
-fn ty_is_primitive(ty: &KTy) -> bool {
-    match ty {
-        KTy::I8
-        | KTy::I16
-        | KTy::I32
-        | KTy::I64
-        | KTy::Isize
-        | KTy::U8
-        | KTy::U16
-        | KTy::U32
-        | KTy::U64
-        | KTy::Usize
-        | KTy::F32
-        | KTy::F64
-        | KTy::C8
-        | KTy::C16
-        | KTy::C32
-        | KTy::Bool
-        | KTy::Ptr { .. } => true,
-        _ => false,
-    }
 }
 
 /// 変性

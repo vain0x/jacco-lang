@@ -78,7 +78,7 @@ impl KEnum {
     pub(crate) fn tag_ty(self, enums: &KEnumArena) -> &KTy {
         match self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
-            KEnumRepr::Unit => &KTy::Unit,
+            KEnumRepr::Unit => &KTy::UNIT,
             KEnumRepr::Const { value_ty } => value_ty,
             KEnumRepr::Sum { tag_ty } => tag_ty,
         }
@@ -106,11 +106,11 @@ impl KEnumRepr {
             [variant] if variant.is_const_zero(consts) => KEnumRepr::Unit,
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
                 // FIXME: 値を見て決定する
-                value_ty: KTy::Usize,
+                value_ty: KTy::USIZE,
             },
             _ => {
                 // FIXME: たいていの場合は u8 で十分
-                KEnumRepr::Sum { tag_ty: KTy::Usize }
+                KEnumRepr::Sum { tag_ty: KTy::USIZE }
             }
         }
     }
