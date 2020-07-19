@@ -1,6 +1,7 @@
 //! 型推論・型検査
 
 use super::*;
+use crate::token::{HaveLocation, Location};
 use k_meta_ty::KMetaTyData;
 use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
 use k_ty::{KEnumOrStruct, KTy2, Variance};
