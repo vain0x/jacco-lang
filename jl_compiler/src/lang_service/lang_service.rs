@@ -3,7 +3,7 @@ use crate::{
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
     parse::{self, PRoot, PToken},
-    source::{loc::LocResolver, Doc, Pos, TPos, TRange},
+    source::{loc::LocResolver, Doc, TPos, TPos16, TRange},
     token::{self, TokenSource},
 };
 use std::{
@@ -228,7 +228,7 @@ impl LangService {
     }
 
     #[allow(unused)]
-    fn hit_test(&mut self, doc: Doc, pos: Pos) -> Option<(NAbsName, Location)> {
+    fn hit_test(&mut self, doc: Doc, pos: TPos16) -> Option<(NAbsName, Location)> {
         let symbols = self.request_symbols(doc)?;
         hit_test(doc, pos, symbols)
     }
@@ -262,12 +262,12 @@ impl LangService {
         self.dirty_sources.remove(&doc);
     }
 
-    pub fn completion(&mut self, _doc: Doc, _pos: Pos) -> Vec<()> {
+    pub fn completion(&mut self, _doc: Doc, _pos: TPos16) -> Vec<()> {
         vec![]
     }
 
     // references と同様
-    pub fn definitions(&mut self, doc: Doc, pos: Pos) -> Option<Vec<Location>> {
+    pub fn definitions(&mut self, doc: Doc, pos: TPos16) -> Option<Vec<Location>> {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
@@ -277,7 +277,11 @@ impl LangService {
         Some(def_sites)
     }
 
-    pub fn document_highlight(&mut self, doc: Doc, pos: Pos) -> Option<(Vec<TRange>, Vec<TRange>)> {
+    pub fn document_highlight(
+        &mut self,
+        doc: Doc,
+        pos: TPos16,
+    ) -> Option<(Vec<TRange>, Vec<TRange>)> {
         let symbols = self.request_symbols(doc)?;
 
         let (name, _) = hit_test(doc, pos, symbols)?;
@@ -298,7 +302,7 @@ impl LangService {
         Some((def_sites, use_sites))
     }
 
-    pub fn hover(&mut self, doc: Doc, pos: Pos) -> Option<String> {
+    pub fn hover(&mut self, doc: Doc, pos: TPos16) -> Option<String> {
         let (name, _) = {
             let symbols = self.request_symbols(doc)?;
             hit_test(doc, pos, symbols)?
@@ -313,7 +317,7 @@ impl LangService {
     pub fn references(
         &mut self,
         doc: Doc,
-        pos: Pos,
+        pos: TPos16,
         include_definition: bool,
     ) -> Option<Vec<Location>> {
         let symbols = self.request_symbols(doc)?;
@@ -341,14 +345,14 @@ impl LangService {
         Some(references)
     }
 
-    pub fn prepare_rename(&mut self, _doc: Doc, _pos: Pos) -> Option<()> {
+    pub fn prepare_rename(&mut self, _doc: Doc, _pos: TPos16) -> Option<()> {
         None
     }
 
     pub fn rename(
         &mut self,
         doc: Doc,
-        pos: Pos,
+        pos: TPos16,
         new_name: String,
     ) -> Option<Vec<(Location, i64, String)>> {
         let version = self.doc_to_version(doc)?;
@@ -435,7 +439,7 @@ impl NAbsName {
     }
 }
 
-fn hit_test(doc: Doc, pos: Pos, symbols: &Symbols) -> Option<(NAbsName, Location)> {
+fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Location)> {
     symbols
         .occurrences
         .def_sites
@@ -443,7 +447,7 @@ fn hit_test(doc: Doc, pos: Pos, symbols: &Symbols) -> Option<(NAbsName, Location
         .chain(symbols.occurrences.use_sites.iter())
         .find_map(|(&name, locations)| {
             locations.iter().find_map(|&location| {
-                if location.range().contains_loosely_pos(pos) {
+                if location.range().contains_loosely_pos16(pos) {
                     Some((
                         name,
                         Location {
@@ -495,7 +499,7 @@ fn collect_use_sites(
 #[cfg(test)]
 mod tests {
     use super::{Doc, LangService};
-    use crate::source::{cursor_text::parse_cursor_text, Pos};
+    use crate::source::{cursor_text::parse_cursor_text, TPos16};
 
     const DOC: Doc = Doc::new(1);
 
@@ -538,7 +542,7 @@ mod tests {
     fn test_definition() {
         let mut lang_service = new_service_from_str("fn foo() { foo(); }");
 
-        let defs = lang_service.definitions(DOC, Pos::new(0, 3, 3));
+        let defs = lang_service.definitions(DOC, TPos16::from("foo"));
         assert_eq!(
             defs.unwrap()
                 .into_iter()
@@ -548,7 +552,7 @@ mod tests {
             "1.4-1.7"
         );
 
-        let defs = lang_service.definitions(DOC, Pos::new(0, 14, 14));
+        let defs = lang_service.definitions(DOC, TPos16::from("fn foo() { foo"));
         assert_eq!(
             defs.unwrap()
                 .into_iter()

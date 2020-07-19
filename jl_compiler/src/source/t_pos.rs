@@ -1,4 +1,4 @@
-use super::TRange;
+use super::{TPos16, TRange};
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Display, Formatter},
@@ -201,5 +201,11 @@ impl Ord for TPos {
 impl Hash for TPos {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.index.hash(state)
+    }
+}
+
+impl From<TPos> for TPos16 {
+    fn from(pos: TPos) -> Self {
+        TPos16::new(pos.row(), pos.column16())
     }
 }

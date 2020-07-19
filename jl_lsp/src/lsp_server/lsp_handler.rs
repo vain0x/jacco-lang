@@ -26,8 +26,8 @@ fn lsp_display_name() -> String {
     format!("{} v{}", get_package_name(), get_package_version())
 }
 
-fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::Pos {
-    jl_compiler::rust_api::Pos::new(position.line as usize, position.character as usize, 0)
+fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::TPos16 {
+    jl_compiler::rust_api::TPos16::new(position.line as usize, position.character as usize)
 }
 
 fn to_lsp_pos(pos: jl_compiler::rust_api::TPos) -> Position {
