@@ -41,7 +41,7 @@ impl<'a> Tx<'a> {
             label_sigs: Default::default(),
             return_ty_opt: None,
             k_mod,
-            mod_outline: mod_outline,
+            mod_outline,
             mod_outlines,
             logger,
         }

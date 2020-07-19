@@ -33,7 +33,7 @@ impl<'a> Cx<'a> {
     fn new(k_mod: KMod, mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
         Self {
             k_mod,
-            mod_outline: mod_outline,
+            mod_outline,
             mod_outlines,
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
