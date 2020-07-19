@@ -16,7 +16,6 @@ use log::{error, trace};
 use std::{
     iter::once,
     mem::{replace, take},
-    rc::Rc,
 };
 
 #[derive(Clone)]
@@ -26,11 +25,7 @@ struct KLoopData {
 }
 
 /// Code generation context.
-#[derive(Default)]
-struct Gx {
-    tokens: Rc<PTokens>,
-    names: PNameArena,
-    name_res: VecArena<PNameTag, NName>,
+struct Gx<'a> {
     outlines: KModOutline,
     current_commands: Vec<KCommand>,
     current_locals: KLocalArena,
@@ -39,12 +34,33 @@ struct Gx {
     fns: KFnArena,
     fn_loops: VecArena<KFnTag, NLoopArena>,
     extern_fns: KExternFnArena,
+    tokens: &'a PTokens,
+    names: &'a PNameArena,
+    name_res: &'a VecArena<PNameTag, NName>,
     logger: DocLogger,
 }
 
-impl Gx {
-    fn new() -> Self {
-        Self::default()
+impl<'a> Gx<'a> {
+    fn new(
+        tokens: &'a PTokens,
+        names: &'a PNameArena,
+        name_res: &'a VecArena<PNameTag, NName>,
+        logger: DocLogger,
+    ) -> Self {
+        Self {
+            outlines: Default::default(),
+            current_commands: Default::default(),
+            current_locals: Default::default(),
+            current_loops: Default::default(),
+            current_labels: Default::default(),
+            fns: Default::default(),
+            fn_loops: Default::default(),
+            extern_fns: Default::default(),
+            tokens,
+            names,
+            name_res,
+            logger,
+        }
     }
 
     fn fresh_symbol(&mut self, hint: &str, location: Location) -> KSymbol {
@@ -1484,11 +1500,12 @@ pub(crate) fn cps_conversion(
             })
             .collect();
 
-        let mut gx = Gx::new();
-        gx.logger = logger;
-        gx.tokens = Rc::new(p_root.tokens.clone());
-        gx.names = p_root.names.clone();
-        gx.name_res = name_resolution.names.clone();
+        let mut gx = Gx::new(
+            &p_root.tokens,
+            &p_root.names,
+            &name_resolution.names,
+            logger,
+        );
 
         gx.outlines.aliases = name_resolution.aliases.clone();
 
