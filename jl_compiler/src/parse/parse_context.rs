@@ -1,5 +1,50 @@
 use super::*;
 
+impl<Tag> ParseEvent<(StartEventTag, Tag)> {
+    pub(super) fn end(self, kind: PElementKind, px: &mut Px) -> ParseEvent<(EndEventTag, Tag)> {
+        let current = px.current;
+        px.events.end_element(kind, self, current)
+    }
+}
+
+pub(crate) struct ParseEventListener {
+    events: Vec<ParseEventData>,
+}
+
+impl ParseEventListener {
+    pub(crate) fn new() -> Self {
+        ParseEventListener { events: vec![] }
+    }
+
+    fn alloc<Tag>(&mut self, data: ParseEventData) -> ParseEvent<(StartEventTag, Tag)> {
+        let event = ParseEvent::new(self.events.len());
+        self.events.push(data);
+        event
+    }
+
+    fn start_element<Tag>(&mut self, current: usize) -> ParseEvent<(StartEventTag, Tag)> {
+        ParseEvent::new(current)
+    }
+
+    fn start_parent<ChildTag, Tag>(
+        &mut self,
+        child: ParseEvent<(EndEventTag, ChildTag)>,
+    ) -> ParseEvent<(StartEventTag, Tag)> {
+        todo!()
+    }
+
+    fn end_element<Tag>(
+        &mut self,
+        kind: PElementKind,
+        start: ParseEvent<(StartEventTag, Tag)>,
+        current: usize,
+    ) -> ParseEvent<(EndEventTag, Tag)> {
+        todo!()
+    }
+
+    fn on_token(&mut self) {}
+}
+
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
     tokens: PTokens,
@@ -7,6 +52,7 @@ pub(crate) struct Px {
     names: PNameArena,
     elements: PElementArena,
     skipped: Vec<PToken>,
+    pub(crate) events: ParseEventListener,
     logger: Logger,
 }
 
@@ -17,6 +63,7 @@ impl Px {
             current: 0,
             names: PNameArena::new(),
             elements: PElementArena::new(),
+            events: ParseEventListener::new(),
             skipped: vec![],
             logger,
         }
@@ -28,6 +75,22 @@ impl Px {
 
     pub(crate) fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    fn start_element<Tag>(&mut self) -> ParseEvent<(StartEventTag, Tag)> {
+        let current = self.current;
+        self.events.start_element(current)
+    }
+
+    pub(crate) fn start_expr(&mut self) -> ExprStart {
+        self.start_element()
+    }
+
+    pub(crate) fn start_parent<ChildTag>(
+        &mut self,
+        child: &ParseEvent<(EndEventTag, ChildTag)>,
+    ) -> ExprStart {
+        todo!()
     }
 
     fn nth_data(&self, offset: usize) -> &TokenData {
@@ -47,6 +110,8 @@ impl Px {
 
     pub(crate) fn bump(&mut self) -> PToken {
         assert!(self.current < self.tokens.len());
+
+        self.events.on_token();
 
         let p_token = PToken::from_index(self.current);
         self.current += 1;

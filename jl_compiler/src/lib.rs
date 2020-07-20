@@ -168,6 +168,7 @@ mod lang_service {
 mod parse {
     //! 構文木・構文解析
 
+    mod event;
     mod p_binary_op;
     mod p_token;
     mod p_unary_op;
@@ -178,6 +179,7 @@ mod parse {
     mod parse_tree;
     mod parse_ty;
 
+    pub(crate) use event::*;
     pub(crate) use p_binary_op::PBinaryOp;
     pub(crate) use p_token::{PToken, PTokens};
     pub(crate) use p_unary_op::PUnaryOp;

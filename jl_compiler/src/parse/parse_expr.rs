@@ -117,14 +117,22 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     Some(term)
 }
 
+fn new_dot_field_expr(left: ExprEnd, name_opt: Option<PToken>) -> ExprEnd {
+    todo!()
+}
+
 fn parse_suffix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
+    let left_event = px.start_expr();
     let mut left = parse_atomic_expr(allow_struct, px)?;
+    let mut left_event = left_event.end(PElementKind::Expr, px);
 
     loop {
         match px.next() {
             TokenKind::Dot => {
+                let dot_event = px.start_parent(&left_event);
                 let dot = px.bump();
                 let name_opt = px.eat(TokenKind::Ident);
+                left_event = dot_event.end(PElementKind::Expr, px);
 
                 left = PExpr::DotField(PDotFieldExpr {
                     left: Box::new(left),
