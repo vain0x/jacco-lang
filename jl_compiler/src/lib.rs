@@ -168,6 +168,7 @@ mod lang_service {
 mod parse {
     //! 構文木・構文解析
 
+    mod ast;
     mod event;
     mod p_binary_op;
     mod p_token;
@@ -179,6 +180,7 @@ mod parse {
     mod parse_tree;
     mod parse_ty;
 
+    pub(crate) use ast::*;
     pub(crate) use event::*;
     pub(crate) use p_binary_op::PBinaryOp;
     pub(crate) use p_token::{PToken, PTokens};
@@ -269,5 +271,5 @@ mod utils {
     pub(crate) use id_provider::IdProvider;
     pub(crate) use take_out::TakeOut;
 
-    pub(crate) use vec_arena::{RawId, VecArena, VecArenaId};
+    pub(crate) use vec_arena::{RawId, VecArena, VecArenaId, VecArenaSlice};
 }

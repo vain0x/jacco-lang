@@ -5,8 +5,12 @@ use std::{
     marker::PhantomData,
     mem::size_of,
     num::NonZeroU32,
-    ops::{Index, IndexMut},
+    ops::{Index, IndexMut, Range},
 };
+
+// -----------------------------------------------
+// ID (NonZeroU32)
+// -----------------------------------------------
 
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
 
@@ -24,6 +28,10 @@ const fn id_add_offset(id: NonZeroU32, offset: usize) -> NonZeroU32 {
     let value: u32 = id.get() + offset as u32;
     unsafe { NonZeroU32::new_unchecked(value) }
 }
+
+// -----------------------------------------------
+// VecArenaId
+// -----------------------------------------------
 
 /// `VecArena` の型つきのインデックスを表す。
 ///
@@ -143,6 +151,10 @@ impl<Tag> Debug for VecArenaId<Tag> {
 
 #[allow(dead_code)]
 const SIZE_OF_ID_OPTION_IS_4_BYTE: [(); 0] = [(); 4 - size_of::<Option<VecArenaId<()>>>()];
+
+// -----------------------------------------------
+// VecArena
+// -----------------------------------------------
 
 /// 型つき ID によりインデックスアクセス可能な `Vec`
 pub(crate) struct VecArena<Tag, T> {
@@ -271,6 +283,17 @@ impl<Tag, T> IndexMut<VecArenaId<Tag>> for VecArena<Tag, T> {
 }
 
 pub(crate) type RawId = VecArenaId<()>;
+
+// -----------------------------------------------
+// スライス
+// -----------------------------------------------
+
+#[derive(Clone, Eq, PartialEq)]
+pub(crate) struct VecArenaSlice<Tag>(Range<VecArenaId<Tag>>);
+
+// -----------------------------------------------
+// テスト
+// -----------------------------------------------
 
 #[cfg(test)]
 mod tests {

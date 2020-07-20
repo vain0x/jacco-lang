@@ -117,10 +117,6 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     Some(term)
 }
 
-fn new_dot_field_expr(left: ExprEnd, name_opt: Option<PToken>) -> ExprEnd {
-    todo!()
-}
-
 fn parse_suffix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<PExpr> {
     let left_event = px.start_expr();
     let mut left = parse_atomic_expr(allow_struct, px)?;
