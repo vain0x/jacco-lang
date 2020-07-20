@@ -5,6 +5,7 @@ pub(crate) struct Px {
     tokens: PTokens,
     current: usize,
     names: PNameArena,
+    elements: PElementArena,
     skipped: Vec<PToken>,
     logger: Logger,
 }
@@ -15,6 +16,7 @@ impl Px {
             tokens,
             current: 0,
             names: PNameArena::new(),
+            elements: PElementArena::new(),
             skipped: vec![],
             logger,
         }
@@ -71,11 +73,11 @@ impl Px {
         }
     }
 
-    pub(crate) fn finish(mut self) -> (PToken, PNameArena, Vec<PToken>, PTokens) {
+    pub(crate) fn finish(mut self) -> (PToken, PNameArena, Vec<PToken>, PTokens, PElementArena) {
         assert_eq!(self.current + 1, self.tokens.len());
 
         let eof = self.expect(TokenKind::Eof);
-        (eof, self.names, self.skipped, self.tokens)
+        (eof, self.names, self.skipped, self.tokens, self.elements)
     }
 }
 

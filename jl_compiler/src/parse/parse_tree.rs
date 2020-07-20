@@ -49,6 +49,106 @@ impl Debug for PLoc {
     }
 }
 
+/// 構文要素の種類
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum PElementKind {
+    Param,
+    Arg,
+    Ty,
+    Pat,
+    Expr,
+    Decl,
+    Decls,
+    Root,
+}
+
+pub(crate) struct PElementTag;
+
+/// 構文要素 (構文木の非終端ノード)
+pub(crate) type PElement = VecArenaId<PElementTag>;
+
+pub(crate) type PElementArena = VecArena<PElementTag, PElementData>;
+
+/// 構文要素のデータ
+#[derive(Clone, Debug)]
+pub(crate) struct PElementData {
+    kind: PElementKind,
+    children: Vec<PNode>,
+}
+
+impl PElementData {
+    pub(crate) fn new(kind: PElementKind) -> Self {
+        PElementData {
+            kind,
+            children: vec![],
+        }
+    }
+
+    pub(crate) fn kind(&self) -> PElementKind {
+        self.kind
+    }
+
+    pub(crate) fn children(&self) -> &[PNode] {
+        &self.children
+    }
+
+    pub(crate) fn children_mut(&mut self) -> &mut Vec<PNode> {
+        &mut self.children
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum PNodeKind {
+    Token(TokenKind),
+    Element(PElementKind),
+}
+
+/// 構文木のノード (構文要素またはトークン) のID
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) enum PNode {
+    Token(PToken),
+    Element(PElement),
+}
+
+impl From<TokenKind> for PNodeKind {
+    fn from(kind: TokenKind) -> Self {
+        PNodeKind::Token(kind)
+    }
+}
+
+impl From<PElementKind> for PNodeKind {
+    fn from(kind: PElementKind) -> Self {
+        PNodeKind::Element(kind)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum PNodeRef<'a> {
+    Token(&'a TokenData),
+    Element(&'a PElementData),
+}
+
+impl PNodeRef<'_> {
+    pub(crate) fn kind(&self) -> PNodeKind {
+        match self {
+            PNodeRef::Token(token) => PNodeKind::Token(token.kind()),
+            PNodeRef::Element(element) => PNodeKind::Element(element.kind()),
+        }
+    }
+}
+
+impl<'a> From<&'a TokenData> for PNodeRef<'a> {
+    fn from(token: &'a TokenData) -> Self {
+        PNodeRef::Token(token)
+    }
+}
+
+impl<'a> From<&'a PElementData> for PNodeRef<'a> {
+    fn from(element: &'a PElementData) -> Self {
+        PNodeRef::Element(element)
+    }
+}
+
 pub(crate) struct PNameTag;
 
 pub(crate) type PName = VecArenaId<PNameTag>;
@@ -528,6 +628,7 @@ pub(crate) struct PRoot {
     pub(crate) decls: Vec<PDecl>,
     pub(crate) eof: PToken,
     pub(crate) names: PNameArena,
+    pub(crate) elements: PElementArena,
     pub(crate) skipped: Vec<PToken>,
     pub(crate) tokens: PTokens,
 }
