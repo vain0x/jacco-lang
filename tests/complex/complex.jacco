@@ -70,7 +70,3 @@ extern fn an_extern_fn_declared_later();
 // struct StructDeclaredLater {
 //     sdl_content: i32,
 // }
-
-fn f() {
-    let a::b = 2;
-}

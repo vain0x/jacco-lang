@@ -49,106 +49,6 @@ impl Debug for PLoc {
     }
 }
 
-/// 構文要素の種類
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum PElementKind {
-    Param,
-    Arg,
-    Ty,
-    Pat,
-    Expr,
-    Decl,
-    Decls,
-    Root,
-}
-
-pub(crate) struct PElementTag;
-
-/// 構文要素 (構文木の非終端ノード)
-pub(crate) type PElement = VecArenaId<PElementTag>;
-
-pub(crate) type PElementArena = VecArena<PElementTag, PElementData>;
-
-/// 構文要素のデータ
-#[derive(Clone, Debug)]
-pub(crate) struct PElementData {
-    kind: PElementKind,
-    children: Vec<PNode>,
-}
-
-impl PElementData {
-    pub(crate) fn new(kind: PElementKind) -> Self {
-        PElementData {
-            kind,
-            children: vec![],
-        }
-    }
-
-    pub(crate) fn kind(&self) -> PElementKind {
-        self.kind
-    }
-
-    pub(crate) fn children(&self) -> &[PNode] {
-        &self.children
-    }
-
-    pub(crate) fn children_mut(&mut self) -> &mut Vec<PNode> {
-        &mut self.children
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum PNodeKind {
-    Token(TokenKind),
-    Element(PElementKind),
-}
-
-/// 構文木のノード (構文要素またはトークン) のID
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum PNode {
-    Token(PToken),
-    Element(PElement),
-}
-
-impl From<TokenKind> for PNodeKind {
-    fn from(kind: TokenKind) -> Self {
-        PNodeKind::Token(kind)
-    }
-}
-
-impl From<PElementKind> for PNodeKind {
-    fn from(kind: PElementKind) -> Self {
-        PNodeKind::Element(kind)
-    }
-}
-
-#[derive(Copy, Clone)]
-pub(crate) enum PNodeRef<'a> {
-    Token(&'a TokenData),
-    Element(&'a PElementData),
-}
-
-impl PNodeRef<'_> {
-    pub(crate) fn kind(&self) -> PNodeKind {
-        match self {
-            PNodeRef::Token(token) => PNodeKind::Token(token.kind()),
-            PNodeRef::Element(element) => PNodeKind::Element(element.kind()),
-        }
-    }
-}
-
-impl<'a> From<&'a TokenData> for PNodeRef<'a> {
-    fn from(token: &'a TokenData) -> Self {
-        PNodeRef::Token(token)
-    }
-}
-
-impl<'a> From<&'a PElementData> for PNodeRef<'a> {
-    fn from(element: &'a PElementData) -> Self {
-        PNodeRef::Element(element)
-    }
-}
-
 pub(crate) struct PNameTag;
 
 pub(crate) type PName = VecArenaId<PNameTag>;
@@ -316,10 +216,14 @@ pub(crate) struct PStrExpr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PTrueExpr(pub(crate) PToken);
+pub(crate) struct PTrueExpr {
+    pub(crate) token: PToken,
+}
 
 #[derive(Clone, Debug)]
-pub(crate) struct PFalseExpr(pub(crate) PToken);
+pub(crate) struct PFalseExpr {
+    pub(crate) token: PToken,
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct PFieldExpr {
@@ -553,7 +457,7 @@ pub(crate) struct PExternFnDecl {
 pub(crate) struct PConstVariantDecl {
     pub(crate) name: PName,
     pub(crate) equal_opt: Option<PToken>,
-    pub(crate) value_opt: Option<Box<PExpr>>,
+    pub(crate) value_opt: Option<PExpr>,
     pub(crate) comma_opt: Option<PToken>,
 
     // 名前解決用
@@ -623,7 +527,7 @@ pub(crate) enum PDecl {
     Use(PUseDecl),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct PRoot {
     pub(crate) decls: Vec<PDecl>,
     pub(crate) eof: PToken,
@@ -631,6 +535,95 @@ pub(crate) struct PRoot {
     pub(crate) elements: PElementArena,
     pub(crate) skipped: Vec<PToken>,
     pub(crate) tokens: PTokens,
+    pub(crate) ast: ATree,
+    pub(crate) root: PElement,
+}
+
+impl PRoot {
+    pub(crate) fn write_trace(&self) {
+        log::trace!(
+            "SyntaxTree (untyped):\n{:#?}",
+            DebugWith::new(&self.root, self)
+        );
+    }
+}
+
+struct DebugWith<'a, T, Context> {
+    value: &'a T,
+    context: &'a Context,
+}
+
+impl<'a, T, Context> DebugWith<'a, T, Context> {
+    fn new(value: &'a T, context: &'a Context) -> Self {
+        Self { value, context }
+    }
+}
+
+impl<'a, T, Context> Debug for DebugWith<'a, T, Context>
+where
+    T: DebugWithContext<Context>,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        DebugWithContext::fmt(self.value, self.context, f)
+    }
+}
+
+trait DebugWithContext<Context> {
+    fn fmt(&self, context: &Context, f: &mut Formatter<'_>) -> fmt::Result;
+}
+
+impl<'a, Tag, T> DebugWithContext<VecArena<Tag, T>> for VecArenaId<Tag>
+where
+    T: DebugWithContext<VecArena<Tag, T>>,
+{
+    fn fmt(&self, arena: &VecArena<Tag, T>, f: &mut Formatter<'_>) -> fmt::Result {
+        DebugWithContext::fmt(self.of(arena), arena, f)
+    }
+}
+
+impl DebugWithContext<PRoot> for PToken {
+    fn fmt(&self, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self.of(&root.tokens), f)
+    }
+}
+
+impl DebugWithContext<PRoot> for PElement {
+    fn fmt(&self, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
+        let data = self.of(&root.elements);
+        write!(f, "{:?} ", data.kind())?;
+
+        f.debug_list()
+            .entries(
+                data.children()
+                    .iter()
+                    .map(|child| DebugWith::new(child, root)),
+            )
+            .finish()
+    }
+}
+
+impl DebugWithContext<PRoot> for PNode {
+    fn fmt(&self, context: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PNode::Token(inner) => DebugWithContext::fmt(inner, context, f),
+            PNode::Element(inner) => DebugWithContext::fmt(inner, context, f),
+        }
+    }
+}
+
+impl Debug for PRoot {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        DebugWithContext::fmt(&self.root, self, f)?;
+
+        if !self.skipped.is_empty() {
+            write!(f, "\n\nskipped:")?;
+            f.debug_list()
+                .entries(self.skipped.iter().map(|token| token.of(&self.tokens)))
+                .finish()?;
+        }
+
+        write!(f, "\n")
+    }
 }
 
 impl PRoot {
@@ -834,13 +827,13 @@ impl PStrExpr {
 
 impl PTrueExpr {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
-        self.0
+        self.token
     }
 }
 
 impl PFalseExpr {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
-        self.0
+        self.token
     }
 }
 

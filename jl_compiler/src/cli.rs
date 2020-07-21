@@ -92,6 +92,7 @@ impl Project {
                 tokenize(source, doc_data.text.clone().into())
             };
             let root = parse_tokens(tokens, logs.logger());
+            root.write_trace();
             root.collect_used_mod_names(&mut mod_names);
 
             let id2 = self.syntaxes.alloc(SyntaxData {

@@ -359,7 +359,7 @@ fn validate_variant(variant: &PVariantDecl, vx: &Vx) {
             ..
         }) => {
             if let Some(equal) = *equal_opt {
-                validate_expr_opt(value_opt.as_deref(), IsRequired::True(equal), vx);
+                validate_expr_opt(value_opt.as_ref(), IsRequired::True(equal), vx);
             }
         }
         PVariantDecl::Record(PRecordVariantDecl {

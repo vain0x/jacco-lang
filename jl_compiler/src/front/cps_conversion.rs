@@ -450,7 +450,7 @@ fn gen_const_variant(decl: &PConstVariantDecl, value_slot: &mut usize, gx: &mut 
         k_const.of(&gx.mod_outline.consts).name
     );
 
-    if let Some(value) = value_opt.as_deref() {
+    if let Some(value) = value_opt.as_ref() {
         let loc = value.loc();
         match gen_constant(value, gx) {
             Some(value) => {
@@ -565,10 +565,10 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let (text, loc) = token.decompose(&gx.tokens);
             KTerm::Str { text, loc }
         }
-        PExpr::True(PTrueExpr(token)) => KTerm::True {
+        PExpr::True(PTrueExpr { token }) => KTerm::True {
             loc: token.loc(&gx.tokens),
         },
-        PExpr::False(PFalseExpr(token)) => KTerm::False {
+        PExpr::False(PFalseExpr { token }) => KTerm::False {
             loc: token.loc(&gx.tokens),
         },
         PExpr::Name(name) => {

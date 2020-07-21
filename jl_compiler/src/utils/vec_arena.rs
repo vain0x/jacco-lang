@@ -291,6 +291,47 @@ pub(crate) type RawId = VecArenaId<()>;
 #[derive(Clone, Eq, PartialEq)]
 pub(crate) struct VecArenaSlice<Tag>(Range<VecArenaId<Tag>>);
 
+impl<Tag> VecArenaSlice<Tag> {
+    pub(crate) const EMPTY: Self = Self(Range {
+        start: VecArenaId::MAX,
+        end: VecArenaId::MAX,
+    });
+
+    // 結果はスライスじゃないかもしれないが、ランダムアクセスは可能
+    pub(crate) fn of<'a, T>(&self, arena: &'a VecArena<Tag, T>) -> &'a [T] {
+        let (start, end) = (self.0.start, self.0.end);
+        if start >= end {
+            return &[];
+        }
+
+        &arena.inner[start.to_index()..end.to_index()]
+    }
+}
+
+impl<Tag> Default for VecArenaSlice<Tag> {
+    fn default() -> Self {
+        Self::EMPTY
+    }
+}
+
+impl<Tag, T> VecArena<Tag, T> {
+    pub(crate) fn alloc_slice(&mut self, items: impl IntoIterator<Item = T>) -> VecArenaSlice<Tag> {
+        let mut items = items.into_iter();
+
+        let start = match items.next() {
+            Some(item) => self.alloc(item),
+            None => return VecArenaSlice::EMPTY,
+        };
+
+        let mut end = start;
+        for item in items {
+            end = self.alloc(item);
+        }
+
+        VecArenaSlice(Range { start, end })
+    }
+}
+
 // -----------------------------------------------
 // テスト
 // -----------------------------------------------

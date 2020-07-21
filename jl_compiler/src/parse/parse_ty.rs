@@ -9,23 +9,21 @@ pub(crate) fn parse_mut(px: &mut Px) -> Option<PMut> {
     Some(p_mut)
 }
 
-pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
+pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
+    let event = px.start_element();
     let ty = match px.next() {
         TokenKind::Ident => {
             let name = parse_name(px).unwrap();
-            PTy::Name(name)
+            alloc_name_ty(event, name, px)
         }
         TokenKind::LeftParen => {
             let left_paren = px.bump();
             let right_paren_opt = px.eat(TokenKind::RightParen);
-            PTy::Unit(PUnitTy {
-                left_paren,
-                right_paren_opt,
-            })
+            alloc_unit_ty(event, left_paren, right_paren_opt, px)
         }
         TokenKind::Bang => {
             let bang = px.bump();
-            PTy::Never(PNeverTy { bang })
+            alloc_never_ty(event, bang, px)
         }
         TokenKind::Star | TokenKind::StarStar => {
             let rep = if px.next() == TokenKind::Star {
@@ -35,13 +33,8 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
             };
             let star = px.bump();
             let mut_opt = parse_mut(px);
-            let ty_opt = parse_ty(px).map(Box::new);
-            PTy::Ptr(PPtrTy {
-                star,
-                mut_opt,
-                ty_opt,
-                rep,
-            })
+            let ty_opt = parse_ty(px);
+            alloc_ptr_ty(event, rep, star, mut_opt, ty_opt, px)
         }
         _ => return None,
     };
@@ -49,7 +42,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<PTy> {
 }
 
 /// 型注釈 (`: ty`) のパース
-pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<PTy>) {
+pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<AfterTy>) {
     let colon_opt = px.eat(TokenKind::Colon);
 
     let ty_opt = if colon_opt.is_some() {

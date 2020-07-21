@@ -617,7 +617,7 @@ fn resolve_variant(
             });
 
             resolve_qualified_name_def(*name, parent_name_opt, NName::Const(n_const), nx);
-            resolve_expr_opt(value_opt.as_deref_mut(), nx);
+            resolve_expr_opt(value_opt.as_mut(), nx);
 
             KVariant::Const(n_const)
         }

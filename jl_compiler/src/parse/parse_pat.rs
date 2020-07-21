@@ -1,7 +1,7 @@
-use super::{parse_context::Px, parse_expr::parse_name, PName, PPat, PRecordPat, PToken};
+use super::*;
 use crate::token::TokenKind;
 
-fn parse_record_pat(name: PName, left_brace: PToken, px: &mut Px) -> PRecordPat {
+fn parse_record_pat(event: PatStart, name: AfterName, left_brace: PToken, px: &mut Px) -> AfterPat {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
@@ -13,25 +13,25 @@ fn parse_record_pat(name: PName, left_brace: PToken, px: &mut Px) -> PRecordPat 
     }
 
     let right_brace_opt = px.eat(TokenKind::RightBrace);
-    PRecordPat {
-        name,
-        left_brace,
-        right_brace_opt,
-    }
+    alloc_record_pat(event, name, left_brace, right_brace_opt, px)
 }
 
-pub(crate) fn parse_pat(px: &mut Px) -> Option<PPat> {
+pub(crate) fn parse_pat(px: &mut Px) -> Option<AfterPat> {
+    let event = px.start_element();
     let pat = match px.next() {
-        TokenKind::Char => PPat::Char(px.bump()),
+        TokenKind::Char => {
+            let token = px.bump();
+            alloc_char_pat(event, token, px)
+        }
         TokenKind::Ident => {
             let name = parse_name(px).unwrap();
 
             match px.next() {
                 TokenKind::LeftBrace => {
                     let left_brace = px.bump();
-                    PPat::Record(parse_record_pat(name, left_brace, px))
+                    parse_record_pat(event, name, left_brace, px)
                 }
-                _ => PPat::Name(name),
+                _ => alloc_name_pat(event, name, px),
             }
         }
         _ => return None,

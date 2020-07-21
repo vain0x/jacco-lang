@@ -41,8 +41,9 @@ impl TakeOut for TokenData {
 impl Debug for TokenData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.kind() {
-            TokenKind::Comment
-            | TokenKind::Space
+            TokenKind::Space
+            | TokenKind::Comment
+            | TokenKind::Other
             | TokenKind::Number
             | TokenKind::Char
             | TokenKind::Str
