@@ -8,7 +8,8 @@ use miniserde::{
     json::{self, Value},
     Deserialize, Serialize,
 };
-use std::{env::Args, io};
+use panic::UnwindSafe;
+use std::{env::Args, fmt::Debug, io, panic};
 
 #[derive(Deserialize, Debug)]
 struct InputRow {
@@ -41,7 +42,7 @@ fn parse_action(json: &str) -> Result<Action<impl Iterator<Item = String>>, DynE
     let row: InputRow = match json::from_str(json) {
         Ok(row) => row,
         Err(miniserde::Error) => {
-            return Err(format!("JSON としてパースできません。({:?})", json).into())
+            return Err(format!("JSON としてパースできません。({})", json).into())
         }
     };
 
@@ -65,17 +66,22 @@ fn parse_action(json: &str) -> Result<Action<impl Iterator<Item = String>>, DynE
     Ok(Action { id, cmd, args })
 }
 
-fn exec_action(action: Action<impl Iterator<Item = String>>) {
+fn exec_action(action: Action<impl Iterator<Item = String> + UnwindSafe>) {
     let Action { id, cmd, args } = action;
 
-    let result = match cmd {
+    let caught = panic::catch_unwind(|| match cmd {
         Cmd::Build => do_exec_build_cmd(args),
         Cmd::Batch | Cmd::Help | Cmd::Version => unreachable!(),
+    });
+
+    let result: Result<(), Box<dyn Debug + Send + 'static>> = match caught {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(err)) => Err(err.into_inner()),
+        Err(err) => Err(Box::new(err)),
     };
 
     if let Err(err) = result {
-        let err = Some(format!("{:?}", err.into_inner()));
-        println!("{}", json::to_string(&OutputRow { id, err }));
+        println!("{{\"id\":{},\"err\":{:?}}}", json::to_string(&id), err);
     }
 }
 
