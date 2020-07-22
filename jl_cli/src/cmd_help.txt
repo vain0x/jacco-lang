@@ -1,0 +1,12 @@
+{command} v{version}
+
+使用例:
+    {command} build main.jacco >main.c
+
+サブコマンド:
+    build               C言語にコンパイルします
+        <FILE|->
+
+その他:
+    -h, --help          ヘルプを表示します
+    -V, --version       バージョン情報を表示します

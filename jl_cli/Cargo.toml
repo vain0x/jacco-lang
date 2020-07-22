@@ -12,3 +12,7 @@ jl_compiler = { path = "../jl_compiler" }
 # 環境変数に基づいてログ出力を行うロガーの実装。
 # <https://github.com/sebasmagri/env_logger>
 env_logger = "0.7"
+
+# ログ出力 API の基本になるもの。
+# <https://github.com/rust-lang/log>
+log = "0.4"
