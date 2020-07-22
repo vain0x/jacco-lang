@@ -100,6 +100,7 @@ fn exec_loop() -> Result<(), DynError> {
 }
 
 pub(crate) fn exec_batch_cmd(_args: Args, help: bool) -> Result<(), DynError> {
+    // FIXME: args を捨ててしまっているので、`batch --help` でヘルプが出ない
     if help {
         write_batch_help();
         return Ok(());
