@@ -25,23 +25,18 @@ enum Arg {
 fn write_help(w: &mut impl Write) -> io::Result<()> {
     write!(
         w,
-        r#"{name} {version}
+        r#"{command} v{version}
 
-    USAGE:
-        {name} [OPTIONS] [SUBCOMMAND]
+使用例:
+    {command} start
 
-    EXAMPLE:
-        {name} start
+サブコマンド start:
+    LSP サーバーとして起動します。
 
-    SUBCOMMANDS:
-        start           LSP サーバーとして起動する
-        help            ヘルプを表示する (--help と同じ)
-        version         バージョン番号を表示する (--version と同じ)
-
-    OPTIONS:
-        -h, --help      ヘルプを表示する
-        -V, --version   バージョン番号を表示する"#,
-        name = env!("CARGO_PKG_NAME"),
+その他:
+    -h, --help      ヘルプを表示する
+    -V, --version   バージョン番号を表示する"#,
+        command = env!("CARGO_PKG_NAME"),
         version = get_version()
     )
 }

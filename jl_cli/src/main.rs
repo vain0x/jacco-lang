@@ -19,25 +19,33 @@ enum Arg {
 fn write_help(w: &mut impl Write) -> io::Result<()> {
     write!(
         w,
-        r#"{name} {version}
+        r#"{command} v{version}
 
-    USAGE:
-        {name} [OPTIONS] [SUBCOMMAND]
+使用例:
+    {command} build main.jacco
+    {command} build -
 
-    EXAMPLE:
-        {name} build hello.jacco
+サブコマンド build:
+    ソースファイルをビルドします。
 
-    SUBCOMMANDS:
-        build           Build a source file.
-            -           Read from standard input.
-            <file>      Read from a file.
-        help            Print help. Same as --help
-        version         Print version. Same as --version
+    凡例:
+        {command} build <FILE|->
+    引数:
+        <FILE>      ソースファイル
+        -           標準入力
+    標準出力:
+        コンパイル結果のソースコードを標準出力に出力します。
 
-    GLOBAL OPTIONS:
-        -h, --help      Print help. Same as help
-        -V, --version   Print version. Same as version"#,
-        name = env!("CARGO_PKG_NAME"),
+サブコマンド help:
+    ヘルプを表示します。
+
+    使用例:
+        {command} help
+
+その他:
+    -h, --help      ヘルプを表示する
+    -V, --version   バージョンを表示する"#,
+        command = env!("CARGO_PKG_NAME"),
         version = get_version()
     )
 }
