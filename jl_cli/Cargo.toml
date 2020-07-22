@@ -16,3 +16,11 @@ env_logger = "0.7"
 # ログ出力 API の基本になるもの。
 # <https://github.com/rust-lang/log>
 log = "0.4"
+
+# データ構造を JSON 文字列と相互変換するためのライブラリ。(serde の軽量版)
+# <https://github.com/dtolnay/miniserde>
+miniserde = "0.1"
+
+# 並列処理のためのライブラリ。
+# <https://github.com/rayon-rs/rayon>
+rayon = "1"
