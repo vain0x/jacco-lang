@@ -44,7 +44,7 @@ pub(crate) type APatId = VecArenaId<APatTag>;
 pub(crate) type APatArena = VecArena<APatTag, APat>;
 
 pub(crate) struct AFieldPat {
-    pub(crate) name: PToken,
+    pub(crate) name: AName,
     pub(crate) pat_opt: Option<APatId>,
 }
 
@@ -108,7 +108,7 @@ pub(crate) struct APipeExpr {
 }
 
 pub(crate) struct AFieldExpr {
-    pub(crate) field_name: PToken,
+    pub(crate) field_name: AName,
     pub(crate) value_opt: Option<AExprId>,
 }
 
@@ -194,7 +194,7 @@ pub(crate) struct ADeclModifiers {
 /// let, const, static, const variant, field of record variant
 pub(crate) struct AFieldLikeDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<PToken>,
+    pub(crate) name_opt: Option<AName>,
     pub(crate) ty_opt: Option<ATyId>,
     pub(crate) value_opt: Option<AExprId>,
 }
@@ -204,20 +204,20 @@ pub(crate) struct AExprDecl {
 }
 
 pub(crate) struct AParamDecl {
-    pub(crate) name: PToken,
+    pub(crate) name: AName,
     pub(crate) ty_opt: Option<ATyId>,
 }
 
 pub(crate) struct AFnLikeDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<PToken>,
+    pub(crate) name_opt: Option<AName>,
     pub(crate) params: Vec<AParamDecl>,
     pub(crate) result_ty_opt: Option<ATyId>,
     pub(crate) body_opt: Option<AExprId>,
 }
 
 pub(crate) struct ARecordVariantDecl {
-    pub(crate) left: PToken,
+    pub(crate) name: AName,
     pub(crate) fields: Vec<AFieldLikeDecl>,
 }
 
@@ -228,7 +228,7 @@ pub(crate) enum AVariantDecl {
 
 pub(crate) struct AEnumDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<PToken>,
+    pub(crate) name_opt: Option<AName>,
     pub(crate) variants: Vec<AVariantDecl>,
 }
 

@@ -44,7 +44,7 @@ pub(crate) fn parse_unqualified_name(px: &mut Px) -> Option<AfterUnqualifiedName
     let token = px.eat(TokenKind::Ident)?;
     let quals = vec![];
     let (p_name, _, event) = alloc_name(event, quals, token, px);
-    Some((p_name, token, event))
+    Some((p_name, AName, event))
 }
 
 fn parse_tuple_expr(event: ExprStart, left_paren: PToken, px: &mut Px) -> AfterExpr {

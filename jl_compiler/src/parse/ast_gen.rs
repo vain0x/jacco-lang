@@ -1,7 +1,7 @@
 use super::*;
 
 pub(crate) type AfterName = (PName, AName, ParseEnd);
-pub(crate) type AfterUnqualifiedName = (PName, PToken, ParseEnd);
+pub(crate) type AfterUnqualifiedName = (PName, AName, ParseEnd);
 pub(crate) type AfterParam = (PParam, AParamDecl, ParseEnd);
 pub(crate) type AfterParamList = (PParamList, Vec<AParamDecl>);
 pub(crate) type AfterArg = (PArg, AExpr, ParseEnd);
@@ -72,7 +72,7 @@ pub(crate) fn alloc_param(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterParam {
-    let (name, token, _) = name;
+    let (name, a_name, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
 
     (
@@ -83,7 +83,7 @@ pub(crate) fn alloc_param(
             comma_opt,
         },
         AParamDecl {
-            name: token,
+            name: a_name,
             ty_opt: a_ty_opt,
         },
         event.end(PElementKind::ParamDecl, px),
@@ -1158,7 +1158,7 @@ pub(crate) fn alloc_record_variant_decl(
             comma_opt,
         }),
         AVariantDecl::Record(ARecordVariantDecl {
-            left: a_name,
+            name: a_name,
             fields: field_decls,
         }),
         event.end(PElementKind::RecordVariantDecl, px),
