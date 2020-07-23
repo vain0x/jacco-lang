@@ -2,6 +2,5 @@
 members = [
     "jl_cli",
     "jl_compiler",
-    "jl_lsp",
-    "jl_tests"
+    "jl_lsp"
 ]

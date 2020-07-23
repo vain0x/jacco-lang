@@ -16,14 +16,16 @@ f() {
     if test "$CATEGORY" = ""
     then
         SRC="tests/$NAME/$NAME.jacco"
+        TXT="tests/$NAME/$NAME.txt"
     else
         SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        TXT="tests/$CATEGORY/$NAME/$NAME.txt"
     fi
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
-    cargo run --bin jl_tests "$SRC" \
-        1> >(tee -a test_stdout.md >&2) \
+    RUST_LOG='trace' cargo run --bin jacco build "$SRC" \
+        1>"$TXT" \
         2> >(tee -a test_stderr.md | grep -E 'Compiling|panicked|error|ERROR|\.rs\:' 1>&2)
     echo '```' | tee -a test_stderr.md >>test_stdout.md
 }
@@ -44,7 +46,7 @@ expect_compile_err() {
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
     RUST_LOG='info' RUST_LOG_TIMESTAMP='off' \
-        cargo --quiet run --bin jl_tests "$SRC" \
+        cargo --quiet run --bin jacco build "$SRC" \
         1> >(tee -a test_stdout.md >&2) \
         2> >(tee "$ERR" | grep -E 'Compiling|panicked' 1>&2) \
         || :
