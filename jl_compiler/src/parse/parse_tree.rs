@@ -545,6 +545,8 @@ impl PRoot {
             "SyntaxTree (untyped):\n{:#?}",
             DebugWith::new(&self.root, self)
         );
+
+        dump_ast(self);
     }
 }
 

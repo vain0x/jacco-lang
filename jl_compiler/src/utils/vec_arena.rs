@@ -29,6 +29,10 @@ const fn id_add_offset(id: NonZeroU32, offset: usize) -> NonZeroU32 {
     unsafe { NonZeroU32::new_unchecked(value) }
 }
 
+fn id_iter(range: Range<NonZeroU32>) -> impl Iterator<Item = NonZeroU32> {
+    (range.start.get()..range.end.get()).map(|i| unsafe { NonZeroU32::new_unchecked(i) })
+}
+
 // -----------------------------------------------
 // VecArenaId
 // -----------------------------------------------
@@ -297,6 +301,25 @@ impl<Tag> VecArenaSlice<Tag> {
         end: VecArenaId::MAX,
     });
 
+    pub(crate) fn len(&self) -> usize {
+        let (start, end) = (self.0.start, self.0.end);
+        end.to_index().saturating_sub(start.to_index())
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
+        let start = self.0.start.inner;
+        let end = self.0.end.inner;
+        id_iter(start..end).map(VecArenaId::from_inner)
+    }
+
+    #[allow(unused)]
+    pub(crate) fn enumerate<'a, T>(
+        self,
+        arena: &'a VecArena<Tag, T>,
+    ) -> impl Iterator<Item = (VecArenaId<Tag>, &'a T)> {
+        self.iter().zip(self.of(arena))
+    }
+
     // 結果はスライスじゃないかもしれないが、ランダムアクセスは可能
     pub(crate) fn of<'a, T>(&self, arena: &'a VecArena<Tag, T>) -> &'a [T] {
         let (start, end) = (self.0.start, self.0.end);
@@ -327,6 +350,7 @@ impl<Tag, T> VecArena<Tag, T> {
         for item in items {
             end = self.alloc(item);
         }
+        end = VecArenaId::from_inner(id_add_offset(end.inner, 1));
 
         VecArenaSlice(Range { start, end })
     }

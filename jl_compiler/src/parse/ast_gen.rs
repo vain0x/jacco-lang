@@ -5,20 +5,20 @@ pub(crate) type AfterUnqualifiableName = (PName, (AName, ParseEnd));
 pub(crate) type AfterParam = (PParam, (AParamDecl, ParseEnd));
 pub(crate) type AfterParamList = (PParamList, Vec<(AParamDecl, ParseEnd)>);
 pub(crate) type AfterArg = (PArg, (AExpr, ExprEnd));
-pub(crate) type AfterArgList = (PArgList, Vec<AExpr>);
+pub(crate) type AfterArgList = (PArgList, Vec<(AExpr, ExprEnd)>);
 pub(crate) type AfterTy = (PTy, (ATy, TyEnd));
 pub(crate) type AfterPat = (PPat, (APat, PatEnd));
 pub(crate) type AfterFieldExpr = (PFieldExpr, (AFieldExpr, ParseEnd));
 pub(crate) type AfterArm = (PArm, (AArm, ParseEnd));
 pub(crate) type AfterExpr = (PExpr, (AExpr, ExprEnd));
-pub(crate) type AfterBlock = (PBlock, (Vec<ADecl>, ExprEnd));
+pub(crate) type AfterBlock = (PBlock, (Vec<(ADecl, DeclEnd)>, ExprEnd));
 pub(crate) type AfterDeclModifiers = (DeclStart, Option<PVis>);
 pub(crate) type AfterVariantDecl = (PVariantDecl, (AVariantDecl, ParseEnd));
 pub(crate) type AfterVariantDecls = (Vec<PVariantDecl>, Vec<AVariantDecl>);
 pub(crate) type AfterFieldDecl = (PFieldDecl, (AFieldLikeDecl, ParseEnd));
 pub(crate) type AfterFieldDecls = (Vec<PFieldDecl>, Vec<AFieldLikeDecl>);
 pub(crate) type AfterDecl = (PDecl, (ADecl, DeclEnd));
-pub(crate) type AfterSemi = (Vec<PDecl>, Option<PExpr>, Vec<ADecl>);
+pub(crate) type AfterSemi = (Vec<PDecl>, Option<PExpr>, Vec<(ADecl, DeclEnd)>);
 pub(crate) type AfterRoot = Vec<AfterDecl>;
 
 fn decompose_opt<P, A>(opt: Option<(P, A)>) -> (Option<P>, Option<A>) {
@@ -44,11 +44,25 @@ impl Px {
         self.ast.exprs.alloc(expr)
     }
 
-    fn alloc_exprs(&mut self, exprs: Vec<AExpr>) -> AExprIds {
+    fn alloc_exprs(&mut self, exprs: Vec<(AExpr, ExprEnd)>) -> AExprIds {
+        log::trace!(
+            "alloc exprs {} -> {}",
+            self.ast.exprs.len(),
+            self.ast.exprs.len() + exprs.len()
+        );
+        let (exprs, events): (Vec<_>, Vec<_>) = exprs.into_iter().unzip();
+        self.ast.expr_events.alloc_slice(events);
         self.ast.exprs.alloc_slice(exprs)
     }
 
-    fn alloc_decls(&mut self, decls: Vec<ADecl>) -> ADeclIds {
+    pub(crate) fn alloc_decls(&mut self, decls: Vec<(ADecl, DeclEnd)>) -> ADeclIds {
+        log::trace!(
+            "alloc decls {} -> {}",
+            self.ast.decls.len(),
+            self.ast.decls.len() + decls.len()
+        );
+        let (decls, events): (Vec<_>, Vec<_>) = decls.into_iter().unzip();
+        self.ast.decl_events.alloc_slice(events);
         self.ast.decls.alloc_slice(decls)
     }
 }
@@ -607,7 +621,7 @@ pub(crate) fn alloc_pipe_expr(
     )
 }
 
-fn do_alloc_block_expr(event: ExprEnd, decls: Vec<ADecl>, px: &mut Px) -> AExprId {
+fn do_alloc_block_expr(event: ExprEnd, decls: Vec<(ADecl, DeclEnd)>, px: &mut Px) -> AExprId {
     let decls = px.alloc_decls(decls);
     px.alloc_expr((AExpr::Block(ABlockExpr { decls }), event))
 }
@@ -888,10 +902,7 @@ pub(crate) fn alloc_arg_list(
     right_paren_opt: Option<PToken>,
     _px: &mut Px,
 ) -> AfterArgList {
-    let (args, a_args) = args
-        .into_iter()
-        .map(|(arg, (a_arg, _))| (arg, a_arg))
-        .unzip();
+    let (args, a_args) = args.into_iter().unzip();
 
     (
         PArgList {
