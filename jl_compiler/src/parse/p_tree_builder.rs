@@ -79,9 +79,7 @@ impl PElementBuilder {
             }
         }
 
-        let mut element = PElementData::new(kind);
-        *element.children_mut() = children;
-        arena.alloc(element)
+        arena.alloc(PElementData::new(kind, children))
     }
 }
 

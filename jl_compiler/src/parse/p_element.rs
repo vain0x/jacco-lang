@@ -83,11 +83,8 @@ pub(crate) struct PElementData {
 }
 
 impl PElementData {
-    pub(crate) fn new(kind: PElementKind) -> Self {
-        PElementData {
-            kind,
-            children: vec![],
-        }
+    pub(crate) fn new(kind: PElementKind, children: Vec<PNode>) -> Self {
+        PElementData { kind, children }
     }
 
     #[allow(unused)]
@@ -98,9 +95,5 @@ impl PElementData {
     #[allow(unused)]
     pub(crate) fn children(&self) -> &[PNode] {
         &self.children
-    }
-
-    pub(crate) fn children_mut(&mut self) -> &mut Vec<PNode> {
-        &mut self.children
     }
 }
