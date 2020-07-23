@@ -7,7 +7,7 @@ pub(crate) type AfterParamList = (PParamList, Vec<AParamDecl>);
 pub(crate) type AfterArg = (PArg, AExpr, ParseEnd);
 pub(crate) type AfterArgList = (PArgList, Vec<AExpr>);
 pub(crate) type AfterTy = (PTy, ATy, TyEnd);
-pub(crate) type AfterPat = (PPat, APatId, PatEnd);
+pub(crate) type AfterPat = (PPat, APat, PatEnd);
 pub(crate) type AfterFieldExpr = (PFieldExpr, AFieldExpr, ParseEnd);
 pub(crate) type AfterArm = (PArm, AArm, ParseEnd);
 pub(crate) type AfterExpr = (PExpr, AExpr, ExprEnd);
@@ -185,7 +185,7 @@ pub(crate) fn alloc_ptr_ty(
 pub(crate) fn alloc_char_pat(event: PatStart, token: PToken, px: &mut Px) -> AfterPat {
     (
         PPat::Char(token),
-        px.ast.pats.alloc(APat::Char(token)),
+        APat::Char(token),
         event.end(PElementKind::CharPat, px),
     )
 }
@@ -194,7 +194,7 @@ pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &m
     let (name, a_name, _) = name;
     (
         PPat::Name(name),
-        px.ast.pats.alloc(APat::Name(a_name)),
+        APat::Name(a_name),
         event.end(PElementKind::NamePat, px),
     )
 }
@@ -213,10 +213,10 @@ pub(crate) fn alloc_record_pat(
             left_brace,
             right_brace_opt,
         }),
-        px.ast.pats.alloc(APat::Record(ARecordPat {
+        APat::Record(ARecordPat {
             left: a_name,
             fields: vec![],
-        })),
+        }),
         event.end(PElementKind::RecordPat, px),
     )
 }
@@ -711,6 +711,7 @@ pub(crate) fn alloc_arm(
     px: &mut Px,
 ) -> AfterArm {
     let (pat, a_pat, _) = pat;
+    let a_pat = px.ast.pats.alloc(a_pat);
 
     let (body_opt, a_body_opt) = decompose_opt(body_opt);
     let a_body_opt = a_body_opt.map(|expr| px.ast.exprs.alloc(expr));
