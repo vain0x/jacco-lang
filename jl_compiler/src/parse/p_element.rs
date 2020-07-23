@@ -6,15 +6,66 @@ use std::fmt::Debug;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum PElementKind {
     Name,
-    #[allow(unused)]
-    Param,
-    #[allow(unused)]
+
+    // 型
+    NameTy,
+    NeverTy,
+    UnitTy,
+    PtrTy,
+
+    // パターン
+    CharPat,
+    NamePat,
+    RecordPat,
+
+    // 式の一部
+    FieldExpr,
     Arg,
-    Ty,
-    Pat,
-    Expr,
-    Decl,
-    Root,
+    Arm,
+
+    // 式
+    NumberExpr,
+    CharExpr,
+    StrExpr,
+    TrueExpr,
+    FalseExpr,
+    NameExpr,
+    UnitExpr,
+    GroupExpr,
+    RecordExpr,
+    DotFieldExpr,
+    CallExpr,
+    IndexExpr,
+    AsExpr,
+    UnaryOpExpr,
+    BinaryOpExpr,
+    PipeExpr,
+    BlockExpr,
+    BreakExpr,
+    ContinueExpr,
+    ReturnExpr,
+    IfExpr,
+    MatchExpr,
+    WhileExpr,
+    LoopExpr,
+
+    // 宣言の一部
+    ParamDecl,
+    ConstVariantDecl,
+    FieldDecl,
+    RecordVariantDecl,
+
+    // 宣言
+    ExprDecl,
+    LetDecl,
+    ConstDecl,
+    StaticDecl,
+    FnDecl,
+    ExternFnDecl,
+    EnumDecl,
+    StructDecl,
+    UseDecl,
+    RootDecl,
 }
 
 pub(crate) struct PElementTag;

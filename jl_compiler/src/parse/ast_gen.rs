@@ -86,7 +86,7 @@ pub(crate) fn alloc_param(
             name: token,
             ty_opt: a_ty_opt,
         },
-        event.end(PElementKind::Param, px),
+        event.end(PElementKind::ParamDecl, px),
     )
 }
 
@@ -120,7 +120,7 @@ pub(crate) fn alloc_name_ty(event: TyStart, name: AfterName, px: &mut Px) -> Aft
     (
         PTy::Name(name),
         px.ast.tys.alloc(ATy::Name(a_name)),
-        event.end(PElementKind::Ty, px),
+        event.end(PElementKind::NameTy, px),
     )
 }
 
@@ -136,7 +136,7 @@ pub(crate) fn alloc_unit_ty(
             right_paren_opt,
         }),
         px.ast.tys.alloc(ATy::Unit),
-        event.end(PElementKind::Ty, px),
+        event.end(PElementKind::UnitTy, px),
     )
 }
 
@@ -144,7 +144,7 @@ pub(crate) fn alloc_never_ty(event: TyStart, bang: PToken, px: &mut Px) -> After
     (
         PTy::Never(PNeverTy { bang }),
         px.ast.tys.alloc(ATy::Never),
-        event.end(PElementKind::Ty, px),
+        event.end(PElementKind::NeverTy, px),
     )
 }
 
@@ -172,7 +172,7 @@ pub(crate) fn alloc_ptr_ty(
             mut_opt: mut_opt.map(|p| p.0),
             ty_opt: a_ty_opt,
         })),
-        event.end(PElementKind::Ty, px),
+        event.end(PElementKind::PtrTy, px),
     )
 }
 
@@ -184,7 +184,7 @@ pub(crate) fn alloc_char_pat(event: PatStart, token: PToken, px: &mut Px) -> Aft
     (
         PPat::Char(token),
         px.ast.pats.alloc(APat::Char(token)),
-        event.end(PElementKind::Pat, px),
+        event.end(PElementKind::CharPat, px),
     )
 }
 
@@ -193,7 +193,7 @@ pub(crate) fn alloc_name_pat(event: PatStart, name: AfterName, px: &mut Px) -> A
     (
         PPat::Name(name),
         px.ast.pats.alloc(APat::Name(a_name)),
-        event.end(PElementKind::Pat, px),
+        event.end(PElementKind::NamePat, px),
     )
 }
 
@@ -215,7 +215,7 @@ pub(crate) fn alloc_record_pat(
             left: a_name,
             fields: vec![],
         })),
-        event.end(PElementKind::Pat, px),
+        event.end(PElementKind::RecordPat, px),
     )
 }
 
@@ -238,7 +238,7 @@ pub(crate) fn alloc_unit_expr(
             },
         }),
         AExpr::Unit,
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::UnitExpr, px),
     )
 }
 
@@ -262,7 +262,7 @@ pub(crate) fn alloc_group_expr(
                 },
             }),
             a_expr,
-            event.end(PElementKind::Expr, px),
+            event.end(PElementKind::GroupExpr, px),
         ),
         None => (
             PExpr::Tuple(PTupleExpr {
@@ -273,7 +273,7 @@ pub(crate) fn alloc_group_expr(
                 },
             }),
             AExpr::Unit,
-            event.end(PElementKind::Expr, px),
+            event.end(PElementKind::UnitExpr, px),
         ),
     }
 }
@@ -301,7 +301,7 @@ pub(crate) fn alloc_field_expr(
             field_name: a_name,
             value_opt: a_value_opt,
         },
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::FieldExpr, px),
     )
 }
 
@@ -309,7 +309,7 @@ pub(crate) fn alloc_number(event: ExprStart, token: PToken, px: &mut Px) -> Afte
     (
         PExpr::Number(PNumberExpr { token }),
         AExpr::Number(token),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::NumberExpr, px),
     )
 }
 
@@ -317,7 +317,7 @@ pub(crate) fn alloc_char(event: ExprStart, token: PToken, px: &mut Px) -> AfterE
     (
         PExpr::Char(PCharExpr { token }),
         AExpr::Char(token),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::CharExpr, px),
     )
 }
 
@@ -325,7 +325,7 @@ pub(crate) fn alloc_str(event: ExprStart, token: PToken, px: &mut Px) -> AfterEx
     (
         PExpr::Str(PStrExpr { token }),
         AExpr::Str(token),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::StrExpr, px),
     )
 }
 
@@ -333,7 +333,7 @@ pub(crate) fn alloc_true(event: ExprStart, token: PToken, px: &mut Px) -> AfterE
     (
         PExpr::True(PTrueExpr { token }),
         AExpr::True,
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::TrueExpr, px),
     )
 }
 
@@ -341,7 +341,7 @@ pub(crate) fn alloc_false(event: ExprStart, token: PToken, px: &mut Px) -> After
     (
         PExpr::False(PFalseExpr { token }),
         AExpr::False,
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::FalseExpr, px),
     )
 }
 
@@ -350,7 +350,7 @@ pub(crate) fn alloc_name_expr(event: ExprStart, name: AfterName, px: &mut Px) ->
     (
         PExpr::Name(name),
         AExpr::Name(a_name),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::NameExpr, px),
     )
 }
 
@@ -378,7 +378,7 @@ pub(crate) fn alloc_record_expr(
             left: a_name,
             fields: a_fields,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::RecordExpr, px),
     )
 }
 
@@ -402,7 +402,7 @@ pub(crate) fn alloc_dot_field_expr(
             left: a_left,
             field_opt: name_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::DotFieldExpr, px),
     )
 }
 
@@ -424,7 +424,7 @@ pub(crate) fn alloc_call_expr(
             arg_list,
         }),
         AExpr::Call(ACallLikeExpr { left: a_left, args }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::CallExpr, px),
     )
 }
 
@@ -446,7 +446,7 @@ pub(crate) fn alloc_index_expr(
             arg_list,
         }),
         AExpr::Index(ACallLikeExpr { left: a_left, args }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::IndexExpr, px),
     )
 }
 
@@ -472,7 +472,7 @@ pub(crate) fn alloc_as_expr(
             left: a_left,
             ty_opt: a_ty_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::AsExpr, px),
     )
 }
 
@@ -499,7 +499,7 @@ pub(crate) fn alloc_prefix_expr(
             mut_opt: mut_opt.map(|x| x.0),
             arg_opt: a_arg_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::UnaryOpExpr, px),
     )
 }
 
@@ -529,7 +529,7 @@ pub(crate) fn alloc_binary_op_expr(
             left: a_left,
             right_opt: a_right_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::BinaryOpExpr, px),
     )
 }
 
@@ -556,7 +556,7 @@ pub(crate) fn alloc_pipe_expr(
             left: a_left,
             right_opt: a_right_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::PipeExpr, px),
     )
 }
 
@@ -581,7 +581,7 @@ pub(crate) fn alloc_block(
             right_brace_opt,
         },
         a_decls,
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::BlockExpr, px),
     )
 }
 
@@ -602,7 +602,7 @@ pub(crate) fn alloc_block_expr(
             right_brace_opt,
         })),
         do_alloc_block_expr(a_decls, px),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::BlockExpr, px),
     )
 }
 
@@ -622,7 +622,7 @@ pub(crate) fn alloc_break_expr(
             loop_id_opt: None,
         }),
         AExpr::Break(AJumpExpr { arg_opt: a_arg_opt }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::BreakExpr, px),
     )
 }
 
@@ -633,7 +633,7 @@ pub(crate) fn alloc_continue_expr(event: ExprStart, keyword: PToken, px: &mut Px
             loop_id_opt: None,
         }),
         AExpr::Continue,
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::ContinueExpr, px),
     )
 }
 
@@ -653,7 +653,7 @@ pub(crate) fn alloc_return_expr(
             fn_id_opt: None,
         }),
         AExpr::Return(AJumpExpr { arg_opt: a_arg_opt }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::ReturnExpr, px),
     )
 }
 
@@ -691,7 +691,7 @@ pub(crate) fn alloc_if_expr(
             body_opt: a_body_opt,
             alt_opt: a_alt_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::IfExpr, px),
     )
 }
 
@@ -719,7 +719,7 @@ pub(crate) fn alloc_arm(
             pat: a_pat,
             body_opt: a_body_opt,
         },
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::Arm, px),
     )
 }
 
@@ -749,7 +749,7 @@ pub(crate) fn alloc_match_expr(
             cond_opt: a_cond_opt,
             arms: a_arms,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::MatchExpr, px),
     )
 }
 
@@ -780,7 +780,7 @@ pub(crate) fn alloc_while_expr(
             cond_opt: a_cond_opt,
             body_opt: a_body_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::WhileExpr, px),
     )
 }
 
@@ -805,7 +805,7 @@ pub(crate) fn alloc_loop_expr(
         AExpr::Loop(ALoopExpr {
             body_opt: a_body_opt,
         }),
-        event.end(PElementKind::Expr, px),
+        event.end(PElementKind::LoopExpr, px),
     )
 }
 
@@ -869,7 +869,7 @@ pub(crate) fn alloc_expr_decl(
     (
         PDecl::Expr(PExprDecl { expr, semi_opt }),
         ADecl::Expr(a_expr),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::ExprDecl, px),
     )
 }
 
@@ -906,7 +906,7 @@ pub(crate) fn alloc_let_decl(
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::LetDecl, px),
     )
 }
 
@@ -943,7 +943,7 @@ pub(crate) fn alloc_const_decl(
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::ConstDecl, px),
     )
 }
 
@@ -980,7 +980,7 @@ pub(crate) fn alloc_static_decl(
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::StaticDecl, px),
     )
 }
 
@@ -1026,7 +1026,7 @@ pub(crate) fn alloc_fn_decl(
             result_ty_opt: a_ty_opt,
             body_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::FnDecl, px),
     )
 }
 
@@ -1067,7 +1067,7 @@ pub(crate) fn alloc_extern_fn_decl(
             result_ty_opt: a_ty_opt,
             body_opt: None,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::ExternFnDecl, px),
     )
 }
 
@@ -1097,7 +1097,7 @@ pub(crate) fn alloc_const_variant_decl(
             ty_opt: None,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::ConstVariantDecl, px),
     )
 }
 
@@ -1126,7 +1126,7 @@ pub(crate) fn alloc_field_decl(
             ty_opt: a_ty_opt,
             value_opt: None,
         },
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::FieldDecl, px),
     )
 }
 
@@ -1161,7 +1161,7 @@ pub(crate) fn alloc_record_variant_decl(
             left: a_name,
             fields: field_decls,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::RecordVariantDecl, px),
     )
 }
 
@@ -1200,7 +1200,7 @@ pub(crate) fn alloc_enum_decl(
             name_opt: a_name_opt,
             variants: variant_decls,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::EnumDecl, px),
     )
 }
 
@@ -1224,7 +1224,7 @@ pub(crate) fn alloc_struct_decl(
             modifiers,
             variant_opt: a_variant_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::StructDecl, px),
     )
 }
 
@@ -1248,6 +1248,6 @@ pub(crate) fn alloc_use_decl(
             modifiers,
             name_opt: a_name_opt,
         }),
-        event.end(PElementKind::Decl, px),
+        event.end(PElementKind::UseDecl, px),
     )
 }

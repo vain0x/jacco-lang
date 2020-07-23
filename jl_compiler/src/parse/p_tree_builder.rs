@@ -188,7 +188,7 @@ impl PTreeBuilder {
         };
 
         let mut root = PElementBuilder::new_with_children(0, children);
-        root.end(PElementKind::Root, eof.to_index());
+        root.end(PElementKind::RootDecl, eof.to_index());
         root.finish(arena)
     }
 }
