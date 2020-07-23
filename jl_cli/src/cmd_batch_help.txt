@@ -14,7 +14,7 @@
     型:
         {{ id: number, args: string[] }}
     例:
-        {{ "id": 1, args: ["build", "main.jacco", "-o", "main.c"] }}
+        {{ "id": 1, "args": ["build", "main.jacco", "-o", "main.c"] }}
 
 注意:
     標準入力に出力されたデータが、どのコマンドに由来するのかを判別することはできません。
