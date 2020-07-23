@@ -6,7 +6,7 @@ pub(crate) type AfterParam = (PParam, AParamDecl, ParseEnd);
 pub(crate) type AfterParamList = (PParamList, Vec<AParamDecl>);
 pub(crate) type AfterArg = (PArg, AExpr, ParseEnd);
 pub(crate) type AfterArgList = (PArgList, Vec<AExpr>);
-pub(crate) type AfterTy = (PTy, ATyId, TyEnd);
+pub(crate) type AfterTy = (PTy, ATy, TyEnd);
 pub(crate) type AfterPat = (PPat, APatId, PatEnd);
 pub(crate) type AfterFieldExpr = (PFieldExpr, AFieldExpr, ParseEnd);
 pub(crate) type AfterArm = (PArm, AArm, ParseEnd);
@@ -74,6 +74,7 @@ pub(crate) fn alloc_param(
 ) -> AfterParam {
     let (name, a_name, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
 
     (
         PParam {
@@ -119,7 +120,7 @@ pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut
     let (name, a_name, _) = name;
     (
         PTy::Name(name),
-        px.ast.tys.alloc(ATy::Name(a_name)),
+        ATy::Name(a_name),
         event.end(PElementKind::NameTy, px),
     )
 }
@@ -135,7 +136,7 @@ pub(crate) fn alloc_unit_ty(
             left_paren,
             right_paren_opt,
         }),
-        px.ast.tys.alloc(ATy::Unit),
+        ATy::Unit,
         event.end(PElementKind::UnitTy, px),
     )
 }
@@ -143,7 +144,7 @@ pub(crate) fn alloc_unit_ty(
 pub(crate) fn alloc_never_ty(event: TyStart, bang: PToken, px: &mut Px) -> AfterTy {
     (
         PTy::Never(PNeverTy { bang }),
-        px.ast.tys.alloc(ATy::Never),
+        ATy::Never,
         event.end(PElementKind::NeverTy, px),
     )
 }
@@ -160,6 +161,7 @@ pub(crate) fn alloc_ptr_ty(
         Some((ty, a_ty, _)) => ((Some(Box::new(ty)), Some(a_ty))),
         None => (None, None),
     };
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
 
     (
         PTy::Ptr(PPtrTy {
@@ -168,10 +170,10 @@ pub(crate) fn alloc_ptr_ty(
             ty_opt,
             rep,
         }),
-        px.ast.tys.alloc(ATy::Ptr(APtrTy {
+        ATy::Ptr(APtrTy {
             mut_opt: mut_opt.map(|p| p.0),
             ty_opt: a_ty_opt,
-        })),
+        }),
         event.end(PElementKind::PtrTy, px),
     )
 }
@@ -465,6 +467,7 @@ pub(crate) fn alloc_as_expr(
     let a_left = px.ast.exprs.alloc(a_left);
 
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
 
     (
         PExpr::As(PAsExpr {
@@ -891,6 +894,7 @@ pub(crate) fn alloc_let_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
     let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
 
@@ -928,6 +932,7 @@ pub(crate) fn alloc_const_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
     let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
 
@@ -965,6 +970,7 @@ pub(crate) fn alloc_static_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
     let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
 
@@ -1006,6 +1012,7 @@ pub(crate) fn alloc_fn_decl(
         None => (None, vec![]),
     };
     let (result_ty_opt, a_ty_opt) = decompose_opt(result_ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
     let (block_opt, a_block_opt) = decompose_opt(block_opt);
     let body_opt = a_block_opt.map(|decls| {
         let expr = do_alloc_block_expr(decls, px);
@@ -1052,6 +1059,7 @@ pub(crate) fn alloc_extern_fn_decl(
         None => (None, vec![]),
     };
     let (result_ty_opt, a_ty_opt) = decompose_opt(result_ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
 
     (
         PDecl::ExternFn(PExternFnDecl {
@@ -1115,6 +1123,7 @@ pub(crate) fn alloc_field_decl(
 ) -> AfterFieldDecl {
     let (name, a_name, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
 
     (
         PFieldDecl {
