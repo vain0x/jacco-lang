@@ -1,7 +1,7 @@
 use super::*;
 
-pub(crate) type AfterName = (PName, AName, ParseEnd);
-pub(crate) type AfterUnqualifiedName = (PName, AName, ParseEnd);
+pub(crate) type AfterQualifiableName = (PName, AName, ParseEnd);
+pub(crate) type AfterUnqualifiableName = (PName, AName, ParseEnd);
 pub(crate) type AfterParam = (PParam, AParamDecl, ParseEnd);
 pub(crate) type AfterParamList = (PParamList, Vec<AParamDecl>);
 pub(crate) type AfterArg = (PArg, AExpr, ParseEnd);
@@ -37,7 +37,7 @@ pub(crate) fn alloc_name(
     quals: Vec<PNameQual>,
     token: PToken,
     px: &mut Px,
-) -> AfterName {
+) -> AfterQualifiableName {
     let text = token.text(px.tokens()).to_string();
     let full_name = {
         let mut s = String::new();
@@ -66,7 +66,7 @@ pub(crate) fn alloc_name(
 
 pub(crate) fn alloc_param(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     comma_opt: Option<PToken>,
@@ -115,7 +115,7 @@ pub(crate) fn alloc_param_list(
 // 型
 // -----------------------------------------------
 
-pub(crate) fn alloc_name_ty(event: TyStart, name: AfterName, px: &mut Px) -> AfterTy {
+pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut Px) -> AfterTy {
     let (name, a_name, _) = name;
     (
         PTy::Name(name),
@@ -188,7 +188,7 @@ pub(crate) fn alloc_char_pat(event: PatStart, token: PToken, px: &mut Px) -> Aft
     )
 }
 
-pub(crate) fn alloc_name_pat(event: PatStart, name: AfterName, px: &mut Px) -> AfterPat {
+pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &mut Px) -> AfterPat {
     let (name, a_name, _) = name;
     (
         PPat::Name(name),
@@ -199,7 +199,7 @@ pub(crate) fn alloc_name_pat(event: PatStart, name: AfterName, px: &mut Px) -> A
 
 pub(crate) fn alloc_record_pat(
     event: PatStart,
-    name: AfterName,
+    name: AfterQualifiableName,
     left_brace: PToken,
     right_brace_opt: Option<PToken>,
     px: &mut Px,
@@ -280,7 +280,7 @@ pub(crate) fn alloc_group_expr(
 
 pub(crate) fn alloc_field_expr(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     colon_opt: Option<PToken>,
     value_opt: Option<AfterExpr>,
     comma_opt: Option<PToken>,
@@ -345,7 +345,11 @@ pub(crate) fn alloc_false(event: ExprStart, token: PToken, px: &mut Px) -> After
     )
 }
 
-pub(crate) fn alloc_name_expr(event: ExprStart, name: AfterName, px: &mut Px) -> AfterExpr {
+pub(crate) fn alloc_name_expr(
+    event: ExprStart,
+    name: AfterQualifiableName,
+    px: &mut Px,
+) -> AfterExpr {
     let (name, a_name, _) = name;
     (
         PExpr::Name(name),
@@ -356,7 +360,7 @@ pub(crate) fn alloc_name_expr(event: ExprStart, name: AfterName, px: &mut Px) ->
 
 pub(crate) fn alloc_record_expr(
     event: ExprStart,
-    name: AfterName,
+    name: AfterQualifiableName,
     left_brace: PToken,
     fields: Vec<AfterFieldExpr>,
     right_brace_opt: Option<PToken>,
@@ -876,7 +880,7 @@ pub(crate) fn alloc_expr_decl(
 pub(crate) fn alloc_let_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     equal_opt: Option<PToken>,
@@ -913,7 +917,7 @@ pub(crate) fn alloc_let_decl(
 pub(crate) fn alloc_const_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     equal_opt: Option<PToken>,
@@ -950,7 +954,7 @@ pub(crate) fn alloc_const_decl(
 pub(crate) fn alloc_static_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     equal_opt: Option<PToken>,
@@ -987,7 +991,7 @@ pub(crate) fn alloc_static_decl(
 pub(crate) fn alloc_fn_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     param_list_opt: Option<AfterParamList>,
     arrow_opt: Option<PToken>,
     result_ty_opt: Option<AfterTy>,
@@ -1034,7 +1038,7 @@ pub(crate) fn alloc_extern_fn_decl(
     modifiers: AfterDeclModifiers,
     extern_keyword: PToken,
     fn_keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     param_list_opt: Option<AfterParamList>,
     arrow_opt: Option<PToken>,
     result_ty_opt: Option<AfterTy>,
@@ -1073,7 +1077,7 @@ pub(crate) fn alloc_extern_fn_decl(
 
 pub(crate) fn alloc_const_variant_decl(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     equal_opt: Option<PToken>,
     init_opt: Option<AfterExpr>,
     comma_opt: Option<PToken>,
@@ -1103,7 +1107,7 @@ pub(crate) fn alloc_const_variant_decl(
 
 pub(crate) fn alloc_field_decl(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     comma_opt: Option<PToken>,
@@ -1139,7 +1143,7 @@ pub(crate) fn alloc_field_decls(fields: Vec<AfterFieldDecl>, _px: &mut Px) -> Af
 
 pub(crate) fn alloc_record_variant_decl(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     left_brace: PToken,
     fields: AfterFieldDecls,
     right_brace_opt: Option<PToken>,
@@ -1175,7 +1179,7 @@ pub(crate) fn alloc_variants(variants: Vec<AfterVariantDecl>, _px: &mut Px) -> A
 pub(crate) fn alloc_enum_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterUnqualifiedName>,
+    name_opt: Option<AfterUnqualifiableName>,
     left_brace_opt: Option<PToken>,
     variants: AfterVariantDecls,
     right_brace_opt: Option<PToken>,
@@ -1231,7 +1235,7 @@ pub(crate) fn alloc_struct_decl(
 pub(crate) fn alloc_use_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
-    name_opt: Option<AfterName>,
+    name_opt: Option<AfterQualifiableName>,
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {

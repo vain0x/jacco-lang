@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::cps::KVis;
-use parse_expr::parse_unqualified_name;
+use parse_expr::parse_unqualifiable_name;
 
 fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
     let left_paren = px.eat(TokenKind::LeftParen)?;
@@ -13,7 +13,7 @@ fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
             TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
             TokenKind::Ident => {
                 let param_event = px.start_element();
-                let name = parse_unqualified_name(px).unwrap();
+                let name = parse_unqualifiable_name(px).unwrap();
                 let (colon_opt, ty_opt) = parse_ty_ascription(px);
                 let comma_opt = px.eat(TokenKind::Comma);
 
@@ -53,7 +53,7 @@ fn parse_expr_decl(modifiers: AfterDeclModifiers, px: &mut Px) -> Option<AfterDe
 }
 
 fn parse_let_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
     let equal_opt = px.eat(TokenKind::Equal);
@@ -70,7 +70,7 @@ fn parse_let_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -
 }
 
 fn parse_const_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
     let equal_opt = px.eat(TokenKind::Equal);
@@ -87,7 +87,7 @@ fn parse_const_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px)
 }
 
 fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
     let equal_opt = px.eat(TokenKind::Equal);
@@ -104,7 +104,7 @@ fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px
 }
 
 fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let block_opt = parse_block(px);
@@ -126,7 +126,7 @@ fn parse_extern_fn_decl(
     fn_keyword: PToken,
     px: &mut Px,
 ) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let semi_opt = px.eat(TokenKind::Semi);
@@ -146,7 +146,7 @@ fn parse_extern_fn_decl(
 
 fn parse_const_variant_decl(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     px: &mut Px,
 ) -> AfterVariantDecl {
     let equal_opt = px.eat(TokenKind::Equal);
@@ -160,7 +160,11 @@ fn parse_const_variant_decl(
     alloc_const_variant_decl(event, name, equal_opt, init_opt, comma_opt, px)
 }
 
-fn parse_field_decl(event: ParseStart, name: AfterUnqualifiedName, px: &mut Px) -> AfterFieldDecl {
+fn parse_field_decl(
+    event: ParseStart,
+    name: AfterUnqualifiableName,
+    px: &mut Px,
+) -> AfterFieldDecl {
     let colon_opt = px.eat(TokenKind::Colon);
     let ty_opt = parse_ty(px);
     let comma_opt = px.eat(TokenKind::Comma);
@@ -175,7 +179,7 @@ fn parse_field_decls(px: &mut Px) -> AfterFieldDecls {
             TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Ident => {
                 let event = px.start_element();
-                let name = parse_unqualified_name(px).unwrap();
+                let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_field_decl(event, name, px);
                 let can_continue = field.0.comma_opt.is_some();
                 fields.push(field);
@@ -193,7 +197,7 @@ fn parse_field_decls(px: &mut Px) -> AfterFieldDecls {
 
 fn parse_record_variant_decl(
     event: ParseStart,
-    name: AfterUnqualifiedName,
+    name: AfterUnqualifiableName,
     left_brace: PToken,
     px: &mut Px,
 ) -> AfterVariantDecl {
@@ -213,7 +217,7 @@ fn parse_record_variant_decl(
 
 fn parse_variant_decl(px: &mut Px) -> Option<AfterVariantDecl> {
     let event = px.start_element();
-    let name = parse_unqualified_name(px)?;
+    let name = parse_unqualifiable_name(px)?;
 
     let variant_decl = match px.next() {
         TokenKind::LeftBrace => {
@@ -244,7 +248,7 @@ fn parse_variants(px: &mut Px) -> AfterVariantDecls {
 }
 
 fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_unqualified_name(px);
+    let name_opt = parse_unqualifiable_name(px);
 
     let left_brace_opt = px.eat(TokenKind::LeftBrace);
     let variants = if left_brace_opt.is_some() {
@@ -277,7 +281,7 @@ fn parse_struct_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px
 }
 
 fn parse_use_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let name_opt = parse_name(px);
+    let name_opt = parse_qualifiable_name(px);
     let semi_opt = px.eat(TokenKind::Semi);
     alloc_use_decl(modifiers, keyword, name_opt, semi_opt, px)
 }

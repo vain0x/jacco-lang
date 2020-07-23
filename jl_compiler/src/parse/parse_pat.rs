@@ -1,7 +1,12 @@
 use super::*;
 use crate::token::TokenKind;
 
-fn parse_record_pat(event: PatStart, name: AfterName, left_brace: PToken, px: &mut Px) -> AfterPat {
+fn parse_record_pat(
+    event: PatStart,
+    name: AfterQualifiableName,
+    left_brace: PToken,
+    px: &mut Px,
+) -> AfterPat {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
@@ -24,7 +29,7 @@ pub(crate) fn parse_pat(px: &mut Px) -> Option<AfterPat> {
             alloc_char_pat(event, token, px)
         }
         TokenKind::Ident => {
-            let name = parse_name(px).unwrap();
+            let name = parse_qualifiable_name(px).unwrap();
 
             match px.next() {
                 TokenKind::LeftBrace => {

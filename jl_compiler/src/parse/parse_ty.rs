@@ -13,7 +13,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
     let event = px.start_element();
     let ty = match px.next() {
         TokenKind::Ident => {
-            let name = parse_name(px).unwrap();
+            let name = parse_qualifiable_name(px).unwrap();
             alloc_name_ty(event, name, px)
         }
         TokenKind::LeftParen => {

@@ -18,7 +18,7 @@ enum AllowAssign {
     False,
 }
 
-pub(crate) fn parse_name(px: &mut Px) -> Option<AfterName> {
+pub(crate) fn parse_qualifiable_name(px: &mut Px) -> Option<AfterQualifiableName> {
     let event = px.start_element();
     let mut left = px.eat(TokenKind::Ident)?;
     let mut quals = vec![];
@@ -39,7 +39,7 @@ pub(crate) fn parse_name(px: &mut Px) -> Option<AfterName> {
     Some(alloc_name(event, quals, left, px))
 }
 
-pub(crate) fn parse_unqualified_name(px: &mut Px) -> Option<AfterUnqualifiedName> {
+pub(crate) fn parse_unqualifiable_name(px: &mut Px) -> Option<AfterUnqualifiableName> {
     let event = px.start_element();
     let token = px.eat(TokenKind::Ident)?;
     let quals = vec![];
@@ -61,7 +61,11 @@ fn parse_tuple_expr(event: ExprStart, left_paren: PToken, px: &mut Px) -> AfterE
     }
 }
 
-fn parse_field_expr(event: ParseStart, name: AfterUnqualifiedName, px: &mut Px) -> AfterFieldExpr {
+fn parse_field_expr(
+    event: ParseStart,
+    name: AfterUnqualifiableName,
+    px: &mut Px,
+) -> AfterFieldExpr {
     let colon_opt = px.eat(TokenKind::Colon);
     let value_opt = parse_expr(px);
     let comma_opt = px.eat(TokenKind::Comma);
@@ -78,7 +82,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<AfterFieldExpr> {
             }
             TokenKind::Ident => {
                 let event = px.start_element();
-                let name = parse_unqualified_name(px).unwrap();
+                let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_field_expr(event, name, px);
                 let can_continue = field.0.comma_opt.is_some();
                 fields.push(field);
@@ -94,7 +98,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<AfterFieldExpr> {
     fields
 }
 
-fn parse_record_expr(event: ExprStart, name: AfterName, px: &mut Px) -> AfterExpr {
+fn parse_record_expr(event: ExprStart, name: AfterQualifiableName, px: &mut Px) -> AfterExpr {
     let left_brace = match px.eat(TokenKind::LeftBrace) {
         Some(left_brace) => left_brace,
         None => return alloc_name_expr(event, name, px),
@@ -129,7 +133,7 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
             alloc_false(event, token, px)
         }
         TokenKind::Ident => {
-            let name = parse_name(px).unwrap();
+            let name = parse_qualifiable_name(px).unwrap();
             match allow_struct {
                 AllowStruct::True => parse_record_expr(event, name, px),
                 AllowStruct::False => alloc_name_expr(event, name, px),

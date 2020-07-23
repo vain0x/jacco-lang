@@ -201,7 +201,7 @@ mod parse {
     use ast_gen::*;
     use parse_context::Px;
     use parse_decl::parse_semi;
-    use parse_expr::{parse_block, parse_expr, parse_name};
+    use parse_expr::{parse_block, parse_expr, parse_qualifiable_name};
     use parse_ty::{parse_ty, parse_ty_ascription};
 
     pub(crate) type PMut = (KMut, PToken);
