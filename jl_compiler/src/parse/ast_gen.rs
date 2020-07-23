@@ -28,6 +28,28 @@ fn decompose_opt<P, A, E>(opt: Option<(P, A, E)>) -> (Option<P>, Option<A>) {
     }
 }
 
+impl Px {
+    fn alloc_ty(&mut self, ty: ATy) -> ATyId {
+        self.ast.tys.alloc(ty)
+    }
+
+    fn alloc_pat(&mut self, pat: APat) -> APatId {
+        self.ast.pats.alloc(pat)
+    }
+
+    fn alloc_expr(&mut self, expr: AExpr) -> AExprId {
+        self.ast.exprs.alloc(expr)
+    }
+
+    fn alloc_exprs(&mut self, exprs: Vec<AExpr>) -> AExprIds {
+        self.ast.exprs.alloc_slice(exprs)
+    }
+
+    fn alloc_decls(&mut self, decls: Vec<ADecl>) -> ADeclIds {
+        self.ast.decls.alloc_slice(decls)
+    }
+}
+
 // -----------------------------------------------
 // 名前
 // -----------------------------------------------
@@ -74,7 +96,7 @@ pub(crate) fn alloc_param(
 ) -> AfterParam {
     let (name, a_name, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         PParam {
@@ -161,7 +183,7 @@ pub(crate) fn alloc_ptr_ty(
         Some((ty, a_ty, _)) => ((Some(Box::new(ty)), Some(a_ty))),
         None => (None, None),
     };
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         PTy::Ptr(PPtrTy {
@@ -290,7 +312,7 @@ pub(crate) fn alloc_field_expr(
 ) -> AfterFieldExpr {
     let (name, a_name, _) = name;
     let (value_opt, a_value_opt) = decompose_opt(value_opt);
-    let a_value_opt = a_value_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_value_opt = a_value_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PFieldExpr {
@@ -396,7 +418,7 @@ pub(crate) fn alloc_dot_field_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     (
         PExpr::DotField(PDotFieldExpr {
@@ -419,10 +441,10 @@ pub(crate) fn alloc_call_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     let (arg_list, args) = arg_list;
-    let args = px.ast.exprs.alloc_slice(args);
+    let args = px.alloc_exprs(args);
 
     (
         PExpr::Call(PCallExpr {
@@ -441,10 +463,10 @@ pub(crate) fn alloc_index_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     let (arg_list, args) = arg_list;
-    let args = px.ast.exprs.alloc_slice(args);
+    let args = px.alloc_exprs(args);
 
     (
         PExpr::Index(PIndexExpr {
@@ -464,10 +486,10 @@ pub(crate) fn alloc_as_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         PExpr::As(PAsExpr {
@@ -492,7 +514,7 @@ pub(crate) fn alloc_prefix_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (arg_opt, a_arg_opt) = decompose_opt(arg_opt);
-    let a_arg_opt = a_arg_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_arg_opt = a_arg_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::UnaryOp(PUnaryOpExpr {
@@ -519,10 +541,10 @@ pub(crate) fn alloc_binary_op_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     let (right_opt, a_right_opt) = decompose_opt(right_opt);
-    let a_right_opt = a_right_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_right_opt = a_right_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::BinaryOp(PBinaryOpExpr {
@@ -548,10 +570,10 @@ pub(crate) fn alloc_pipe_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (left, a_left, _) = left;
-    let a_left = px.ast.exprs.alloc(a_left);
+    let a_left = px.alloc_expr(a_left);
 
     let (right_opt, a_right_opt) = decompose_opt(right_opt);
-    let a_right_opt = a_right_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_right_opt = a_right_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::Pipe(PPipeExpr {
@@ -568,7 +590,7 @@ pub(crate) fn alloc_pipe_expr(
 }
 
 fn do_alloc_block_expr(decls: Vec<ADecl>, px: &mut Px) -> AExpr {
-    let decls = px.ast.decls.alloc_slice(decls);
+    let decls = px.alloc_decls(decls);
     AExpr::Block(ABlockExpr { decls })
 }
 
@@ -620,7 +642,7 @@ pub(crate) fn alloc_break_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (arg_opt, a_arg_opt) = decompose_opt(arg_opt);
-    let a_arg_opt = a_arg_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_arg_opt = a_arg_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::Break(PBreakExpr {
@@ -651,7 +673,7 @@ pub(crate) fn alloc_return_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (arg_opt, a_arg_opt) = decompose_opt(arg_opt);
-    let a_arg_opt = a_arg_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_arg_opt = a_arg_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::Return(PReturnExpr {
@@ -674,16 +696,16 @@ pub(crate) fn alloc_if_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (cond_opt, a_cond_opt) = decompose_opt(cond_opt);
-    let a_cond_opt = a_cond_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_cond_opt = a_cond_opt.map(|expr| px.alloc_expr(expr));
 
     let (body_opt, a_body_opt) = decompose_opt(body_opt);
     let a_body_opt = a_body_opt.map(|decls| {
         let expr = do_alloc_block_expr(decls, px);
-        px.ast.exprs.alloc(expr)
+        px.alloc_expr(expr)
     });
 
     let (alt_opt, a_alt_opt) = decompose_opt(alt_opt);
-    let a_alt_opt = a_alt_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_alt_opt = a_alt_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PExpr::If(PIfExpr {
@@ -711,10 +733,10 @@ pub(crate) fn alloc_arm(
     px: &mut Px,
 ) -> AfterArm {
     let (pat, a_pat, _) = pat;
-    let a_pat = px.ast.pats.alloc(a_pat);
+    let a_pat = px.alloc_pat(a_pat);
 
     let (body_opt, a_body_opt) = decompose_opt(body_opt);
-    let a_body_opt = a_body_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_body_opt = a_body_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PArm {
@@ -741,7 +763,7 @@ pub(crate) fn alloc_match_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (cond_opt, a_cond_opt) = decompose_opt(cond_opt);
-    let a_cond_opt = a_cond_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_cond_opt = a_cond_opt.map(|expr| px.alloc_expr(expr));
 
     let (arms, a_arms) = arms.into_iter().map(|(a, b, _)| (a, b)).unzip();
 
@@ -769,12 +791,12 @@ pub(crate) fn alloc_while_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let (cond_opt, a_cond_opt) = decompose_opt(cond_opt);
-    let a_cond_opt = a_cond_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_cond_opt = a_cond_opt.map(|expr| px.alloc_expr(expr));
 
     let (body_opt, a_body_opt) = decompose_opt(body_opt);
     let a_body_opt = a_body_opt.map(|decls| {
         let expr = do_alloc_block_expr(decls, px);
-        px.ast.exprs.alloc(expr)
+        px.alloc_expr(expr)
     });
 
     (
@@ -801,7 +823,7 @@ pub(crate) fn alloc_loop_expr(
     let (body_opt, a_body_opt) = decompose_opt(body_opt);
     let a_body_opt = a_body_opt.map(|decls| {
         let expr = do_alloc_block_expr(decls, px);
-        px.ast.exprs.alloc(expr)
+        px.alloc_expr(expr)
     });
 
     (
@@ -872,7 +894,7 @@ pub(crate) fn alloc_expr_decl(
     px: &mut Px,
 ) -> AfterDecl {
     let (expr, a_expr, _) = expr;
-    let a_expr = px.ast.exprs.alloc(a_expr);
+    let a_expr = px.alloc_expr(a_expr);
 
     (
         PDecl::Expr(PExprDecl { expr, semi_opt }),
@@ -895,9 +917,9 @@ pub(crate) fn alloc_let_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
-    let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_init_opt = a_init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PDecl::Let(PLetDecl {
@@ -933,9 +955,9 @@ pub(crate) fn alloc_const_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
-    let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_init_opt = a_init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PDecl::Const(PConstDecl {
@@ -971,9 +993,9 @@ pub(crate) fn alloc_static_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
-    let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_init_opt = a_init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PDecl::Static(PStaticDecl {
@@ -1013,11 +1035,11 @@ pub(crate) fn alloc_fn_decl(
         None => (None, vec![]),
     };
     let (result_ty_opt, a_ty_opt) = decompose_opt(result_ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
     let (block_opt, a_block_opt) = decompose_opt(block_opt);
     let body_opt = a_block_opt.map(|decls| {
         let expr = do_alloc_block_expr(decls, px);
-        px.ast.exprs.alloc(expr)
+        px.alloc_expr(expr)
     });
 
     (
@@ -1060,7 +1082,7 @@ pub(crate) fn alloc_extern_fn_decl(
         None => (None, vec![]),
     };
     let (result_ty_opt, a_ty_opt) = decompose_opt(result_ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         PDecl::ExternFn(PExternFnDecl {
@@ -1094,7 +1116,7 @@ pub(crate) fn alloc_const_variant_decl(
 ) -> AfterVariantDecl {
     let (name, a_name, _) = name;
     let (init_opt, a_init_opt) = decompose_opt(init_opt);
-    let a_init_opt = a_init_opt.map(|expr| px.ast.exprs.alloc(expr));
+    let a_init_opt = a_init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         PVariantDecl::Const(PConstVariantDecl {
@@ -1124,7 +1146,7 @@ pub(crate) fn alloc_field_decl(
 ) -> AfterFieldDecl {
     let (name, a_name, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
-    let a_ty_opt = a_ty_opt.map(|ty| px.ast.tys.alloc(ty));
+    let a_ty_opt = a_ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         PFieldDecl {
