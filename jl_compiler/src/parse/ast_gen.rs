@@ -2,9 +2,9 @@ use super::*;
 
 pub(crate) type AfterName = (PName, AName, ParseEnd);
 pub(crate) type AfterUnqualifiedName = (PName, PToken, ParseEnd);
-pub(crate) type AfterParam = (PParam, AParamDecl);
+pub(crate) type AfterParam = (PParam, AParamDecl, ParseEnd);
 pub(crate) type AfterParamList = (PParamList, Vec<AParamDecl>);
-pub(crate) type AfterArg = (PArg, AExpr);
+pub(crate) type AfterArg = (PArg, AExpr, ParseEnd);
 pub(crate) type AfterArgList = (PArgList, Vec<AExpr>);
 pub(crate) type AfterTy = (PTy, ATyId, TyEnd);
 pub(crate) type AfterPat = (PPat, APatId, PatEnd);
@@ -65,14 +65,16 @@ pub(crate) fn alloc_name(
 // -----------------------------------------------
 
 pub(crate) fn alloc_param(
+    event: ParseStart,
     name: AfterUnqualifiedName,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
     comma_opt: Option<PToken>,
-    _px: &mut Px,
+    px: &mut Px,
 ) -> AfterParam {
     let (name, token, _) = name;
     let (ty_opt, a_ty_opt) = decompose_opt(ty_opt);
+
     (
         PParam {
             name,
@@ -84,6 +86,7 @@ pub(crate) fn alloc_param(
             name: token,
             ty_opt: a_ty_opt,
         },
+        event.end(PElementKind::Param, px),
     )
 }
 
@@ -93,7 +96,10 @@ pub(crate) fn alloc_param_list(
     right_paren_opt: Option<PToken>,
     _px: &mut Px,
 ) -> AfterParamList {
-    let (params, param_decls) = params.into_iter().unzip();
+    let (params, param_decls) = params
+        .into_iter()
+        .map(|(param, param_decl, _)| (param, param_decl))
+        .unzip();
 
     (
         PParamList {
@@ -803,10 +809,19 @@ pub(crate) fn alloc_loop_expr(
     )
 }
 
-pub(crate) fn alloc_arg(expr: AfterExpr, comma_opt: Option<PToken>, _px: &mut Px) -> AfterArg {
+pub(crate) fn alloc_arg(
+    event: ParseStart,
+    expr: AfterExpr,
+    comma_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterArg {
     let (expr, a_expr, _) = expr;
 
-    (PArg { expr, comma_opt }, a_expr)
+    (
+        PArg { expr, comma_opt },
+        a_expr,
+        event.end(PElementKind::Arg, px),
+    )
 }
 
 pub(crate) fn alloc_arg_list(
@@ -815,7 +830,7 @@ pub(crate) fn alloc_arg_list(
     right_paren_opt: Option<PToken>,
     _px: &mut Px,
 ) -> AfterArgList {
-    let (args, a_args) = args.into_iter().unzip();
+    let (args, a_args) = args.into_iter().map(|(arg, a_arg, _)| (arg, a_arg)).unzip();
 
     (
         PArgList {

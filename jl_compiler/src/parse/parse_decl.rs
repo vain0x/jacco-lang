@@ -12,11 +12,19 @@ fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
         match px.next() {
             TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
             TokenKind::Ident => {
+                let param_event = px.start_element();
                 let name = parse_unqualified_name(px).unwrap();
                 let (colon_opt, ty_opt) = parse_ty_ascription(px);
                 let comma_opt = px.eat(TokenKind::Comma);
 
-                params.push(alloc_param(name, colon_opt, ty_opt, comma_opt, px))
+                params.push(alloc_param(
+                    param_event,
+                    name,
+                    colon_opt,
+                    ty_opt,
+                    comma_opt,
+                    px,
+                ))
             }
             _ => px.skip(),
         }

@@ -508,6 +508,7 @@ pub(crate) fn parse_args(args: &mut Vec<AfterArg>, px: &mut Px) {
             _ => {}
         }
 
+        let arg_event = px.start_element();
         let expr = match parse_expr(px) {
             Some(expr) => expr,
             None => {
@@ -519,7 +520,7 @@ pub(crate) fn parse_args(args: &mut Vec<AfterArg>, px: &mut Px) {
         let comma_opt = px.eat(TokenKind::Comma);
         let can_continue = comma_opt.is_some();
 
-        args.push(alloc_arg(expr, comma_opt, px));
+        args.push(alloc_arg(arg_event, expr, comma_opt, px));
 
         if !can_continue {
             break;
