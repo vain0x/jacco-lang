@@ -91,6 +91,13 @@ pub(crate) enum PNodeBuilder {
 }
 
 impl PNodeBuilder {
+    fn is_token(&self) -> bool {
+        match self {
+            PNodeBuilder::Token(_) => true,
+            _ => false,
+        }
+    }
+
     fn as_element(&self) -> Option<&PElementBuilder> {
         match self {
             PNodeBuilder::Element(element) => Some(element),
@@ -145,13 +152,20 @@ impl PTreeBuilder {
         &mut self,
         child: &ParseEvent<(EndEventTag, ChildTag)>,
     ) -> ParseEvent<(StartEventTag, Tag)> {
+        // 注意: (x) |> f() のような式のとき、child は (x) ではなく x を指すので、
+        //      スタックに置かれているはずの (x) に対応する要素を探す必要がある。
+        let mut i = child.index().min(self.stack.len() - 1);
+        while self.stack[i].is_token() {
+            i -= 1;
+        }
+
         let start = self
             .stack
-            .get(child.index())
+            .get(i)
             .and_then(|node| node.as_element())
             .map(|element| element.start)
             .unwrap();
-        let children = self.split_off(child.index());
+        let children = self.split_off(i);
 
         self.alloc(PNodeBuilder::Element(PElementBuilder::new_with_children(
             start, children,

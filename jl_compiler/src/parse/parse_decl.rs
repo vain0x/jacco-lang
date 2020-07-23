@@ -362,7 +362,10 @@ pub(crate) fn parse_semi(px: &mut Px) -> AfterSemi {
     let mut decls = vec![];
     do_parse_decls(&mut decls, px);
 
-    let (mut decls, a_decls): (Vec<_>, Vec<_>) = decls.into_iter().map(|(a, b, _)| (a, b)).unzip();
+    let (mut decls, a_decls): (Vec<_>, Vec<_>) = decls
+        .into_iter()
+        .map(|(p_decl, (a_decl, _))| (p_decl, a_decl))
+        .unzip();
 
     // 末尾が式文で、セミコロンで終止していなければ、それは最後の式とみなす。
     let last_opt = match decls.pop() {
@@ -409,7 +412,10 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
-    let (decls, a_decls): (Vec<_>, Vec<_>) = decls.into_iter().map(|(a, b, _)| (a, b)).unzip();
+    let (decls, a_decls): (Vec<_>, Vec<_>) = decls
+        .into_iter()
+        .map(|(p_decl, (a_decl, _))| (p_decl, a_decl))
+        .unzip();
     let (eof, names, skipped, tokens, mut elements, mut ast, builder) = px.finish();
 
     let root = builder.finish(&mut elements);

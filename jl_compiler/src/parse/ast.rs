@@ -2,7 +2,7 @@
 
 #![allow(unused)]
 
-use super::{PBinaryOp, PToken, PUnaryOp};
+use super::{DeclEnd, ExprEnd, PBinaryOp, PToken, PUnaryOp, PatEnd, TyEnd};
 use crate::{
     cps::{KMut, KVis},
     utils::{VecArena, VecArenaId, VecArenaSlice},
@@ -270,6 +270,10 @@ pub(crate) struct ATree {
     pub(super) pats: APatArena,
     pub(super) exprs: AExprArena,
     pub(super) decls: ADeclArena,
+    pub(super) ty_events: VecArena<ATyTag, TyEnd>,
+    pub(super) pat_events: VecArena<APatTag, PatEnd>,
+    pub(super) expr_events: VecArena<AExprTag, ExprEnd>,
+    pub(super) decl_events: VecArena<ADeclTag, DeclEnd>,
 }
 
 impl Clone for ATree {
