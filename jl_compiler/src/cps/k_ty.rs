@@ -158,7 +158,7 @@ impl KTy2 {
             KTy::Unresolved => KTy2::Unresolved,
             KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::Unit,
-            KTy::Number(basic_ty) => KTy2::Number(basic_ty),
+            KTy::Number(number_ty) => KTy2::Number(number_ty),
             KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
             KTy::Fn {
                 param_tys,
@@ -335,7 +335,7 @@ impl Debug for KTy2 {
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Never => write!(f, "!"),
             KTy2::Unit => write!(f, "()"),
-            KTy2::Number(basic_ty) => write!(f, "{}", basic_ty.as_str()),
+            KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
             KTy2::Ptr { k_mut, base_ty } => {
                 match k_mut {
                     KMut::Const => write!(f, "*")?,
@@ -452,7 +452,7 @@ impl Debug for KTy {
             KTy::Unresolved => write!(f, "???"),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
-            KTy::Number(basic_ty) => write!(f, "{}", basic_ty.as_str()),
+            KTy::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
             KTy::Ptr { k_mut, ty } => {
                 write!(f, "*")?;
                 if let KMut::Mut = k_mut {
