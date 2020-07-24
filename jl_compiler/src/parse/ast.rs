@@ -264,6 +264,17 @@ pub(crate) enum ADecl {
 // 構文要素
 // -----------------------------------------------
 
+impl ATyId {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let event_id = self.of(&root.ast.ty_events).id();
+        event_id.of(&root.ast.events).unwrap()
+    }
+
+    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
+        self.element(root).of(&root.elements)
+    }
+}
+
 #[derive(Copy, Clone)]
 pub(crate) enum AElementId {
     Ty(ATyId),
