@@ -268,14 +268,15 @@ mod token {
 }
 
 mod utils {
+    mod debug_with;
     mod id_provider;
     mod take_out;
 
     #[macro_use]
     mod vec_arena;
 
+    pub(crate) use debug_with::{DebugWith, DebugWithContext};
     pub(crate) use id_provider::IdProvider;
     pub(crate) use take_out::TakeOut;
-
     pub(crate) use vec_arena::{RawId, VecArena, VecArenaId, VecArenaSlice};
 }

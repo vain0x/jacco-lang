@@ -4,7 +4,7 @@ use super::*;
 use crate::{
     source::{HaveLoc, Loc, TRange},
     token::TokenSource,
-    utils::{VecArena, VecArenaId},
+    utils::{DebugWith, DebugWithContext, VecArena, VecArenaId},
 };
 use std::{
     fmt::{self, Debug, Formatter},
@@ -547,39 +547,6 @@ impl PRoot {
         );
 
         dump_ast(self);
-    }
-}
-
-struct DebugWith<'a, T, Context> {
-    value: &'a T,
-    context: &'a Context,
-}
-
-impl<'a, T, Context> DebugWith<'a, T, Context> {
-    fn new(value: &'a T, context: &'a Context) -> Self {
-        Self { value, context }
-    }
-}
-
-impl<'a, T, Context> Debug for DebugWith<'a, T, Context>
-where
-    T: DebugWithContext<Context>,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        DebugWithContext::fmt(self.value, self.context, f)
-    }
-}
-
-trait DebugWithContext<Context> {
-    fn fmt(&self, context: &Context, f: &mut Formatter<'_>) -> fmt::Result;
-}
-
-impl<'a, Tag, T> DebugWithContext<VecArena<Tag, T>> for VecArenaId<Tag>
-where
-    T: DebugWithContext<VecArena<Tag, T>>,
-{
-    fn fmt(&self, arena: &VecArena<Tag, T>, f: &mut Formatter<'_>) -> fmt::Result {
-        DebugWithContext::fmt(self.of(arena), arena, f)
     }
 }
 

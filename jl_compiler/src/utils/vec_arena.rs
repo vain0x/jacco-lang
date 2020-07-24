@@ -1,3 +1,4 @@
+use super::debug_with::DebugWithContext;
 use std::{
     cmp::Ordering,
     fmt::{self, Debug, Formatter},
@@ -248,6 +249,16 @@ impl<Tag, T> VecArena<Tag, T> {
 impl<Tag, T: Debug> Debug for VecArena<Tag, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.enumerate()).finish()
+    }
+}
+
+// アリーナへの参照があれば ID の内容をデバッグ表示できる。
+impl<'a, Tag, T> DebugWithContext<VecArena<Tag, T>> for VecArenaId<Tag>
+where
+    T: DebugWithContext<VecArena<Tag, T>>,
+{
+    fn fmt(&self, arena: &VecArena<Tag, T>, f: &mut Formatter<'_>) -> fmt::Result {
+        DebugWithContext::fmt(self.of(arena), arena, f)
     }
 }
 
