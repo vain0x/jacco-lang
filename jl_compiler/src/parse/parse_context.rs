@@ -1,4 +1,5 @@
 use super::*;
+use crate::cps::KModOutline;
 
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
@@ -9,6 +10,7 @@ pub(crate) struct Px {
     skipped: Vec<PToken>,
     pub(crate) ast: ATree,
     pub(crate) builder: PTreeBuilder,
+    pub(crate) outline: KModOutline,
     #[allow(unused)]
     logger: Logger,
 }
@@ -22,6 +24,7 @@ impl Px {
             elements: PElementArena::new(),
             builder: PTreeBuilder::new(),
             ast: ATree::default(),
+            outline: KModOutline::default(),
             skipped: vec![],
             logger,
         }
