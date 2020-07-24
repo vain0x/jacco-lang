@@ -4,7 +4,7 @@ use crate::{
     utils::{TakeOut, VecArena, VecArenaId, VecArenaSlice},
 };
 
-pub struct PTokenTag;
+pub(crate) struct PTokenTag;
 
 /// 構文解析フェイズから見たトークン
 pub(crate) type PToken = VecArenaId<PTokenTag>;
