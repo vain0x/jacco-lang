@@ -246,6 +246,13 @@ impl<Tag, T> VecArena<Tag, T> {
     }
 }
 
+impl<Tag: 'static, T: 'static> VecArena<Tag, T> {
+    pub(crate) const EMPTY: &'static Self = &Self {
+        inner: vec![],
+        _phantom: PhantomData,
+    };
+}
+
 impl<Tag, T: Debug> Debug for VecArena<Tag, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.enumerate()).finish()

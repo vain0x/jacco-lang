@@ -33,8 +33,9 @@ impl Debug for KNode {
 
         {
             let mut list = f.debug_list();
-            for arg in &self.args {
-                list.entry(arg);
+            for _arg in &self.args {
+                // FIXME: DebugWithContext を使う
+                list.entry(&"<arg>");
             }
             list.finish()?;
         }

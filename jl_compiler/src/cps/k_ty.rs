@@ -307,6 +307,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 tuple.finish()?;
 
                 if !result_ty.is_unit(ty_env) {
+                    write!(f, " -> ")?;
                     DebugWithContext::fmt(result_ty.deref(), context, f)?;
                 }
                 Ok(())

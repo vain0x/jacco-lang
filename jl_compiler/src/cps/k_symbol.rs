@@ -1,7 +1,8 @@
 use super::{
     k_local::KLocalArena, k_ty::KTy2, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct,
 };
-use crate::{source::HaveLoc, source::Loc};
+use crate::{source::HaveLoc, source::Loc, utils::DebugWithContext};
+use std::fmt::{self, Formatter};
 
 /// ローカル変数の出現
 #[derive(Clone, Debug)]
@@ -23,6 +24,12 @@ impl KSymbol {
 impl HaveLoc for KSymbol {
     fn loc(&self) -> Loc {
         self.loc
+    }
+}
+
+impl DebugWithContext<KLocalArena> for KSymbol {
+    fn fmt(&self, context: &KLocalArena, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} (loc = {:?})", self.local.of(context).name, self.loc)
     }
 }
 

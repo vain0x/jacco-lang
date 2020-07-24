@@ -6,8 +6,8 @@ use super::{
     k_static_var::KStaticVarArena,
     k_struct::KStructArena,
     KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
-    KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLocal, KStaticVar,
-    KStaticVarData, KStruct, KStructOutline,
+    KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLabelArena, KLocal,
+    KLocalArena, KStaticVar, KStaticVarData, KStruct, KStructOutline,
 };
 use crate::{
     logs::Logger,
@@ -49,6 +49,22 @@ pub(crate) struct KModData {
 pub(crate) enum KLocalVarParent {
     Fn(KFn),
     ExternFn(KExternFn),
+}
+
+impl KLocalVarParent {
+    pub(crate) fn locals(self, mod_data: &KModData) -> &KLocalArena {
+        match self {
+            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
+            KLocalVarParent::ExternFn(extern_fn) => &extern_fn.of(&mod_data.extern_fns).locals,
+        }
+    }
+
+    pub(crate) fn labels(self, mod_data: &KModData) -> &KLabelArena {
+        match self {
+            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).labels,
+            KLocalVarParent::ExternFn(_) => KLabelArena::EMPTY,
+        }
+    }
 }
 
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。

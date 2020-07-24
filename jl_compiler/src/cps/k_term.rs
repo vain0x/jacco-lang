@@ -1,6 +1,7 @@
 use super::*;
-use crate::source::Loc;
-use std::fmt::{self, Debug};
+use crate::{source::Loc, utils::DebugWithContext};
+use k_mod::KLocalVarParent;
+use std::fmt::{self, Debug, Formatter};
 
 /// CPS 原子項
 #[derive(Clone)]
@@ -88,40 +89,48 @@ impl KTerm {
 }
 
 impl Debug for KTerm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        // FIXME: 実装
+        write!(f, "<KTerm>")
+    }
+}
+
+impl<'a> DebugWithContext<(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KModData)> for KTerm {
+    fn fmt(
+        &self,
+        context: &(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KModData),
+        f: &mut Formatter<'_>,
+    ) -> fmt::Result {
+        let (parent_opt, mod_outline, mod_data) = context;
+
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
             KTerm::Int { text, .. } => write!(f, "{}", text),
             KTerm::Float { text, .. } => write!(f, "{}", text),
-            KTerm::Char { text, .. } => write!(f, "{}", text),
-            KTerm::Str { text, .. } => write!(f, "{}", text),
+            KTerm::Char { text, .. } => write!(f, "{:?}", text),
+            KTerm::Str { text, .. } => write!(f, "{:?}", text),
             KTerm::True { .. } => write!(f, "true"),
             KTerm::False { .. } => write!(f, "false"),
-            KTerm::Name(symbol) => Debug::fmt(symbol, f),
-            KTerm::Alias { alias, .. } => write!(f, "alias#{}", alias.to_index()),
-            KTerm::Const { k_const, .. } => write!(f, "const#{}", k_const.to_index()),
+            KTerm::Name(symbol) => match parent_opt {
+                Some(parent) => write!(f, "{}", &symbol.local.of(parent.locals(mod_data)).name),
+                None => write!(f, "symbol({:?})", symbol.loc),
+            },
+            KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
+            KTerm::Const { k_const, .. } => write!(f, "{}", k_const.of(&mod_outline.consts).name),
             KTerm::StaticVar { static_var, .. } => {
-                write!(f, "static_var#{}", static_var.to_index())
+                write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }
-            KTerm::Fn { k_fn, .. } => {
-                // FIXME: name
-                write!(f, "fn#{}", k_fn.to_index())
-            }
-            KTerm::Label { label, .. } => {
-                // FIXME: name
-                write!(f, "label#{}", label.to_index())
-            }
-            KTerm::Return { k_fn, .. } => {
-                // FIXME: name
-                write!(f, "return#{}", k_fn.to_index())
-            }
+            KTerm::Fn { k_fn, .. } => write!(f, "{}", k_fn.name(&mod_outline.fns)),
+            KTerm::Label { label, .. } => match parent_opt {
+                Some(parent) => write!(f, "{}", &label.of(parent.labels(mod_data)).name),
+                None => write!(f, "label#{}", label.to_index()),
+            },
+            KTerm::Return { k_fn, .. } => write!(f, "return({})", k_fn.name(&mod_outline.fns)),
             KTerm::ExternFn { extern_fn, .. } => {
-                // FIXME: name
-                write!(f, "extern_fn#{}", extern_fn.to_index())
+                write!(f, "{}", extern_fn.name(&mod_outline.extern_fns))
             }
             KTerm::RecordTag { k_struct, .. } => {
-                // FIXME: name
-                write!(f, "struct_tag#{}", k_struct.to_index())
+                write!(f, "record_tag::[{}]", k_struct.name(&mod_outline.structs))
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
         }

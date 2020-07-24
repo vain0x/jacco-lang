@@ -67,7 +67,3 @@ impl Debug for KMetaTyData {
         Debug::fmt(&self.ty, f)
     }
 }
-
-impl KTyEnv {
-    pub(crate) const EMPTY: &'static Self = &Self::new();
-}
