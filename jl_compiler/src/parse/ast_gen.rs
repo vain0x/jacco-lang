@@ -186,7 +186,6 @@ pub(crate) fn alloc_never_ty(event: TyStart, bang: PToken, px: &mut Px) -> After
 
 pub(crate) fn alloc_ptr_ty(
     event: TyStart,
-    rep: OneOrTwo,
     star: PToken,
     mut_opt: Option<PMut>,
     ty_opt: Option<AfterTy>,
@@ -203,7 +202,6 @@ pub(crate) fn alloc_ptr_ty(
             star,
             mut_opt,
             ty_opt,
-            rep,
         }),
         (
             ATy::Ptr(APtrTy {

@@ -114,17 +114,9 @@ pub(crate) struct PUnitTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct PPtrTy {
-    /// `*` or `**`
     pub(crate) star: PToken,
     pub(crate) mut_opt: Option<PMut>,
     pub(crate) ty_opt: Option<Box<PTy>>,
-    pub(crate) rep: OneOrTwo,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum OneOrTwo {
-    One,
-    Two,
 }
 
 #[derive(Clone, Debug)]

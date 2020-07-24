@@ -199,7 +199,6 @@ fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         TokenKind::Bang => PUnaryOp::Not,
         TokenKind::Minus => PUnaryOp::Minus,
         TokenKind::Star => PUnaryOp::Deref,
-        TokenKind::StarStar => PUnaryOp::DerefDeref,
         _ => return parse_as_expr(allow_struct, px),
     };
 

@@ -297,20 +297,14 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
         PTy::Never(_) => KTy::Never,
         PTy::Unit(_) => KTy::Unit,
         PTy::Ptr(PPtrTy {
-            ty_opt,
-            mut_opt,
-            rep,
-            ..
+            ty_opt, mut_opt, ..
         }) => {
             let k_mut = gen_mut(mut_opt.as_ref());
             let base_ty = match ty_opt.as_deref() {
                 Some(ty) => gen_ty(ty, name_res),
                 None => return KTy::Unresolved,
             };
-            match rep {
-                OneOrTwo::One => base_ty.into_ptr(k_mut),
-                OneOrTwo::Two => base_ty.into_ptr(k_mut).into_ptr(KMut::Const),
-            }
+            base_ty.into_ptr(k_mut)
         }
     }
 }
@@ -766,13 +760,6 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
             let loc = op_token.loc(&gx.tokens);
             match op {
                 PUnaryOp::Deref => emit_unary_op(KPrim::Deref, arg_opt.as_deref(), loc, gx),
-                PUnaryOp::DerefDeref => {
-                    let deref = emit_unary_op(KPrim::Deref, arg_opt.as_deref(), loc, gx);
-
-                    let result = gx.fresh_symbol("deref", loc);
-                    gx.push_prim_1(KPrim::Deref, vec![deref], result.clone());
-                    KTerm::Name(result)
-                }
                 PUnaryOp::Ref => {
                     let k_mut = gen_mut(mut_opt.as_ref());
                     gen_expr_lval(arg_opt.as_ref().unwrap(), k_mut, loc, gx)

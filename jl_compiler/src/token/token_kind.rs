@@ -163,8 +163,6 @@ pub(crate) enum TokenKind {
     SlashEqual,
     Star,
     StarEqual,
-    StarStar,
-    StarStarEqual,
 }
 
 impl TakeOut for TokenKind {

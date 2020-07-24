@@ -249,10 +249,6 @@ fn do_tokenize_punctuation(tx: &mut Tx) -> Option<(TokenKind, usize)> {
             _ => Some((TokenKind::Slash, 1)),
         },
         '*' => match tx.nth(1) {
-            '*' => match tx.nth(2) {
-                '=' => Some((TokenKind::StarStarEqual, 3)),
-                _ => Some((TokenKind::StarStar, 2)),
-            },
             '=' => Some((TokenKind::StarEqual, 2)),
             _ => Some((TokenKind::Star, 1)),
         },
