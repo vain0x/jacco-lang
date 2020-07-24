@@ -351,6 +351,24 @@ pub(crate) struct ATree {
     pub(super) events: EventArena,
 }
 
+impl ATree {
+    pub(crate) fn tys(&self) -> &ATyArena {
+        &self.tys
+    }
+
+    pub(crate) fn pats(&self) -> &APatArena {
+        &self.pats
+    }
+
+    pub(crate) fn exprs(&self) -> &AExprArena {
+        &self.exprs
+    }
+
+    pub(crate) fn decls(&self) -> &ADeclArena {
+        &self.decls
+    }
+}
+
 impl Clone for ATree {
     fn clone(&self) -> Self {
         todo!()
