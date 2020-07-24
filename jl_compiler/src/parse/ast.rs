@@ -3,8 +3,8 @@
 #![allow(unused)]
 
 use super::{
-    DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement, PElementArena, PElementData, PRoot,
-    PToken, PUnaryOp, PatEnd, TyEnd,
+    p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
+    PElementArena, PElementData, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
 };
 use crate::{
     cps::{KMut, KVis},
@@ -16,7 +16,10 @@ use std::fmt::{self, Debug, Formatter};
 // 名前
 // -----------------------------------------------
 
-pub(crate) struct AName;
+pub(crate) struct AName {
+    pub(crate) text: String,
+    pub(crate) full_name: String,
+}
 
 // -----------------------------------------------
 // 型

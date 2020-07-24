@@ -1,13 +1,15 @@
 use crate::{
     source::Loc,
     token::TokenData,
-    utils::{TakeOut, VecArena, VecArenaId},
+    utils::{TakeOut, VecArena, VecArenaId, VecArenaSlice},
 };
 
 pub struct PTokenTag;
 
 /// 構文解析フェイズから見たトークン
 pub(crate) type PToken = VecArenaId<PTokenTag>;
+
+pub(crate) type PTokenSlice = VecArenaSlice<PTokenTag>;
 
 impl PToken {
     pub(crate) fn text(self, tokens: &PTokens) -> &str {

@@ -93,10 +93,14 @@ pub(crate) fn alloc_name(
     let p_name = px.names.alloc(PNameData {
         quals,
         token,
-        text,
-        full_name,
+        text: text.to_string(),
+        full_name: full_name.to_string(),
     });
-    (p_name, (AName, event.end(PElementKind::Name, px)))
+
+    (
+        p_name,
+        (AName { text, full_name }, event.end(PElementKind::Name, px)),
+    )
 }
 
 // -----------------------------------------------
