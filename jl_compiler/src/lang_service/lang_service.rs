@@ -221,6 +221,7 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
+    #[allow(unused)]
     fn request_cps(&mut self, _doc: Doc) -> Option<&mut Cps> {
         // 頻繁にクラッシュするので無効化
         // self.docs.get_mut(&doc).map(|cache| cache.request_cps())
@@ -302,16 +303,18 @@ impl LangService {
         Some((def_sites, use_sites))
     }
 
-    pub fn hover(&mut self, doc: Doc, pos: TPos16) -> Option<String> {
-        let (name, _) = {
-            let symbols = self.request_symbols(doc)?;
-            hit_test(doc, pos, symbols)?
-        };
+    pub fn hover(&mut self, _doc: Doc, _pos: TPos16) -> Option<String> {
+        // let (name, _) = {
+        //     let symbols = self.request_symbols(doc)?;
+        //     hit_test(doc, pos, symbols)?
+        // };
 
-        let cps = self.request_cps(doc)?;
-        let ty = name.ty(&cps.root);
-        let ty_env = name.ty_env(&cps.root);
-        Some(ty.display(ty_env))
+        // let cps = self.request_cps(doc)?;
+        // let ty = name.ty(&cps.root);
+        // let ty_env = name.ty_env(&cps.root);
+        // let mod_outlines = todo!();
+        // Some(ty.display(ty_env, &mod_outlines))
+        None
     }
 
     pub fn references(
@@ -412,6 +415,7 @@ impl NParentFn {
 }
 
 impl NAbsName {
+    #[allow(unused)]
     pub(crate) fn ty(self, k_root: &KModData) -> &KTy2 {
         match self {
             NAbsName::Unresolved => return &KTy2::Unresolved,
@@ -430,6 +434,7 @@ impl NAbsName {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {
         match self {
             NAbsName::LocalVar { parent_fn, .. } => parent_fn.ty_env(k_root),

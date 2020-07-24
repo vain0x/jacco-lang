@@ -52,15 +52,22 @@ struct UnificationContext<'a> {
     variance: Variance,
     loc: Loc,
     ty_env: &'a KTyEnv,
+    mod_outlines: &'a KModOutlines,
     logger: &'a Logger,
 }
 
 impl<'a> UnificationContext<'a> {
-    fn new(loc: Loc, ty_env: &'a KTyEnv, logger: &'a Logger) -> Self {
+    fn new(
+        loc: Loc,
+        ty_env: &'a KTyEnv,
+        mod_outlines: &'a KModOutlines,
+        logger: &'a Logger,
+    ) -> Self {
         Self {
             variance: Variance::Co,
             loc,
             ty_env,
+            mod_outlines,
             logger,
         }
     }
@@ -80,7 +87,7 @@ impl<'a> UnificationContext<'a> {
     fn bug_unresolved(&self, other: &KTy2) {
         log::error!(
             "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?})",
-            other.display(&self.ty_env),
+            other.display(self.ty_env, self.mod_outlines),
             self.loc
         );
     }
@@ -91,25 +98,26 @@ impl<'a> UnificationContext<'a> {
     }
 
     fn error_arity(&self, left: &KTy2, right: &KTy2) {
-        let ty_env = &self.ty_env;
         // FIXME: エラーメッセージを改善
         self.logger.error(
             self.loc,
             format!(
                 "型引数の個数が一致しません {:?}",
-                (left.display(ty_env), right.display(ty_env))
+                (
+                    left.display(self.ty_env, self.mod_outlines),
+                    right.display(self.ty_env, self.mod_outlines),
+                )
             ),
         );
     }
 
     fn error_ununifiable(&self, left: &KTy2, right: &KTy2) {
-        let ty_env = &self.ty_env;
         self.logger.error(
             self.loc,
             format!(
                 "型が一致しません ({} <- {})",
-                left.display(ty_env),
-                right.display(ty_env)
+                left.display(self.ty_env, self.mod_outlines),
+                right.display(self.ty_env, self.mod_outlines),
             ),
         );
     }
@@ -228,7 +236,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
 fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
-    let mut ux = UnificationContext::new(loc, &tx.ty_env, &tx.logger);
+    let mut ux = UnificationContext::new(loc, &tx.ty_env, tx.mod_outlines, &tx.logger);
     do_unify2(&left, &right, &mut ux);
 }
 

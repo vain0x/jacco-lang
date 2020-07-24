@@ -1,5 +1,9 @@
-use super::{KAlias, KEnum, KMetaTy, KMod, KMut, KStruct, KTyEnv};
-use std::fmt::{self, Debug, Formatter};
+use super::{KAlias, KEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KTyEnv};
+use crate::utils::{DebugWith, DebugWithContext};
+use std::{
+    fmt::{self, Debug, Formatter},
+    ops::Deref,
+};
 
 pub(crate) enum KEnumOrStruct {
     Enum(KMod, KEnum),
@@ -261,14 +265,65 @@ impl KTy2 {
         })
     }
 
-    pub(crate) fn display(&self, _ty_env: &KTyEnv) -> String {
-        format!("{:?}", self)
+    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outlines: &KModOutlines) -> String {
+        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outlines)))
     }
 }
 
 impl Default for KTy2 {
     fn default() -> Self {
         KTy2::Unresolved
+    }
+}
+
+impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
+    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutlines), f: &mut Formatter<'_>) -> fmt::Result {
+        let (ty_env, mod_outlines) = context;
+
+        match self {
+            KTy2::Unresolved => write!(f, "{{unresolved}}"),
+            KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+                Some(ty) => DebugWithContext::fmt(ty.borrow().deref(), context, f),
+                None => write!(f, "?{}", meta_ty.to_index()),
+            },
+            KTy2::Never => write!(f, "!"),
+            KTy2::Unit => write!(f, "()"),
+            KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
+            KTy2::Ptr { k_mut, base_ty } => {
+                match k_mut {
+                    KMut::Const => write!(f, "*")?,
+                    KMut::Mut => write!(f, "*mut ")?,
+                }
+                DebugWithContext::fmt(base_ty.deref(), context, f)
+            }
+            KTy2::Fn {
+                param_tys,
+                result_ty,
+            } => {
+                let mut tuple = f.debug_tuple("fn");
+                for param_ty in param_tys {
+                    tuple.field(&DebugWith::new(param_ty, context));
+                }
+                tuple.finish()?;
+
+                if !result_ty.is_unit(ty_env) {
+                    DebugWithContext::fmt(result_ty.deref(), context, f)?;
+                }
+                Ok(())
+            }
+            KTy2::Enum(k_mod, k_enum) => write!(
+                f,
+                "enum {}::{}",
+                k_mod.of(mod_outlines).name,
+                k_enum.of(&k_mod.of(mod_outlines).enums).name
+            ),
+            KTy2::Struct(k_mod, k_struct) => write!(
+                f,
+                "struct {}::{}",
+                k_mod.of(mod_outlines).name,
+                k_struct.of(&k_mod.of(mod_outlines).structs).name
+            ),
+        }
     }
 }
 
