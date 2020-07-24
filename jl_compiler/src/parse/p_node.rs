@@ -31,6 +31,22 @@ pub(crate) enum PNode {
     Element(PElement),
 }
 
+impl PNode {
+    pub(crate) fn as_element(self) -> Option<PElement> {
+        match self {
+            PNode::Element(element) => Some(element),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn of(self, root: &PRoot) -> PNodeRef<'_> {
+        match self {
+            PNode::Token(token) => PNodeRef::Token(token.of(&root.tokens)),
+            PNode::Element(element) => PNodeRef::Element(element.of(&root.elements)),
+        }
+    }
+}
+
 impl From<TokenKind> for PNodeKind {
     fn from(kind: TokenKind) -> Self {
         PNodeKind::Token(kind)
