@@ -146,22 +146,18 @@ impl Project {
             }
 
             let doc_logs = DocLogs::new();
+            let k_mod = self.mod_docs.alloc(doc);
             let (mut mod_outline, mod_data) =
-                cps_conversion(&syntax.root, name_resolution, doc_logs.logger());
+                cps_conversion(k_mod, &syntax.root, name_resolution, doc_logs.logger());
             mod_outline.name = self.docs[id].name.to_string();
 
             logs.logger()
                 .extend_from_doc_logs(doc, doc_logs, &syntax.root);
 
-            let k_mod = self.mod_outlines.alloc(mod_outline);
-            {
-                let k_mod2 = self.mods.alloc(mod_data);
-                assert_eq!(k_mod, k_mod2);
-            }
-            {
-                let k_mod3 = self.mod_docs.alloc(doc);
-                assert_eq!(k_mod, k_mod3);
-            }
+            let k_mod2 = self.mod_outlines.alloc(mod_outline);
+            let k_mod3 = self.mods.alloc(mod_data);
+            assert_eq!(k_mod, k_mod2);
+            assert_eq!(k_mod, k_mod3);
         }
 
         if !logs_list.is_empty() {

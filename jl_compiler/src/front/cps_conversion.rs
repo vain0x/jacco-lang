@@ -1354,6 +1354,7 @@ fn gen_root(root: &PRoot, gx: &mut Gx) {
 }
 
 pub(crate) fn cps_conversion(
+    k_mod: KMod,
     p_root: &PRoot,
     name_resolution: &NameResolution,
     logger: DocLogger,
@@ -1418,7 +1419,7 @@ pub(crate) fn cps_conversion(
                         .iter()
                         .map(|n_local_var_data| {
                             KLocalData::new(n_local_var_data.name.to_string(), n_local_var_data.loc)
-                                .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
+                                .with_ty(n_local_var_data.ty.to_ty2(k_mod))
                         })
                         .collect(),
                 ),
@@ -1454,7 +1455,7 @@ pub(crate) fn cps_conversion(
                         .iter()
                         .map(|n_local_var_data| {
                             KLocalData::new(n_local_var_data.name.to_string(), n_local_var_data.loc)
-                                .with_ty(n_local_var_data.ty.to_ty2(KMod::TODO))
+                                .with_ty(n_local_var_data.ty.to_ty2(k_mod))
                         })
                         .collect(),
                 ),
