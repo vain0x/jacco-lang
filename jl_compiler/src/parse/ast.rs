@@ -329,6 +329,14 @@ pub(crate) struct ARoot {
     pub(crate) decls: ADeclIds,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) enum ALoc {
+    Ty(ATyId),
+    Pat(APatId),
+    Expr(AExprId),
+    Decl(ADeclId),
+}
+
 #[derive(Default)]
 pub(crate) struct ATree {
     pub(super) root: ARoot,
