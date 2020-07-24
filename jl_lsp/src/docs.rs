@@ -3,12 +3,12 @@ use jl_compiler::rust_api::Doc;
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 use url::Url;
 
-#[derive(Debug)]
 pub(crate) enum DocChange {
     DidOpen {
         doc: Doc,
         version: i64,
         text: Rc<String>,
+        #[allow(unused)]
         path: Rc<PathBuf>,
     },
     DidChange {

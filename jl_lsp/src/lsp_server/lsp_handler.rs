@@ -67,7 +67,6 @@ impl<W: Write> LspHandler<W> {
         let mut dirty_docs = take(&mut self.dirty_docs);
 
         self.docs.drain_changes(&mut self.doc_changes);
-        trace!("doc_changes={:?}", self.doc_changes);
 
         for change in self.doc_changes.drain(..) {
             match change {

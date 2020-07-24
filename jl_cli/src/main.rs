@@ -15,7 +15,7 @@ use cmd_version::exec_version_cmd;
 use std::{env, process};
 use util::dyn_error::DynError;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 enum Cmd {
     Batch,
     Build,

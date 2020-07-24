@@ -2,7 +2,7 @@ use std::{env::current_dir, path::Path};
 use url::Url;
 
 /// 正規化された URI
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Uri {
     inner: Url,
 }

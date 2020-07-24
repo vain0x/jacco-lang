@@ -11,7 +11,7 @@ use crate::{
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
 
 /// 位置情報と関連付けられたエラーメッセージ
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct DocLogItem {
     loc: PLoc,
     message: String,
@@ -54,7 +54,7 @@ impl DocLogger {
 }
 
 /// 位置情報と関連付けられたエラーメッセージ
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum LogItem {
     OnLoc { message: String, loc: Loc },
 }
@@ -87,7 +87,7 @@ impl LogItem {
 }
 
 /// 位置情報と関連付けられたエラーメッセージのコンテナ。
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Logs {
     inner: Rc<RefCell<Vec<LogItem>>>,
 }
@@ -115,7 +115,7 @@ impl Logs {
 
 /// ログを出力するもの。
 /// 記述を煩雑にしないために、所有権や可変性をごまかしている。(自由にクローンできる。`&self` に書き込める。)
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Logger {
     parent: Logs,
 }

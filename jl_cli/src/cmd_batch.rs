@@ -60,7 +60,7 @@ fn parse_action(json: &str) -> Result<Action<impl Iterator<Item = String>>, DynE
     };
 
     if let Cmd::Batch | Cmd::Help | Cmd::Version = cmd {
-        return Err(format!("batch ではサブコマンド '{:?}' を使えません。", cmd_name).into());
+        return Err(format!("batch ではサブコマンド '{}' を使えません。", cmd_name).into());
     }
 
     Ok(Action { id, cmd, args })
