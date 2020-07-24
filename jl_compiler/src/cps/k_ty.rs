@@ -67,6 +67,29 @@ impl KNumberTy {
             KNumberTy::Bool => "bool",
         }
     }
+
+    pub(crate) fn parse(s: &str) -> Option<KNumberTy> {
+        let ty = match s {
+            "i8" => KNumberTy::I8,
+            "i16" => KNumberTy::I16,
+            "i32" => KNumberTy::I32,
+            "i64" => KNumberTy::I64,
+            "isize" => KNumberTy::Isize,
+            "u8" => KNumberTy::U8,
+            "u16" => KNumberTy::U16,
+            "u32" => KNumberTy::U32,
+            "u64" => KNumberTy::U64,
+            "usize" => KNumberTy::Usize,
+            "f32" => KNumberTy::F32,
+            "f64" => KNumberTy::F64,
+            "c8" => KNumberTy::C8,
+            "c16" => KNumberTy::C16,
+            "c32" => KNumberTy::C32,
+            "bool" => KNumberTy::Bool,
+            _ => return None,
+        };
+        Some(ty)
+    }
 }
 
 impl Debug for KNumberTy {
@@ -387,17 +410,46 @@ impl KTy {
     pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
     pub(crate) const I64: KTy = KTy::Number(KNumberTy::I64);
     pub(crate) const ISIZE: KTy = KTy::Number(KNumberTy::Isize);
+    pub(crate) const INN: KTy = KTy::Number(KNumberTy::INN);
     pub(crate) const U8: KTy = KTy::Number(KNumberTy::U8);
     pub(crate) const U16: KTy = KTy::Number(KNumberTy::U16);
     pub(crate) const U32: KTy = KTy::Number(KNumberTy::U32);
     pub(crate) const U64: KTy = KTy::Number(KNumberTy::U64);
     pub(crate) const USIZE: KTy = KTy::Number(KNumberTy::Usize);
+    pub(crate) const UNN: KTy = KTy::Number(KNumberTy::UNN);
     pub(crate) const F32: KTy = KTy::Number(KNumberTy::F32);
     pub(crate) const F64: KTy = KTy::Number(KNumberTy::F64);
+    pub(crate) const FNN: KTy = KTy::Number(KNumberTy::FNN);
     pub(crate) const C8: KTy = KTy::Number(KNumberTy::C8);
     pub(crate) const C16: KTy = KTy::Number(KNumberTy::C16);
     pub(crate) const C32: KTy = KTy::Number(KNumberTy::C32);
+    pub(crate) const CNN: KTy = KTy::Number(KNumberTy::CNN);
     pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
+
+    pub(crate) fn from_number_ty(number_ty: KNumberTy) -> &'static KTy {
+        match number_ty {
+            KNumberTy::I8 => &KTy::I8,
+            KNumberTy::I16 => &KTy::I16,
+            KNumberTy::I32 => &KTy::I32,
+            KNumberTy::I64 => &KTy::I64,
+            KNumberTy::Isize => &KTy::ISIZE,
+            KNumberTy::INN => &KTy::INN,
+            KNumberTy::U8 => &KTy::U8,
+            KNumberTy::U16 => &KTy::U16,
+            KNumberTy::U32 => &KTy::U32,
+            KNumberTy::U64 => &KTy::U64,
+            KNumberTy::Usize => &KTy::USIZE,
+            KNumberTy::UNN => &KTy::UNN,
+            KNumberTy::F32 => &KTy::F32,
+            KNumberTy::F64 => &KTy::F64,
+            KNumberTy::FNN => &KTy::FNN,
+            KNumberTy::C8 => &KTy::C8,
+            KNumberTy::C16 => &KTy::C16,
+            KNumberTy::C32 => &KTy::C32,
+            KNumberTy::CNN => &KTy::CNN,
+            KNumberTy::Bool => &KTy::BOOL,
+        }
+    }
 
     pub(crate) fn to_ty2(&self, k_mod: KMod) -> KTy2 {
         KTy2::from_ty1(self.clone(), k_mod)
