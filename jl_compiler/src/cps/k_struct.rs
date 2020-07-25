@@ -66,3 +66,10 @@ pub(crate) struct KStructOutline {
     pub(crate) parent_opt: Option<KStructParent>,
     pub(crate) loc: Loc,
 }
+
+impl KStructOutline {
+    #[allow(unused)]
+    pub(crate) fn is_unit_like(&self) -> bool {
+        self.fields.is_empty()
+    }
+}
