@@ -1,5 +1,4 @@
 use super::*;
-use crate::front::register_use_decl;
 
 pub(crate) type AfterQualifiableName = (PName, (AName, ParseEnd));
 pub(crate) type AfterUnqualifiableName = (PName, (AName, ParseEnd));
@@ -1350,18 +1349,18 @@ pub(crate) fn alloc_use_decl(
     let (name_opt, a_name_opt) = decompose_opt(name_opt);
     let a_name_opt = a_name_opt.map(|(name, _)| name);
 
-    let use_decl = AUseDecl {
-        modifiers,
-        name_opt: a_name_opt,
-    };
-    register_use_decl(&use_decl, &mut px.outline);
-
     (
         PDecl::Use(PUseDecl {
             keyword,
             name_opt,
             semi_opt,
         }),
-        (ADecl::Use(use_decl), event.end(PElementKind::UseDecl, px)),
+        (
+            ADecl::Use(AUseDecl {
+                modifiers,
+                name_opt: a_name_opt,
+            }),
+            event.end(PElementKind::UseDecl, px),
+        ),
     )
 }

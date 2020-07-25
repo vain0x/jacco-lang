@@ -4,7 +4,7 @@
 
 use super::{
     p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
-    PElementArena, PElementData, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
+    PElementArena, PElementData, PLoc, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
 };
 use crate::{
     cps::{KMut, KVis},
@@ -273,6 +273,55 @@ impl ATyId {
     pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
         self.element(root).of(&root.elements)
     }
+
+    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
+        PLoc::Element(self.element(root))
+    }
+}
+
+impl APatId {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let event_id = self.of(&root.ast.pat_events).id();
+        event_id.of(&root.ast.events).unwrap()
+    }
+
+    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
+        self.element(root).of(&root.elements)
+    }
+
+    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
+        PLoc::Element(self.element(root))
+    }
+}
+
+impl AExprId {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let event_id = self.of(&root.ast.expr_events).id();
+        event_id.of(&root.ast.events).unwrap()
+    }
+
+    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
+        self.element(root).of(&root.elements)
+    }
+
+    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
+        PLoc::Element(self.element(root))
+    }
+}
+
+impl ADeclId {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let event_id = self.of(&root.ast.decl_events).id();
+        event_id.of(&root.ast.events).unwrap()
+    }
+
+    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
+        self.element(root).of(&root.elements)
+    }
+
+    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
+        PLoc::Element(self.element(root))
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -352,6 +401,10 @@ pub(crate) struct ATree {
 }
 
 impl ATree {
+    pub(crate) fn root_decls(&self) -> ADeclIds {
+        self.root.decls.clone()
+    }
+
     pub(crate) fn tys(&self) -> &ATyArena {
         &self.tys
     }
