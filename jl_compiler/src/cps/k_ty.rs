@@ -68,6 +68,7 @@ impl KNumberTy {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn parse(s: &str) -> Option<KNumberTy> {
         let ty = match s {
             "i8" => KNumberTy::I8,
@@ -410,22 +411,27 @@ impl KTy {
     pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
     pub(crate) const I64: KTy = KTy::Number(KNumberTy::I64);
     pub(crate) const ISIZE: KTy = KTy::Number(KNumberTy::Isize);
+    #[allow(unused)]
     pub(crate) const INN: KTy = KTy::Number(KNumberTy::INN);
     pub(crate) const U8: KTy = KTy::Number(KNumberTy::U8);
     pub(crate) const U16: KTy = KTy::Number(KNumberTy::U16);
     pub(crate) const U32: KTy = KTy::Number(KNumberTy::U32);
     pub(crate) const U64: KTy = KTy::Number(KNumberTy::U64);
     pub(crate) const USIZE: KTy = KTy::Number(KNumberTy::Usize);
+    #[allow(unused)]
     pub(crate) const UNN: KTy = KTy::Number(KNumberTy::UNN);
     pub(crate) const F32: KTy = KTy::Number(KNumberTy::F32);
     pub(crate) const F64: KTy = KTy::Number(KNumberTy::F64);
+    #[allow(unused)]
     pub(crate) const FNN: KTy = KTy::Number(KNumberTy::FNN);
     pub(crate) const C8: KTy = KTy::Number(KNumberTy::C8);
     pub(crate) const C16: KTy = KTy::Number(KNumberTy::C16);
     pub(crate) const C32: KTy = KTy::Number(KNumberTy::C32);
+    #[allow(unused)]
     pub(crate) const CNN: KTy = KTy::Number(KNumberTy::CNN);
     pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
 
+    #[allow(unused)]
     pub(crate) fn from_number_ty(number_ty: KNumberTy) -> &'static KTy {
         match number_ty {
             KNumberTy::I8 => &KTy::I8,
