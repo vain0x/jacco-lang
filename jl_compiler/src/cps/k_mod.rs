@@ -115,6 +115,21 @@ impl KModLocalSymbol {
             }
         }
     }
+
+    #[allow(unused)]
+    pub(crate) fn name(self, mod_outline: &KModOutline) -> Option<&str> {
+        let name = match self.outline(mod_outline) {
+            KModLocalSymbolOutline::LocalVar(..) => return None,
+            KModLocalSymbolOutline::Const(_, const_data) => &const_data.name,
+            KModLocalSymbolOutline::StaticVar(_, static_var_data) => &static_var_data.name,
+            KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
+            KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
+            KModLocalSymbolOutline::Enum(_, enum_data) => &enum_data.name,
+            KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
+            KModLocalSymbolOutline::Alias(_, alias_data) => alias_data.name(),
+        };
+        Some(name)
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
