@@ -1,5 +1,8 @@
 use super::*;
-use crate::utils::{VecArena, VecArenaId};
+use crate::{
+    source::TRange,
+    utils::{VecArena, VecArenaId},
+};
 use std::fmt::Debug;
 
 /// 構文要素の種類
@@ -95,5 +98,29 @@ impl PElementData {
     #[allow(unused)]
     pub(crate) fn children(&self) -> &[PNode] {
         &self.children
+    }
+
+    pub(crate) fn first_token(&self, root: &PRoot) -> Option<PToken> {
+        self.children()
+            .iter()
+            .find_map(|node| node.first_token(root))
+    }
+
+    pub(crate) fn last_token(&self, root: &PRoot) -> Option<PToken> {
+        self.children()
+            .iter()
+            .rev()
+            .find_map(|node| node.last_token(root))
+    }
+
+    pub(crate) fn range(&self, root: &PRoot) -> TRange {
+        match (self.first_token(root), self.last_token(root)) {
+            (Some(first), Some(last)) => first
+                .loc(&root.tokens)
+                .range()
+                .unite(&last.loc(&root.tokens).range()),
+            (Some(token), None) | (None, Some(token)) => token.loc(&root.tokens).range(),
+            (None, None) => TRange::ZERO,
+        }
     }
 }

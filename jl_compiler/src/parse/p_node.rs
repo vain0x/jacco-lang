@@ -1,4 +1,5 @@
 use super::*;
+use crate::source::TRange;
 use std::fmt::{self, Debug, Formatter};
 
 // -----------------------------------------------
@@ -32,6 +33,7 @@ pub(crate) enum PNode {
 }
 
 impl PNode {
+    #[allow(unused)]
     pub(crate) fn as_element(self) -> Option<PElement> {
         match self {
             PNode::Element(element) => Some(element),
@@ -39,10 +41,33 @@ impl PNode {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn of(self, root: &PRoot) -> PNodeRef<'_> {
         match self {
             PNode::Token(token) => PNodeRef::Token(token.of(&root.tokens)),
             PNode::Element(element) => PNodeRef::Element(element.of(&root.elements)),
+        }
+    }
+
+    pub(crate) fn first_token(self, root: &PRoot) -> Option<PToken> {
+        match self {
+            PNode::Token(token) => Some(token),
+            PNode::Element(element) => element.of(&root.elements).first_token(root),
+        }
+    }
+
+    pub(crate) fn last_token(self, root: &PRoot) -> Option<PToken> {
+        match self {
+            PNode::Token(token) => Some(token),
+            PNode::Element(element) => element.of(&root.elements).last_token(root),
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn range(self, root: &PRoot) -> TRange {
+        match self {
+            PNode::Token(token) => token.of(&root.tokens).loc().range(),
+            PNode::Element(element) => element.of(&root.elements).range(root),
         }
     }
 }

@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::{
-    source::{HaveLoc, Loc, TRange},
+    source::{Doc, HaveLoc, Loc, TRange},
     token::TokenSource,
     utils::{DebugWith, DebugWithContext, VecArena, VecArenaId},
 };
@@ -15,6 +15,7 @@ use std::{
 pub(crate) enum PLoc {
     Token(PToken),
     TokenBehind(PToken),
+    Element(PElement),
 }
 
 impl PLoc {
@@ -25,7 +26,7 @@ impl PLoc {
     pub(crate) fn behind(self) -> Self {
         match self {
             PLoc::Token(token) => PLoc::TokenBehind(token),
-            PLoc::TokenBehind(_) => self,
+            PLoc::TokenBehind(_) | PLoc::Element(_) => self,
         }
     }
 
@@ -33,6 +34,16 @@ impl PLoc {
         match self {
             PLoc::Token(token) => token.of(&root.tokens).loc().range(),
             PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().behind(),
+            PLoc::Element(element) => element.of(&root.elements).range(root),
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn to_loc(self, doc: Doc) -> Loc {
+        match self {
+            PLoc::Token(token) => Loc::Token { doc, token },
+            PLoc::TokenBehind(token) => Loc::TokenBehind { doc, token },
+            PLoc::Element(element) => Loc::Element { doc, element },
         }
     }
 }
@@ -42,6 +53,7 @@ impl Debug for PLoc {
         let (token, suffix) = match self {
             PLoc::Token(token) => (token, ""),
             PLoc::TokenBehind(token) => (token, ":behind"),
+            PLoc::Element(element) => return write!(f, "element#{}", element.to_index()),
         };
 
         Debug::fmt(&token, f)?;

@@ -1,6 +1,6 @@
 use super::{Doc, TRange};
 use crate::{
-    parse::PToken,
+    parse::{PElement, PToken},
     token::{TokenData, TokenSource},
     utils::TakeOut,
 };
@@ -30,6 +30,11 @@ pub(crate) enum Loc {
         first: PToken,
         last: PToken,
     },
+    #[allow(unused)]
+    Element {
+        doc: Doc,
+        element: PElement,
+    },
 }
 
 impl Loc {
@@ -55,7 +60,8 @@ impl Loc {
             Loc::Range { doc, .. }
             | Loc::Token { doc, .. }
             | Loc::TokenBehind { doc, .. }
-            | Loc::TokenRange { doc, .. } => Ok(doc),
+            | Loc::TokenRange { doc, .. }
+            | Loc::Element { doc, .. } => Ok(doc),
         }
     }
 
@@ -67,9 +73,10 @@ impl Loc {
         match self {
             Loc::Range { range, .. } => Ok(range),
             Loc::Unknown(hint) => Err(hint),
-            Loc::Token { .. } | Loc::TokenBehind { .. } | Loc::TokenRange { .. } => {
-                Err("<Loc::range_opt>")
-            }
+            Loc::Token { .. }
+            | Loc::TokenBehind { .. }
+            | Loc::TokenRange { .. }
+            | Loc::Element { .. } => Err("<Loc::range_opt>"),
         }
     }
 
@@ -86,7 +93,7 @@ impl Loc {
             },
             Loc::Token { doc, token } => Loc::TokenBehind { doc, token },
             Loc::TokenRange { doc, last, .. } => Loc::TokenBehind { doc, token: last },
-            Loc::Unknown(..) | Loc::TokenBehind { .. } => self,
+            Loc::Unknown(..) | Loc::TokenBehind { .. } | Loc::Element { .. } => self,
         }
     }
 
@@ -124,7 +131,11 @@ impl Loc {
             (Loc::Range { .. }, _)
             | (_, Loc::Range { .. })
             | (Loc::TokenBehind { .. }, _)
-            | (_, Loc::TokenBehind { .. }) => {
+            | (_, Loc::TokenBehind { .. })
+            | (Loc::Element { .. }, _)
+            | (_, Loc::Element { .. }) => {
+                // element と token は表現を工夫すれば併合できるはず
+
                 log::error!("ロケーションを併合できません ({:?})", (self, other));
                 self
             }
