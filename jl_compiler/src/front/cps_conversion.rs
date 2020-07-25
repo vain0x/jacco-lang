@@ -309,12 +309,12 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
     }
 }
 
-fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
-    let result = eval_number(token.text(gx.tokens));
+fn convert_number_lit(token: PToken, tokens: &PTokens, logger: &DocLogger) -> KTerm {
+    let result = eval_number(token.text(tokens));
 
     match result {
         Ok((_, number_ty)) => {
-            let (text, loc) = token.decompose(&gx.tokens);
+            let (text, loc) = token.decompose(&tokens);
             let ty = KTy2::Number(number_ty);
             match number_ty {
                 KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float { text, ty, loc },
@@ -337,10 +337,14 @@ fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
                 LitErr::Flow => "不正な値です",
                 LitErr::UnknownSuffix => "不正なサフィックスです",
             };
-            gx.logger.error(PLoc::new(token), message);
-            new_never_term(token.loc(gx.tokens))
+            logger.error(PLoc::new(token), message);
+            new_never_term(token.loc(tokens))
         }
     }
+}
+
+fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
+    convert_number_lit(token, &gx.tokens, &gx.logger)
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
