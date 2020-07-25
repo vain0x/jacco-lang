@@ -310,7 +310,6 @@ pub(crate) type RawId = VecArenaId<()>;
 // スライス
 // -----------------------------------------------
 
-#[derive(Clone, Eq, PartialEq)]
 pub(crate) struct VecArenaSlice<Tag>(Range<VecArenaId<Tag>>);
 
 impl<Tag> VecArenaSlice<Tag> {
@@ -346,6 +345,12 @@ impl<Tag> VecArenaSlice<Tag> {
         }
 
         &arena.inner[start.to_index()..end.to_index()]
+    }
+}
+
+impl<Tag> Clone for VecArenaSlice<Tag> {
+    fn clone(&self) -> Self {
+        VecArenaSlice(self.0.clone())
     }
 }
 
