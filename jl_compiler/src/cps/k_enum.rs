@@ -44,6 +44,14 @@ impl KVariant {
             }
         }
     }
+
+    #[allow(unused)]
+    pub(crate) fn name<'a>(self, consts: &'a KConstArena, structs: &'a KStructArena) -> &'a str {
+        match self {
+            KVariant::Const(k_const) => &k_const.of(consts).name,
+            KVariant::Record(k_struct) => &k_struct.of(structs).name,
+        }
+    }
 }
 
 impl Debug for KVariant {
