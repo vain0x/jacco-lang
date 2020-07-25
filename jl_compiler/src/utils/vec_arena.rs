@@ -331,7 +331,7 @@ impl<Tag> VecArenaSlice<Tag> {
 
     #[allow(unused)]
     pub(crate) fn enumerate<'a, T>(
-        self,
+        &self,
         arena: &'a VecArena<Tag, T>,
     ) -> impl Iterator<Item = (VecArenaId<Tag>, &'a T)> {
         self.iter().zip(self.of(arena))
