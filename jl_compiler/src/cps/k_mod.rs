@@ -7,7 +7,7 @@ use super::{
     k_struct::KStructArena,
     KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
     KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLabelArena, KLocal,
-    KLocalArena, KStaticVar, KStaticVarData, KStruct, KStructOutline,
+    KLocalArena, KStaticVar, KStaticVarData, KStruct, KStructOutline, KVariant,
 };
 use crate::{
     logs::Logger,
@@ -86,6 +86,14 @@ pub(crate) enum KModLocalSymbol {
 }
 
 impl KModLocalSymbol {
+    #[allow(unused)]
+    pub(crate) fn from_variant(variant: KVariant) -> Self {
+        match variant {
+            KVariant::Const(k_const) => KModLocalSymbol::Const(k_const),
+            KVariant::Record(k_struct) => KModLocalSymbol::Struct(k_struct),
+        }
+    }
+
     pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModLocalSymbolOutline<'_> {
         match self {
             KModLocalSymbol::Alias(alias) => {
