@@ -1,5 +1,6 @@
 use crate::{
     cmd_build::do_exec_build_cmd,
+    cmd_help::string_is_help_flag,
     parse_cmd,
     util::{dyn_error::DynError, package_info::PackageInfo},
     Cmd,
@@ -99,9 +100,8 @@ fn exec_loop() -> Result<(), DynError> {
     result
 }
 
-pub(crate) fn exec_batch_cmd(_args: Args, help: bool) -> Result<(), DynError> {
-    // FIXME: args を捨ててしまっているので、`batch --help` でヘルプが出ない
-    if help {
+pub(crate) fn exec_batch_cmd(mut args: Args, help: bool) -> Result<(), DynError> {
+    if help || args.any(|arg| string_is_help_flag(&arg)) {
         write_batch_help();
         return Ok(());
     }
