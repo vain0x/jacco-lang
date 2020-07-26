@@ -1698,6 +1698,16 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
+fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
+    let mut last_opt = None;
+
+    xx.do_in_scope(|xx| {
+        last_opt = convert_decls(decls.clone(), xx);
+    });
+
+    last_opt.unwrap_or(KTerm::Unit { loc })
+}
+
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
@@ -1717,13 +1727,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::UnaryOp(_) => todo!(),
         AExpr::BinaryOp(_) => todo!(),
         AExpr::Pipe(_) => todo!(),
-        AExpr::Block(ABlockExpr { decls }) => {
-            xx.do_in_scope(|xx| {
-                convert_decls(decls.clone(), xx);
-                // 最後が式文なら、その項を返す。
-            });
-            todo!()
-        }
+        AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
         AExpr::Break(_) => todo!(),
         AExpr::Continue => todo!(),
         AExpr::Return(_) => todo!(),
@@ -1746,13 +1750,15 @@ fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, ex: &mut Xx) -> KTer
     }
 }
 
-fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
+fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm> {
+    let symbol_opt = *decl_id.of(xx.decl_symbols);
     let loc = decl_id.loc(xx.root).to_loc(xx.doc);
+    let mut term_opt = None;
 
     match decl {
         ADecl::Expr(expr) => {
-            let _term = convert_expr(*expr, xx);
-            todo!()
+            let term = convert_expr(*expr, xx);
+            term_opt = Some(term);
         }
         ADecl::Let(AFieldLikeDecl {
             modifiers: _,
@@ -1760,9 +1766,14 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
             ty_opt,
             value_opt,
         }) => {
+            let local_var = match symbol_opt {
+                Some(KModLocalSymbol::LocalVar { local_var, .. }) => local_var,
+                _ => return None,
+            };
+
             let value = convert_expr_opt(*value_opt, loc, xx);
             let ty = convert_ty_opt(*ty_opt, &xx.ty_resolver());
-            todo!()
+            local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
         }
         ADecl::Const(AFieldLikeDecl {
             modifiers: _,
@@ -1781,18 +1792,22 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
     if !decl_allows_forward_reference(decl) {
         add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
     }
+
+    term_opt
 }
 
-fn convert_decls(decls: ADeclIds, xx: &mut Xx) {
+fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
         if decl_allows_forward_reference(decl) {
             add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
         }
     }
 
+    let mut last_opt = None;
     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
-        do_convert_decl(decl_id, decl, xx);
+        last_opt = do_convert_decl(decl_id, decl, xx);
     }
+    last_opt
 }
 
 pub(crate) fn convert_to_cps(
