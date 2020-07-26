@@ -1,3 +1,6 @@
+use super::{KNode, KSymbol, KTy};
+use crate::source::Loc;
+
 /// CPS 中間表現のプリミティブの種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KPrim {
@@ -50,5 +53,16 @@ pub(crate) enum KPrim {
 impl KPrim {
     pub(crate) fn hint_str(self) -> String {
         format!("{:?}", self).to_lowercase()
+    }
+}
+
+pub(crate) fn new_record_node(ty: KTy, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Record,
+        tys: vec![ty],
+        args: vec![],
+        results: vec![result.clone()],
+        conts: vec![cont],
+        loc,
     }
 }

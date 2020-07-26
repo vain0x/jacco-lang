@@ -2,14 +2,7 @@
 
 #![allow(unused)]
 
-use super::{
-    env::Env,
-    name_resolution::{
-        resolve_ty_name2, resolve_value_name, NLoop, NLoopArena, NLoopTag, ValueNameResolution,
-        ValueNameResolutionError,
-    },
-    NName,
-};
+use super::{env::Env, name_resolution::*, NName};
 use crate::cps::*;
 use crate::parse::*;
 use crate::{
@@ -1538,76 +1531,102 @@ pub(crate) fn cps_conversion(
 // V2
 // =============================================================================
 
-// struct Xx<'a> {
-//     decls: VecArena<ADeclTag, Option<KModLocalSymbol>>,
-//     env: Env,
-//     fx_opt: Option<Fx<'a>>,
-//     doc: Doc,
-//     k_mod: KMod,
-//     ast: &'a ATree,
-//     root: &'a PRoot,
-//     outline: &'a KModOutline,
-//     logger: &'a DocLogger,
-// }
+/// CPS 変換の文脈
+struct Xx<'a> {
+    env: Env,
+    nodes: Vec<KNode>,
+    local_vars: KLocalArena,
+    doc: Doc,
+    k_mod: KMod,
+    tokens: &'a PTokens,
+    root: &'a PRoot,
+    ast: &'a ATree,
+    decl_symbols: &'a DeclSymbols,
+    mod_outline: &'a KModOutline,
+    logger: &'a DocLogger,
+}
 
-// impl<'a> Xx<'a> {
-//     fn enter_scope(&mut self, f: impl FnOnce(&mut Xx)) {
-//         self.env.push();
-//         f(self);
-//         self.env.pop();
-//     }
+impl<'a> Xx<'a> {
+    fn new(
+        doc: Doc,
+        k_mod: KMod,
+        root: &'a PRoot,
+        decl_symbols: &'a DeclSymbols,
+        mod_outline: &'a KModOutline,
+        logger: &'a DocLogger,
+    ) -> Self {
+        Self {
+            env: Env::new(),
+            nodes: vec![],
+            local_vars: KLocalArena::new(),
+            doc,
+            k_mod,
+            tokens: &root.tokens,
+            root,
+            ast: &root.ast,
+            decl_symbols,
+            mod_outline,
+            logger,
+        }
+    }
 
-//     fn fx_mut(&mut self) -> Option<&mut Fx<'a>> {
-//         self.fx_opt.as_mut()
-//     }
-// }
+    fn do_in_scope(&mut self, f: impl FnOnce(&mut Xx)) {
+        self.env.enter_scope();
+        f(self);
+        self.env.leave_scope();
+    }
+}
 
-// /// Function context.
-// struct Fx<'a> {
-//     local_vars: KLocalArena,
-//     nodes: Vec<KNode>,
-//     mod_outline: &'a KModOutline,
-//     logger: &'a DocLogger,
-// }
-
-// impl Fx<'_> {
-//     fn fresh_symbol(&mut self, hint: &str, loc: Loc) -> KSymbol {
-//         todo!()
-//     }
-
-//     fn emit(&mut self, node: KNode) {
-//         self.nodes.push(node);
-//     }
-// }
+fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "これは型の名前だと思いますが、定義が見つかりません。")
+}
 
 fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
 }
 
-fn error_type_used_as_value(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これは型の名前なので、値として使うことはできません。");
-}
+// -----------------------------------------------
+// 型
+// -----------------------------------------------
 
-fn do_convert_ty(ty_id: ATyId, ty: &ATy, ast: &ATree, env: &Env) -> KTy {
+fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &Xx) -> KTy {
     match ty {
-        ATy::Name(AName { text, .. }) => resolve_ty_name2(&text, &env).unwrap_or(KTy::Unresolved),
+        ATy::Name(AName { text, .. }) => match resolve_ty_name2(&text, &xx.env) {
+            Some(ty) => ty,
+            None => {
+                error_unresolved_ty(ty_id.loc(xx.root), xx.logger);
+                KTy::Unresolved
+            }
+        },
         ATy::Never => KTy::Never,
         ATy::Unit => KTy::Unit,
         ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {
             let k_mut = mut_opt.unwrap_or(KMut::Const);
-            let base_ty = convert_ty_opt(*ty_opt, ast, env);
+            let base_ty = convert_ty_opt(*ty_opt, xx);
             base_ty.into_ptr(k_mut)
         }
     }
 }
 
-fn convert_ty(ty_id: ATyId, ast: &ATree, env: &Env) -> KTy {
-    let ty = ty_id.of(ast.tys());
-    do_convert_ty(ty_id, ty, ast, env)
+fn convert_ty(ty_id: ATyId, xx: &Xx) -> KTy {
+    let ty = ty_id.of(xx.ast.tys());
+    do_convert_ty(ty_id, ty, xx)
 }
 
-fn convert_ty_opt(ty_opt: Option<ATyId>, ast: &ATree, env: &Env) -> KTy {
-    ty_opt.map_or(KTy::Unresolved, |ty| convert_ty(ty, ast, env))
+fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &Xx) -> KTy {
+    ty_opt.map_or(KTy::Unresolved, |ty| convert_ty(ty, xx))
+}
+
+// -----------------------------------------------
+// 式 (項とノード)
+// -----------------------------------------------
+
+fn new_error_term(loc: Loc) -> KTerm {
+    KTerm::Unit { loc }
+}
+
+fn new_cont() -> KNode {
+    KNode::default()
 }
 
 fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
@@ -1629,185 +1648,151 @@ fn emit_unit_like_struct(
     k_struct: KStruct,
     result: KSymbol,
     loc: Loc,
-    structs: &KStructArena,
     nodes: &mut Vec<KNode>,
 ) -> KTerm {
     let ty = KTy::Struct(k_struct);
-    let name = k_struct.name(structs).to_string();
 
-    nodes.push(KNode {
-        prim: KPrim::Record,
-        tys: vec![ty],
-        args: vec![],
-        results: vec![result.clone()],
-        conts: vec![KNode::default(); 1],
-        loc,
-    });
+    nodes.push(new_record_node(ty, result, new_cont(), loc));
     KTerm::Name(result)
 }
 
-fn new_error_term(loc: Loc) -> KTerm {
-    KTerm::Unit { loc }
-}
+fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
+    let value = match resolve_value_name(name, loc, &mut xx.env) {
+        Some(value) => value,
+        None => {
+            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
 
-fn convert_name_expr(
-    name: &str,
-    loc: Loc,
-    env: &Env,
-    structs: &KStructArena,
-    nodes: &mut Vec<KNode>,
-    logger: &DocLogger,
-) -> KTerm {
-    match resolve_value_name(name, loc, env) {
-        Ok(ValueNameResolution::Term(term)) => term,
-        Ok(ValueNameResolution::UnitLikeStruct { k_struct, loc }) => {
-            let result = todo!(); // fx.fresh_symbol(k_struct.name(structs), loc);
-            emit_unit_like_struct(k_struct, result, loc, &structs, nodes)
+    match value {
+        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
+            local: local_var,
+            loc,
+        }),
+        KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
+        KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
+        KLocalValue::Fn(k_fn) => KTerm::Fn { k_fn, loc },
+        KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
+        KLocalValue::UnitLikeStruct(k_struct) => {
+            let result = todo!();
+            emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes);
         }
-        Err(ValueNameResolutionError::Type) => {
-            error_type_used_as_value(PLoc::from_loc(loc), logger);
-            new_error_term(loc)
-        }
-        Err(ValueNameResolutionError::Undefined) => {
-            error_unresolved_value(PLoc::from_loc(loc), logger);
-            new_error_term(loc)
-        }
+        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
     }
 }
 
-// fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
-//     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
+fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
+    let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
-//     match expr {
-//         AExpr::Number(token) => convert_number_lit(*token, &xx.root.tokens, &xx.logger),
-//         AExpr::Char(token) => convert_char_expr(*token, &xx.root.tokens),
-//         AExpr::Str(token) => convert_str_expr(*token, &xx.root.tokens),
-//         AExpr::True => KTerm::True { loc },
-//         AExpr::False => KTerm::False { loc },
-//         AExpr::Name(AName { full_name, .. }) => {
-//             convert_name_expr(expr_id, full_name, loc, env, xx.fx)
-//         }
-//         AExpr::Unit => KTerm::Unit { loc },
-//         AExpr::Record(_) => todo!(),
-//         AExpr::DotField(_) => todo!(),
-//         AExpr::Call(_) => todo!(),
-//         AExpr::Index(_) => todo!(),
-//         AExpr::As(_) => todo!(),
-//         AExpr::UnaryOp(_) => todo!(),
-//         AExpr::BinaryOp(_) => todo!(),
-//         AExpr::Pipe(_) => todo!(),
-//         AExpr::Block(ABlockExpr { decls }) => {
-//             xx.enter_scope(|xx| {
-//                 convert_decls(decls.clone(), xx);
-//             });
-//             todo!()
-//         }
-//         AExpr::Break(_) => todo!(),
-//         AExpr::Continue => todo!(),
-//         AExpr::Return(_) => todo!(),
-//         AExpr::If(_) => todo!(),
-//         AExpr::Match(_) => todo!(),
-//         AExpr::While(_) => todo!(),
-//         AExpr::Loop(_) => todo!(),
-//     }
-// }
+    match expr {
+        AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
+        AExpr::Char(token) => convert_char_expr(*token, xx.tokens),
+        AExpr::Str(token) => convert_str_expr(*token, xx.tokens),
+        AExpr::True => KTerm::True { loc },
+        AExpr::False => KTerm::False { loc },
+        AExpr::Name(AName { full_name, .. }) => convert_name_expr(full_name, loc, xx),
+        AExpr::Unit => KTerm::Unit { loc },
+        AExpr::Record(_) => todo!(),
+        AExpr::DotField(_) => todo!(),
+        AExpr::Call(_) => todo!(),
+        AExpr::Index(_) => todo!(),
+        AExpr::As(_) => todo!(),
+        AExpr::UnaryOp(_) => todo!(),
+        AExpr::BinaryOp(_) => todo!(),
+        AExpr::Pipe(_) => todo!(),
+        AExpr::Block(ABlockExpr { decls }) => {
+            xx.do_in_scope(|xx| {
+                convert_decls(decls.clone(), xx);
+                // 最後が式文なら、その項を返す。
+            });
+            todo!()
+        }
+        AExpr::Break(_) => todo!(),
+        AExpr::Continue => todo!(),
+        AExpr::Return(_) => todo!(),
+        AExpr::If(_) => todo!(),
+        AExpr::Match(_) => todo!(),
+        AExpr::While(_) => todo!(),
+        AExpr::Loop(_) => todo!(),
+    }
+}
 
-// fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> KTerm {
-//     let expr = expr_id.of(xx.ast.exprs());
-//     do_convert_expr(expr_id, expr, xx)
-// }
+fn convert_expr(expr_id: AExprId, ex: &mut Xx) -> KTerm {
+    let expr = expr_id.of(ex.ast.exprs());
+    do_convert_expr(expr_id, expr, ex)
+}
 
-// fn convert_expr_opt(expr_id_opt: Option<AExprId>, xx: &mut Xx) {
-//     if let Some(expr_id) = expr_id_opt {
-//         convert_expr(expr_id, xx);
-//     }
-// }
+fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, ex: &mut Xx) -> KTerm {
+    match expr_id_opt {
+        Some(expr_id) => convert_expr(expr_id, ex),
+        None => new_error_term(loc),
+    }
+}
 
-// fn import_decl_to_local(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
-//     match decl {
-//         ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => return,
-//         ADecl::Fn(_) | ADecl::ExternFn(_) => {}
-//         ADecl::Struct(_) | ADecl::Use(_) => import_decl_name_to_local(decl_id, xx),
-//         ADecl::Enum(_) => {
-//             import_decl_name_to_local(decl_id, xx);
+fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
+    let loc = decl_id.loc(xx.root).to_loc(xx.doc);
 
-//             if let Some(KModLocalSymbol::Enum(k_enum)) = xx.decls.get(decl_id).copied().flatten() {
-//                 let name = &k_enum.of(&xx.outline.enums).name;
+    match decl {
+        ADecl::Expr(expr) => {
+            let _term = convert_expr(*expr, xx);
+            todo!()
+        }
+        ADecl::Let(AFieldLikeDecl {
+            modifiers: _,
+            name_opt,
+            ty_opt,
+            value_opt,
+        }) => {
+            let value = convert_expr_opt(*value_opt, loc, xx);
+            let ty = convert_ty_opt(*ty_opt, xx);
+            todo!()
+        }
+        ADecl::Const(AFieldLikeDecl {
+            modifiers: _,
+            name_opt,
+            ty_opt,
+            value_opt,
+        }) => {
+            let ty = convert_ty_opt(*ty_opt, xx);
+            todo!()
+        }
+        ADecl::Static(_) => todo!(),
+        ADecl::Fn(_) => todo!(),
+        ADecl::ExternFn(_) => todo!(),
+        ADecl::Enum(_) => todo!(),
+        ADecl::Struct(_) => todo!(),
+        ADecl::Use(_) => {}
+    }
 
-//                 for variant in &k_enum.of(&xx.outline.enums).variants {
-//                     let variant_name = variant.name(&xx.outline.consts, &xx.outline.structs);
-//                     let full_name = format!("{}::{}", name, variant_name);
+    if !decl_allows_forward_reference(decl) {
+        add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
+    }
+}
 
-//                     import_name_to_local(full_name, KModLocalSymbol::from_variant(*variant), xx);
-//                 }
-//             }
-//         }
-//     }
-// }
+fn convert_decls(decls: ADeclIds, xx: &mut Xx) {
+    for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
+        if decl_allows_forward_reference(decl) {
+            add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
+        }
+    }
 
-// fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
-//     match decl {
-//         ADecl::Expr(expr) => {
-//             let _term = convert_expr(*expr, xx);
-//         }
-//         ADecl::Let(AFieldLikeDecl {
-//             modifiers: _,
-//             name_opt,
-//             ty_opt,
-//             value_opt,
-//         }) => {
-//             let value = convert_expr_opt(*value_opt, xx);
-//             let ty = convert_ty_opt(*ty_opt, xx);
-//         }
-//         ADecl::Const(AFieldLikeDecl {
-//             modifiers: _,
-//             name_opt,
-//             ty_opt,
-//             value_opt,
-//         }) => {
-//             let ty = convert_ty_opt(*ty_opt, xx);
-//             import_decl_name_to_local(decl_id, xx);
-//         }
-//         ADecl::Static(_) => {}
-//         ADecl::Fn(_) => {}
-//         ADecl::ExternFn(_) => {}
-//         ADecl::Enum(_) => {}
-//         ADecl::Struct(_) => {}
-//         ADecl::Use(_) => {}
-//     }
-// }
+    for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
+        do_convert_decl(decl_id, decl, xx);
+    }
+}
 
-// fn convert_decls(decls: ADeclIds, xx: &mut Xx) {
-//     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
-//         import_decl_to_local(decl_id, decl, xx);
-//     }
+pub(crate) fn convert_to_cps(
+    doc: Doc,
+    k_mod: KMod,
+    root: &PRoot,
+    decl_symbols: &DeclSymbols,
+    mod_outline: &KModOutline,
+    logger: &DocLogger,
+) {
+    let mut xx = Xx::new(doc, k_mod, root, decl_symbols, mod_outline, logger);
 
-//     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
-//         do_convert_decl(decl_id, decl, xx);
-//     }
-// }
-
-// pub(crate) fn convert_to_cps(
-//     doc: Doc,
-//     k_mod: KMod,
-//     root: &PRoot,
-//     outline: &KModOutline,
-//     logger: DocLogger,
-//     decls: VecArena<ADeclTag, Option<KModLocalSymbol>>,
-// ) {
-//     let mut xx = Xx {
-//         decls,
-//         env: Env::new(),
-//         fx_opt: None,
-//         doc,
-//         k_mod,
-//         root,
-//         ast: &root.ast,
-//         outline,
-//         logger: &logger,
-//     };
-
-//     xx.enter_scope(|xx| {
-//         convert_decls(root.ast.root_decls(), xx);
-//     });
-// }
+    xx.do_in_scope(|xx| {
+        convert_decls(root.ast.root_decls(), xx);
+    });
+}

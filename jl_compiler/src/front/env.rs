@@ -17,12 +17,12 @@ impl Env {
         }
     }
 
-    pub(crate) fn push(&mut self) {
+    pub(crate) fn enter_scope(&mut self) {
         self.ty_env.push();
         self.value_env.push();
     }
 
-    pub(crate) fn pop(&mut self) {
+    pub(crate) fn leave_scope(&mut self) {
         self.ty_env.pop();
         self.value_env.pop();
     }

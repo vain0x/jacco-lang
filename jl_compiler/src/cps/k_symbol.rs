@@ -5,7 +5,7 @@ use crate::{source::HaveLoc, source::Loc, utils::DebugWithContext};
 use std::fmt::{self, Formatter};
 
 /// ローカル変数の出現
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct KSymbol {
     pub(crate) local: KLocal,
     pub(crate) loc: Loc,

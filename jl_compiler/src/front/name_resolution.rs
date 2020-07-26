@@ -1005,7 +1005,7 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: DocLogger) -> NameResolut
 // V2
 // =============================================================================
 
-type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
+pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
 
 #[derive(Copy, Clone)]
 pub(crate) enum KLocalValue {
@@ -1016,6 +1016,15 @@ pub(crate) enum KLocalValue {
     ExternFn(KExternFn),
     UnitLikeStruct(KStruct),
     Alias(KAlias),
+}
+
+pub(crate) fn decl_allows_forward_reference(decl: &ADecl) -> bool {
+    match decl {
+        ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => false,
+        ADecl::Fn(_) | ADecl::ExternFn(_) | ADecl::Struct(_) | ADecl::Enum(_) | ADecl::Use(_) => {
+            true
+        }
+    }
 }
 
 fn decl_to_name_symbol_pair(
@@ -1065,6 +1074,38 @@ fn add_symbol_to_local_env(
     }
 }
 
+fn add_variants_to_local_env(k_enum: KEnum, mod_outline: &KModOutline, env: &mut Env) {
+    let name = k_enum.name(&mod_outline.enums);
+
+    for variant in &k_enum.of(&mod_outline.enums).variants {
+        let variant_name = variant.name(&mod_outline.consts, &mod_outline.structs);
+        let full_name = format!("{}::{}", name, variant_name);
+
+        add_symbol_to_local_env(
+            full_name,
+            KModLocalSymbol::from_variant(*variant),
+            &mod_outline.structs,
+            env,
+        );
+    }
+}
+
+pub(crate) fn add_decl_to_local_env(
+    decl_id: ADeclId,
+    decl: &ADecl,
+    decl_symbols: &DeclSymbols,
+    mod_outline: &KModOutline,
+    env: &mut Env,
+) {
+    if let Some((name, symbol)) = decl_to_name_symbol_pair(decl_id, &decl_symbols, mod_outline) {
+        if let KModLocalSymbol::Enum(k_enum) = symbol {
+            add_variants_to_local_env(k_enum, mod_outline, env);
+        }
+
+        add_symbol_to_local_env(name, symbol, &mod_outline.structs, env);
+    }
+}
+
 fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
     KNumberTy::parse(name).map(KTy::Number)
 }
@@ -1075,46 +1116,6 @@ pub(crate) fn resolve_ty_name2(name: &str, env: &Env) -> Option<KTy> {
         .or_else(|| resolve_builtin_ty_name(name))
 }
 
-pub(crate) enum ValueNameResolution {
-    Term(KTerm),
-    UnitLikeStruct { k_struct: KStruct, loc: Loc },
-}
-
-pub(crate) enum ValueNameResolutionError {
-    Undefined,
-    Type,
-}
-
-pub(crate) fn resolve_value_name(
-    name: &str,
-    loc: Loc,
-    env: &Env,
-) -> Result<ValueNameResolution, ValueNameResolutionError> {
-    type V = KLocalValue;
-    type E = ValueNameResolutionError;
-
-    let value = match env.find_value(name) {
-        Some(value) => value,
-        None => {
-            if resolve_ty_name2(name, env).is_some() {
-                return Err(E::Type);
-            }
-            return Err(E::Undefined);
-        }
-    };
-    let term = match value {
-        V::LocalVar(local_var) => KTerm::Name(KSymbol {
-            local: local_var,
-            loc,
-        }),
-        V::Const(k_const) => KTerm::Const { k_const, loc },
-        V::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
-        V::Fn(k_fn) => KTerm::Fn { k_fn, loc },
-        V::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
-        V::UnitLikeStruct(k_struct) => {
-            return Ok(ValueNameResolution::UnitLikeStruct { k_struct, loc });
-        }
-        V::Alias(alias) => KTerm::Alias { alias, loc },
-    };
-    Ok(ValueNameResolution::Term(term))
+pub(crate) fn resolve_value_name(name: &str, loc: Loc, env: &Env) -> Option<KLocalValue> {
+    env.find_value(name)
 }
