@@ -383,7 +383,7 @@ fn resolve_outline(
 }
 
 pub(crate) fn generate_outline(doc: Doc, root: &PRoot, logger: &DocLogger) -> KModOutline {
-    let mut decl_symbols = root.ast.decls().map_with_value(None);
+    let mut decl_symbols = root.ast.decls().slice().map_with_value(None);
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
 

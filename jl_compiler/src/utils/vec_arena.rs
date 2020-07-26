@@ -13,6 +13,8 @@ use std::{
 // ID (NonZeroU32)
 // -----------------------------------------------
 
+const ID_MIN: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(1) };
+
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
 
 const fn id_from_index(index: usize) -> NonZeroU32 {
@@ -54,6 +56,8 @@ pub(crate) struct VecArenaId<Tag> {
 }
 
 impl<Tag> VecArenaId<Tag> {
+    const MIN: Self = Self::from_inner(ID_MIN);
+
     #[allow(unused)]
     pub(crate) const MAX: Self = Self::from_inner(ID_MAX);
 
@@ -191,6 +195,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.len()
     }
 
+    fn next_id(&self) -> VecArenaId<Tag> {
+        id_from_index(self.len()).into()
+    }
+
     pub(crate) fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional);
     }
@@ -202,21 +210,18 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.resize_with(new_len, default_fn);
     }
 
+    pub(crate) fn slice(&self) -> VecArenaSlice<Tag> {
+        let start = VecArenaId::MIN;
+        let end = self.next_id();
+        VecArenaSlice(Range { start, end })
+    }
+
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.inner.iter()
     }
 
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.inner.iter_mut()
-    }
-
-    pub(crate) fn map_with_value<U>(&self, value: U) -> VecArena<Tag, U>
-    where
-        U: Clone,
-    {
-        let mut inner = Vec::with_capacity(self.len());
-        inner.resize(self.len(), value);
-        VecArena::from_vec(inner)
     }
 }
 
@@ -227,9 +232,16 @@ impl<Tag, T> VecArena<Tag, T> {
     }
 
     pub(crate) fn alloc(&mut self, value: T) -> VecArenaId<Tag> {
-        let id = id_from_index(self.inner.len()).into();
+        let id = self.next_id();
         self.inner.push(value);
         id
+    }
+
+    pub(crate) fn alloc_slice(&mut self, items: impl IntoIterator<Item = T>) -> VecArenaSlice<Tag> {
+        let start = self.next_id();
+        self.inner.extend(items.into_iter());
+        let end = self.next_id();
+        VecArenaSlice(Range { start, end })
     }
 
     #[allow(unused)]
@@ -327,8 +339,13 @@ impl<Tag> VecArenaSlice<Tag> {
         end: VecArenaId::MAX,
     });
 
+    fn new(start: VecArenaId<Tag>, end: VecArenaId<Tag>) -> Self {
+        Self(Range { start, end })
+    }
+
     pub(crate) fn len(&self) -> usize {
-        let (start, end) = (self.0.start, self.0.end);
+        let start = self.0.start;
+        let end = self.0.end;
         end.to_index().saturating_sub(start.to_index())
     }
 
@@ -344,6 +361,18 @@ impl<Tag> VecArenaSlice<Tag> {
         arena: &'a VecArena<Tag, T>,
     ) -> impl Iterator<Item = (VecArenaId<Tag>, &'a T)> {
         self.iter().zip(self.of(arena))
+    }
+
+    pub(crate) fn map_with<T>(&self, f: impl Fn() -> T) -> VecArena<Tag, T> {
+        let mut inner = Vec::with_capacity(self.len());
+        inner.resize_with(self.len(), f);
+        VecArena::from_vec(inner)
+    }
+
+    pub(crate) fn map_with_value<T: Clone>(&self, value: T) -> VecArena<Tag, T> {
+        let mut inner = Vec::with_capacity(self.len());
+        inner.resize(self.len(), value);
+        VecArena::from_vec(inner)
     }
 
     // 結果はスライスじゃないかもしれないが、ランダムアクセスは可能
@@ -366,25 +395,6 @@ impl<Tag> Clone for VecArenaSlice<Tag> {
 impl<Tag> Default for VecArenaSlice<Tag> {
     fn default() -> Self {
         Self::EMPTY
-    }
-}
-
-impl<Tag, T> VecArena<Tag, T> {
-    pub(crate) fn alloc_slice(&mut self, items: impl IntoIterator<Item = T>) -> VecArenaSlice<Tag> {
-        let mut items = items.into_iter();
-
-        let start = match items.next() {
-            Some(item) => self.alloc(item),
-            None => return VecArenaSlice::EMPTY,
-        };
-
-        let mut end = start;
-        for item in items {
-            end = self.alloc(item);
-        }
-        end = VecArenaId::from_inner(id_add_offset(end.inner, 1));
-
-        VecArenaSlice(Range { start, end })
     }
 }
 
