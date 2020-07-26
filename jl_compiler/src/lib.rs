@@ -101,6 +101,7 @@ mod front {
     //! 構文木上の処理
 
     mod cps_conversion;
+    mod env;
     mod mod_outline_gen;
     mod name_resolution;
     mod occurrence_collection;

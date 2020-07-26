@@ -1,17 +1,21 @@
 //! 名前解決の処理
 
+#![allow(unused)]
+
 use super::*;
 use crate::{
     cps::{
         KAlias, KAliasArena, KAliasOutline, KConst, KConstTag, KEnum, KEnumTag, KExternFn,
-        KExternFnTag, KField, KFieldTag, KFn, KFnTag, KLocal, KLocalTag, KStaticVar, KStaticVarTag,
-        KStruct, KStructTag, KSymbol, KTy, KVariant, KVis,
+        KExternFnTag, KField, KFieldTag, KFn, KFnTag, KLocal, KLocalTag, KModLocalSymbol,
+        KModOutline, KNumberTy, KStaticVar, KStaticVarTag, KStruct, KStructArena, KStructTag,
+        KSymbol, KTerm, KTy, KVariant, KVis,
     },
     logs::DocLogger,
     source::{HaveLoc, Loc},
     utils::{VecArena, VecArenaId},
 };
 use cps_conversion::gen_ty;
+use env::Env;
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -995,4 +999,122 @@ pub(crate) fn resolve_name(p_root: &mut PRoot, logger: DocLogger) -> NameResolut
     resolve_decls(&mut p_root.decls, &mut nx);
 
     nx.res
+}
+
+// =============================================================================
+// V2
+// =============================================================================
+
+type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
+
+#[derive(Copy, Clone)]
+pub(crate) enum KLocalValue {
+    LocalVar(KLocal),
+    Const(KConst),
+    StaticVar(KStaticVar),
+    Fn(KFn),
+    ExternFn(KExternFn),
+    UnitLikeStruct(KStruct),
+    Alias(KAlias),
+}
+
+fn decl_to_name_symbol_pair(
+    decl_id: ADeclId,
+    decl_symbols: &DeclSymbols,
+    mod_outline: &KModOutline,
+) -> Option<(String, KModLocalSymbol)> {
+    let symbol = decl_symbols.get(decl_id).copied().flatten()?;
+    let name = symbol.name(mod_outline)?;
+    Some((name.to_string(), symbol))
+}
+
+fn add_symbol_to_local_env(
+    name: String,
+    symbol: KModLocalSymbol,
+    structs: &KStructArena,
+    env: &mut Env,
+) {
+    const IS_VALUE: bool = true;
+
+    let (ty_opt, value_opt) = match symbol {
+        KModLocalSymbol::LocalVar { local_var, .. } => {
+            (None, Some(KLocalValue::LocalVar(local_var)))
+        }
+        KModLocalSymbol::Const(k_const) => (None, Some(KLocalValue::Const(k_const))),
+        KModLocalSymbol::StaticVar(static_var) => (None, Some(KLocalValue::StaticVar(static_var))),
+        KModLocalSymbol::Fn(k_fn) => (None, Some(KLocalValue::Fn(k_fn))),
+        KModLocalSymbol::ExternFn(extern_fn) => (None, Some(KLocalValue::ExternFn(extern_fn))),
+        KModLocalSymbol::Struct(k_struct) => {
+            let value_opt = if k_struct.of(structs).is_unit_like() {
+                Some(KLocalValue::UnitLikeStruct(k_struct))
+            } else {
+                None
+            };
+            (Some(KTy::Struct(k_struct)), value_opt)
+        }
+        KModLocalSymbol::Enum(k_enum) => (Some(KTy::Enum(k_enum)), None),
+        KModLocalSymbol::Alias(alias) => (Some(KTy::Alias(alias)), Some(KLocalValue::Alias(alias))),
+    };
+
+    if let Some(ty) = ty_opt {
+        env.insert_ty(name.to_string(), ty);
+    }
+
+    if let Some(value) = value_opt {
+        env.insert_value(name, value);
+    }
+}
+
+fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
+    KNumberTy::parse(name).map(KTy::Number)
+}
+
+pub(crate) fn resolve_ty_name2(name: &str, env: &Env) -> Option<KTy> {
+    env.find_ty(name)
+        .cloned()
+        .or_else(|| resolve_builtin_ty_name(name))
+}
+
+pub(crate) enum ValueNameResolution {
+    Term(KTerm),
+    UnitLikeStruct { k_struct: KStruct, loc: Loc },
+}
+
+pub(crate) enum ValueNameResolutionError {
+    Undefined,
+    Type,
+}
+
+pub(crate) fn resolve_value_name(
+    name: &str,
+    loc: Loc,
+    env: &Env,
+) -> Result<ValueNameResolution, ValueNameResolutionError> {
+    type V = KLocalValue;
+    type E = ValueNameResolutionError;
+
+    let value = match env.find_value(name) {
+        Some(value) => value,
+        None => {
+            if resolve_ty_name2(name, env).is_some() {
+                return Err(E::Type);
+            }
+            return Err(E::Undefined);
+        }
+    };
+    let term = match value {
+        V::LocalVar(local_var) => KTerm::Name(KSymbol {
+            local: local_var,
+            loc,
+        }),
+        V::Const(k_const) => KTerm::Const { k_const, loc },
+        V::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
+        V::Fn(k_fn) => KTerm::Fn { k_fn, loc },
+        V::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
+        V::UnitLikeStruct(k_struct) => {
+            return Ok(ValueNameResolution::UnitLikeStruct { k_struct, loc });
+        }
+        V::Alias(alias) => KTerm::Alias { alias, loc },
+    };
+    Ok(ValueNameResolution::Term(term))
 }
