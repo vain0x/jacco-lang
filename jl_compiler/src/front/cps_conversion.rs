@@ -1788,20 +1788,19 @@ fn convert_extern_fn_decl(
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
 
-fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm> {
+fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>, xx: &mut Xx) {
     let symbol_opt = *decl_id.of(xx.decl_symbols);
     let loc = decl_id.loc(xx.root).to_loc(xx.doc);
-    let mut term_opt = None;
 
     match decl {
         ADecl::Expr(expr) => {
             let term = convert_expr(*expr, xx);
-            term_opt = Some(term);
+            *term_opt = Some(term);
         }
         ADecl::Let(decl) => {
             let local_var = match symbol_opt {
                 Some(KModLocalSymbol::LocalVar { local_var, .. }) => local_var,
-                _ => return None,
+                _ => return,
             };
             convert_let_decl(local_var, decl, loc, xx);
         }
@@ -1816,7 +1815,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm>
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
                 Some(KModLocalSymbol::ExternFn(it)) => it,
-                _ => return None,
+                _ => return,
             };
             convert_extern_fn_decl(extern_fn, extern_fn_decl, loc, xx);
         }
@@ -1824,12 +1823,6 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm>
         ADecl::Struct(_) => todo!(),
         ADecl::Use(_) => {}
     }
-
-    if !decl_allows_forward_reference(decl) {
-        add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
-    }
-
-    term_opt
 }
 
 fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
@@ -1841,7 +1834,14 @@ fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
 
     let mut last_opt = None;
     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
-        last_opt = do_convert_decl(decl_id, decl, xx);
+        let mut term_opt = None;
+
+        do_convert_decl(decl_id, decl, &mut term_opt, xx);
+
+        if !decl_allows_forward_reference(decl) {
+            add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
+        }
+        last_opt = term_opt;
     }
     last_opt
 }
