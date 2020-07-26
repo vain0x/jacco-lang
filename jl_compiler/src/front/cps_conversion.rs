@@ -1575,6 +1575,15 @@ impl<'a> Xx<'a> {
         f(self);
         self.env.leave_scope();
     }
+
+    fn ty_resolver(&self) -> TyResolver {
+        TyResolver {
+            env: &self.env,
+            root: self.root,
+            ast: self.ast,
+            logger: self.logger,
+        }
+    }
 }
 
 fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
@@ -1589,9 +1598,16 @@ fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
 // 型
 // -----------------------------------------------
 
-fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &Xx) -> KTy {
+pub(crate) struct TyResolver<'a> {
+    pub(crate) env: &'a Env,
+    pub(crate) root: &'a PRoot,
+    pub(crate) ast: &'a ATree,
+    pub(crate) logger: &'a DocLogger,
+}
+
+fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
     match ty {
-        ATy::Name(AName { text, .. }) => match resolve_ty_name2(&text, &xx.env) {
+        ATy::Name(AName { text, .. }) => match resolve_ty_name2(&text, xx.env) {
             Some(ty) => ty,
             None => {
                 error_unresolved_ty(ty_id.loc(xx.root), xx.logger);
@@ -1608,12 +1624,12 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &Xx) -> KTy {
     }
 }
 
-fn convert_ty(ty_id: ATyId, xx: &Xx) -> KTy {
+fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
     let ty = ty_id.of(xx.ast.tys());
     do_convert_ty(ty_id, ty, xx)
 }
 
-fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &Xx) -> KTy {
+pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
     ty_opt.map_or(KTy::Unresolved, |ty| convert_ty(ty, xx))
 }
 
@@ -1745,7 +1761,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
             value_opt,
         }) => {
             let value = convert_expr_opt(*value_opt, loc, xx);
-            let ty = convert_ty_opt(*ty_opt, xx);
+            let ty = convert_ty_opt(*ty_opt, &xx.ty_resolver());
             todo!()
         }
         ADecl::Const(AFieldLikeDecl {
@@ -1753,10 +1769,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) {
             name_opt,
             ty_opt,
             value_opt,
-        }) => {
-            let ty = convert_ty_opt(*ty_opt, xx);
-            todo!()
-        }
+        }) => todo!(),
         ADecl::Static(_) => todo!(),
         ADecl::Fn(_) => todo!(),
         ADecl::ExternFn(_) => todo!(),

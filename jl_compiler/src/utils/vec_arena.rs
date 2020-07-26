@@ -209,6 +209,15 @@ impl<Tag, T> VecArena<Tag, T> {
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.inner.iter_mut()
     }
+
+    pub(crate) fn map_with_value<U>(&self, value: U) -> VecArena<Tag, U>
+    where
+        U: Clone,
+    {
+        let mut inner = Vec::with_capacity(self.len());
+        inner.resize(self.len(), value);
+        VecArena::from_vec(inner)
+    }
 }
 
 impl<Tag, T> VecArena<Tag, T> {
