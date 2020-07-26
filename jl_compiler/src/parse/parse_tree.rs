@@ -13,8 +13,11 @@ use std::{
 
 #[derive(Copy, Clone)]
 pub(crate) enum PLoc {
+    Unknown(&'static str),
+    Range(TRange),
     Token(PToken),
     TokenBehind(PToken),
+    TokenRange { first: PToken, last: PToken },
     Element(PElement),
 }
 
@@ -26,14 +29,20 @@ impl PLoc {
     pub(crate) fn behind(self) -> Self {
         match self {
             PLoc::Token(token) => PLoc::TokenBehind(token),
-            PLoc::TokenBehind(_) | PLoc::Element(_) => self,
+            _ => self,
         }
     }
 
     pub(crate) fn range(self, root: &PRoot) -> TRange {
         match self {
+            PLoc::Unknown(_) => TRange::ZERO,
+            PLoc::Range(range) => range,
             PLoc::Token(token) => token.of(&root.tokens).loc().range(),
             PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().behind(),
+            PLoc::TokenRange { first, last } => first
+                .loc(&root.tokens)
+                .range()
+                .unite(&last.loc(&root.tokens).range()),
             PLoc::Element(element) => element.of(&root.elements).range(root),
         }
     }
@@ -41,9 +50,24 @@ impl PLoc {
     #[allow(unused)]
     pub(crate) fn to_loc(self, doc: Doc) -> Loc {
         match self {
+            PLoc::Unknown(hint) => Loc::Unknown(hint),
+            PLoc::Range(range) => Loc::Range { doc, range },
             PLoc::Token(token) => Loc::Token { doc, token },
             PLoc::TokenBehind(token) => Loc::TokenBehind { doc, token },
+            PLoc::TokenRange { first, last } => Loc::TokenRange { doc, first, last },
             PLoc::Element(element) => Loc::Element { doc, element },
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn from_loc(loc: Loc) -> Self {
+        match loc {
+            Loc::Unknown(hint) => PLoc::Unknown(hint),
+            Loc::Range { range, .. } => PLoc::Range(range),
+            Loc::Token { token, .. } => PLoc::Token(token),
+            Loc::TokenBehind { token, .. } => PLoc::TokenBehind(token),
+            Loc::TokenRange { first, last, .. } => PLoc::TokenRange { first, last },
+            Loc::Element { element, .. } => PLoc::Element(element),
         }
     }
 }
@@ -51,8 +75,13 @@ impl PLoc {
 impl Debug for PLoc {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let (token, suffix) = match self {
+            PLoc::Unknown(hint) => return write!(f, "{}", hint),
+            PLoc::Range(range) => return write!(f, "{}", range),
             PLoc::Token(token) => (token, ""),
             PLoc::TokenBehind(token) => (token, ":behind"),
+            PLoc::TokenRange { first, last } => {
+                return write!(f, "token#({}..{})", first.to_index(), last.to_index());
+            }
             PLoc::Element(element) => return write!(f, "element#{}", element.to_index()),
         };
 
