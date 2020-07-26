@@ -1536,6 +1536,7 @@ struct Xx<'a> {
     env: Env,
     nodes: Vec<KNode>,
     local_vars: KLocalArena,
+    mod_data: KModData,
     doc: Doc,
     k_mod: KMod,
     tokens: &'a PTokens,
@@ -1559,6 +1560,7 @@ impl<'a> Xx<'a> {
             env: Env::new(),
             nodes: vec![],
             local_vars: KLocalArena::new(),
+            mod_data: KModData::default(),
             doc,
             k_mod,
             tokens: &root.tokens,
@@ -1574,15 +1576,6 @@ impl<'a> Xx<'a> {
         self.env.enter_scope();
         f(self);
         self.env.leave_scope();
-    }
-
-    fn ty_resolver(&self) -> TyResolver {
-        TyResolver {
-            env: &self.env,
-            root: self.root,
-            ast: self.ast,
-            logger: self.logger,
-        }
     }
 }
 
@@ -1603,6 +1596,15 @@ pub(crate) struct TyResolver<'a> {
     pub(crate) root: &'a PRoot,
     pub(crate) ast: &'a ATree,
     pub(crate) logger: &'a DocLogger,
+}
+
+fn new_ty_resolver<'a>(xx: &'a Xx<'a>) -> TyResolver<'a> {
+    TyResolver {
+        env: &xx.env,
+        root: xx.root,
+        ast: xx.ast,
+        logger: xx.logger,
+    }
 }
 
 fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
@@ -1672,6 +1674,11 @@ fn emit_unit_like_struct(
     KTerm::Name(result)
 }
 
+fn fresh_symbol(hint: &str, loc: Loc, xx: &mut Xx) -> KSymbol {
+    let local = xx.local_vars.alloc(KLocalData::new(hint.to_string(), loc));
+    KSymbol { local, loc }
+}
+
 fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     let value = match resolve_value_name(name, loc, &mut xx.env) {
         Some(value) => value,
@@ -1691,8 +1698,9 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
         KLocalValue::Fn(k_fn) => KTerm::Fn { k_fn, loc },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
-            let result = todo!();
-            emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes);
+            let name = k_struct.name(&xx.mod_outline.structs);
+            let result = fresh_symbol(name, loc, xx);
+            emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)
         }
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
     }
@@ -1738,16 +1746,46 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn convert_expr(expr_id: AExprId, ex: &mut Xx) -> KTerm {
-    let expr = expr_id.of(ex.ast.exprs());
-    do_convert_expr(expr_id, expr, ex)
+fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> KTerm {
+    let expr = expr_id.of(xx.ast.exprs());
+    do_convert_expr(expr_id, expr, xx)
 }
 
-fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, ex: &mut Xx) -> KTerm {
+fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> KTerm {
     match expr_id_opt {
-        Some(expr_id) => convert_expr(expr_id, ex),
+        Some(expr_id) => convert_expr(expr_id, xx),
         None => new_error_term(loc),
     }
+}
+
+fn convert_let_decl(local_var: KLocal, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let value = convert_expr_opt(decl.value_opt, loc, xx);
+    let ty = convert_ty_opt(decl.ty_opt, &new_ty_resolver(xx));
+
+    local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
+}
+
+fn convert_extern_fn_decl(
+    extern_fn: KExternFn,
+    extern_fn_decl: &AFnLikeDecl,
+    loc: Loc,
+    xx: &mut Xx,
+) {
+    let mut locals = KLocalArena::new();
+
+    let params = extern_fn_decl
+        .params
+        .iter()
+        .zip(extern_fn.param_tys(&xx.mod_outline.extern_fns))
+        .map(|(param_decl, param_ty)| {
+            // FIXME: param_decl のロケーションを取る
+            let name = param_decl.name.text.to_string();
+            let local = locals.alloc(KLocalData::new(name, loc));
+            KSymbol { local, loc }
+        })
+        .collect();
+
+    *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
 
 fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm> {
@@ -1760,20 +1798,12 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm>
             let term = convert_expr(*expr, xx);
             term_opt = Some(term);
         }
-        ADecl::Let(AFieldLikeDecl {
-            modifiers: _,
-            name_opt,
-            ty_opt,
-            value_opt,
-        }) => {
+        ADecl::Let(decl) => {
             let local_var = match symbol_opt {
                 Some(KModLocalSymbol::LocalVar { local_var, .. }) => local_var,
                 _ => return None,
             };
-
-            let value = convert_expr_opt(*value_opt, loc, xx);
-            let ty = convert_ty_opt(*ty_opt, &xx.ty_resolver());
-            local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
+            convert_let_decl(local_var, decl, loc, xx);
         }
         ADecl::Const(AFieldLikeDecl {
             modifiers: _,
@@ -1783,7 +1813,13 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, xx: &mut Xx) -> Option<KTerm>
         }) => todo!(),
         ADecl::Static(_) => todo!(),
         ADecl::Fn(_) => todo!(),
-        ADecl::ExternFn(_) => todo!(),
+        ADecl::ExternFn(extern_fn_decl) => {
+            let extern_fn = match symbol_opt {
+                Some(KModLocalSymbol::ExternFn(it)) => it,
+                _ => return None,
+            };
+            convert_extern_fn_decl(extern_fn, extern_fn_decl, loc, xx);
+        }
         ADecl::Enum(_) => todo!(),
         ADecl::Struct(_) => todo!(),
         ADecl::Use(_) => {}
