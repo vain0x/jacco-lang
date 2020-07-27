@@ -1838,7 +1838,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Unit => KTerm::Unit { loc },
         AExpr::Record(_) => todo!(),
         AExpr::DotField(_) => todo!(),
-        AExpr::Call(_) => todo!(),
+        AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(_) => todo!(),
         AExpr::As(_) => todo!(),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
@@ -1853,6 +1853,18 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::While(_) => todo!(),
         AExpr::Loop(_) => todo!(),
     }
+}
+
+fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = fresh_symbol("call_result", loc, xx);
+    let left = convert_expr(call_expr.left, xx);
+
+    let mut args = Vec::with_capacity(call_expr.args.len() + 1);
+    args.push(left);
+    args.extend(call_expr.args.iter().map(|arg| convert_expr(arg, xx)));
+
+    xx.nodes.push(new_call_node(args, result, new_cont(), loc));
+    KTerm::Name(result)
 }
 
 fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> KTerm {

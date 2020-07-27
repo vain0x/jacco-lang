@@ -56,6 +56,17 @@ impl KPrim {
     }
 }
 
+pub(crate) fn new_call_node(args: Vec<KTerm>, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::CallDirect,
+        tys: vec![],
+        args,
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
+
 /// 末尾ではない `return`
 pub(crate) fn new_return_node(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
     KNode {
