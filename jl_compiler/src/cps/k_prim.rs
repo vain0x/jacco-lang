@@ -124,6 +124,28 @@ pub(crate) fn new_deref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc)
     }
 }
 
+pub(crate) fn new_ref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Ref,
+        tys: vec![],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_ref_mut_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::RefMut,
+        tys: vec![],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
+
 pub(crate) fn new_minus_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Minus,

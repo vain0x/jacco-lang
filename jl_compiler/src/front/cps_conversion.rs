@@ -1620,6 +1620,10 @@ fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
 }
 
+fn error_rval_used_as_lval(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。");
+}
+
 fn error_return_out_of_fn(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "関数の外では return を使えません。");
 }
@@ -1751,7 +1755,7 @@ fn fresh_symbol(hint: &str, loc: Loc, xx: &mut Xx) -> KSymbol {
 
 fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     let value = match resolve_value_name(name, loc, &mut xx.env) {
-        Some(value) => value,
+        Some(it) => it,
         None => {
             error_unresolved_value(PLoc::from_loc(loc), xx.logger);
             return new_error_term(loc);
@@ -1776,26 +1780,79 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn convert_unary_op_expr(unary_op_expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
-    match unary_op_expr.op {
+fn convert_name_lval(name: &AName, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+    let value = match resolve_value_name(&name.full_name, loc, &xx.env) {
+        Some(it) => it,
+        None => {
+            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+
+    let term = match value {
+        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol { local, loc }),
+        KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
+        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
+        KLocalValue::Const(_)
+        | KLocalValue::Fn(_)
+        | KLocalValue::ExternFn(_)
+        | KLocalValue::UnitLikeStruct(_) => {
+            error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+
+    match k_mut {
+        KMut::Const => {
+            let result = fresh_symbol("ref", loc, xx);
+            xx.nodes.push(new_ref_node(term, result, new_cont(), loc));
+            KTerm::Name(result)
+        }
+        KMut::Mut => {
+            let result = fresh_symbol("refmut", loc, xx);
+            xx.nodes
+                .push(new_ref_mut_node(term, result, new_cont(), loc));
+            KTerm::Name(result)
+        }
+    }
+}
+
+fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    match expr.op {
         PUnaryOp::Deref => {
-            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
             let result = fresh_symbol("deref", loc, xx);
             xx.nodes.push(new_deref_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
-        PUnaryOp::Ref => todo!(),
+        PUnaryOp::Ref => {
+            let k_mut = expr.mut_opt.unwrap_or(KMut::Const);
+            convert_lval_opt(expr.arg_opt, k_mut, loc, xx)
+        }
         PUnaryOp::Minus => {
-            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
             let result = fresh_symbol("minus", loc, xx);
             xx.nodes.push(new_minus_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
         PUnaryOp::Not => {
-            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
             let result = fresh_symbol("not", loc, xx);
             xx.nodes.push(new_not_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
+        }
+    }
+}
+
+fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    match expr.op {
+        PUnaryOp::Deref => {
+            // `&*p` ==> `p`
+            convert_expr_opt(expr.arg_opt, loc, xx)
+        }
+        PUnaryOp::Ref | PUnaryOp::Minus | PUnaryOp::Not => {
+            error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
+            new_error_term(loc)
         }
     }
 }
@@ -1867,14 +1924,42 @@ fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm 
     KTerm::Name(result)
 }
 
+fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+    let loc = expr_id.loc(xx.root).to_loc(xx.doc);
+
+    match expr {
+        AExpr::Name(name) => convert_name_lval(name, k_mut, loc, xx),
+        AExpr::DotField(_) => todo!(),
+        AExpr::Index(_) => todo!(),
+        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
+        _ => {
+            // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
+            error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
+            new_error_term(loc)
+        }
+    }
+}
+
 fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> KTerm {
     let expr = expr_id.of(xx.ast.exprs());
     do_convert_expr(expr_id, expr, xx)
 }
 
+fn convert_lval(expr_id: AExprId, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+    let expr = expr_id.of(xx.ast.exprs());
+    do_convert_lval(expr_id, expr, k_mut, loc, xx)
+}
+
 fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> KTerm {
     match expr_id_opt {
         Some(expr_id) => convert_expr(expr_id, xx),
+        None => new_error_term(loc),
+    }
+}
+
+fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+    match expr_id_opt {
+        Some(expr_id) => convert_lval(expr_id, k_mut, loc, xx),
         None => new_error_term(loc),
     }
 }
