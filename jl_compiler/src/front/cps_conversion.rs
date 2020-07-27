@@ -1536,7 +1536,7 @@ pub(crate) fn cps_conversion(
 struct Fx {
     k_fn: KFn,
     labels: KLabelArena,
-    current_opt: Option<(Vec<KNode>, KLabel)>,
+    current_opt: Option<(KNode, KLabel)>,
 }
 
 impl Fx {
@@ -1719,6 +1719,46 @@ fn fold_nodes(
     let node = stack.pop().unwrap_or_default();
     trace!("block: {:#?}", DebugWith::new(&node, local_context));
     node
+}
+
+struct FreshLabel {
+    label: KLabel,
+}
+
+fn fresh_label(hint: &str, loc: Loc, xx: &mut Xx) -> Option<FreshLabel> {
+    let fx = xx.fx_opt.as_mut()?;
+    let label = fx.labels.alloc(KLabelData::new(hint.to_string()));
+    Some(FreshLabel { label })
+}
+
+fn push_label(fresh_label: FreshLabel, params: Vec<KSymbol>, xx: &mut Xx) {
+    let next_label = fresh_label.label;
+
+    // いまのラベルの本体、または関数の本体
+    let previous_body = {
+        let nodes = take(&mut xx.nodes);
+        fold_nodes(nodes, &local_context(xx))
+    };
+
+    let fx = match xx.fx_opt.as_mut() {
+        Some(it) => it,
+        None => {
+            // fresh_label でチェック済み
+            unreachable!()
+        }
+    };
+
+    next_label.of_mut(&mut fx.labels).params = params;
+
+    // いまのラベルや関数の本体を確定して、新しいラベルを開始する。
+    let current = match fx.current_opt.take() {
+        Some((fn_body, previous_label)) => {
+            previous_label.of_mut(&mut fx.labels).body = previous_body;
+            (fn_body, next_label)
+        }
+        None => (previous_body, next_label),
+    };
+    fx.current_opt = Some(current);
 }
 
 fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
@@ -1998,6 +2038,34 @@ fn convert_return_expr(return_decl: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm 
     new_never_term(loc)
 }
 
+fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = fresh_symbol("if_result", loc, xx);
+    // FIXME: next → if_next
+    let next = match fresh_label("next", loc, xx) {
+        Some(it) => it,
+        None => return new_error_term(loc),
+    };
+
+    let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+    xx.nodes
+        .push(new_if_node(cond, new_cont(), new_cont(), loc));
+
+    // body
+    {
+        let body = convert_expr_opt(expr.body_opt, loc, xx);
+        xx.nodes.push(new_jump_tail(next.label, once(body), loc));
+    }
+
+    // alt
+    {
+        let alt = convert_expr_opt(expr.alt_opt, loc, xx);
+        xx.nodes.push(new_jump_tail(next.label, once(alt), loc));
+    }
+
+    push_label(next, vec![result], xx);
+    KTerm::Name(result)
+}
+
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
@@ -2021,7 +2089,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Break(_) => todo!(),
         AExpr::Continue => todo!(),
         AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
-        AExpr::If(_) => todo!(),
+        AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
         AExpr::Match(_) => todo!(),
         AExpr::While(_) => todo!(),
         AExpr::Loop(_) => todo!(),
@@ -2148,14 +2216,16 @@ fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
         let mut fx = fx_opt.unwrap();
 
         // 最後のラベルを完成させる。
-        if let Some((body, label)) = fx.current_opt {
-            label.of_mut(&mut fx.labels).body = fold_nodes(nodes, &local_context(xx));
-            nodes = body;
-        }
+        let mut last = fold_nodes(nodes, &local_context(xx));
+        let fn_body = match fx.current_opt {
+            Some((fn_body, label)) => {
+                label.of_mut(&mut fx.labels).body = last;
+                fn_body
+            }
+            None => last,
+        };
 
-        let body = fold_nodes(nodes, &local_context(xx));
-
-        (body, fx.labels)
+        (fn_body, fx.labels)
     };
 
     *k_fn.of_mut(&mut xx.mod_data.fns) = KFnData::new(params, body, locals, labels);

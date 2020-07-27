@@ -1,5 +1,6 @@
-use super::{KFn, KNode, KSymbol, KTerm, KTy};
+use super::{KFn, KLabel, KNode, KSymbol, KTerm, KTy};
 use crate::source::Loc;
+use std::iter::once;
 
 /// CPS 中間表現のプリミティブの種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,6 +57,22 @@ impl KPrim {
     }
 }
 
+// 末尾の `jump`
+pub(crate) fn new_jump_tail(
+    label: KLabel,
+    args: impl IntoIterator<Item = KTerm>,
+    loc: Loc,
+) -> KNode {
+    KNode {
+        prim: KPrim::Jump,
+        tys: vec![],
+        args: once(KTerm::Label { label, loc }).chain(args).collect(),
+        results: vec![],
+        conts: vec![],
+        loc,
+    }
+}
+
 pub(crate) fn new_call_node(args: Vec<KTerm>, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::CallDirect,
@@ -98,6 +115,17 @@ pub(crate) fn new_record_node(ty: KTy, result: KSymbol, cont: KNode, loc: Loc) -
         args: vec![],
         results: vec![result.clone()],
         conts: vec![cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_if_node(cond: KTerm, body_cont: KNode, alt_cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::If,
+        tys: vec![],
+        args: vec![cond],
+        results: vec![],
+        conts: vec![body_cont, alt_cont],
         loc,
     }
 }

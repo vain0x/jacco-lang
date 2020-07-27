@@ -2,6 +2,7 @@ pub fn main() -> i32 {
     if true {
         2;
         3;
+        ();
     }
 
     0
