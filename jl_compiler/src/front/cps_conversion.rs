@@ -1776,6 +1776,30 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
+fn convert_unary_op_expr(unary_op_expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    match unary_op_expr.op {
+        PUnaryOp::Deref => {
+            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let result = fresh_symbol("deref", loc, xx);
+            xx.nodes.push(new_deref_node(arg, result, new_cont(), loc));
+            KTerm::Name(result)
+        }
+        PUnaryOp::Ref => todo!(),
+        PUnaryOp::Minus => {
+            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let result = fresh_symbol("minus", loc, xx);
+            xx.nodes.push(new_minus_node(arg, result, new_cont(), loc));
+            KTerm::Name(result)
+        }
+        PUnaryOp::Not => {
+            let arg = convert_expr_opt(unary_op_expr.arg_opt, loc, xx);
+            let result = fresh_symbol("not", loc, xx);
+            xx.nodes.push(new_not_node(arg, result, new_cont(), loc));
+            KTerm::Name(result)
+        }
+    }
+}
+
 fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
     let mut last_opt = None;
 
@@ -1817,7 +1841,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Call(_) => todo!(),
         AExpr::Index(_) => todo!(),
         AExpr::As(_) => todo!(),
-        AExpr::UnaryOp(_) => todo!(),
+        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
         AExpr::BinaryOp(_) => todo!(),
         AExpr::Pipe(_) => todo!(),
         AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),

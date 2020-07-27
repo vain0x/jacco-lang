@@ -101,3 +101,36 @@ pub(crate) fn new_let_node(init: KTerm, result: KSymbol, loc: Loc, cont: KNode) 
         loc,
     }
 }
+
+pub(crate) fn new_deref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Deref,
+        tys: vec![],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_minus_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Minus,
+        tys: vec![],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_not_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Not,
+        tys: vec![],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}
