@@ -1904,6 +1904,15 @@ fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
+fn do_convert_assignment_expr(prim: KPrim, expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let left = convert_lval(expr.left, KMut::Mut, loc, xx);
+    let right = convert_expr_opt(expr.right_opt, loc, xx);
+
+    xx.nodes
+        .push(new_assignment_node(prim, left, right, new_cont(), loc));
+    new_unit_term(loc)
+}
+
 fn do_convert_basic_binary_op_expr(
     prim: KPrim,
     expr: &ABinaryOpExpr,
@@ -1926,34 +1935,39 @@ fn do_convert_basic_binary_op_expr(
 }
 
 fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let on_assign = |prim: KPrim, xx: &mut Xx| do_convert_assignment_expr(prim, expr, loc, xx);
+    let on_basic = |prim: KPrim, xx: &mut Xx| do_convert_basic_binary_op_expr(prim, expr, loc, xx);
+    let on_bit = on_basic;
+    let on_comparison = on_basic;
+
     match expr.op {
-        PBinaryOp::Assign => todo!(),
-        PBinaryOp::AddAssign => todo!(),
-        PBinaryOp::SubAssign => todo!(),
-        PBinaryOp::MulAssign => todo!(),
-        PBinaryOp::DivAssign => todo!(),
-        PBinaryOp::ModuloAssign => todo!(),
-        PBinaryOp::BitAndAssign => todo!(),
-        PBinaryOp::BitOrAssign => todo!(),
-        PBinaryOp::BitXorAssign => todo!(),
-        PBinaryOp::LeftShiftAssign => todo!(),
-        PBinaryOp::RightShiftAssign => todo!(),
-        PBinaryOp::Add => do_convert_basic_binary_op_expr(KPrim::Add, expr, loc, xx),
-        PBinaryOp::Sub => do_convert_basic_binary_op_expr(KPrim::Sub, expr, loc, xx),
-        PBinaryOp::Mul => do_convert_basic_binary_op_expr(KPrim::Mul, expr, loc, xx),
-        PBinaryOp::Div => do_convert_basic_binary_op_expr(KPrim::Div, expr, loc, xx),
-        PBinaryOp::Modulo => do_convert_basic_binary_op_expr(KPrim::Modulo, expr, loc, xx),
-        PBinaryOp::BitAnd => todo!(),
-        PBinaryOp::BitOr => todo!(),
-        PBinaryOp::BitXor => todo!(),
-        PBinaryOp::LeftShift => todo!(),
-        PBinaryOp::RightShift => todo!(),
-        PBinaryOp::Equal => todo!(),
-        PBinaryOp::NotEqual => todo!(),
-        PBinaryOp::LessThan => todo!(),
-        PBinaryOp::LessEqual => todo!(),
-        PBinaryOp::GreaterThan => todo!(),
-        PBinaryOp::GreaterEqual => todo!(),
+        PBinaryOp::Assign => on_assign(KPrim::Assign, xx),
+        PBinaryOp::AddAssign => on_assign(KPrim::AddAssign, xx),
+        PBinaryOp::SubAssign => on_assign(KPrim::SubAssign, xx),
+        PBinaryOp::MulAssign => on_assign(KPrim::MulAssign, xx),
+        PBinaryOp::DivAssign => on_assign(KPrim::DivAssign, xx),
+        PBinaryOp::ModuloAssign => on_assign(KPrim::ModuloAssign, xx),
+        PBinaryOp::BitAndAssign => on_assign(KPrim::BitAndAssign, xx),
+        PBinaryOp::BitOrAssign => on_assign(KPrim::BitOrAssign, xx),
+        PBinaryOp::BitXorAssign => on_assign(KPrim::BitXorAssign, xx),
+        PBinaryOp::LeftShiftAssign => on_assign(KPrim::LeftShiftAssign, xx),
+        PBinaryOp::RightShiftAssign => on_assign(KPrim::RightShiftAssign, xx),
+        PBinaryOp::Add => on_basic(KPrim::Add, xx),
+        PBinaryOp::Sub => on_basic(KPrim::Sub, xx),
+        PBinaryOp::Mul => on_basic(KPrim::Mul, xx),
+        PBinaryOp::Div => on_basic(KPrim::Div, xx),
+        PBinaryOp::Modulo => on_basic(KPrim::Modulo, xx),
+        PBinaryOp::BitAnd => on_bit(KPrim::BitAnd, xx),
+        PBinaryOp::BitOr => on_bit(KPrim::BitOr, xx),
+        PBinaryOp::BitXor => on_bit(KPrim::BitXor, xx),
+        PBinaryOp::LeftShift => on_bit(KPrim::LeftShift, xx),
+        PBinaryOp::RightShift => on_bit(KPrim::RightShift, xx),
+        PBinaryOp::Equal => on_comparison(KPrim::Equal, xx),
+        PBinaryOp::NotEqual => on_comparison(KPrim::NotEqual, xx),
+        PBinaryOp::LessThan => on_comparison(KPrim::LessThan, xx),
+        PBinaryOp::LessEqual => on_comparison(KPrim::LessEqual, xx),
+        PBinaryOp::GreaterThan => on_comparison(KPrim::GreaterThan, xx),
+        PBinaryOp::GreaterEqual => on_comparison(KPrim::GreaterEqual, xx),
         PBinaryOp::LogAnd => todo!(),
         PBinaryOp::LogOr => todo!(),
     }
