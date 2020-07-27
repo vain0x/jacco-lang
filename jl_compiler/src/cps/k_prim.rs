@@ -1,4 +1,4 @@
-use super::{KNode, KSymbol, KTy};
+use super::{KFn, KNode, KSymbol, KTerm, KTy};
 use crate::source::Loc;
 
 /// CPS 中間表現のプリミティブの種類
@@ -53,6 +53,30 @@ pub(crate) enum KPrim {
 impl KPrim {
     pub(crate) fn hint_str(self) -> String {
         format!("{:?}", self).to_lowercase()
+    }
+}
+
+/// 末尾ではない `return`
+pub(crate) fn new_return_node(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Jump,
+        tys: vec![],
+        args: vec![KTerm::Return { k_fn, loc }, arg],
+        results: vec![],
+        conts: vec![KNode::default()],
+        loc,
+    }
+}
+
+/// 末尾の `return`
+pub(crate) fn new_return_tail(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Jump,
+        tys: vec![],
+        args: vec![KTerm::Return { k_fn, loc }, arg],
+        results: vec![],
+        conts: vec![],
+        loc,
     }
 }
 

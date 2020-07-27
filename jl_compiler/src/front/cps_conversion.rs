@@ -17,7 +17,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     iter::once,
-    mem::{replace, take},
+    mem::{replace, swap, take},
 };
 
 #[derive(Clone)]
@@ -1531,11 +1531,29 @@ pub(crate) fn cps_conversion(
 // V2
 // =============================================================================
 
+/// fn の CPS 変換の文脈
+struct Fx {
+    k_fn: KFn,
+    labels: KLabelArena,
+    current_opt: Option<(Vec<KNode>, KLabel)>,
+}
+
+impl Fx {
+    fn new(k_fn: KFn) -> Self {
+        Fx {
+            k_fn,
+            labels: KLabelArena::new(),
+            current_opt: None,
+        }
+    }
+}
+
 /// CPS 変換の文脈
 struct Xx<'a> {
     env: Env,
     nodes: Vec<KNode>,
     local_vars: KLocalArena,
+    fx_opt: Option<Fx>,
     mod_data: KModData,
     doc: Doc,
     k_mod: KMod,
@@ -1560,6 +1578,7 @@ impl<'a> Xx<'a> {
             env: Env::new(),
             nodes: vec![],
             local_vars: KLocalArena::new(),
+            fx_opt: None,
             mod_data: KModData::default(),
             doc,
             k_mod,
@@ -1585,6 +1604,10 @@ fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
 
 fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
+}
+
+fn error_return_out_of_fn(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "関数の外では return を使えません。");
 }
 
 // -----------------------------------------------
@@ -1643,8 +1666,36 @@ fn new_error_term(loc: Loc) -> KTerm {
     KTerm::Unit { loc }
 }
 
+fn new_error_node(loc: Loc, xx: &mut Xx) -> KNode {
+    KNode {
+        prim: KPrim::Stuck,
+        tys: vec![],
+        args: vec![],
+        results: vec![],
+        conts: vec![new_cont()],
+        loc,
+    }
+}
+
 fn new_cont() -> KNode {
     KNode::default()
+}
+
+// 正しく動くかは不明
+fn fold_nodes(mut nodes: Vec<KNode>) -> KNode {
+    let mut stack = vec![];
+
+    while let Some(mut node) = nodes.pop() {
+        // スタックに積まれているノードを継続として持たせる。
+        let n = node.conts.len();
+        for (slot, cont) in node.conts.iter_mut().zip(stack.drain(stack.len() - n..)) {
+            *slot = cont;
+        }
+
+        stack.push(node);
+    }
+
+    stack.pop().unwrap_or_default()
 }
 
 fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
@@ -1716,6 +1767,21 @@ fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
     last_opt.unwrap_or(KTerm::Unit { loc })
 }
 
+fn convert_return_expr(return_decl: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let arg = convert_expr_opt(return_decl.arg_opt, loc, xx);
+
+    let node = match &xx.fx_opt {
+        Some(fx) => new_return_node(fx.k_fn, arg, loc),
+        None => {
+            error_return_out_of_fn(PLoc::from_loc(loc), xx.logger);
+            new_error_node(loc, xx)
+        }
+    };
+
+    xx.nodes.push(node);
+    new_never_term(loc)
+}
+
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
@@ -1738,7 +1804,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
         AExpr::Break(_) => todo!(),
         AExpr::Continue => todo!(),
-        AExpr::Return(_) => todo!(),
+        AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
         AExpr::If(_) => todo!(),
         AExpr::Match(_) => todo!(),
         AExpr::While(_) => todo!(),
@@ -1765,6 +1831,70 @@ fn convert_let_decl(local_var: KLocal, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
     local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
 }
 
+fn convert_param_decls(
+    param_decls: &[AParamDecl],
+    param_tys: &[KTy],
+    loc: Loc,
+    locals: &mut KLocalArena,
+) -> Vec<KSymbol> {
+    assert_eq!(param_decls.len(), param_tys.len());
+
+    param_decls
+        .iter()
+        .zip(param_tys)
+        .map(|(param_decl, param_ty)| {
+            // FIXME: param_decl のロケーションを取る
+            let name = param_decl.name.text.to_string();
+            let local = locals.alloc(KLocalData::new(name, loc));
+            KSymbol { local, loc }
+        })
+        .collect()
+}
+
+fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
+    let mut locals = KLocalArena::new();
+
+    let params = convert_param_decls(
+        &fn_decl.params,
+        k_fn.param_tys(&xx.mod_outline.fns),
+        loc,
+        &mut locals,
+    );
+
+    let (body, labels) = {
+        let mut fx_opt = Some(Fx::new(k_fn));
+        let mut nodes = vec![];
+
+        swap(&mut xx.local_vars, &mut locals);
+        swap(&mut xx.nodes, &mut nodes);
+        swap(&mut xx.fx_opt, &mut fx_opt);
+        let term = convert_expr_opt(fn_decl.body_opt, loc, xx);
+        emit_return(term, loc, xx);
+        swap(&mut xx.local_vars, &mut locals);
+        swap(&mut xx.nodes, &mut nodes);
+        swap(&mut xx.fx_opt, &mut fx_opt);
+
+        let mut fx = fx_opt.unwrap();
+
+        // 最後のラベルを完成させる。
+        if let Some((body, label)) = fx.current_opt {
+            label.of_mut(&mut fx.labels).body = fold_nodes(nodes);
+            nodes = body;
+        }
+
+        let body = fold_nodes(nodes);
+
+        (body, fx.labels)
+    };
+
+    *k_fn.of_mut(&mut xx.mod_data.fns) = KFnData::new(params, body, locals, labels);
+}
+
+fn emit_return(term: KTerm, loc: Loc, xx: &mut Xx) {
+    let k_fn = xx.fx_opt.as_ref().unwrap().k_fn;
+    xx.nodes.push(new_return_tail(k_fn, term, loc));
+}
+
 fn convert_extern_fn_decl(
     extern_fn: KExternFn,
     extern_fn_decl: &AFnLikeDecl,
@@ -1773,17 +1903,12 @@ fn convert_extern_fn_decl(
 ) {
     let mut locals = KLocalArena::new();
 
-    let params = extern_fn_decl
-        .params
-        .iter()
-        .zip(extern_fn.param_tys(&xx.mod_outline.extern_fns))
-        .map(|(param_decl, param_ty)| {
-            // FIXME: param_decl のロケーションを取る
-            let name = param_decl.name.text.to_string();
-            let local = locals.alloc(KLocalData::new(name, loc));
-            KSymbol { local, loc }
-        })
-        .collect();
+    let params = convert_param_decls(
+        &extern_fn_decl.params,
+        extern_fn.param_tys(&xx.mod_outline.extern_fns),
+        loc,
+        &mut locals,
+    );
 
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
@@ -1811,7 +1936,13 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             value_opt,
         }) => todo!(),
         ADecl::Static(_) => todo!(),
-        ADecl::Fn(_) => todo!(),
+        ADecl::Fn(fn_decl) => {
+            let k_fn = match symbol_opt {
+                Some(KModLocalSymbol::Fn(it)) => it,
+                _ => return,
+            };
+            convert_fn_decl(k_fn, fn_decl, loc, xx);
+        }
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
                 Some(KModLocalSymbol::ExternFn(it)) => it,
