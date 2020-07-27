@@ -1663,7 +1663,7 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
     }
 }
 
-fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
+pub(crate) fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
     let ty = ty_id.of(xx.ast.tys());
     do_convert_ty(ty_id, ty, xx)
 }

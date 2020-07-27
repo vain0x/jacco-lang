@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use super::{
-    cps_conversion::{convert_ty_opt, TyResolver},
+    cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
     env::Env,
     name_resolution::{add_decl_to_local_env, do_add_ty_symbol_to_local_env, DeclSymbols},
 };
@@ -23,6 +23,13 @@ fn resolve_name_opt(name_opt: Option<&AName>) -> String {
 
 fn resolve_ty_opt(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
     convert_ty_opt(ty_opt, ty_resolver)
+}
+
+fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
+    match ty_opt {
+        Some(ty) => convert_ty(ty, ty_resolver),
+        None => KTy::Unit,
+    }
 }
 
 fn alloc_const(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KConst {
@@ -353,7 +360,7 @@ fn resolve_outline(
                 };
 
                 let param_tys = resolve_param_tys(&fn_decl.params, &ty_resolver);
-                let result_ty = resolve_ty_opt(fn_decl.result_ty_opt, &ty_resolver);
+                let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, &ty_resolver);
 
                 let fn_data = k_fn.of_mut(&mut mod_outline.fns);
                 fn_data.param_tys = param_tys;
@@ -366,7 +373,7 @@ fn resolve_outline(
                 };
 
                 let param_tys = resolve_param_tys(&extern_fn_decl.params, &ty_resolver);
-                let result_ty = resolve_ty_opt(extern_fn_decl.result_ty_opt, &ty_resolver);
+                let result_ty = resolve_ty_or_unit(extern_fn_decl.result_ty_opt, &ty_resolver);
 
                 let extern_fn_data = extern_fn.of_mut(&mut mod_outline.extern_fns);
                 extern_fn_data.param_tys = param_tys;
