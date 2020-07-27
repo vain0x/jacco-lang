@@ -339,10 +339,6 @@ impl<Tag> VecArenaSlice<Tag> {
         end: VecArenaId::MAX,
     });
 
-    fn new(start: VecArenaId<Tag>, end: VecArenaId<Tag>) -> Self {
-        Self(Range { start, end })
-    }
-
     pub(crate) fn len(&self) -> usize {
         let start = self.0.start;
         let end = self.0.end;
@@ -363,6 +359,7 @@ impl<Tag> VecArenaSlice<Tag> {
         self.iter().zip(self.of(arena))
     }
 
+    #[allow(unused)]
     pub(crate) fn map_with<T>(&self, f: impl Fn() -> T) -> VecArena<Tag, T> {
         let mut inner = Vec::with_capacity(self.len());
         inner.resize_with(self.len(), f);
