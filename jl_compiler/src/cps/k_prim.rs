@@ -167,3 +167,20 @@ pub(crate) fn new_not_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -
         loc,
     }
 }
+
+pub(crate) fn new_add_node(
+    left: KTerm,
+    right: KTerm,
+    result: KSymbol,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
+    KNode {
+        prim: KPrim::Add,
+        tys: vec![],
+        args: vec![left, right],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}

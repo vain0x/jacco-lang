@@ -1817,6 +1817,43 @@ fn convert_name_lval(name: &AName, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm 
     }
 }
 
+fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = fresh_symbol("call_result", loc, xx);
+    let left = convert_expr(call_expr.left, xx);
+
+    let mut args = Vec::with_capacity(call_expr.args.len() + 1);
+    args.push(left);
+    args.extend(call_expr.args.iter().map(|arg| convert_expr(arg, xx)));
+
+    xx.nodes.push(new_call_node(args, result, new_cont(), loc));
+    KTerm::Name(result)
+}
+
+// `a[i]` ==> `*(a + i)`
+fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let ptr = convert_index_lval(expr, loc, xx);
+
+    let result = fresh_symbol("index_result", loc, xx);
+    xx.nodes.push(new_deref_node(ptr, result, new_cont(), loc));
+    KTerm::Name(result)
+}
+
+// `&a[i]` ==> `a + i`
+fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let left = convert_expr(expr.left, xx);
+    let right = if expr.args.len() == 1 {
+        let right = expr.args.iter().next().unwrap();
+        convert_expr(right, xx)
+    } else {
+        new_error_term(loc)
+    };
+
+    let result = fresh_symbol("indexed_ptr", loc, xx);
+    xx.nodes
+        .push(new_add_node(left, right, result, new_cont(), loc));
+    KTerm::Name(result)
+}
+
 fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     match expr.op {
         PUnaryOp::Deref => {
@@ -1896,7 +1933,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Record(_) => todo!(),
         AExpr::DotField(_) => todo!(),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
-        AExpr::Index(_) => todo!(),
+        AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
         AExpr::As(_) => todo!(),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
         AExpr::BinaryOp(_) => todo!(),
@@ -1912,25 +1949,13 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
-    let result = fresh_symbol("call_result", loc, xx);
-    let left = convert_expr(call_expr.left, xx);
-
-    let mut args = Vec::with_capacity(call_expr.args.len() + 1);
-    args.push(left);
-    args.extend(call_expr.args.iter().map(|arg| convert_expr(arg, xx)));
-
-    xx.nodes.push(new_call_node(args, result, new_cont(), loc));
-    KTerm::Name(result)
-}
-
 fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, loc, xx),
         AExpr::DotField(_) => todo!(),
-        AExpr::Index(_) => todo!(),
+        AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
         _ => {
             // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
