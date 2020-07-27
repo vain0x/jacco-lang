@@ -184,3 +184,14 @@ pub(crate) fn new_add_node(
         loc,
     }
 }
+
+pub(crate) fn new_cast_node(ty: KTy, arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Cast,
+        tys: vec![ty],
+        args: vec![arg],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}

@@ -1854,6 +1854,16 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
+fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let arg = convert_expr(expr.left, xx);
+    let ty = convert_ty_opt(expr.ty_opt, &new_ty_resolver(xx));
+
+    let result = fresh_symbol("cast", loc, xx);
+    xx.nodes
+        .push(new_cast_node(ty, arg, result, new_cont(), loc));
+    KTerm::Name(result)
+}
+
 fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     match expr.op {
         PUnaryOp::Deref => {
@@ -1934,7 +1944,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::DotField(_) => todo!(),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
-        AExpr::As(_) => todo!(),
+        AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
         AExpr::BinaryOp(_) => todo!(),
         AExpr::Pipe(_) => todo!(),
