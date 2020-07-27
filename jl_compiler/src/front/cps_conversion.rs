@@ -1516,6 +1516,7 @@ pub(crate) fn cps_conversion(
         (
             gx.mod_outline,
             KModData {
+                consts: KConstInits::new(),
                 extern_fns: gx.extern_fns,
                 fns: gx.fns,
             },
@@ -1589,6 +1590,12 @@ impl<'a> Xx<'a> {
             mod_outline,
             logger,
         }
+    }
+
+    fn do_out_fn(&mut self, f: impl FnOnce(&mut Xx)) {
+        let fx_opt = self.fx_opt.take();
+        f(self);
+        self.fx_opt = fx_opt;
     }
 
     fn do_in_scope(&mut self, f: impl FnOnce(&mut Xx)) {
@@ -1831,6 +1838,21 @@ fn convert_let_decl(local_var: KLocal, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
     local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
 }
 
+fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let (node, term) = {
+        let mut nodes = take(&mut xx.nodes);
+        let mut term_opt = None;
+        xx.do_out_fn(|xx| {
+            term_opt = Some(convert_expr_opt(decl.value_opt, loc, xx));
+        });
+        swap(&mut xx.nodes, &mut nodes);
+
+        (fold_nodes(nodes), term_opt.unwrap())
+    };
+
+    *k_const.of_mut(&mut xx.mod_data.consts) = KConstInit { node, term };
+}
+
 fn convert_param_decls(
     param_decls: &[AParamDecl],
     param_tys: &[KTy],
@@ -1929,12 +1951,13 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             };
             convert_let_decl(local_var, decl, loc, xx);
         }
-        ADecl::Const(AFieldLikeDecl {
-            modifiers: _,
-            name_opt,
-            ty_opt,
-            value_opt,
-        }) => todo!(),
+        ADecl::Const(decl) => {
+            let k_const = match symbol_opt {
+                Some(KModLocalSymbol::Const(it)) => it,
+                _ => return,
+            };
+            convert_const_decl(k_const, decl, loc, xx)
+        }
         ADecl::Static(_) => todo!(),
         ADecl::Fn(fn_decl) => {
             let k_fn = match symbol_opt {

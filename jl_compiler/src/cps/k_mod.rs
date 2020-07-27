@@ -1,5 +1,5 @@
 use super::{
-    k_const::KConstArena,
+    k_const::{KConstArena, KConstInits},
     k_enum::{KEnumArena, KEnumReprs},
     k_extern_fn::KExternFnOutlineArena,
     k_fn::KFnOutlineArena,
@@ -39,6 +39,7 @@ pub(crate) struct KModOutline {
 
 #[derive(Debug, Default)]
 pub(crate) struct KModData {
+    pub(crate) consts: KConstInits,
     pub(crate) fns: KFnArena,
     pub(crate) extern_fns: KExternFnArena,
 }

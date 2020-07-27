@@ -1,4 +1,4 @@
-use super::{KEnum, KTy};
+use super::{KEnum, KNode, KTerm, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -32,6 +32,14 @@ pub(crate) struct KConstData {
     pub(crate) value_opt: Option<KConstValue>,
     pub(crate) parent_opt: Option<KEnum>,
     pub(crate) loc: Loc,
+}
+
+pub(crate) type KConstInits = VecArena<KConstTag, KConstInit>;
+
+#[derive(Clone, Debug)]
+pub(crate) struct KConstInit {
+    pub(crate) node: KNode,
+    pub(crate) term: KTerm,
 }
 
 #[derive(Clone, Debug, PartialEq)]
