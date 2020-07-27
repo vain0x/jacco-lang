@@ -351,16 +351,26 @@ fn resolve_outline(
                     KModLocalSymbol::Fn(it) => it,
                     _ => unreachable!(),
                 };
+
                 let param_tys = resolve_param_tys(&fn_decl.params, &ty_resolver);
-                k_fn.of_mut(&mut mod_outline.fns).param_tys = param_tys;
+                let result_ty = resolve_ty_opt(fn_decl.result_ty_opt, &ty_resolver);
+
+                let fn_data = k_fn.of_mut(&mut mod_outline.fns);
+                fn_data.param_tys = param_tys;
+                fn_data.result_ty = result_ty;
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = match symbol {
                     KModLocalSymbol::ExternFn(it) => it,
                     _ => unreachable!(),
                 };
+
                 let param_tys = resolve_param_tys(&extern_fn_decl.params, &ty_resolver);
-                extern_fn.of_mut(&mut mod_outline.extern_fns).param_tys = param_tys;
+                let result_ty = resolve_ty_opt(extern_fn_decl.result_ty_opt, &ty_resolver);
+
+                let extern_fn_data = extern_fn.of_mut(&mut mod_outline.extern_fns);
+                extern_fn_data.param_tys = param_tys;
+                extern_fn_data.result_ty = result_ty;
             }
             ADecl::Enum(decl) => {
                 let k_enum = match symbol {
