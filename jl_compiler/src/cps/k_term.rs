@@ -1,6 +1,5 @@
 use super::*;
 use crate::{source::Loc, utils::DebugWithContext};
-use k_mod::KLocalVarParent;
 use std::fmt::{self, Debug, Formatter};
 
 /// CPS 原子項
@@ -95,13 +94,13 @@ impl Debug for KTerm {
     }
 }
 
-impl<'a> DebugWithContext<(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KModData)> for KTerm {
+impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>)> for KTerm {
     fn fmt(
         &self,
-        context: &(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KModData),
+        context: &(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>),
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
-        let (parent_opt, mod_outline, mod_data) = context;
+        let (mod_outline, local_opt) = context;
 
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
@@ -111,8 +110,8 @@ impl<'a> DebugWithContext<(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KMo
             KTerm::Str { text, .. } => write!(f, "{:?}", text),
             KTerm::True { .. } => write!(f, "true"),
             KTerm::False { .. } => write!(f, "false"),
-            KTerm::Name(symbol) => match parent_opt {
-                Some(parent) => write!(f, "{}", &symbol.local.of(parent.locals(mod_data)).name),
+            KTerm::Name(symbol) => match local_opt {
+                Some((locals, _)) => write!(f, "{}", symbol.local.of(locals).name),
                 None => write!(f, "symbol({:?})", symbol.loc),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
@@ -121,8 +120,8 @@ impl<'a> DebugWithContext<(Option<&'a KLocalVarParent>, &'a KModOutline, &'a KMo
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }
             KTerm::Fn { k_fn, .. } => write!(f, "{}", k_fn.name(&mod_outline.fns)),
-            KTerm::Label { label, .. } => match parent_opt {
-                Some(parent) => write!(f, "{}", &label.of(parent.labels(mod_data)).name),
+            KTerm::Label { label, .. } => match local_opt {
+                Some((_, labels)) => write!(f, "{}", label.of(labels).name),
                 None => write!(f, "label#{}", label.to_index()),
             },
             KTerm::Return { k_fn, .. } => write!(f, "return({})", k_fn.name(&mod_outline.fns)),
