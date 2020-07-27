@@ -10,7 +10,7 @@ use crate::{
     logs::DocLogger,
     source::{Doc, HaveLoc, Loc},
     token::{eval_number, LitErr},
-    utils::VecArena,
+    utils::{DebugWith, VecArena},
 };
 use log::{error, trace};
 use std::{
@@ -1605,6 +1605,13 @@ impl<'a> Xx<'a> {
     }
 }
 
+fn local_context<'a>(xx: &'a Xx) -> (&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>) {
+    (
+        xx.mod_outline,
+        xx.fx_opt.as_ref().map(|fx| (&xx.local_vars, &fx.labels)),
+    )
+}
+
 fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは型の名前だと思いますが、定義が見つかりません。")
 }
@@ -1689,7 +1696,10 @@ fn new_cont() -> KNode {
 }
 
 // 正しく動くかは不明
-fn fold_nodes(mut nodes: Vec<KNode>) -> KNode {
+fn fold_nodes(
+    mut nodes: Vec<KNode>,
+    local_context: &(&KModOutline, Option<(&KLocalArena, &KLabelArena)>),
+) -> KNode {
     let mut stack = vec![];
 
     while let Some(mut node) = nodes.pop() {
@@ -1702,7 +1712,9 @@ fn fold_nodes(mut nodes: Vec<KNode>) -> KNode {
         stack.push(node);
     }
 
-    stack.pop().unwrap_or_default()
+    let node = stack.pop().unwrap_or_default();
+    trace!("block: {:#?}", DebugWith::new(&node, local_context));
+    node
 }
 
 fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
@@ -1831,11 +1843,23 @@ fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> KTer
     }
 }
 
-fn convert_let_decl(local_var: KLocal, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
-    let value = convert_expr_opt(decl.value_opt, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &new_ty_resolver(xx));
+fn convert_let_decl(decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let name = decl
+        .name_opt
+        .as_ref()
+        .map_or(String::new(), |name| name.text.to_string());
 
-    local_var.of_mut(&mut xx.local_vars).ty = ty.to_ty2(xx.k_mod);
+    let value = convert_expr_opt(decl.value_opt, loc, xx);
+    let ty = convert_ty_opt(decl.ty_opt, &new_ty_resolver(xx)).to_ty2(xx.k_mod);
+
+    let local = xx
+        .local_vars
+        .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
+    let symbol = KSymbol { local, loc };
+
+    xx.nodes.push(new_let_node(value, symbol, loc, new_cont()));
+
+    xx.env.insert_value(name, KLocalValue::LocalVar(local));
 }
 
 fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
@@ -1847,7 +1871,7 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
         });
         swap(&mut xx.nodes, &mut nodes);
 
-        (fold_nodes(nodes), term_opt.unwrap())
+        (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
     };
 
     *k_const.of_mut(&mut xx.mod_data.consts) = KConstInit { node, term };
@@ -1900,11 +1924,11 @@ fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
 
         // 最後のラベルを完成させる。
         if let Some((body, label)) = fx.current_opt {
-            label.of_mut(&mut fx.labels).body = fold_nodes(nodes);
+            label.of_mut(&mut fx.labels).body = fold_nodes(nodes, &local_context(xx));
             nodes = body;
         }
 
-        let body = fold_nodes(nodes);
+        let body = fold_nodes(nodes, &local_context(xx));
 
         (body, fx.labels)
     };
@@ -1945,11 +1969,8 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             *term_opt = Some(term);
         }
         ADecl::Let(decl) => {
-            let local_var = match symbol_opt {
-                Some(KModLocalSymbol::LocalVar { local_var, .. }) => local_var,
-                _ => return,
-            };
-            convert_let_decl(local_var, decl, loc, xx);
+            assert_eq!(symbol_opt, None);
+            convert_let_decl(decl, loc, xx);
         }
         ADecl::Const(decl) => {
             let k_const = match symbol_opt {
@@ -2007,10 +2028,18 @@ pub(crate) fn convert_to_cps(
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
     logger: &DocLogger,
-) {
+) -> KModData {
     let mut xx = Xx::new(doc, k_mod, root, decl_symbols, mod_outline, logger);
+
+    xx.mod_data = KModData {
+        consts: mod_outline.consts.slice().map_with(KConstInit::new_empty),
+        fns: mod_outline.fns.slice().map_with(Default::default),
+        extern_fns: mod_outline.extern_fns.slice().map_with(Default::default),
+    };
 
     xx.do_in_scope(|xx| {
         convert_decls(root.ast.root_decls(), xx);
     });
+
+    xx.mod_data
 }

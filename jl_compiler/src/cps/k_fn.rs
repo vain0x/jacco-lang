@@ -60,7 +60,7 @@ impl KFnOutline {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,

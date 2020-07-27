@@ -3,7 +3,7 @@ mod logs;
 
 /// API for Rust.
 pub mod rust_api {
-    pub use super::cli::{compile, Project};
+    pub use super::cli::{compile, compile_v2, Project};
     pub use super::lang_service::lang_service::LangService;
     pub use super::source::{doc::Doc, t_pos::TPos, t_pos16::TPos16, t_range::TRange};
 }
@@ -109,7 +109,8 @@ mod front {
     mod occurrence_collection;
     mod syntax_validation;
 
-    pub(crate) use cps_conversion::cps_conversion;
+    pub(crate) use cps_conversion::{convert_to_cps, cps_conversion};
+    pub(crate) use mod_outline_gen::generate_outline;
     pub(crate) use name_resolution::{resolve_name, NAbsName, NName, NParentFn, NameResolution};
     pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
     pub(crate) use syntax_validation::validate_syntax;

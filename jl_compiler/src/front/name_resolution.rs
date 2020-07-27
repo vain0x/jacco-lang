@@ -1106,6 +1106,8 @@ pub(crate) fn add_decl_to_local_env(
     mod_outline: &KModOutline,
     env: &mut Env,
 ) {
+    // FIXME: let は decl_symbols に登録されていないので、ここでは環境に登録されない。
+
     if let Some((name, symbol)) = decl_to_name_symbol_pair(decl_id, &decl_symbols, mod_outline) {
         if let KModLocalSymbol::Enum(k_enum) = symbol {
             add_variant_symbols_to_local_env(k_enum, mod_outline, env);

@@ -42,6 +42,19 @@ pub(crate) struct KConstInit {
     pub(crate) term: KTerm,
 }
 
+impl KConstInit {
+    pub(crate) fn new_empty() -> Self {
+        let loc = Loc::Unknown("<KConstInit::default>");
+        Self {
+            node: KNode {
+                loc,
+                ..KNode::default()
+            },
+            term: KTerm::Unit { loc },
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum KConstValue {
     I32(i32),

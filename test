@@ -30,6 +30,28 @@ f() {
     echo '```' | tee -a test_stderr.md >>test_stdout.md
 }
 
+# V2
+expect_compile_ok() {
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        TXT="tests/$NAME/$NAME.txt"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        TXT="tests/$CATEGORY/$NAME/$NAME.txt"
+    fi
+
+    echo 'test: '$SRC
+    echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
+    RUST_BACKTRACE=1 RUST_LOG='trace' cargo run --bin jacco build --v2 "$SRC" \
+        1>"$TXT" \
+        2> >(tee -a test_stderr.md | grep -E 'Compiling|panicked|error|ERROR|\.rs\:' 1>&2)
+    echo '```' | tee -a test_stderr.md >>test_stdout.md
+}
+
 expect_compile_err() {
     NAME="$1"
     CATEGORY="${2:-}"
@@ -55,7 +77,8 @@ expect_compile_err() {
 }
 
 f_all() {
-    f empty
+    expect_compile_ok empty
+    # f empty
     f exit_with_42
     f extern_fn
     f add
@@ -98,7 +121,7 @@ ONLY=${1:-''}
 
 if ! test -z $ONLY
 then
-    f $ONLY
+    expect_compile_ok $ONLY
 else
     f_all
 

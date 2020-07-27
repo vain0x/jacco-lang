@@ -90,3 +90,14 @@ pub(crate) fn new_record_node(ty: KTy, result: KSymbol, cont: KNode, loc: Loc) -
         loc,
     }
 }
+
+pub(crate) fn new_let_node(init: KTerm, result: KSymbol, loc: Loc, cont: KNode) -> KNode {
+    KNode {
+        prim: KPrim::Let,
+        tys: vec![],
+        args: vec![init],
+        results: vec![result],
+        conts: vec![cont],
+        loc,
+    }
+}

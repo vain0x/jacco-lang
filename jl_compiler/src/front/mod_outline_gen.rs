@@ -392,7 +392,11 @@ fn resolve_outline(
     }
 }
 
-pub(crate) fn generate_outline(doc: Doc, root: &PRoot, logger: &DocLogger) -> KModOutline {
+pub(crate) fn generate_outline(
+    doc: Doc,
+    root: &PRoot,
+    logger: &DocLogger,
+) -> (KModOutline, DeclSymbols) {
     let mut decl_symbols = root.ast.decls().slice().map_with_value(None);
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
@@ -400,5 +404,5 @@ pub(crate) fn generate_outline(doc: Doc, root: &PRoot, logger: &DocLogger) -> KM
     alloc_outline(doc, root, &mut decl_symbols, &mut env, &mut mod_outline);
     resolve_outline(root, &env, &mut mod_outline, &decl_symbols, logger);
 
-    mod_outline
+    (mod_outline, decl_symbols)
 }

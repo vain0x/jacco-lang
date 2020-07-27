@@ -53,6 +53,7 @@ pub(crate) enum KLocalVarParent {
 }
 
 impl KLocalVarParent {
+    #[allow(unused)]
     pub(crate) fn locals(self, mod_data: &KModData) -> &KLocalArena {
         match self {
             KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
@@ -60,6 +61,7 @@ impl KLocalVarParent {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn labels(self, mod_data: &KModData) -> &KLabelArena {
         match self {
             KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).labels,
