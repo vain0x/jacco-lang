@@ -1904,6 +1904,61 @@ fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
+fn do_convert_basic_binary_op_expr(
+    prim: KPrim,
+    expr: &ABinaryOpExpr,
+    loc: Loc,
+    xx: &mut Xx,
+) -> KTerm {
+    let left = convert_expr(expr.left, xx);
+    let right = convert_expr_opt(expr.right_opt, loc, xx);
+
+    let result = fresh_symbol(&prim.hint_str(), loc, xx);
+    xx.nodes.push(new_basic_binary_op_node(
+        prim,
+        left,
+        right,
+        result,
+        new_cont(),
+        loc,
+    ));
+    KTerm::Name(result)
+}
+
+fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    match expr.op {
+        PBinaryOp::Assign => todo!(),
+        PBinaryOp::AddAssign => todo!(),
+        PBinaryOp::SubAssign => todo!(),
+        PBinaryOp::MulAssign => todo!(),
+        PBinaryOp::DivAssign => todo!(),
+        PBinaryOp::ModuloAssign => todo!(),
+        PBinaryOp::BitAndAssign => todo!(),
+        PBinaryOp::BitOrAssign => todo!(),
+        PBinaryOp::BitXorAssign => todo!(),
+        PBinaryOp::LeftShiftAssign => todo!(),
+        PBinaryOp::RightShiftAssign => todo!(),
+        PBinaryOp::Add => do_convert_basic_binary_op_expr(KPrim::Add, expr, loc, xx),
+        PBinaryOp::Sub => do_convert_basic_binary_op_expr(KPrim::Sub, expr, loc, xx),
+        PBinaryOp::Mul => do_convert_basic_binary_op_expr(KPrim::Mul, expr, loc, xx),
+        PBinaryOp::Div => do_convert_basic_binary_op_expr(KPrim::Div, expr, loc, xx),
+        PBinaryOp::Modulo => do_convert_basic_binary_op_expr(KPrim::Modulo, expr, loc, xx),
+        PBinaryOp::BitAnd => todo!(),
+        PBinaryOp::BitOr => todo!(),
+        PBinaryOp::BitXor => todo!(),
+        PBinaryOp::LeftShift => todo!(),
+        PBinaryOp::RightShift => todo!(),
+        PBinaryOp::Equal => todo!(),
+        PBinaryOp::NotEqual => todo!(),
+        PBinaryOp::LessThan => todo!(),
+        PBinaryOp::LessEqual => todo!(),
+        PBinaryOp::GreaterThan => todo!(),
+        PBinaryOp::GreaterEqual => todo!(),
+        PBinaryOp::LogAnd => todo!(),
+        PBinaryOp::LogOr => todo!(),
+    }
+}
+
 fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
     let mut last_opt = None;
 
@@ -1946,7 +2001,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
         AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
-        AExpr::BinaryOp(_) => todo!(),
+        AExpr::BinaryOp(binary_op_expr) => convert_binary_op_expr(binary_op_expr, loc, xx),
         AExpr::Pipe(_) => todo!(),
         AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
         AExpr::Break(_) => todo!(),

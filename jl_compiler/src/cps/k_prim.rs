@@ -168,7 +168,8 @@ pub(crate) fn new_not_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -
     }
 }
 
-pub(crate) fn new_add_node(
+pub(crate) fn new_basic_binary_op_node(
+    prim: KPrim,
     left: KTerm,
     right: KTerm,
     result: KSymbol,
@@ -176,13 +177,23 @@ pub(crate) fn new_add_node(
     loc: Loc,
 ) -> KNode {
     KNode {
-        prim: KPrim::Add,
+        prim,
         tys: vec![],
         args: vec![left, right],
         results: vec![result],
         conts: vec![cont],
         loc,
     }
+}
+
+pub(crate) fn new_add_node(
+    left: KTerm,
+    right: KTerm,
+    result: KSymbol,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
+    new_basic_binary_op_node(KPrim::Add, left, right, result, cont, loc)
 }
 
 pub(crate) fn new_cast_node(ty: KTy, arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
