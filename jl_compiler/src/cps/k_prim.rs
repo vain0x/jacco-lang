@@ -57,6 +57,23 @@ impl KPrim {
     }
 }
 
+// 末尾でない `jump`
+pub(crate) fn new_jump_node(
+    label: KLabel,
+    args: impl IntoIterator<Item = KTerm>,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
+    KNode {
+        prim: KPrim::Jump,
+        tys: vec![],
+        args: once(KTerm::Label { label, loc }).chain(args).collect(),
+        results: vec![],
+        conts: vec![cont],
+        loc,
+    }
+}
+
 // 末尾の `jump`
 pub(crate) fn new_jump_tail(
     label: KLabel,

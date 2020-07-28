@@ -10,13 +10,13 @@ use crate::{
     logs::DocLogger,
     source::{Doc, HaveLoc, Loc},
     token::{eval_number, LitErr},
-    utils::{DebugWith, VecArena},
+    utils::{DebugWith, VecArena, VecArenaId},
 };
 use log::{error, trace};
 use std::{
     borrow::Cow,
     collections::HashMap,
-    iter::once,
+    iter::{empty, once},
     mem::{replace, swap, take},
 };
 
@@ -1536,7 +1536,9 @@ pub(crate) fn cps_conversion(
 struct Fx {
     k_fn: KFn,
     labels: KLabelArena,
+    /// (関数の本体のノード、現在構築中のラベル)
     current_opt: Option<(KNode, KLabel)>,
+    loop_opt: Option<KLoopData>,
 }
 
 impl Fx {
@@ -1545,6 +1547,7 @@ impl Fx {
             k_fn,
             labels: KLabelArena::new(),
             current_opt: None,
+            loop_opt: None,
         }
     }
 }
@@ -1826,6 +1829,31 @@ fn push_label(fresh_label: FreshLabel, params: Vec<KSymbol>, xx: &mut Xx) {
         None => (previous_body, next_label),
     };
     fx.current_opt = Some(current);
+}
+
+fn do_in_loop(loc: Loc, xx: &mut Xx, f: impl FnOnce(&mut Xx, FreshLabel, FreshLabel)) {
+    let break_label = match fresh_label("loop_next_", loc, xx) {
+        Some(it) => it,
+        None => return,
+    };
+    let continue_label = match fresh_label("continue_", loc, xx) {
+        Some(it) => it,
+        None => return,
+    };
+
+    let loop_opt = match xx.fx_opt.as_mut() {
+        Some(fx) => fx.loop_opt.replace(KLoopData {
+            break_label: break_label.label,
+            continue_label: continue_label.label,
+        }),
+        None => return,
+    };
+
+    f(xx, break_label, continue_label);
+
+    if let Some(fx) = xx.fx_opt.as_mut() {
+        fx.loop_opt = loop_opt;
+    }
 }
 
 fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
@@ -2179,6 +2207,28 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
+fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = fresh_symbol("loop_result", loc, xx);
+
+    do_in_loop(loc, xx, |xx, break_label, continue_label| {
+        let the_continue_label = continue_label.label;
+
+        xx.nodes
+            .push(new_jump_tail(continue_label.label, vec![], loc));
+
+        push_label(continue_label, vec![], xx);
+        let node = {
+            let _term = convert_expr_opt(expr.body_opt, loc, xx);
+            new_jump_node(the_continue_label, vec![], new_cont(), loc)
+        };
+        xx.nodes.push(node);
+
+        push_label(break_label, vec![result], xx);
+    });
+
+    KTerm::Name(result)
+}
+
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
@@ -2205,7 +2255,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
         AExpr::Match(match_expr) => convert_match_expr(match_expr, loc, xx),
         AExpr::While(_) => todo!(),
-        AExpr::Loop(_) => todo!(),
+        AExpr::Loop(loop_expr) => convert_loop_expr(loop_expr, loc, xx),
     }
 }
 
