@@ -42,7 +42,6 @@ pub(crate) enum PElementKind {
     AsExpr,
     UnaryOpExpr,
     BinaryOpExpr,
-    PipeExpr,
     BlockExpr,
     BreakExpr,
     ContinueExpr,

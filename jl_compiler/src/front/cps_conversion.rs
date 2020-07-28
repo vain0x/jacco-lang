@@ -896,36 +896,6 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
                 }
             }
         }
-        PExpr::Pipe(PPipeExpr {
-            left: arg,
-            pipe,
-            right_opt,
-        }) => match right_opt.as_deref() {
-            Some(PExpr::Call(PCallExpr { left, arg_list })) => {
-                // FIXME: call expr の生成と共通化
-                let result = {
-                    let loc = pipe.loc(&gx.tokens);
-                    gx.fresh_symbol("call_result", loc)
-                };
-
-                let k_arg = gen_expr(&arg, gx);
-                let k_left = gen_expr(&left, gx);
-
-                let mut k_args = vec![k_left, k_arg];
-                for p_arg in &arg_list.args {
-                    let k_arg = gen_expr(&p_arg.expr, gx);
-                    k_args.push(k_arg);
-                }
-
-                gx.push_prim_1(KPrim::CallDirect, k_args, result.clone());
-                KTerm::Name(result)
-            }
-            _ => {
-                let loc = pipe.loc(&gx.tokens);
-                error_token(*pipe, "|> の右辺は関数呼び出しでなければいけません", gx);
-                new_never_term(loc)
-            }
-        },
         PExpr::Block(PBlockExpr(block)) => gen_block(block, gx),
         PExpr::Break(PBreakExpr {
             keyword,
@@ -2325,7 +2295,6 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
         AExpr::BinaryOp(binary_op_expr) => convert_binary_op_expr(binary_op_expr, loc, xx),
-        AExpr::Pipe(_) => todo!(),
         AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
         AExpr::Break(break_expr) => convert_break_expr(break_expr, loc, xx),
         AExpr::Continue => convert_continue_expr(loc, xx),

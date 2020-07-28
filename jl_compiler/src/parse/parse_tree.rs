@@ -322,13 +322,6 @@ pub(crate) struct PBinaryOpExpr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PPipeExpr {
-    pub(crate) left: Box<PExpr>,
-    pub(crate) pipe: PToken,
-    pub(crate) right_opt: Option<Box<PExpr>>,
-}
-
-#[derive(Clone, Debug)]
 pub(crate) struct PBlockExpr(pub(crate) PBlock);
 
 #[derive(Clone, Debug)]
@@ -408,7 +401,6 @@ pub(crate) enum PExpr {
     As(PAsExpr),
     UnaryOp(PUnaryOpExpr),
     BinaryOp(PBinaryOpExpr),
-    Pipe(PPipeExpr),
     Block(PBlockExpr),
     Break(PBreakExpr),
     Continue(PContinueExpr),
@@ -696,7 +688,6 @@ impl_node! {
     PAsExpr,
     PUnaryOpExpr,
     PBinaryOpExpr,
-    PPipeExpr,
     PBlockExpr,
     PBreakExpr,
     PContinueExpr,
@@ -893,12 +884,6 @@ impl PBinaryOpExpr {
     }
 }
 
-impl PPipeExpr {
-    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
-        self.pipe
-    }
-}
-
 impl PBlockExpr {
     pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
         self.0.left_brace
@@ -1058,7 +1043,6 @@ impl PExpr {
             PExpr::As(inner) => inner.some_token(root),
             PExpr::UnaryOp(inner) => inner.some_token(root),
             PExpr::BinaryOp(inner) => inner.some_token(root),
-            PExpr::Pipe(inner) => inner.some_token(root),
             PExpr::Block(inner) => inner.some_token(root),
             PExpr::Break(inner) => inner.some_token(root),
             PExpr::Continue(inner) => inner.some_token(root),

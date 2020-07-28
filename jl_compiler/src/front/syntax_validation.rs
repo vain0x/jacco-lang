@@ -232,18 +232,6 @@ fn validate_expr(expr: &PExpr, vx: &Vx) {
                 None => error_behind_token(*op_token, "maybe missed the right-hand side?", vx),
             }
         }
-        PExpr::Pipe(PPipeExpr {
-            left,
-            pipe,
-            right_opt,
-        }) => {
-            validate_expr(left, vx);
-
-            match right_opt.as_deref() {
-                Some(right @ PExpr::Call(_)) => validate_expr(right, vx),
-                _ => error_token(*pipe, "expected call expr here", vx),
-            }
-        }
         PExpr::Block(PBlockExpr(block)) => {
             validate_block(block, vx);
         }

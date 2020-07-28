@@ -108,11 +108,6 @@ pub(crate) struct ABinaryOpExpr {
     pub(crate) right_opt: Option<AExprId>,
 }
 
-pub(crate) struct APipeExpr {
-    pub(crate) left: AExprId,
-    pub(crate) right_opt: Option<AExprId>,
-}
-
 pub(crate) struct AFieldExpr {
     pub(crate) field_name: AName,
     pub(crate) value_opt: Option<AExprId>,
@@ -171,7 +166,6 @@ pub(crate) enum AExpr {
     As(AAsExpr),
     UnaryOp(AUnaryOpExpr),
     BinaryOp(ABinaryOpExpr),
-    Pipe(APipeExpr),
     Block(ABlockExpr),
     Break(AJumpExpr),
     Continue,
@@ -581,7 +575,6 @@ impl<'a> Debug for Render<'a> {
                         None => write!(f, "{{missing}}"),
                     }
                 }
-                AExpr::Pipe(_) => go(self.element, self.p_root, f),
                 AExpr::Block(ABlockExpr { decls }) => f
                     .debug_list()
                     .entries(decls.iter().map(|decl| self.with_decl(decl)))

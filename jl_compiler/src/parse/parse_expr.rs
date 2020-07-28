@@ -13,11 +13,6 @@ enum AllowStruct {
     False,
 }
 
-enum AllowAssign {
-    True,
-    False,
-}
-
 pub(crate) fn parse_qualifiable_name(px: &mut Px) -> Option<AfterQualifiableName> {
     let event = px.start_element();
     let mut left = px.eat(TokenKind::Ident)?;
@@ -307,50 +302,35 @@ fn parse_logical(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
     }
 }
 
-fn parse_pipe_or_assign(
-    allow_struct: AllowStruct,
-    mut allow_assign: AllowAssign,
-    px: &mut Px,
-) -> Option<AfterExpr> {
-    let mut left = parse_logical(allow_struct, px)?;
+fn parse_assign(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
+    let left = parse_logical(allow_struct, px)?;
 
-    loop {
-        let assign_op = match (px.next(), allow_assign) {
-            (TokenKind::Equal, AllowAssign::True) => PBinaryOp::Assign,
-            (TokenKind::LeftLeftEqual, AllowAssign::True) => PBinaryOp::LeftShiftAssign,
-            (TokenKind::RightRightEqual, AllowAssign::True) => PBinaryOp::RightShiftAssign,
-            (TokenKind::AndEqual, AllowAssign::True) => PBinaryOp::BitAndAssign,
-            (TokenKind::HatEqual, AllowAssign::True) => PBinaryOp::BitXorAssign,
-            (TokenKind::MinusEqual, AllowAssign::True) => PBinaryOp::SubAssign,
-            (TokenKind::PercentEqual, AllowAssign::True) => PBinaryOp::ModuloAssign,
-            (TokenKind::PipeEqual, AllowAssign::True) => PBinaryOp::BitOrAssign,
-            (TokenKind::PlusEqual, AllowAssign::True) => PBinaryOp::AddAssign,
-            (TokenKind::SlashEqual, AllowAssign::True) => PBinaryOp::DivAssign,
-            (TokenKind::StarEqual, AllowAssign::True) => PBinaryOp::MulAssign,
-            (TokenKind::PipeRight, _) => {
-                let event = px.start_parent(&(left.1).1);
-                let pipe = px.bump();
-                let right_opt = parse_suffix_expr(allow_struct, px);
+    let assign_op = match px.next() {
+        TokenKind::Equal => PBinaryOp::Assign,
+        TokenKind::LeftLeftEqual => PBinaryOp::LeftShiftAssign,
+        TokenKind::RightRightEqual => PBinaryOp::RightShiftAssign,
+        TokenKind::AndEqual => PBinaryOp::BitAndAssign,
+        TokenKind::HatEqual => PBinaryOp::BitXorAssign,
+        TokenKind::MinusEqual => PBinaryOp::SubAssign,
+        TokenKind::PercentEqual => PBinaryOp::ModuloAssign,
+        TokenKind::PipeEqual => PBinaryOp::BitOrAssign,
+        TokenKind::PlusEqual => PBinaryOp::AddAssign,
+        TokenKind::SlashEqual => PBinaryOp::DivAssign,
+        TokenKind::StarEqual => PBinaryOp::MulAssign,
+        _ => return Some(left),
+    };
 
-                left = alloc_pipe_expr(event, left, pipe, right_opt, px);
-                allow_assign = AllowAssign::False;
-                continue;
-            }
-            _ => return Some(left),
-        };
-
-        let event = px.start_parent(&(left.1).1);
-        let op_token = px.bump();
-        let right_opt = parse_pipe_or_assign(allow_struct, AllowAssign::False, px);
-
-        left = alloc_binary_op_expr(event, assign_op, left, op_token, right_opt, px);
-        return Some(left);
-    }
+    let event = px.start_parent(&(left.1).1);
+    let op_token = px.bump();
+    let right_opt = parse_assign(allow_struct, px);
+    Some(alloc_binary_op_expr(
+        event, assign_op, left, op_token, right_opt, px,
+    ))
 }
 
 pub(crate) fn parse_cond(px: &mut Px) -> Option<AfterExpr> {
     // 構造体リテラルは match や while の本体を表す {...} と衝突するので、許可しない。
-    parse_pipe_or_assign(AllowStruct::False, AllowAssign::False, px)
+    parse_assign(AllowStruct::False, px)
 }
 
 pub(crate) fn parse_block(px: &mut Px) -> Option<AfterBlock> {
@@ -496,7 +476,7 @@ pub(crate) fn parse_expr(px: &mut Px) -> Option<AfterExpr> {
             let keyword = px.bump();
             parse_loop_expr(event, keyword, px)
         }
-        _ => return parse_pipe_or_assign(AllowStruct::True, AllowAssign::True, px),
+        _ => return parse_assign(AllowStruct::True, px),
     };
     Some(expr)
 }

@@ -594,35 +594,6 @@ pub(crate) fn alloc_binary_op_expr(
     )
 }
 
-pub(crate) fn alloc_pipe_expr(
-    event: ExprStart,
-    left: AfterExpr,
-    pipe: PToken,
-    right_opt: Option<AfterExpr>,
-    px: &mut Px,
-) -> AfterExpr {
-    let (left, a_left) = left;
-    let a_left = px.alloc_expr(a_left);
-
-    let (right_opt, a_right_opt) = decompose_opt(right_opt);
-    let a_right_opt = a_right_opt.map(|expr| px.alloc_expr(expr));
-
-    (
-        PExpr::Pipe(PPipeExpr {
-            left: Box::new(left),
-            pipe,
-            right_opt: right_opt.map(Box::new),
-        }),
-        (
-            AExpr::Pipe(APipeExpr {
-                left: a_left,
-                right_opt: a_right_opt,
-            }),
-            event.end(PElementKind::PipeExpr, px),
-        ),
-    )
-}
-
 fn do_alloc_block_expr(event: ExprEnd, decls: Vec<(ADecl, DeclEnd)>, px: &mut Px) -> AExprId {
     let decls = px.alloc_decls(decls);
     px.alloc_expr((AExpr::Block(ABlockExpr { decls }), event))
