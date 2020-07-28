@@ -1631,6 +1631,10 @@ fn error_rval_used_as_lval(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。");
 }
 
+fn error_break_out_of_loop(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "ループの外では break を使えません。");
+}
+
 fn error_continue_out_of_loop(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "ループの外では continue を使えません。");
 }
@@ -2125,6 +2129,26 @@ fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
     last_opt.unwrap_or(KTerm::Unit { loc })
 }
 
+fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let label_opt = xx
+        .fx_opt
+        .as_ref()
+        .and_then(|fx| fx.loop_opt.as_ref())
+        .map(|data| data.break_label);
+    let label = match label_opt {
+        Some(it) => it,
+        None => {
+            error_break_out_of_loop(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+
+    let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+    xx.nodes
+        .push(new_jump_node(label, vec![arg], new_cont(), loc));
+    new_never_term(loc)
+}
+
 fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> KTerm {
     let label_opt = xx
         .fx_opt
@@ -2148,8 +2172,8 @@ fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> KTerm {
     new_never_term(loc)
 }
 
-fn convert_return_expr(return_decl: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
-    let arg = convert_expr_opt(return_decl.arg_opt, loc, xx);
+fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let arg = convert_expr_opt(expr.arg_opt, loc, xx);
 
     let node = match &xx.fx_opt {
         Some(fx) => new_return_node(fx.k_fn, arg, loc),
@@ -2303,7 +2327,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::BinaryOp(binary_op_expr) => convert_binary_op_expr(binary_op_expr, loc, xx),
         AExpr::Pipe(_) => todo!(),
         AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
-        AExpr::Break(_) => todo!(),
+        AExpr::Break(break_expr) => convert_break_expr(break_expr, loc, xx),
         AExpr::Continue => convert_continue_expr(loc, xx),
         AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
         AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
