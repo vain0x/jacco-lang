@@ -1769,7 +1769,6 @@ fn new_cont() -> KNode {
     KNode::default()
 }
 
-// 正しく動くかは不明
 fn fold_nodes(
     mut nodes: Vec<KNode>,
     local_context: &(&KModOutline, Option<(&KLocalArena, &KLabelArena)>),
@@ -1779,7 +1778,11 @@ fn fold_nodes(
     while let Some(mut node) = nodes.pop() {
         // スタックに積まれているノードを継続として持たせる。
         let n = node.conts.len();
-        for (slot, cont) in node.conts.iter_mut().zip(stack.drain(stack.len() - n..)) {
+        for (slot, cont) in node
+            .conts
+            .iter_mut()
+            .zip(stack.drain(stack.len() - n..).rev())
+        {
             *slot = cont;
         }
 
@@ -1832,11 +1835,11 @@ fn push_label(fresh_label: FreshLabel, params: Vec<KSymbol>, xx: &mut Xx) {
 }
 
 fn do_in_loop(loc: Loc, xx: &mut Xx, f: impl FnOnce(&mut Xx, FreshLabel, FreshLabel)) {
-    let break_label = match fresh_label("loop_next_", loc, xx) {
+    let continue_label = match fresh_label("continue_", loc, xx) {
         Some(it) => it,
         None => return,
     };
-    let continue_label = match fresh_label("continue_", loc, xx) {
+    let break_label = match fresh_label("next", loc, xx) {
         Some(it) => it,
         None => return,
     };
@@ -2161,17 +2164,6 @@ fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
-fn new_switch_tail(args: Vec<KTerm>, conts: Vec<KNode>, loc: Loc) -> KNode {
-    KNode {
-        prim: KPrim::Switch,
-        tys: vec![],
-        args,
-        results: vec![],
-        conts,
-        loc,
-    }
-}
-
 fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let cond = convert_expr_opt(expr.cond_opt, loc, xx);
     if expr.arms.is_empty() {
@@ -2207,6 +2199,41 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
+// `while cond { body }` ==> `loop { if cond { body } else { break } }`
+fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = fresh_symbol("while_result", loc, xx);
+    let unit_term = new_unit_term(loc);
+
+    do_in_loop(loc, xx, |xx, break_label, continue_label| {
+        let the_break_label = break_label.label;
+        let the_continue_label = continue_label.label;
+
+        xx.nodes
+            .push(new_jump_tail(continue_label.label, vec![], loc));
+
+        push_label(continue_label, vec![], xx);
+
+        let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+        xx.nodes
+            .push(new_if_node(cond, new_cont(), new_cont(), loc));
+
+        // body
+        let node = {
+            let _term = convert_expr_opt(expr.body_opt, loc, xx);
+            new_jump_tail(the_continue_label, vec![], loc)
+        };
+        xx.nodes.push(node);
+
+        // alt
+        xx.nodes
+            .push(new_jump_tail(the_break_label, vec![unit_term.clone()], loc));
+
+        push_label(break_label, vec![result], xx);
+    });
+
+    KTerm::Name(result)
+}
+
 fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let result = fresh_symbol("loop_result", loc, xx);
 
@@ -2219,7 +2246,7 @@ fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         push_label(continue_label, vec![], xx);
         let node = {
             let _term = convert_expr_opt(expr.body_opt, loc, xx);
-            new_jump_node(the_continue_label, vec![], new_cont(), loc)
+            new_jump_tail(the_continue_label, vec![], loc)
         };
         xx.nodes.push(node);
 
@@ -2254,7 +2281,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
         AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
         AExpr::Match(match_expr) => convert_match_expr(match_expr, loc, xx),
-        AExpr::While(_) => todo!(),
+        AExpr::While(while_expr) => convert_while_expr(while_expr, loc, xx),
         AExpr::Loop(loop_expr) => convert_loop_expr(loop_expr, loc, xx),
     }
 }

@@ -58,6 +58,7 @@ impl KPrim {
 }
 
 // 末尾でない `jump`
+#[allow(unused)]
 pub(crate) fn new_jump_node(
     label: KLabel,
     args: impl IntoIterator<Item = KTerm>,
@@ -143,6 +144,17 @@ pub(crate) fn new_if_node(cond: KTerm, body_cont: KNode, alt_cont: KNode, loc: L
         args: vec![cond],
         results: vec![],
         conts: vec![body_cont, alt_cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_switch_tail(args: Vec<KTerm>, conts: Vec<KNode>, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Switch,
+        tys: vec![],
+        args,
+        results: vec![],
+        conts,
         loc,
     }
 }
