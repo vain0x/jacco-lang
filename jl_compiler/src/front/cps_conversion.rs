@@ -1620,12 +1620,20 @@ fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
 }
 
+fn error_expected_record_ty(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "これはレコードでなければいけません。");
+}
+
 fn error_rval_used_as_lval(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。");
 }
 
 fn error_return_out_of_fn(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "関数の外では return を使えません。");
+}
+
+fn error_empty_match(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "空の match は未実装です。");
 }
 
 // -----------------------------------------------
@@ -1674,6 +1682,65 @@ pub(crate) fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
 
 pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
     ty_opt.map_or(KTy::Unresolved, |ty| convert_ty(ty, xx))
+}
+
+// -----------------------------------------------
+// パターン
+// -----------------------------------------------
+
+fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> KTerm {
+    todo!()
+}
+
+fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
+    let k_struct = match resolve_ty_name2(&pat.left.full_name, &xx.env) {
+        Some(KTy::Struct(it)) => it,
+        _ => {
+            error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+    KTerm::RecordTag { k_struct, loc }
+}
+
+fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> KTerm {
+    match pat {
+        APat::Char(token) => convert_char_expr(*token, xx.tokens),
+        APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
+        APat::Str(token) => convert_str_expr(*token, xx.tokens),
+        APat::True(_) => KTerm::True { loc },
+        APat::False(_) => KTerm::False { loc },
+        APat::Discard(_) => todo!(),
+        APat::Name(name) => convert_name_pat_as_cond(name, loc, xx),
+        APat::Unit => KTerm::Unit { loc },
+        APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
+    }
+}
+
+fn do_convert_pat_as_assign(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) {
+    match pat {
+        APat::Number(_)
+        | APat::Char(_)
+        | APat::Str(_)
+        | APat::True(_)
+        | APat::False(_)
+        | APat::Discard(_)
+        | APat::Unit => {}
+        APat::Name(_) => todo!(),
+        APat::Record(_) => todo!(),
+    }
+}
+
+fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> KTerm {
+    let pat = pat_id.of(xx.ast.pats());
+    let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
+    do_convert_pat_as_cond(pat_id, pat, loc, xx)
+}
+
+fn convert_pat_as_assign(pat_id: APatId, xx: &mut Xx) {
+    let pat = pat_id.of(xx.ast.pats());
+    let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
+    do_convert_pat_as_assign(pat_id, pat, loc, xx)
 }
 
 // -----------------------------------------------
@@ -2066,6 +2133,52 @@ fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
+fn new_switch_tail(args: Vec<KTerm>, conts: Vec<KNode>, loc: Loc) -> KNode {
+    KNode {
+        prim: KPrim::Switch,
+        tys: vec![],
+        args,
+        results: vec![],
+        conts,
+        loc,
+    }
+}
+
+fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+    if expr.arms.is_empty() {
+        error_empty_match(PLoc::from_loc(loc), xx.logger);
+        return new_error_term(loc);
+    }
+
+    let result = fresh_symbol("match_result", loc, xx);
+    let next = match fresh_label("match_next", loc, xx) {
+        Some(it) => it,
+        None => return new_error_term(loc),
+    };
+
+    let switch_node = {
+        let args = once(cond)
+            .chain(expr.arms.iter().map(|arm| convert_pat_as_cond(arm.pat, xx)))
+            .collect();
+        let cont_count = expr.arms.len();
+        new_switch_tail(args, vec![new_cont(); cont_count], loc)
+    };
+    xx.nodes.push(switch_node);
+
+    for arm in &expr.arms {
+        let jump_node = {
+            convert_pat_as_assign(arm.pat, xx);
+            let body = convert_expr_opt(arm.body_opt, loc, xx);
+            new_jump_tail(next.label, vec![body], loc)
+        };
+        xx.nodes.push(jump_node);
+    }
+
+    push_label(next, vec![result], xx);
+    KTerm::Name(result)
+}
+
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
@@ -2090,7 +2203,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Continue => todo!(),
         AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
         AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
-        AExpr::Match(_) => todo!(),
+        AExpr::Match(match_expr) => convert_match_expr(match_expr, loc, xx),
         AExpr::While(_) => todo!(),
         AExpr::Loop(_) => todo!(),
     }
