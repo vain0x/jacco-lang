@@ -250,9 +250,9 @@ fn assert_fail(tt: *mut TestTools) {
 
 fn assert_that(tt: *mut TestTools, cond: bool, message: *c8) {
     if cond {
-        tt |> assert_pass();
+        assert_pass(tt);
     } else {
-        tt |> assert_fail();
+        assert_fail(tt);
         eprint_s("    ");
         eprint_s(message);
         eprint_s("\n");
@@ -261,9 +261,9 @@ fn assert_that(tt: *mut TestTools, cond: bool, message: *c8) {
 
 fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) {
     if actual == expected {
-        tt |> assert_pass();
+        assert_pass(tt);
     } else {
-        tt |> assert_fail();
+        assert_fail(tt);
         // 文字色: シアン
         eprint_sds("    期待された結果 \x1B[36m", expected, "\x1B[0m\n");
         // 文字色: イエロー
@@ -507,8 +507,8 @@ fn str_tests(tt: *mut TestTools) {
     let hello = str_from_raw("hello");
     assert_eq_usize(tt, hello.len, 5_usize);
 
-    assert_that(tt, empty |> str_is_empty(), "\"\" is empty");
-    assert_that(tt, !(hello |> str_is_empty()), "\"hello\" is not empty");
+    assert_that(tt, str_is_empty(empty), "\"\" is empty");
+    assert_that(tt, !str_is_empty(hello), "\"hello\" is not empty");
 
     let lo = str_slice_from(hello, 3_usize);
     assert_eq_usize(tt, lo.len, 2_usize);
@@ -1286,15 +1286,15 @@ fn syntax_kind_from_ident(s: Str) -> SyntaxKind
 fn syntax_kind_parse_and_pun(s: Str, len: *mut usize) -> SyntaxKind
     // requires *s.ptr == '&'
 {
-    if s |> str_prefix_raw("&=", len) {
+    if str_prefix_raw(s, "&=", len) {
         return SyntaxKind::AndEqual;
     }
 
-    if s |> str_prefix_raw("&&=", len) {
+    if str_prefix_raw(s, "&&=", len) {
         return SyntaxKind::AndAndEqual;
     }
 
-    if s |> str_prefix_raw("&&", len) {
+    if str_prefix_raw(s, "&&", len) {
         return SyntaxKind::AndAnd;
     }
 
@@ -1303,11 +1303,11 @@ fn syntax_kind_parse_and_pun(s: Str, len: *mut usize) -> SyntaxKind
 }
 
 fn syntax_kind_parse_bang_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("!==", len) {
+    if str_prefix_raw(s, "!==", len) {
         return SyntaxKind::BangEqualEqual;
     }
 
-    if s |> str_prefix_raw("!=", len) {
+    if str_prefix_raw(s, "!=", len) {
         return SyntaxKind::BangEqual;
     }
 
@@ -1316,7 +1316,7 @@ fn syntax_kind_parse_bang_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_colon_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("::", len) {
+    if str_prefix_raw(s, "::", len) {
         return SyntaxKind::ColonColon;
     }
 
@@ -1325,15 +1325,15 @@ fn syntax_kind_parse_colon_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_dot_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("..=", len) {
+    if str_prefix_raw(s, "..=", len) {
         return SyntaxKind::DotDotEqual;
     }
 
-    if s |> str_prefix_raw("..<", len) {
+    if str_prefix_raw(s, "..<", len) {
         return SyntaxKind::DotDotLeft;
     }
 
-    if s |> str_prefix_raw("..", len) {
+    if str_prefix_raw(s, "..", len) {
         return SyntaxKind::DotDot;
     }
 
@@ -1342,15 +1342,15 @@ fn syntax_kind_parse_dot_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_equal_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("=>", len) {
+    if str_prefix_raw(s, "=>", len) {
         return SyntaxKind::EqualRight;
     }
 
-    if s |> str_prefix_raw("===", len) {
+    if str_prefix_raw(s, "===", len) {
         return SyntaxKind::EqualEqualEqual;
     }
 
-    if s |> str_prefix_raw("==", len) {
+    if str_prefix_raw(s, "==", len) {
         return SyntaxKind::EqualEqual;
     }
 
@@ -1359,7 +1359,7 @@ fn syntax_kind_parse_equal_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_hash_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("#!", len) {
+    if str_prefix_raw(s, "#!", len) {
         return SyntaxKind::HashBang;
     }
 
@@ -1368,7 +1368,7 @@ fn syntax_kind_parse_hash_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_hat_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("^=", len) {
+    if str_prefix_raw(s, "^=", len) {
         return SyntaxKind::HatEqual;
     }
 
@@ -1377,31 +1377,31 @@ fn syntax_kind_parse_hat_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_left_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("<=>", len) {
+    if str_prefix_raw(s, "<=>", len) {
         return SyntaxKind::LeftEqualRight;
     }
 
-    if s |> str_prefix_raw("<=", len) {
+    if str_prefix_raw(s, "<=", len) {
         return SyntaxKind::LeftEqual;
     }
 
-    if s |> str_prefix_raw("<<=", len) {
+    if str_prefix_raw(s, "<<=", len) {
         return SyntaxKind::LeftLeftEqual;
     }
 
-    if s |> str_prefix_raw("<<<", len) {
+    if str_prefix_raw(s, "<<<", len) {
         return SyntaxKind::LeftLeftLeft;
     }
 
-    if s |> str_prefix_raw("<<", len) {
+    if str_prefix_raw(s, "<<", len) {
         return SyntaxKind::LeftLeft;
     }
 
-    if s |> str_prefix_raw("<->", len) {
+    if str_prefix_raw(s, "<->", len) {
         return SyntaxKind::LeftMinusRight;
     }
 
-    if s |> str_prefix_raw("<-", len) {
+    if str_prefix_raw(s, "<-", len) {
         return SyntaxKind::LeftMinus;
     }
 
@@ -1410,19 +1410,19 @@ fn syntax_kind_parse_left_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_minus_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("->", len) {
+    if str_prefix_raw(s, "->", len) {
         return SyntaxKind::MinusRight;
     }
 
-    if s |> str_prefix_raw("-=", len) {
+    if str_prefix_raw(s, "-=", len) {
         return SyntaxKind::MinusEqual;
     }
 
-    if s |> str_prefix_raw("-->", len) {
+    if str_prefix_raw(s, "-->", len) {
         return SyntaxKind::MinusMinusRight;
     }
 
-    if s |> str_prefix_raw("--", len) {
+    if str_prefix_raw(s, "--", len) {
         return SyntaxKind::MinusMinus;
     }
 
@@ -1431,7 +1431,7 @@ fn syntax_kind_parse_minus_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_percent_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("%=", len) {
+    if str_prefix_raw(s, "%=", len) {
         return SyntaxKind::PercentEqual;
     }
 
@@ -1440,19 +1440,19 @@ fn syntax_kind_parse_percent_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_pipe_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("||=", len) {
+    if str_prefix_raw(s, "||=", len) {
         return SyntaxKind::PipePipeEqual;
     }
 
-    if s |> str_prefix_raw("||", len) {
+    if str_prefix_raw(s, "||", len) {
         return SyntaxKind::PipePipe;
     }
 
-    if s |> str_prefix_raw("|>", len) {
+    if str_prefix_raw(s, "|>", len) {
         return SyntaxKind::PipeRight;
     }
 
-    if s |> str_prefix_raw("|=", len) {
+    if str_prefix_raw(s, "|=", len) {
         return SyntaxKind::PipeEqual;
     }
 
@@ -1461,11 +1461,11 @@ fn syntax_kind_parse_pipe_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_plus_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("+=", len) {
+    if str_prefix_raw(s, "+=", len) {
         return SyntaxKind::PlusEqual;
     }
 
-    if s |> str_prefix_raw("++", len) {
+    if str_prefix_raw(s, "++", len) {
         return SyntaxKind::PlusPlus;
     }
 
@@ -1474,19 +1474,19 @@ fn syntax_kind_parse_plus_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_right_angle_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw(">>>", len) {
+    if str_prefix_raw(s, ">>>", len) {
         return SyntaxKind::RightRightRight;
     }
 
-    if s |> str_prefix_raw(">>=", len) {
+    if str_prefix_raw(s, ">>=", len) {
         return SyntaxKind::RightRightEqual;
     }
 
-    if s |> str_prefix_raw(">>", len) {
+    if str_prefix_raw(s, ">>", len) {
         return SyntaxKind::RightRight;
     }
 
-    if s |> str_prefix_raw(">=", len) {
+    if str_prefix_raw(s, ">=", len) {
         return SyntaxKind::RightEqual;
     }
 
@@ -1495,7 +1495,7 @@ fn syntax_kind_parse_right_angle_pun(s: Str, len: *mut usize) -> SyntaxKind {
 }
 
 fn syntax_kind_parse_star_pun(s: Str, len: *mut usize) -> SyntaxKind {
-    if s |> str_prefix_raw("*=", len) {
+    if str_prefix_raw(s, "*=", len) {
         return SyntaxKind::StarEqual;
     }
 
@@ -1532,12 +1532,12 @@ fn token_stream_from_raw(text: *c8) -> TokenStream {
 
 /// 前回 commit した位置から現在の位置までの文字列へのスライスを取る。
 fn ts_current_str(ts: *TokenStream) -> Str {
-    (*ts).text |> str_slice((*ts).last, (*ts).current)
+    str_slice((*ts).text, (*ts).last, (*ts).current)
 }
 
 /// 現在の位置より後にある文字列へのスライスを取る。
 fn ts_rest_str(ts: *mut TokenStream) -> Str {
-    (*ts).text |> str_slice((*ts).current, (*ts).text.len)
+    str_slice((*ts).text, (*ts).current, (*ts).text.len)
 }
 
 /// 次の文字を見る。
@@ -1636,35 +1636,35 @@ fn c8_is_ident(c: c8) -> bool {
 }
 
 fn scan_new_lines(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_new_line() {
-        ts |> ts_bump();
+    while c8_is_new_line(ts_peek(ts)) {
+        ts_bump(ts);
     }
 }
 
 fn scan_blank(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_blank() {
-        ts |> ts_bump();
+    while c8_is_blank(ts_peek(ts)) {
+        ts_bump(ts);
     }
 }
 
 fn scan_digits(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_digit() {
-        ts |> ts_bump();
-        ts |> ts_eat1('_');
+    while c8_is_digit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
     }
 }
 
 fn scan_bits(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_bit() {
-        ts |> ts_bump();
-        ts |> ts_eat1('_');
+    while c8_is_bit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
     }
 }
 
 fn scan_hexdigits(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_hexdigit() {
-        ts |> ts_bump();
-        ts |> ts_eat1('_');
+    while c8_is_hexdigit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
     }
 }
 
@@ -1683,39 +1683,39 @@ fn scan_digits_with_radix(ts: *mut TokenStream, radix: Radix) {
 }
 
 fn scan_number_with_radix(ts: *mut TokenStream, radix: Radix) {
-    ts |> scan_digits_with_radix(radix);
+    scan_digits_with_radix(ts, radix);
 
     // 小数部
-    if ts |> ts_eat1('.') {
-        ts |> scan_digits_with_radix(radix);
+    if ts_eat1(ts, '.') {
+        scan_digits_with_radix(ts, radix);
     }
 
     // 指数部
-    if ts |> ts_peek() |> c8_is_exponential() {
-        ts |> ts_bump();
+    if c8_is_exponential(ts_peek(ts)) {
+        ts_bump(ts);
 
-        match ts |> ts_peek() {
-            '+' => ts |> ts_bump(),
-            '-' => ts |> ts_bump(),
+        match ts_peek(ts) {
+            '+' => ts_bump(ts),
+            '-' => ts_bump(ts),
             _ => {}
         }
 
-        ts |> scan_digits_with_radix(radix);
+        scan_digits_with_radix(ts, radix);
     }
 
     // 接尾辞
-    ts |> scan_ident();
+    scan_ident(ts);
 }
 
 fn scan_string_contents(ts: *mut TokenStream, quote: c8) {
     loop {
-        match ts |> ts_peek() {
+        match ts_peek(ts) {
             '\0' => break,
             '\r' => break,
             '\n' => break,
             '\\' => {
-                ts |> ts_bump();
-                ts |> ts_bump();
+                ts_bump(ts);
+                ts_bump(ts);
                 continue;
             }
             '\'' => {
@@ -1731,41 +1731,41 @@ fn scan_string_contents(ts: *mut TokenStream, quote: c8) {
             _ => {}
         }
 
-        ts |> ts_bump();
+        ts_bump(ts);
     }
 }
 
 fn scan_ident(ts: *mut TokenStream) {
-    while ts |> ts_peek() |> c8_is_ident() {
-        ts |> ts_bump();
+    while c8_is_ident(ts_peek(ts)) {
+        ts_bump(ts);
     }
 }
 
 fn tokenize_new_lines(ts: *mut TokenStream) -> GreenToken {
-    ts |> scan_new_lines();
-    ts |> ts_commit(SyntaxKind::NewLines)
+    scan_new_lines(ts);
+    ts_commit(ts, SyntaxKind::NewLines)
 }
 
 fn tokenize_blank(ts: *mut TokenStream) -> GreenToken {
-    ts |> scan_blank();
-    ts |> ts_commit(SyntaxKind::Blank)
+    scan_blank(ts);
+    ts_commit(ts, SyntaxKind::Blank)
 }
 
 fn tokenize_comment_after_slash_slash(ts: *mut TokenStream) -> GreenToken {
     loop {
-        match ts |> ts_peek() {
+        match ts_peek(ts) {
             '\0' => break,
             '\r' => break,
             '\n' => break,
-            _ => ts |> ts_bump(),
+            _ => ts_bump(ts),
         }
     }
 
-    ts |> ts_commit(SyntaxKind::Comment)
+    ts_commit(ts, SyntaxKind::Comment)
 }
 
 fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
-    let radix = match ts |> ts_peek() {
+    let radix = match ts_peek(ts) {
         'b' => Radix::Binary,
         'B' => Radix::Binary,
         'x' => Radix::Hex,
@@ -1774,202 +1774,202 @@ fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
     };
 
     if radix != Radix::Decimal {
-        ts |> ts_bump(); // [bBxX]
+        ts_bump(ts); // [bBxX]
     }
 
-    ts |> scan_number_with_radix(radix);
-    ts |> ts_commit(SyntaxKind::Number)
+    scan_number_with_radix(ts, radix);
+    ts_commit(ts, SyntaxKind::Number)
 }
 
 fn tokenize_decimal(ts: *mut TokenStream) -> GreenToken {
-    ts |> scan_number_with_radix(Radix::Decimal);
-    ts |> ts_commit(SyntaxKind::Number)
+    scan_number_with_radix(ts, Radix::Decimal);
+    ts_commit(ts, SyntaxKind::Number)
 }
 
 fn tokenize_char_after_quote(ts: *mut TokenStream) -> GreenToken {
-    ts |> scan_string_contents('\'');
-    ts |> ts_eat1('\'');
-    ts |> ts_commit(SyntaxKind::Char)
+    scan_string_contents(ts, '\'');
+    ts_eat1(ts, '\'');
+    ts_commit(ts, SyntaxKind::Char)
 }
 
 fn tokenize_string_after_quote(ts: *mut TokenStream) -> GreenToken {
-    ts |> scan_string_contents('"');
-    ts |> ts_eat1('"');
-    ts |> ts_commit(SyntaxKind::String)
+    scan_string_contents(ts, '"');
+    ts_eat1(ts, '"');
+    ts_commit(ts, SyntaxKind::String)
 }
 
 fn tokenize_ident_starting_with_underscore(ts: *mut TokenStream) -> GreenToken {
-    if !(ts |> ts_peek() |> c8_is_ident() ){
-        return ts |> ts_commit(SyntaxKind::Underscore);
+    if !c8_is_ident(ts_peek(ts)) {
+        return ts_commit(ts, SyntaxKind::Underscore);
     }
 
-    ts |> scan_ident();
-    ts |> ts_commit(SyntaxKind::Ident)
+    scan_ident(ts);
+    ts_commit(ts, SyntaxKind::Ident)
 }
 
 fn tokenize_ident(ts: *mut TokenStream) -> GreenToken {
     scan_ident(ts);
-    let kind = ts |> ts_current_str() |> syntax_kind_from_ident();
-    ts |> ts_commit(kind)
+    let kind = syntax_kind_from_ident(ts_current_str(ts));
+    ts_commit(ts, kind)
 }
 
 fn tokenize_pun(ts: *mut TokenStream, kind: SyntaxKind, len: usize) -> GreenToken {
-    ts |> ts_bump_many(len);
-    ts |> ts_commit(kind)
+    ts_bump_many(ts, len);
+    ts_commit(ts, kind)
 }
 
 fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
-    match ts |> ts_peek() {
-        '\0' => ts |> ts_commit(SyntaxKind::Eof),
+    match ts_peek(ts) {
+        '\0' => ts_commit(ts, SyntaxKind::Eof),
         // FIXME: OR パターン
         '\r' => {
-            ts |> ts_bump();
-            ts |> tokenize_new_lines()
+            ts_bump(ts);
+            tokenize_new_lines(ts)
         },
         '\n' => {
-            ts |> ts_bump();
-            ts |> tokenize_new_lines()
+            ts_bump(ts);
+            tokenize_new_lines(ts)
         },
         ' ' => {
-            ts |> ts_bump();
-            ts |> tokenize_blank()
+            ts_bump(ts);
+            tokenize_blank(ts)
         },
         '\t' => {
-            ts |> ts_bump();
-            ts |> tokenize_blank()
+            ts_bump(ts);
+            tokenize_blank(ts)
         },
         '0' => {
-            ts |> ts_bump();
-            ts |> tokenize_number_starting_with_zero()
+            ts_bump(ts);
+            tokenize_number_starting_with_zero(ts)
         },
         '\'' => {
-            ts |> ts_bump();
-            ts |> tokenize_char_after_quote()
+            ts_bump(ts);
+            tokenize_char_after_quote(ts)
         },
         '"' => {
-            ts |> ts_bump();
-            ts |> tokenize_string_after_quote()
+            ts_bump(ts);
+            tokenize_string_after_quote(ts)
         },
         '_' => {
-            ts |> ts_bump();
-            ts |> tokenize_ident_starting_with_underscore()
+            ts_bump(ts);
+            tokenize_ident_starting_with_underscore(ts)
         },
-        '(' => ts |> tokenize_pun(SyntaxKind::LeftParen, 1_usize),
-        ')' => ts |> tokenize_pun(SyntaxKind::RightParen, 1_usize),
-        '[' => ts |> tokenize_pun(SyntaxKind::LeftBracket, 1_usize),
-        ']' => ts |> tokenize_pun(SyntaxKind::RightBracket, 1_usize),
-        '{' => ts |> tokenize_pun(SyntaxKind::LeftBrace, 1_usize),
-        '}' => ts |> tokenize_pun(SyntaxKind::RightBrace, 1_usize),
-        ',' => ts |> tokenize_pun(SyntaxKind::Comma, 1_usize),
-        '?' => ts |> tokenize_pun(SyntaxKind::Question, 1_usize),
-        ';' => ts |> tokenize_pun(SyntaxKind::Semi, 1_usize),
+        '(' => tokenize_pun(ts, SyntaxKind::LeftParen, 1_usize),
+        ')' => tokenize_pun(ts, SyntaxKind::RightParen, 1_usize),
+        '[' => tokenize_pun(ts, SyntaxKind::LeftBracket, 1_usize),
+        ']' => tokenize_pun(ts, SyntaxKind::RightBracket, 1_usize),
+        '{' => tokenize_pun(ts, SyntaxKind::LeftBrace, 1_usize),
+        '}' => tokenize_pun(ts, SyntaxKind::RightBrace, 1_usize),
+        ',' => tokenize_pun(ts, SyntaxKind::Comma, 1_usize),
+        '?' => tokenize_pun(ts, SyntaxKind::Question, 1_usize),
+        ';' => tokenize_pun(ts, SyntaxKind::Semi, 1_usize),
         '/' => {
-            ts |> ts_bump();
-            match ts |> ts_peek() {
+            ts_bump(ts);
+            match ts_peek(ts) {
                 '/' => {
-                    ts |> ts_bump();
-                    ts |> tokenize_comment_after_slash_slash()
+                    ts_bump(ts);
+                    tokenize_comment_after_slash_slash(ts)
                 },
                 '=' => {
-                    ts |> ts_bump();
-                    ts |> ts_commit(SyntaxKind::SlashEqual)
+                    ts_bump(ts);
+                    ts_commit(ts, SyntaxKind::SlashEqual)
                 },
-                _ => ts |> ts_commit(SyntaxKind::Slash),
+                _ => ts_commit(ts, SyntaxKind::Slash),
             }
         },
         '&' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_and_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_and_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '!' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_bang_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_bang_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         ':' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_colon_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_colon_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '.' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_dot_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_dot_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '=' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_equal_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_equal_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '#' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_hash_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_hash_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '^' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_hat_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_hat_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '<' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_left_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_left_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '-' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_minus_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_minus_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '%' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_percent_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_percent_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '|' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_pipe_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_pipe_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '+' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_plus_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_plus_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '>' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_right_angle_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_right_angle_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         '*' => {
             let len = 0_usize;
-            let kind = ts |> ts_rest_str() |> syntax_kind_parse_star_pun(&mut len);
-            ts |> tokenize_pun(kind, len)
+            let kind = syntax_kind_parse_star_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
         },
         c => {
             // FIXME: early return にすると不正なコードが生成されるバグがある
             if c8_is_digit(c) {
-                ts |> ts_bump();
-                ts |> tokenize_decimal()
+                ts_bump(ts);
+                tokenize_decimal(ts)
             } else if c8_is_ident(c) {
-                ts |> tokenize_ident()
+                tokenize_ident(ts)
             } else {
                 eprint_sds("[WARN] 解釈できない文字 ", c as i32, "\n");
 
                 // FIXME: 不正な文字だけスキップする
                 // Unicode 文字境界にハマらないように、とりあえず空白まで飛ばす。
                 loop {
-                    match ts |> ts_peek() {
+                    match ts_peek(ts) {
                         '\0' => break,
                         '\r' => break,
                         '\n' => break,
                         ' ' => break,
                         '\t' => break,
-                        _ => ts |> ts_bump(),
+                        _ => ts_bump(ts),
                     }
                 }
-                ts |> ts_commit(SyntaxKind::BadToken)
+                ts_commit(ts, SyntaxKind::BadToken)
             }
         }
     }
@@ -2016,9 +2016,9 @@ fn tokenize_dump_without_trivia(s: *c8) -> StrBuf {
 
 fn tokenize_tests(tt: *mut TestTools) {
     let ts = token_stream_from_raw(" \t");
-    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Blank, "expect blank");
-    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Eof, "expect eof");
-    assert_that(tt, (&mut ts |> token_stream_next()).kind == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Eof, "expect eof");
 
     let buf = tokenize_dump("  \r\n\r\n  \n");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
