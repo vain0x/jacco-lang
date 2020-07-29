@@ -2,11 +2,32 @@ int main();
 
 int main() {
     if (1) {
-        goto next_1;
+        if (1) {
+            int a_1 = 1;
+            goto next_1;
+        } else {
+            int b_1 = 2;
+            goto next_1;
+        }
     } else {
-        goto next_1;
+        if (1) {
+            int c_1 = 4;
+            goto next_2;
+        } else {
+            int d_1 = 8;
+            goto next_2;
+        }
     }
 
-next_1:;
+next_3:;
+    int abcd_1 = 15;
     return 0;
+
+next_1:;
+    int ab_1 = 3;
+    goto next_3;
+
+next_2:;
+    int cd_1 = 12;
+    goto next_3;
 }

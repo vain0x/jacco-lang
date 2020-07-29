@@ -1503,12 +1503,18 @@ pub(crate) fn cps_conversion(
 // V2
 // =============================================================================
 
+struct KLabelConstruction {
+    name: String,
+    // 配置されたら Some
+    params_opt: Option<Vec<KSymbol>>,
+    body: Vec<KNode>,
+}
+
 /// fn の CPS 変換の文脈
 struct Fx {
     k_fn: KFn,
-    labels: KLabelArena,
-    /// (関数の本体のノード、現在構築中のラベル)
-    current_opt: Option<(KNode, KLabel)>,
+    fn_body: Vec<KNode>,
+    labels: VecArena<KLabelTag, KLabelConstruction>,
     loop_opt: Option<KLoopData>,
 }
 
@@ -1516,8 +1522,8 @@ impl Fx {
     fn new(k_fn: KFn) -> Self {
         Fx {
             k_fn,
-            labels: KLabelArena::new(),
-            current_opt: None,
+            fn_body: vec![],
+            labels: Default::default(),
             loop_opt: None,
         }
     }
@@ -1526,7 +1532,11 @@ impl Fx {
 /// CPS 変換の文脈
 struct Xx<'a> {
     env: Env,
+    // 現在のラベル。(None なら関数の本体)
+    label_opt: Option<KLabel>,
+    // 現在のラベル、または関数の本体。
     nodes: Vec<KNode>,
+    label_stack: Vec<(Option<KLabel>, Vec<KNode>)>,
     local_vars: KLocalArena,
     fx_opt: Option<Fx>,
     mod_data: KModData,
@@ -1551,7 +1561,9 @@ impl<'a> Xx<'a> {
     ) -> Self {
         Self {
             env: Env::new(),
+            label_opt: None,
             nodes: vec![],
+            label_stack: vec![],
             local_vars: KLocalArena::new(),
             fx_opt: None,
             mod_data: KModData::default(),
@@ -1582,7 +1594,8 @@ impl<'a> Xx<'a> {
 fn local_context<'a>(xx: &'a Xx) -> (&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>) {
     (
         xx.mod_outline,
-        xx.fx_opt.as_ref().map(|fx| (&xx.local_vars, &fx.labels)),
+        // FIXME: ラベルがない。xx.fx_opt.as_ref().map(|fx| (&xx.local_vars, &fx.labels)),
+        None,
     )
 }
 
@@ -1831,38 +1844,80 @@ struct FreshLabel {
 
 fn fresh_label(hint: &str, loc: Loc, xx: &mut Xx) -> Option<FreshLabel> {
     let fx = xx.fx_opt.as_mut()?;
-    let label = fx.labels.alloc(KLabelData::new(hint.to_string()));
+    let label = fx.labels.alloc(KLabelConstruction {
+        name: hint.to_string(),
+        params_opt: None,
+        body: vec![],
+    });
     Some(FreshLabel { label })
 }
 
+/// 新しいラベルを開始する。
 fn push_label(fresh_label: FreshLabel, params: Vec<KSymbol>, xx: &mut Xx) {
     let next_label = fresh_label.label;
 
-    // いまのラベルの本体、または関数の本体
-    let previous_body = {
-        let nodes = take(&mut xx.nodes);
-        fold_nodes(nodes, &local_context(xx))
-    };
+    let previous_label_opt = xx.label_opt.replace(next_label);
+    let previous_body = take(&mut xx.nodes);
+    xx.label_stack.push((previous_label_opt, previous_body));
 
-    let fx = match xx.fx_opt.as_mut() {
-        Some(it) => it,
-        None => {
-            // fresh_label でチェック済み
-            unreachable!()
+    let fx = xx.fx_opt.as_mut().unwrap();
+
+    let old = next_label.of_mut(&mut fx.labels).params_opt.replace(params);
+    assert!(old.is_none());
+}
+
+/// いまのラベルを終了する。
+fn close_label(xx: &mut Xx) {
+    let label_opt = xx.label_opt.take();
+    let body = take(&mut xx.nodes);
+
+    let fx = xx.fx_opt.as_mut().unwrap();
+    match label_opt {
+        Some(label) => label.of_mut(&mut fx.labels).body.extend(body),
+        None => fx.fn_body.extend(body),
+    }
+}
+
+/// スタックの一番上のラベルを終了する。
+fn pop_labels(depth: usize, xx: &mut Xx) {
+    if depth < xx.label_stack.len() {
+        for (label_opt, body) in xx.label_stack.drain(depth..) {
+            let fx = xx.fx_opt.as_mut().unwrap();
+            match label_opt {
+                Some(label) => label.of_mut(&mut fx.labels).body.extend(body),
+                None => fx.fn_body.extend(body),
+            }
         }
-    };
+    }
+}
 
-    next_label.of_mut(&mut fx.labels).params = params;
+/// ラベルの状態を維持しながら、分岐の CPS 変換を行う。
+fn do_in_branch(xx: &mut Xx, f: impl FnOnce(&mut Xx)) {
+    let parent_label_opt = xx.label_opt;
+    let depth = xx.label_stack.len();
 
-    // いまのラベルや関数の本体を確定して、新しいラベルを開始する。
-    let current = match fx.current_opt.take() {
-        Some((fn_body, previous_label)) => {
-            previous_label.of_mut(&mut fx.labels).body = previous_body;
-            (fn_body, next_label)
-        }
-        None => (previous_body, next_label),
-    };
-    fx.current_opt = Some(current);
+    f(xx);
+
+    // f の中で push_label が実行されなかったケース。何もしなくてよい。
+    if depth == xx.label_stack.len() {
+        assert_eq!(parent_label_opt, xx.label_opt);
+        return;
+    }
+
+    // f の中で少なくとも1つのラベルが生成されていたら、
+    // この関数が呼ばれた時点でのラベルが label_stack[depth] に置かれている。
+    // まずは、それよりも後に開始したラベルをすべて完了させる。
+    debug_assert!(depth <= xx.label_stack.len());
+    close_label(xx);
+    pop_labels(depth + 1, xx);
+    debug_assert_eq!(depth + 1, xx.label_stack.len());
+
+    // この関数が呼ばれた時点でのラベルに戻る。
+    let (label_opt, body) = xx.label_stack.pop().unwrap();
+    debug_assert_eq!(label_opt, parent_label_opt);
+
+    xx.label_opt = label_opt;
+    xx.nodes = body;
 }
 
 fn do_in_loop(loc: Loc, xx: &mut Xx, f: impl FnOnce(&mut Xx, FreshLabel, FreshLabel)) {
@@ -2414,15 +2469,15 @@ fn do_convert_if_expr(
     xx.nodes
         .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
-    {
+    do_in_branch(xx, |xx| {
         let body = body_fn(xx);
         xx.nodes.push(new_jump_tail(next.label, once(body), loc));
-    }
+    });
 
-    {
+    do_in_branch(xx, |xx| {
         let alt = alt_fn(xx);
         xx.nodes.push(new_jump_tail(next.label, once(alt), loc));
-    }
+    });
 
     push_label(next, vec![result], xx);
     KTerm::Name(result)
@@ -2474,11 +2529,13 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     xx.nodes.push(switch_node);
 
     for (arm, term) in arms {
-        xx.do_in_scope(|xx| {
-            convert_pat_as_assign(arm.pat, &cond, term, xx);
-            let body = convert_expr_opt(arm.body_opt, loc, xx);
-            let node = new_jump_tail(next.label, vec![body], loc);
-            xx.nodes.push(node);
+        do_in_branch(xx, |xx| {
+            xx.do_in_scope(|xx| {
+                convert_pat_as_assign(arm.pat, &cond, term, xx);
+                let body = convert_expr_opt(arm.body_opt, loc, xx);
+                let node = new_jump_tail(next.label, vec![body], loc);
+                xx.nodes.push(node);
+            });
         });
     }
 
@@ -2505,11 +2562,13 @@ fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> KTerm {
             .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
         // body
-        let node = {
-            let _term = convert_expr_opt(expr.body_opt, loc, xx);
-            new_jump_tail(the_continue_label, vec![], loc)
-        };
-        xx.nodes.push(node);
+        do_in_branch(xx, |xx| {
+            let node = {
+                let _term = convert_expr_opt(expr.body_opt, loc, xx);
+                new_jump_tail(the_continue_label, vec![], loc)
+            };
+            xx.nodes.push(node);
+        });
 
         // alt
         xx.nodes
@@ -2531,11 +2590,14 @@ fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
             .push(new_jump_tail(continue_label.label, vec![], loc));
 
         push_label(continue_label, vec![], xx);
-        let node = {
-            let _term = convert_expr_opt(expr.body_opt, loc, xx);
-            new_jump_tail(the_continue_label, vec![], loc)
-        };
-        xx.nodes.push(node);
+
+        do_in_branch(xx, |xx| {
+            let node = {
+                let _term = convert_expr_opt(expr.body_opt, loc, xx);
+                new_jump_tail(the_continue_label, vec![], loc)
+            };
+            xx.nodes.push(node);
+        });
 
         push_label(break_label, vec![result], xx);
     });
@@ -2699,25 +2761,53 @@ fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
         swap(&mut xx.local_vars, &mut locals);
         swap(&mut xx.nodes, &mut nodes);
         swap(&mut xx.fx_opt, &mut fx_opt);
-        let term = convert_expr_opt(fn_decl.body_opt, loc, xx);
-        emit_return(term, loc, xx);
+        {
+            let term = convert_expr_opt(fn_decl.body_opt, loc, xx);
+            emit_return(term, loc, xx);
+
+            // ラベルをすべて終了する。
+            close_label(xx);
+            pop_labels(0, xx);
+        }
         swap(&mut xx.local_vars, &mut locals);
         swap(&mut xx.nodes, &mut nodes);
         swap(&mut xx.fx_opt, &mut fx_opt);
 
         let mut fx = fx_opt.unwrap();
 
-        // 最後のラベルを完成させる。
-        let mut last = fold_nodes(nodes, &local_context(xx));
-        let fn_body = match fx.current_opt {
-            Some((fn_body, label)) => {
-                label.of_mut(&mut fx.labels).body = last;
-                fn_body
-            }
-            None => last,
-        };
+        let lk = local_context(xx);
+        log::trace!(
+            "fn body {:#?}",
+            fx.fn_body
+                .iter()
+                .map(|x| DebugWith::new(x, &lk))
+                .collect::<Vec<_>>()
+        );
+        let fn_body = fold_nodes(fx.fn_body, &local_context(xx));
+        let labels = KLabelArena::from_iter(fx.labels.iter_mut().map(|label| {
+            log::trace!("label {} {}", &label.name, label.body.len());
+            log::trace!(
+                "body {:#?}",
+                label
+                    .body
+                    .iter()
+                    .map(|x| DebugWith::new(x, &lk))
+                    .collect::<Vec<_>>()
+            );
+            let name = take(&mut label.name);
+            let params = label
+                .params_opt
+                .take()
+                .expect("配置されていないラベルがあります");
+            let body = {
+                let body = take(&mut label.body);
+                fold_nodes(body, &local_context(xx))
+            };
 
-        (fn_body, fx.labels)
+            KLabelData { name, params, body }
+        }));
+
+        (fn_body, labels)
     };
 
     *k_fn.of_mut(&mut xx.mod_data.fns) = KFnData::new(params, body, locals, labels);

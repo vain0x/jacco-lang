@@ -41,13 +41,3 @@ pub(crate) struct KLabelData {
     pub(crate) params: Vec<KSymbol>,
     pub(crate) body: KNode,
 }
-
-impl KLabelData {
-    pub(crate) fn new(name: String) -> Self {
-        Self {
-            name,
-            params: vec![],
-            body: KNode::default(),
-        }
-    }
-}
