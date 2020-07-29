@@ -2752,8 +2752,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
 
     match decl {
         ADecl::Expr(expr) => {
-            let term = convert_expr(*expr, xx);
-            *term_opt = Some(term);
+            *term_opt = Some(convert_expr(*expr, xx));
         }
         ADecl::Let(decl) => {
             assert_eq!(symbol_opt, None);
@@ -2787,9 +2786,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             };
             convert_extern_fn_decl(extern_fn, extern_fn_decl, loc, xx);
         }
-        ADecl::Enum(_) => todo!(),
-        ADecl::Struct(_) => todo!(),
-        ADecl::Use(_) => {}
+        ADecl::Enum(_) | ADecl::Struct(_) | ADecl::Use(_) => {}
     }
 }
 
