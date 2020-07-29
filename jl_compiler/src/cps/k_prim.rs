@@ -1,4 +1,4 @@
-use super::{KFn, KLabel, KNode, KSymbol, KTerm, KTy};
+use super::{KFieldTag, KFn, KLabel, KMut, KNode, KSymbol, KTerm, KTy};
 use crate::source::Loc;
 use std::iter::once;
 
@@ -138,6 +138,35 @@ pub(crate) fn new_record_node(
         tys: vec![ty],
         args,
         results: vec![result.clone()],
+        conts: vec![cont],
+        loc,
+    }
+}
+
+pub(crate) fn new_field_node(
+    left: KTerm,
+    right: String,
+    right_loc: Loc,
+    k_mut: KMut,
+    result: KSymbol,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
+    let prim = match k_mut {
+        KMut::Const => KPrim::GetField,
+        KMut::Mut => KPrim::GetFieldMut,
+    };
+    KNode {
+        prim,
+        tys: vec![],
+        args: vec![
+            left,
+            KTerm::FieldTag(KFieldTag {
+                name: right,
+                loc: right_loc,
+            }),
+        ],
+        results: vec![result],
         conts: vec![cont],
         loc,
     }

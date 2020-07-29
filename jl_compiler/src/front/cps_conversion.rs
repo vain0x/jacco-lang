@@ -2111,6 +2111,44 @@ fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
+// `x.field` ==> `*(&x)->field`
+fn convert_field_expr(expr: &ADotFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let result = {
+        let name = match expr.field_opt {
+            Some(token) => token.text(xx.tokens),
+            None => "_",
+        };
+        fresh_symbol(&name, loc, xx)
+    };
+
+    let field_ptr = convert_field_lval(expr, KMut::Const, loc, xx);
+    xx.nodes
+        .push(new_deref_node(field_ptr, result, new_cont(), loc));
+    KTerm::Name(result)
+}
+
+// `&x.field` ==> `&(&x)->field`
+fn convert_field_lval(expr: &ADotFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+    let name = match expr.field_opt {
+        Some(token) => token.text(xx.tokens).to_string(),
+        None => "_".to_string(),
+    };
+    let result = fresh_symbol(&name, loc, xx);
+
+    let left = convert_lval(expr.left, k_mut, loc, xx);
+    xx.nodes.push(new_field_node(
+        left,
+        name,
+        loc,
+        k_mut,
+        result,
+        new_cont(),
+        loc,
+    ));
+
+    KTerm::Name(result)
+}
+
 fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let result = fresh_symbol("call_result", loc, xx);
     let left = convert_expr(call_expr.left, xx);
@@ -2516,7 +2554,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Name(AName { full_name, .. }) => convert_name_expr(full_name, loc, xx),
         AExpr::Unit => KTerm::Unit { loc },
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
-        AExpr::DotField(_) => todo!(),
+        AExpr::DotField(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
         AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
@@ -2533,12 +2571,13 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     }
 }
 
+/// `&expr` を生成する。
 fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
     let loc = expr_id.loc(xx.root).to_loc(xx.doc);
 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, loc, xx),
-        AExpr::DotField(_) => todo!(),
+        AExpr::DotField(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
         _ => {
