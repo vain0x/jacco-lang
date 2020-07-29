@@ -2084,6 +2084,28 @@ fn do_convert_basic_binary_op_expr(
     KTerm::Name(result)
 }
 
+// `p && q` ==> `if p { q } else { false }`
+fn do_convert_log_and_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    do_convert_if_expr(
+        |xx| convert_expr(expr.left, xx),
+        |xx| convert_expr_opt(expr.right_opt, loc, xx),
+        |xx| KTerm::False { loc },
+        loc,
+        xx,
+    )
+}
+
+// `p || q` ==> `if p { true } else { q }`
+fn do_convert_log_or_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    do_convert_if_expr(
+        |xx| convert_expr(expr.left, xx),
+        |xx| KTerm::True { loc },
+        |xx| convert_expr_opt(expr.right_opt, loc, xx),
+        loc,
+        xx,
+    )
+}
+
 fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let on_assign = |prim: KPrim, xx: &mut Xx| do_convert_assignment_expr(prim, expr, loc, xx);
     let on_basic = |prim: KPrim, xx: &mut Xx| do_convert_basic_binary_op_expr(prim, expr, loc, xx);
@@ -2118,8 +2140,8 @@ fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm 
         PBinaryOp::LessEqual => on_comparison(KPrim::LessEqual, xx),
         PBinaryOp::GreaterThan => on_comparison(KPrim::GreaterThan, xx),
         PBinaryOp::GreaterEqual => on_comparison(KPrim::GreaterEqual, xx),
-        PBinaryOp::LogAnd => todo!(),
-        PBinaryOp::LogOr => todo!(),
+        PBinaryOp::LogAnd => do_convert_log_and_expr(expr, loc, xx),
+        PBinaryOp::LogOr => do_convert_log_or_expr(expr, loc, xx),
     }
 }
 
@@ -2191,7 +2213,13 @@ fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     new_never_term(loc)
 }
 
-fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn do_convert_if_expr(
+    cond_fn: impl FnOnce(&mut Xx) -> KTerm,
+    body_fn: impl FnOnce(&mut Xx) -> KTerm,
+    alt_fn: impl FnOnce(&mut Xx) -> KTerm,
+    loc: Loc,
+    xx: &mut Xx,
+) -> KTerm {
     let result = fresh_symbol("if_result", loc, xx);
     // FIXME: next → if_next
     let next = match fresh_label("next", loc, xx) {
@@ -2199,24 +2227,32 @@ fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         None => return new_error_term(loc),
     };
 
-    let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+    let cond = cond_fn(xx);
     xx.nodes
         .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
-    // body
     {
-        let body = convert_expr_opt(expr.body_opt, loc, xx);
+        let body = body_fn(xx);
         xx.nodes.push(new_jump_tail(next.label, once(body), loc));
     }
 
-    // alt
     {
-        let alt = convert_expr_opt(expr.alt_opt, loc, xx);
+        let alt = alt_fn(xx);
         xx.nodes.push(new_jump_tail(next.label, once(alt), loc));
     }
 
     push_label(next, vec![result], xx);
     KTerm::Name(result)
+}
+
+fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    do_convert_if_expr(
+        |xx| convert_expr_opt(expr.cond_opt, loc, xx),
+        |xx| convert_expr_opt(expr.body_opt, loc, xx),
+        |xx| convert_expr_opt(expr.alt_opt, loc, xx),
+        loc,
+        xx,
+    )
 }
 
 fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
