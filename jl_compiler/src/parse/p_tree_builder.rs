@@ -218,10 +218,7 @@ impl PTreeBuilder {
         self.stack.push(PNodeBuilder::Token(token));
     }
 
-    pub(crate) fn finish(
-        mut self,
-        elements: &mut PElementArena,
-    ) -> (PElement, EventArena) {
+    pub(crate) fn finish(mut self, elements: &mut PElementArena) -> (PElement, EventArena) {
         let children = self.split_off(0);
         let eof = match children.last() {
             Some(Some(PNodeBuilder::Token(token))) => *token,

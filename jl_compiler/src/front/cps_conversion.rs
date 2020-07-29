@@ -1669,8 +1669,48 @@ pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
 // パターン
 // -----------------------------------------------
 
-fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> KTerm {
-    todo!()
+// 入れ子のパターンはまだコンパイルできない
+enum Branch {
+    Error(Loc),
+    Case(KTerm),
+    Default { symbol: KSymbol, loc: Loc },
+}
+
+fn convert_discard_pat_as_cond(_token: PToken, loc: Loc, xx: &mut Xx) -> Branch {
+    let symbol = fresh_symbol("_", loc, xx);
+    Branch::Default { symbol, loc }
+}
+
+fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> Branch {
+    match resolve_value_name(&name.full_name, loc, &mut xx.env) {
+        Some(KLocalValue::Const(k_const)) => Branch::Case(KTerm::Const { k_const, loc }),
+        Some(KLocalValue::UnitLikeStruct(k_struct)) => {
+            Branch::Case(KTerm::RecordTag { k_struct, loc })
+        }
+        Some(KLocalValue::Alias(alias)) => {
+            // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
+            Branch::Case(KTerm::Alias { alias, loc })
+        }
+        _ => {
+            let symbol = fresh_symbol(&name.full_name, loc, xx);
+            Branch::Default { symbol, loc }
+        }
+    }
+}
+
+fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
+    let symbol = match term {
+        KTerm::Name(symbol) if symbol.local.name(&xx.local_vars) == "_" => return,
+        KTerm::Name(it) => it,
+        _ => return,
+    };
+
+    let name = symbol.local.name(&xx.local_vars).to_string();
+    xx.env
+        .insert_value(name, KLocalValue::LocalVar(symbol.local));
+
+    xx.nodes
+        .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
 }
 
 fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
@@ -1684,44 +1724,38 @@ fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm 
     KTerm::RecordTag { k_struct, loc }
 }
 
-fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> KTerm {
-    match pat {
+fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
+    let term = match pat {
         APat::Char(token) => convert_char_expr(*token, xx.tokens),
         APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
         APat::Str(token) => convert_str_expr(*token, xx.tokens),
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
-        APat::Discard(_) => todo!(),
-        APat::Name(name) => convert_name_pat_as_cond(name, loc, xx),
+        APat::Discard(token) => return convert_discard_pat_as_cond(*token, loc, xx),
+        APat::Name(name) => return convert_name_pat_as_cond(name, loc, xx),
         APat::Unit => KTerm::Unit { loc },
         APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
-    }
+    };
+    Branch::Case(term)
 }
 
-fn do_convert_pat_as_assign(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) {
+fn do_convert_pat_as_assign(pat: &APat, cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
     match pat {
-        APat::Number(_)
-        | APat::Char(_)
-        | APat::Str(_)
-        | APat::True(_)
-        | APat::False(_)
-        | APat::Discard(_)
-        | APat::Unit => {}
-        APat::Name(_) => todo!(),
-        APat::Record(_) => todo!(),
+        APat::Name(_) => convert_name_pat_as_assign(cond, term, loc, xx),
+        _ => {}
     }
 }
 
-fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> KTerm {
+fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> Branch {
     let pat = pat_id.of(xx.ast.pats());
     let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
     do_convert_pat_as_cond(pat_id, pat, loc, xx)
 }
 
-fn convert_pat_as_assign(pat_id: APatId, xx: &mut Xx) {
+fn convert_pat_as_assign(pat_id: APatId, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     let pat = pat_id.of(xx.ast.pats());
     let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
-    do_convert_pat_as_assign(pat_id, pat, loc, xx)
+    do_convert_pat_as_assign(pat, cond, term, loc, xx)
 }
 
 // -----------------------------------------------
@@ -2198,22 +2232,35 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         None => return new_error_term(loc),
     };
 
+    let arms = expr
+        .arms
+        .iter()
+        .map(|arm| {
+            let term = match convert_pat_as_cond(arm.pat, xx) {
+                Branch::Error(loc) => new_error_term(loc),
+                Branch::Case(term) => term,
+                Branch::Default { symbol, .. } => KTerm::Name(symbol),
+            };
+            (arm, term)
+        })
+        .collect::<Vec<_>>();
+
     let switch_node = {
-        let args = once(cond)
-            .chain(expr.arms.iter().map(|arm| convert_pat_as_cond(arm.pat, xx)))
+        let args = once(cond.clone())
+            .chain(arms.iter().map(|(_, term)| term.clone()))
             .collect();
         let cont_count = expr.arms.len();
         new_switch_tail(args, vec![new_cont(); cont_count], loc)
     };
     xx.nodes.push(switch_node);
 
-    for arm in &expr.arms {
-        let jump_node = {
-            convert_pat_as_assign(arm.pat, xx);
+    for (arm, term) in arms {
+        xx.do_in_scope(|xx| {
+            convert_pat_as_assign(arm.pat, &cond, term, xx);
             let body = convert_expr_opt(arm.body_opt, loc, xx);
-            new_jump_tail(next.label, vec![body], loc)
-        };
-        xx.nodes.push(jump_node);
+            let node = new_jump_tail(next.label, vec![body], loc);
+            xx.nodes.push(node);
+        });
     }
 
     push_label(next, vec![result], xx);
@@ -2360,7 +2407,7 @@ fn convert_let_decl(decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
         .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
     let symbol = KSymbol { local, loc };
 
-    xx.nodes.push(new_let_node(value, symbol, loc, new_cont()));
+    xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
     xx.env.insert_value(name, KLocalValue::LocalVar(local));
 }

@@ -159,7 +159,7 @@ pub(crate) fn new_switch_tail(args: Vec<KTerm>, conts: Vec<KNode>, loc: Loc) -> 
     }
 }
 
-pub(crate) fn new_let_node(init: KTerm, result: KSymbol, loc: Loc, cont: KNode) -> KNode {
+pub(crate) fn new_let_node(init: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Let,
         tys: vec![],
