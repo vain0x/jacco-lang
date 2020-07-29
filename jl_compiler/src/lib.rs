@@ -87,7 +87,9 @@ mod cps {
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::*;
-    pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarTag};
+    pub(crate) use k_static_var::{
+        KStaticVar, KStaticVarData, KStaticVarInit, KStaticVarInits, KStaticVarTag,
+    };
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
     pub(crate) use k_symbol::{KSymbol, KSymbolExt};
     pub(crate) use k_term::KTerm;

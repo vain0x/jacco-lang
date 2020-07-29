@@ -1487,6 +1487,7 @@ pub(crate) fn cps_conversion(
             gx.mod_outline,
             KModData {
                 consts: KConstInits::new(),
+                static_vars: KStaticVarInits::new(),
                 extern_fns: gx.extern_fns,
                 fns: gx.fns,
             },
@@ -2646,6 +2647,21 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
     *k_const.of_mut(&mut xx.mod_data.consts) = KConstInit { node, term };
 }
 
+fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let (node, term) = {
+        let mut nodes = take(&mut xx.nodes);
+        let mut term_opt = None;
+        xx.do_out_fn(|xx| {
+            term_opt = Some(convert_expr_opt(decl.value_opt, loc, xx));
+        });
+        swap(&mut xx.nodes, &mut nodes);
+
+        (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
+    };
+
+    *static_var.of_mut(&mut xx.mod_data.static_vars) = KStaticVarInit { node, term };
+}
+
 fn convert_param_decls(
     param_decls: &[AParamDecl],
     param_tys: &[KTy],
@@ -2750,7 +2766,13 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             };
             convert_const_decl(k_const, decl, loc, xx)
         }
-        ADecl::Static(_) => todo!(),
+        ADecl::Static(decl) => {
+            let static_var = match symbol_opt {
+                Some(KModLocalSymbol::StaticVar(it)) => it,
+                _ => return,
+            };
+            convert_static_decl(static_var, decl, loc, xx)
+        }
         ADecl::Fn(fn_decl) => {
             let k_fn = match symbol_opt {
                 Some(KModLocalSymbol::Fn(it)) => it,
@@ -2804,8 +2826,12 @@ pub(crate) fn convert_to_cps(
 
     xx.mod_data = KModData {
         consts: mod_outline.consts.slice().map_with(KConstInit::new_empty),
-        fns: mod_outline.fns.slice().map_with(Default::default),
+        static_vars: mod_outline
+            .static_vars
+            .slice()
+            .map_with(KStaticVarInit::new_empty),
         extern_fns: mod_outline.extern_fns.slice().map_with(Default::default),
+        fns: mod_outline.fns.slice().map_with(Default::default),
     };
 
     xx.do_in_scope(|xx| {

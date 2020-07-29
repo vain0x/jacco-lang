@@ -1,4 +1,4 @@
-use super::{KConstValue, KTy};
+use super::{KConstValue, KNode, KTerm, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -26,4 +26,25 @@ pub(crate) struct KStaticVarData {
     pub(crate) ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
     pub(crate) loc: Loc,
+}
+
+pub(crate) type KStaticVarInits = VecArena<KStaticVarTag, KStaticVarInit>;
+
+#[derive(Clone, Debug)]
+pub(crate) struct KStaticVarInit {
+    pub(crate) node: KNode,
+    pub(crate) term: KTerm,
+}
+
+impl KStaticVarInit {
+    pub(crate) fn new_empty() -> Self {
+        let loc = Loc::Unknown("<KStaticVarInit::default>");
+        Self {
+            node: KNode {
+                loc,
+                ..KNode::default()
+            },
+            term: KTerm::Unit { loc },
+        }
+    }
 }

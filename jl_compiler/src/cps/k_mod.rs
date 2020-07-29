@@ -3,7 +3,7 @@ use super::{
     k_enum::{KEnumArena, KEnumReprs},
     k_extern_fn::KExternFnOutlineArena,
     k_fn::KFnOutlineArena,
-    k_static_var::KStaticVarArena,
+    k_static_var::{KStaticVarArena, KStaticVarInits},
     k_struct::KStructArena,
     KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
     KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLabelArena, KLocal,
@@ -40,6 +40,7 @@ pub(crate) struct KModOutline {
 #[derive(Debug, Default)]
 pub(crate) struct KModData {
     pub(crate) consts: KConstInits,
+    pub(crate) static_vars: KStaticVarInits,
     pub(crate) fns: KFnArena,
     pub(crate) extern_fns: KExternFnArena,
 }
