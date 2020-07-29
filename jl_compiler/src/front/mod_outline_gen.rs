@@ -408,8 +408,10 @@ pub(crate) fn generate_outline(
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
 
+    env.enter_scope();
     alloc_outline(doc, root, &mut decl_symbols, &mut env, &mut mod_outline);
     resolve_outline(root, &env, &mut mod_outline, &decl_symbols, logger);
+    env.leave_scope();
 
     (mod_outline, decl_symbols)
 }
