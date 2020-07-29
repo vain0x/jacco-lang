@@ -2189,7 +2189,7 @@ fn convert_field_lval(expr: &ADotFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) 
         Some(token) => token.text(xx.tokens).to_string(),
         None => "_".to_string(),
     };
-    let result = fresh_symbol(&name, loc, xx);
+    let result = fresh_symbol(&format!("{}_ptr", name), loc, xx);
 
     let left = convert_lval(expr.left, k_mut, loc, xx);
     xx.nodes.push(new_field_node(
@@ -2201,7 +2201,6 @@ fn convert_field_lval(expr: &ADotFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) 
         new_cont(),
         loc,
     ));
-
     KTerm::Name(result)
 }
 
