@@ -2729,6 +2729,7 @@ fn convert_param_decls(
     param_tys: &[KTy],
     loc: Loc,
     locals: &mut KLocalArena,
+    env: &mut Env,
 ) -> Vec<KSymbol> {
     assert_eq!(param_decls.len(), param_tys.len());
 
@@ -2738,7 +2739,8 @@ fn convert_param_decls(
         .map(|(param_decl, param_ty)| {
             // FIXME: param_decl のロケーションを取る
             let name = param_decl.name.text.to_string();
-            let local = locals.alloc(KLocalData::new(name, loc));
+            let local = locals.alloc(KLocalData::new(name.to_string(), loc));
+            env.insert_value(name, KLocalValue::LocalVar(local));
             KSymbol { local, loc }
         })
         .collect()
@@ -2752,6 +2754,7 @@ fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
         k_fn.param_tys(&xx.mod_outline.fns),
         loc,
         &mut locals,
+        &mut xx.env,
     );
 
     let (body, labels) = {
@@ -2831,6 +2834,7 @@ fn convert_extern_fn_decl(
         extern_fn.param_tys(&xx.mod_outline.extern_fns),
         loc,
         &mut locals,
+        &mut xx.env,
     );
 
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
