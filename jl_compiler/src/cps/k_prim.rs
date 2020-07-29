@@ -126,11 +126,17 @@ pub(crate) fn new_return_tail(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
     }
 }
 
-pub(crate) fn new_record_node(ty: KTy, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_record_node(
+    ty: KTy,
+    args: Vec<KTerm>,
+    result: KSymbol,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
     KNode {
         prim: KPrim::Record,
         tys: vec![ty],
-        args: vec![],
+        args,
         results: vec![result.clone()],
         conts: vec![cont],
         loc,

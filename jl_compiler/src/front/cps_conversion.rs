@@ -15,7 +15,7 @@ use crate::{
 use log::{error, trace};
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     iter::{empty, once},
     mem::{replace, swap, take},
 };
@@ -1601,6 +1601,24 @@ fn error_rval_used_as_lval(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。");
 }
 
+fn error_no_such_field(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "この名前のフィールドはありません。");
+}
+
+fn error_redundant_field(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "このフィールドはすでに指定されています。");
+}
+
+fn error_missed_fields<'a>(names: impl Iterator<Item = &'a str>, loc: PLoc, logger: &DocLogger) {
+    logger.error(
+        loc,
+        format!(
+            "フィールドへの割り当てが不足しています: '{}'",
+            names.collect::<Vec<_>>().join("', '")
+        ),
+    );
+}
+
 fn error_break_out_of_loop(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "ループの外では break を使えません。");
 }
@@ -1894,7 +1912,7 @@ fn emit_unit_like_struct(
 ) -> KTerm {
     let ty = KTy::Struct(k_struct);
 
-    nodes.push(new_record_node(ty, result, new_cont(), loc));
+    nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
     KTerm::Name(result)
 }
 
@@ -1965,6 +1983,132 @@ fn convert_name_lval(name: &AName, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm 
             KTerm::Name(result)
         }
     }
+}
+
+enum FieldExhaustivityError {
+    NoSuchField { item_index: usize },
+    Redundant { item_index: usize },
+    Missed(KField),
+}
+
+fn calculate_field_ordering<T>(
+    items: &[T],
+    fields: &[KField],
+    field_arena: &KFieldArena,
+    name_fn: impl Fn(&T) -> &str,
+) -> Result<Vec<usize>, Vec<FieldExhaustivityError>> {
+    // perm[item_index] = Some(field_index) or None
+    let mut perm = vec![0; items.len()];
+    // inverse[field_index] = Some(item_index) or None
+    let mut inverse = vec![None; fields.len()];
+    let mut errors = vec![];
+
+    for (item_index, item) in items.iter().enumerate() {
+        let name = name_fn(item);
+        let i = match fields
+            .iter()
+            .position(|field| field.name(field_arena) == name)
+        {
+            Some(it) => it,
+            None => {
+                errors.push(FieldExhaustivityError::NoSuchField { item_index });
+                continue;
+            }
+        };
+
+        if let Some(first) = inverse[i] {
+            errors.push(FieldExhaustivityError::Redundant { item_index: first });
+            continue;
+        }
+
+        perm[item_index] = i;
+        inverse[i] = Some(item_index);
+    }
+
+    for (item_index_opt, &field) in inverse.iter().zip(fields.iter()) {
+        if item_index_opt.is_none() {
+            errors.push(FieldExhaustivityError::Missed(field));
+        }
+    }
+
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+
+    debug_assert_eq!(
+        perm.iter()
+            .filter(|&&i| i < fields.len())
+            .collect::<HashSet<_>>()
+            .len(),
+        fields.len()
+    );
+    Ok(perm)
+}
+
+fn report_record_expr_errors(
+    fields: &[KField],
+    errors: &[FieldExhaustivityError],
+    loc: Loc,
+    mod_outline: &KModOutline,
+    logger: &DocLogger,
+) -> KTerm {
+    // FIXME: フィールドの位置情報を取る。
+    let mut missed = vec![];
+
+    for error in errors {
+        match error {
+            FieldExhaustivityError::NoSuchField { .. } => {
+                error_no_such_field(PLoc::from_loc(loc), logger);
+            }
+            FieldExhaustivityError::Redundant { .. } => {
+                error_redundant_field(PLoc::from_loc(loc), logger);
+            }
+            FieldExhaustivityError::Missed(field) => missed.push(field),
+        }
+    }
+
+    if !missed.is_empty() {
+        error_missed_fields(
+            fields.iter().map(|field| field.name(&mod_outline.fields)),
+            PLoc::from_loc(loc),
+            logger,
+        );
+    }
+
+    new_error_term(loc)
+}
+
+fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let k_struct = match resolve_ty_name2(&expr.left.full_name, &xx.env) {
+        Some(KTy::Struct(k_struct)) => k_struct,
+        _ => {
+            // FIXME: エイリアス
+            error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+    let ty = KTy::Struct(k_struct);
+
+    let fields = k_struct.fields(&xx.mod_outline.structs);
+    let perm =
+        match calculate_field_ordering(&expr.fields, fields, &xx.mod_outline.fields, |field_expr| {
+            &field_expr.field_name.text
+        }) {
+            Ok(it) => it,
+            Err(errors) => {
+                return report_record_expr_errors(fields, &errors, loc, xx.mod_outline, xx.logger);
+            }
+        };
+
+    let mut args = vec![KTerm::Unit { loc }; fields.len()];
+    for (i, field_expr) in expr.fields.iter().enumerate() {
+        args[perm[i]] = convert_expr_opt(field_expr.value_opt, loc, xx);
+    }
+
+    let result = fresh_symbol(k_struct.name(&xx.mod_outline.structs), loc, xx);
+    xx.nodes
+        .push(new_record_node(ty, args, result, new_cont(), loc));
+    KTerm::Name(result)
 }
 
 fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
@@ -2371,7 +2515,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::False => KTerm::False { loc },
         AExpr::Name(AName { full_name, .. }) => convert_name_expr(full_name, loc, xx),
         AExpr::Unit => KTerm::Unit { loc },
-        AExpr::Record(_) => todo!(),
+        AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::DotField(_) => todo!(),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
