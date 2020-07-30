@@ -148,7 +148,24 @@ impl KEnumOutline {
     ) {
         for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
             match repr {
-                KEnumRepr::Never | KEnumRepr::Unit => continue,
+                KEnumRepr::Never => continue,
+                KEnumRepr::Unit => {
+                    for &variant in enum_data.variants.iter() {
+                        let tag = KConstValue::Usize(0);
+                        match variant {
+                            KVariant::Const(k_const) => {
+                                k_const.of_mut(consts).value_opt = Some(tag)
+                            }
+                            KVariant::Record(k_struct) => k_struct
+                                .of_mut(structs)
+                                .parent_opt
+                                .as_mut()
+                                .unwrap()
+                                .set_tag(tag),
+                        }
+                    }
+                    continue;
+                }
                 KEnumRepr::Const { .. } => {
                     let mut tag = 0;
                     for &variant in enum_data.variants.iter() {
