@@ -319,6 +319,8 @@ impl Project {
         }
         self.mods = mods;
 
+        super::cps::eval_cps(&mut self.mod_outlines, &mut self.mods, &logs.logger());
+
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {

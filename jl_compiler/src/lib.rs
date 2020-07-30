@@ -40,6 +40,7 @@ mod cps {
 
     mod cps_fold;
     mod eliminate_unit;
+    mod eval;
     mod k_alias;
     mod k_command;
     mod k_const;
@@ -64,6 +65,7 @@ mod cps {
 
     pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
+    pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_command::KCommand;
     pub(crate) use k_const::{

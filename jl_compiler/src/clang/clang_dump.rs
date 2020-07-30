@@ -112,6 +112,7 @@ fn write_expr(expr: &CExpr, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CExpr::IntLit(value) => write!(dx, "{}", value),
         CExpr::LongLongLit(value) => write!(dx, "{}LL", value),
         CExpr::UnsignedLongLongLit(value) => write!(dx, "{}ULL", value),
+        CExpr::FloatLit(value) => write!(dx, "{}F", value),
         CExpr::DoubleLit(value) => write!(dx, "{}", value),
         CExpr::CharLit(value) => {
             // FIXME: 文字リテラルを使ったほうがよいかも

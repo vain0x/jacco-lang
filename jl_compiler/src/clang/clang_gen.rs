@@ -199,10 +199,21 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
 
 fn gen_constant_value(value: &KConstValue) -> CExpr {
     match value {
+        KConstValue::I8(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::I16(value) => CExpr::IntLit(value.to_string()),
         KConstValue::I32(value) => CExpr::IntLit(value.to_string()),
         KConstValue::I64(value) => CExpr::LongLongLit(value.to_string()),
+        KConstValue::Isize(value) => CExpr::LongLongLit(value.to_string()),
+        KConstValue::U8(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::U16(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::U32(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::U64(value) => CExpr::UnsignedLongLongLit(value.to_string()),
         KConstValue::Usize(value) => CExpr::UnsignedLongLongLit(value.to_string()),
+        KConstValue::F32(value) => CExpr::FloatLit(value.to_string()),
         KConstValue::F64(value) => CExpr::DoubleLit(value.to_string()),
+        KConstValue::C8(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::C16(value) => CExpr::IntLit(value.to_string()),
+        KConstValue::C32(value) => CExpr::IntLit(value.to_string()),
         KConstValue::Bool(true) => CExpr::BoolLit("1"),
         KConstValue::Bool(false) => CExpr::BoolLit("0"),
     }
