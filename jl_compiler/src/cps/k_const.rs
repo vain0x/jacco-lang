@@ -38,20 +38,12 @@ pub(crate) type KConstInits = VecArena<KConstTag, KConstInit>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct KConstInit {
-    pub(crate) node: KNode,
-    pub(crate) term: KTerm,
+    pub(crate) init_opt: Option<(KNode, KTerm)>,
 }
 
 impl KConstInit {
     pub(crate) fn new_empty() -> Self {
-        let loc = Loc::Unknown("<KConstInit::default>");
-        Self {
-            node: KNode {
-                loc,
-                ..KNode::default()
-            },
-            term: KTerm::Unit { loc },
-        }
+        Self { init_opt: None }
     }
 }
 
@@ -80,6 +72,7 @@ impl KConstValue {
         match self {
             KConstValue::I32(value) => *value as usize,
             KConstValue::I64(value) => *value as usize,
+            KConstValue::U64(value) => *value as usize,
             KConstValue::Usize(value) => *value,
             KConstValue::F64(value) => *value as usize,
             KConstValue::Bool(value) => *value as usize,

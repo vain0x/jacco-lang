@@ -32,19 +32,11 @@ pub(crate) type KStaticVarInits = VecArena<KStaticVarTag, KStaticVarInit>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStaticVarInit {
-    pub(crate) node: KNode,
-    pub(crate) term: KTerm,
+    pub(crate) init_opt: Option<(KNode, KTerm)>,
 }
 
 impl KStaticVarInit {
     pub(crate) fn new_empty() -> Self {
-        let loc = Loc::Unknown("<KStaticVarInit::default>");
-        Self {
-            node: KNode {
-                loc,
-                ..KNode::default()
-            },
-            term: KTerm::Unit { loc },
-        }
+        Self { init_opt: None }
     }
 }

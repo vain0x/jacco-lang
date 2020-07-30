@@ -22,21 +22,22 @@ struct Xx<'a> {
     mod_outline: &'a KModOutline,
 }
 
-fn eval_term(term: &KTerm, xx: &Xx) -> Result<KConstValue, (EvalError, Loc)> {
+fn eval_term(term: &KTerm, xx: &Xx) -> Result<Option<KConstValue>, (EvalError, Loc)> {
     let value = match term {
+        KTerm::Unit { .. } => return Ok(None),
         KTerm::Int { text, loc, .. } | KTerm::Float { text, loc, .. } => {
             let pair = eval_number(&text).map_err(|err| (EvalError::Lit(err), *loc))?;
             KConstValue::from(pair)
         }
         KTerm::True { .. } => KConstValue::Bool(true),
         KTerm::False { .. } => KConstValue::Bool(false),
-        KTerm::Const { k_const, loc } => match &k_const.of(&xx.mod_outline.consts).value_opt {
+        KTerm::Const { k_const, .. } => match &k_const.of(&xx.mod_outline.consts).value_opt {
             Some(value) => value.clone(),
-            None => return Err((EvalError::Unsupported, *loc)),
+            None => return Ok(None),
         },
         _ => return Err((EvalError::Unsupported, term.loc())),
     };
-    Ok(value)
+    Ok(Some(value))
 }
 
 fn do_eval(
@@ -52,7 +53,7 @@ fn do_eval(
         eval_term(term, &xx)
     };
     match result {
-        Ok(it) => Some(it),
+        Ok(it) => it,
         Err((err, loc)) => {
             logger.error(loc, format!("{:?}", err));
             None
@@ -63,8 +64,11 @@ fn do_eval(
 pub(crate) fn eval_cps(mod_outlines: &mut KModOutlines, mods: &mut KModArena, logger: &Logger) {
     for k_mod in mod_outlines.keys().collect::<Vec<_>>() {
         for k_const in k_mod.of(&mod_outlines).consts.keys().collect::<Vec<_>>() {
-            let init = k_const.of(&k_mod.of(&mods).consts);
-            let value = match do_eval(&init.term, k_mod, mod_outlines, logger) {
+            let (_node, term) = match &k_const.of(&k_mod.of(&mods).consts).init_opt {
+                Some(it) => it,
+                None => continue,
+            };
+            let value = match do_eval(term, k_mod, mod_outlines, logger) {
                 Some(it) => it,
                 None => continue,
             };
@@ -80,8 +84,11 @@ pub(crate) fn eval_cps(mod_outlines: &mut KModOutlines, mods: &mut KModArena, lo
             .keys()
             .collect::<Vec<_>>()
         {
-            let init = static_var.of(&k_mod.of(&mods).static_vars);
-            let value = match do_eval(&init.term, k_mod, mod_outlines, logger) {
+            let (_node, term) = match &static_var.of(&k_mod.of(&mods).static_vars).init_opt {
+                Some(it) => it,
+                None => continue,
+            };
+            let value = match do_eval(term, k_mod, mod_outlines, logger) {
                 Some(it) => it,
                 None => continue,
             };

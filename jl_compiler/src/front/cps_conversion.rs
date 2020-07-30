@@ -2705,7 +2705,14 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
         (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
     };
 
-    *k_const.of_mut(&mut xx.mod_data.consts) = KConstInit { node, term };
+    log::trace!(
+        "{} init = {:?}",
+        k_const.of(&xx.mod_outline.consts).name,
+        DebugWith::new(&term, &local_context(xx)),
+    );
+    *k_const.of_mut(&mut xx.mod_data.consts) = KConstInit {
+        init_opt: Some((node, term)),
+    };
 }
 
 fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
@@ -2720,7 +2727,9 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
         (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
     };
 
-    *static_var.of_mut(&mut xx.mod_data.static_vars) = KStaticVarInit { node, term };
+    *static_var.of_mut(&mut xx.mod_data.static_vars) = KStaticVarInit {
+        init_opt: Some((node, term)),
+    };
 }
 
 fn convert_param_decls(
@@ -2839,6 +2848,22 @@ fn convert_extern_fn_decl(
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
 
+fn convert_enum_decl(k_enum: KEnum, decl: &AEnumDecl, loc: Loc, xx: &mut Xx) {
+    for (variant_decl, variant) in decl
+        .variants
+        .iter()
+        .zip(k_enum.variants(&xx.mod_outline.enums).iter())
+    {
+        match variant_decl {
+            AVariantDecl::Const(const_variant_decl) => {
+                let k_const = variant.as_const().unwrap();
+                convert_const_decl(k_const, const_variant_decl, loc, xx);
+            }
+            AVariantDecl::Record(_) => {}
+        }
+    }
+}
+
 fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>, xx: &mut Xx) {
     let symbol_opt = *decl_id.of(xx.decl_symbols);
     let loc = decl_id.loc(xx.root).to_loc(xx.doc);
@@ -2879,7 +2904,14 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             };
             convert_extern_fn_decl(extern_fn, extern_fn_decl, loc, xx);
         }
-        ADecl::Enum(_) | ADecl::Struct(_) | ADecl::Use(_) => {}
+        ADecl::Enum(enum_decl) => {
+            let k_enum = match symbol_opt {
+                Some(KModLocalSymbol::Enum(it)) => it,
+                _ => return,
+            };
+            convert_enum_decl(k_enum, enum_decl, loc, xx);
+        }
+        ADecl::Struct(_) | ADecl::Use(_) => {}
     }
 }
 

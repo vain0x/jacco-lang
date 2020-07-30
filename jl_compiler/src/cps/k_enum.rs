@@ -147,9 +147,23 @@ impl KEnumOutline {
         structs: &mut KStructArena,
     ) {
         for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
-            if !repr.is_tagged_union() {
-                // FIXME: const バリアントの未指定の値を埋める処理をここに移動する？
-                continue;
+            match repr {
+                KEnumRepr::Never | KEnumRepr::Unit => continue,
+                KEnumRepr::Const { .. } => {
+                    let mut tag = 0;
+                    for &variant in enum_data.variants.iter() {
+                        let k_const = variant.as_const().unwrap();
+                        if let Some(value) = &k_const.of(consts).value_opt {
+                            tag = value.cast_as_usize() + 1;
+                            continue;
+                        }
+
+                        k_const.of_mut(consts).value_opt = Some(KConstValue::Usize(tag));
+                        tag += 1;
+                    }
+                    continue;
+                }
+                KEnumRepr::TaggedUnion { .. } => {}
             }
 
             for (i, &variant) in enum_data.variants.iter().enumerate() {
