@@ -412,6 +412,11 @@ pub(crate) enum PExpr {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct PAttrDecl {
+    pub(crate) hash_bang: PToken,
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct PExprDecl {
     pub(crate) expr: PExpr,
     pub(crate) semi_opt: Option<PToken>,
@@ -541,6 +546,7 @@ pub(crate) struct PUseDecl {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PDecl {
+    Attr(PAttrDecl),
     Expr(PExprDecl),
     Let(PLetDecl),
     Const(PConstDecl),
@@ -938,6 +944,12 @@ impl PLoopExpr {
     }
 }
 
+impl PAttrDecl {
+    pub(crate) fn some_token(&self, _root: &PRoot) -> PToken {
+        self.hash_bang
+    }
+}
+
 impl PExprDecl {
     pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
         self.semi_opt.unwrap_or_else(|| self.expr.some_token(root))
@@ -1067,6 +1079,7 @@ impl PVariantDecl {
 impl PDecl {
     pub(crate) fn some_token(&self, root: &PRoot) -> PToken {
         match self {
+            PDecl::Attr(inner) => inner.some_token(root),
             PDecl::Expr(inner) => inner.some_token(root),
             PDecl::Let(inner) => inner.some_token(root),
             PDecl::Const(inner) => inner.some_token(root),

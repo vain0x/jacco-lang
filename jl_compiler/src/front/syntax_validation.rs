@@ -389,6 +389,9 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
     }
 
     match decl {
+        PDecl::Attr(_) => {
+            // FIXME: validate
+        }
         PDecl::Expr(PExprDecl { expr, semi_opt }) => {
             validate_expr(expr, vx);
 

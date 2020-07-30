@@ -902,6 +902,13 @@ fn alloc_modifiers(modifiers: AfterDeclModifiers) -> (DeclStart, ADeclModifiers)
     )
 }
 
+pub(crate) fn alloc_attr_decl(event: DeclStart, hash_bang: PToken, px: &mut Px) -> AfterDecl {
+    (
+        PDecl::Attr(PAttrDecl { hash_bang }),
+        (ADecl::Attr, event.end(PElementKind::AttrDecl, px)),
+    )
+}
+
 pub(crate) fn alloc_expr_decl(
     event: DeclStart,
     expr: AfterExpr,

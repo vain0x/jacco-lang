@@ -273,7 +273,7 @@ fn alloc_outline(
     for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter_mut()) {
         let loc = decl_id.loc(root).to_loc(doc);
         let symbol = match decl {
-            ADecl::Expr(_) | ADecl::Let(_) => continue,
+            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
                 let k_const = alloc_const(&const_decl, loc, mod_outline);
                 KModLocalSymbol::Const(k_const)
@@ -338,7 +338,7 @@ fn resolve_outline(
         };
 
         match decl {
-            ADecl::Expr(_) | ADecl::Let(_) => continue,
+            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
                 let k_const = match symbol {
                     KModLocalSymbol::Const(it) => it,

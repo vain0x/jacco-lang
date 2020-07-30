@@ -781,7 +781,11 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
                     );
                 }
             }
-            PDecl::Expr(_) | PDecl::Let(_) | PDecl::Const(_) | PDecl::Static(_) => {}
+            PDecl::Attr(_)
+            | PDecl::Expr(_)
+            | PDecl::Let(_)
+            | PDecl::Const(_)
+            | PDecl::Static(_) => {}
         }
     }
 
@@ -792,6 +796,7 @@ fn resolve_decls(decls: &mut [PDecl], nx: &mut Nx) {
 
 fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
     match decl {
+        PDecl::Attr(_) => {}
         PDecl::Expr(PExprDecl { expr, .. }) => {
             resolve_expr(expr, nx);
         }
@@ -1014,7 +1019,7 @@ pub(crate) enum KLocalValue {
 
 pub(crate) fn decl_allows_forward_reference(decl: &ADecl) -> bool {
     match decl {
-        ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => false,
+        ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => false,
         ADecl::Fn(_) | ADecl::ExternFn(_) | ADecl::Struct(_) | ADecl::Enum(_) | ADecl::Use(_) => {
             true
         }

@@ -78,7 +78,6 @@ expect_compile_err() {
 
 f_all() {
     expect_compile_ok empty
-    # f empty
     expect_compile_ok exit_with_42
     expect_compile_ok extern_fn
     expect_compile_ok add

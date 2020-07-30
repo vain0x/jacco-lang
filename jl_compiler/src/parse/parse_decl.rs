@@ -286,8 +286,37 @@ fn parse_use_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -
     alloc_use_decl(modifiers, keyword, name_opt, semi_opt, px)
 }
 
+fn parse_attr_decl(event: DeclStart, hash_bang: PToken, px: &mut Px) -> AfterDecl {
+    let left_bracket_opt = px.eat(TokenKind::LeftBracket);
+
+    if left_bracket_opt.is_some() {
+        loop {
+            match px.next() {
+                TokenKind::Eof
+                | TokenKind::RightBracket
+                | TokenKind::Hash
+                | TokenKind::HashBang => break,
+                _ => {
+                    let _ = px.bump();
+                }
+            }
+        }
+    }
+
+    if left_bracket_opt.is_some() {
+        px.eat(TokenKind::RightBracket);
+    }
+
+    alloc_attr_decl(event, hash_bang, px)
+}
+
 pub(crate) fn parse_decl(px: &mut Px) -> Option<AfterDecl> {
     let event = px.start_element();
+
+    if px.next() == TokenKind::HashBang {
+        let hash_bang = px.bump();
+        return Some(parse_attr_decl(event, hash_bang, px));
+    }
 
     // modifiers
     let vis_opt = match px.next() {

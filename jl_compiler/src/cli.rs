@@ -502,6 +502,9 @@ pub fn compile_v2(source_path: &Path, source_code: &str) -> Option<String> {
     match project.compile_v2() {
         Ok(code) => Some(code),
         Err(errors) => {
+            if errors.is_empty() {
+                unreachable!("エラーがないのにコンパイルエラーが発生しています。");
+            }
             for (_, path, range, message) in errors {
                 error!("{}:{} {}", path.to_string_lossy(), range, message);
             }

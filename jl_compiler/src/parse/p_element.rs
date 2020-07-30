@@ -58,6 +58,7 @@ pub(crate) enum PElementKind {
     RecordVariantDecl,
 
     // 宣言
+    AttrDecl,
     ExprDecl,
     LetDecl,
     ConstDecl,

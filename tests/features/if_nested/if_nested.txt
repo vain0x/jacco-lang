@@ -1,0 +1,25 @@
+int main();
+
+int main() {
+    int if_result_1;
+    int if_result_2;
+    if (1) {
+        if (0) {
+            if_result_2 = 41;
+            goto next_1;
+        } else {
+            if_result_2 = 42;
+            goto next_1;
+        }
+    } else {
+        if_result_1 = 43;
+        goto next_2;
+    }
+
+next_2:;
+    return if_result_1;
+
+next_1:;
+    if_result_1 = if_result_2;
+    goto next_2;
+}

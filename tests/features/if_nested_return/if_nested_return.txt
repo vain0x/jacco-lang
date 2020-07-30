@@ -1,0 +1,19 @@
+int main();
+
+int main() {
+    if (0) {
+        goto next_1;
+    } else {
+        if (1) {
+            return 42;
+        } else {
+            goto next_2;
+        }
+    }
+
+next_1:;
+    return 44;
+
+next_2:;
+    goto next_1;
+}

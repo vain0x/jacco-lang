@@ -1,0 +1,17 @@
+#![test("run", 42)]
+
+pub fn main() -> i32 {
+    if false {
+        41;
+        ()
+    } else {
+        if true {
+            return 42;
+        } else {
+            43;
+            ()
+        }
+    }
+
+    44
+}

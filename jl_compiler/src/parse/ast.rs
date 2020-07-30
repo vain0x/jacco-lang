@@ -243,6 +243,7 @@ pub(crate) struct AUseDecl {
 }
 
 pub(crate) enum ADecl {
+    Attr,
     Expr(AExprId),
     Let(AFieldLikeDecl),
     Const(AFieldLikeDecl),
@@ -589,7 +590,7 @@ impl<'a> Debug for Render<'a> {
             },
             AElementId::Decl(decl) => match decl.of(&self.p_root.ast.decls) {
                 ADecl::Expr(expr) => Debug::fmt(&self.with_expr(*expr), f),
-                ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => {
+                ADecl::Attr | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => {
                     go(self.element, self.p_root, f)
                 }
                 ADecl::Fn(AFnLikeDecl {

@@ -1140,6 +1140,7 @@ fn gen_expr(expr: &PExpr, gx: &mut Gx) -> KTerm {
 
 fn gen_decl(decl: &PDecl, gx: &mut Gx) {
     match decl {
+        PDecl::Attr(_) => {}
         PDecl::Expr(PExprDecl { expr, .. }) => {
             gen_expr(expr, gx);
         }
@@ -2869,6 +2870,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
     let loc = decl_id.loc(xx.root).to_loc(xx.doc);
 
     match decl {
+        ADecl::Attr => {}
         ADecl::Expr(expr) => {
             *term_opt = Some(convert_expr(*expr, xx));
         }

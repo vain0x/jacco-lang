@@ -1,5 +1,6 @@
 mod cli;
 mod logs;
+mod tests;
 
 /// API for Rust.
 pub mod rust_api {
