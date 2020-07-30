@@ -34,7 +34,6 @@ match_next_1:;
             goto match_next_2;
         }
         default: {
-            unsigned char __1 = 'A';
             goto match_next_2;
         }
     }

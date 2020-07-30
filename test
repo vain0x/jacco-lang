@@ -79,39 +79,39 @@ expect_compile_err() {
 f_all() {
     expect_compile_ok empty
     # f empty
-    f exit_with_42
-    f extern_fn
-    f add
-    f arithmetic
-    f if
-    f let
-    f operators
-    f complex
-    f while
-    f loop
-    f break
-    f continue
-    f call_direct
-    f return
-    f assign
-    f unit_like_struct
-    f record_struct
-    f char
-    f bool
-    f cast
-    f int_types
-    f str
-    f ptr
-    f const
-    # f call_with_pipe
-    f float
-    f static_var
-    f match
-    f enum_consts
-    f enum_records
-    f label_order_issue issues
-    f block
-    f use
+    expect_compile_ok exit_with_42
+    expect_compile_ok extern_fn
+    expect_compile_ok add
+    expect_compile_ok arithmetic
+    expect_compile_ok if
+    expect_compile_ok let
+    expect_compile_ok operators
+    expect_compile_ok complex
+    expect_compile_ok while
+    expect_compile_ok loop
+    expect_compile_ok break
+    expect_compile_ok continue
+    expect_compile_ok call_direct
+    expect_compile_ok return
+    expect_compile_ok assign
+    expect_compile_ok unit_like_struct
+    expect_compile_ok record_struct
+    expect_compile_ok char
+    expect_compile_ok bool
+    expect_compile_ok cast
+    expect_compile_ok int_types
+    expect_compile_ok str
+    expect_compile_ok ptr
+    expect_compile_ok const
+    expect_compile_ok call_with_pipe
+    expect_compile_ok float
+    expect_compile_ok static_var
+    expect_compile_ok match
+    expect_compile_ok enum_consts
+    expect_compile_ok enum_records
+    expect_compile_ok label_order_issue issues
+    expect_compile_ok block
+    expect_compile_ok use
 }
 
 ONLY=${1:-''}

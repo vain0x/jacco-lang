@@ -15,7 +15,7 @@ pub fn main() -> i32 {
 
     let a = 1;
     let p = &a;
-    let pp1 = &(&a);
+    let pp1 = &p;
     let pp2 = &p;
     let p1d = *p;
     let pp1dd = **pp1;
@@ -33,6 +33,7 @@ fn fn_with_params(x: i32, y: i32, _unit: ()) -> i32 {
 
 fn fn_with_params_user() {
     fn_with_params(1, 2, ());
+    ()
 }
 
 fn use_fn_declared_later() -> i32 {
