@@ -126,6 +126,29 @@ mod front {
 mod lang_service {
     //! 入力支援機能 (LSP サーバーの内部実装)
 
+    mod actions {
+        mod completion;
+        mod definitions;
+        mod document_highlight;
+        mod hover;
+        mod references;
+        mod rename;
+        mod validate;
+
+        pub(super) use completion::completion;
+        pub(super) use definitions::definitions;
+        pub(super) use document_highlight::document_highlight;
+        pub(super) use hover::hover;
+        pub(super) use references::references;
+        pub(super) use rename::{prepare_rename, rename};
+        pub(super) use validate::validate;
+
+        use crate::lang_service::lang_service::{
+            collect_def_sites, collect_use_sites, hit_test, LangService, Location,
+        };
+        use crate::source::{Doc, TPos16, TRange};
+    }
+
     pub(crate) mod lang_service;
 }
 

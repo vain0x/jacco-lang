@@ -1,3 +1,4 @@
+use super::actions;
 use crate::{
     cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy2, KTyEnv},
     front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
@@ -29,15 +30,15 @@ impl Location {
     }
 }
 
-struct Syntax {
+pub(super) struct Syntax {
     root: PRoot,
-    errors: Vec<(TRange, String)>,
+    pub(super) errors: Vec<(TRange, String)>,
 }
 
-struct Symbols {
+pub(crate) struct Symbols {
     name_resolution_opt: Option<NameResolution>,
     occurrences: Occurrences,
-    errors: Vec<(TRange, String)>,
+    pub(super) errors: Vec<(TRange, String)>,
 }
 
 #[allow(unused)]
@@ -47,7 +48,7 @@ struct Cps {
     errors: Vec<(TRange, String)>,
 }
 
-struct AnalysisCache {
+pub(super) struct AnalysisCache {
     doc: Doc,
     version: i64,
     text: Rc<String>,
@@ -55,6 +56,12 @@ struct AnalysisCache {
     syntax_opt: Option<Syntax>,
     symbols_opt: Option<Symbols>,
     cps_opt: Option<Cps>,
+}
+
+impl AnalysisCache {
+    pub(crate) fn version(&self) -> i64 {
+        self.version
+    }
 }
 
 impl LocResolver for AnalysisCache {
@@ -79,7 +86,7 @@ impl AnalysisCache {
         self.cps_opt = None;
     }
 
-    fn request_syntax(&mut self) -> &mut Syntax {
+    pub(super) fn request_syntax(&mut self) -> &mut Syntax {
         if self.syntax_opt.is_some() {
             return self.syntax_opt.as_mut().unwrap();
         }
@@ -110,7 +117,7 @@ impl AnalysisCache {
         self.syntax_opt.as_mut().unwrap()
     }
 
-    fn request_symbols(&mut self) -> &mut Symbols {
+    pub(super) fn request_symbols(&mut self) -> &mut Symbols {
         if self.symbols_opt.is_some() {
             return self.symbols_opt.as_mut().unwrap();
         }
@@ -196,7 +203,7 @@ impl AnalysisCache {
 
 #[derive(Default)]
 pub struct LangService {
-    docs: HashMap<Doc, AnalysisCache>,
+    pub(super) docs: HashMap<Doc, AnalysisCache>,
     dirty_sources: HashSet<Doc>,
 }
 
@@ -209,7 +216,7 @@ impl LangService {
 
     pub fn shutdown(&mut self) {}
 
-    fn doc_to_version(&self, doc: Doc) -> Option<i64> {
+    pub(super) fn doc_to_version(&self, doc: Doc) -> Option<i64> {
         self.docs.get(&doc).map(|cache| cache.version)
     }
 
@@ -218,7 +225,7 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
+    pub(crate) fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
@@ -264,19 +271,12 @@ impl LangService {
         self.dirty_sources.remove(&doc);
     }
 
-    pub fn completion(&mut self, _doc: Doc, _pos: TPos16) -> Vec<()> {
-        vec![]
+    pub fn completion(&mut self, doc: Doc, pos: TPos16) -> Vec<()> {
+        actions::completion(doc, pos, self)
     }
 
-    // references と同様
     pub fn definitions(&mut self, doc: Doc, pos: TPos16) -> Option<Vec<Location>> {
-        let symbols = self.request_symbols(doc)?;
-
-        let (name, _) = hit_test(doc, pos, symbols)?;
-        let mut def_sites = vec![];
-        collect_def_sites(doc, name, &mut def_sites, symbols);
-
-        Some(def_sites)
+        actions::definitions(doc, pos, self)
     }
 
     pub fn document_highlight(
@@ -284,38 +284,11 @@ impl LangService {
         doc: Doc,
         pos: TPos16,
     ) -> Option<(Vec<TRange>, Vec<TRange>)> {
-        let symbols = self.request_symbols(doc)?;
-
-        let (name, _) = hit_test(doc, pos, symbols)?;
-        let mut locations = vec![];
-
-        collect_def_sites(doc, name, &mut locations, symbols);
-        let def_sites = locations
-            .drain(..)
-            .map(|location| location.range())
-            .collect();
-
-        collect_use_sites(doc, name, &mut locations, symbols);
-        let use_sites = locations
-            .drain(..)
-            .map(|location| location.range())
-            .collect();
-
-        Some((def_sites, use_sites))
+        actions::document_highlight(doc, pos, self)
     }
 
-    pub fn hover(&mut self, _doc: Doc, _pos: TPos16) -> Option<String> {
-        // let (name, _) = {
-        //     let symbols = self.request_symbols(doc)?;
-        //     hit_test(doc, pos, symbols)?
-        // };
-
-        // let cps = self.request_cps(doc)?;
-        // let ty = name.ty(&cps.root);
-        // let ty_env = name.ty_env(&cps.root);
-        // let mod_outlines = todo!();
-        // Some(ty.display(ty_env, &mod_outlines))
-        None
+    pub fn hover(&mut self, doc: Doc, pos: TPos16) -> Option<String> {
+        actions::hover(doc, pos, self)
     }
 
     pub fn references(
@@ -324,33 +297,11 @@ impl LangService {
         pos: TPos16,
         include_definition: bool,
     ) -> Option<Vec<Location>> {
-        let symbols = self.request_symbols(doc)?;
-
-        let (name, _) = hit_test(doc, pos, symbols)?;
-        let mut references = vec![];
-        let mut locations = vec![];
-
-        if include_definition {
-            collect_def_sites(doc, name, &mut locations, symbols);
-            references.extend(
-                locations
-                    .drain(..)
-                    .map(|location| Location::new(doc, location.range())),
-            );
-        }
-
-        collect_use_sites(doc, name, &mut locations, symbols);
-        references.extend(
-            locations
-                .drain(..)
-                .map(|location| Location::new(doc, location.range())),
-        );
-
-        Some(references)
+        actions::references(doc, pos, include_definition, self)
     }
 
-    pub fn prepare_rename(&mut self, _doc: Doc, _pos: TPos16) -> Option<()> {
-        None
+    pub fn prepare_rename(&mut self, doc: Doc, pos: TPos16) -> Option<()> {
+        actions::prepare_rename(doc, pos, self)
     }
 
     pub fn rename(
@@ -359,40 +310,11 @@ impl LangService {
         pos: TPos16,
         new_name: String,
     ) -> Option<Vec<(Location, i64, String)>> {
-        let version = self.doc_to_version(doc)?;
-        let symbols = self.request_symbols(doc)?;
-
-        let (name, _) = hit_test(doc, pos, symbols)?;
-
-        let mut locations = vec![];
-        collect_def_sites(doc, name, &mut locations, symbols);
-        collect_use_sites(doc, name, &mut locations, symbols);
-
-        let edits = locations
-            .into_iter()
-            .map(|location| (location, version, new_name.to_string()))
-            .collect();
-        Some(edits)
+        actions::rename(doc, pos, new_name, self)
     }
 
     pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(TRange, String)>) {
-        self.docs
-            .get_mut(&doc)
-            .map(|analysis| {
-                let version_opt = Some(analysis.version);
-
-                let mut errors = analysis.request_syntax().errors.clone();
-                if errors.is_empty() {
-                    errors.extend(analysis.request_symbols().errors.clone());
-                }
-                // 頻繁にクラッシュするので無効化
-                // if errors.is_empty() {
-                //     errors.extend(analysis.request_cps().errors.clone());
-                // }
-
-                (version_opt, errors)
-            })
-            .unwrap_or((None, vec![]))
+        actions::validate(doc, self)
     }
 }
 
@@ -445,7 +367,7 @@ impl NAbsName {
     }
 }
 
-fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Location)> {
+pub(super) fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Location)> {
     symbols
         .occurrences
         .def_sites
@@ -468,7 +390,7 @@ fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Locat
         })
 }
 
-fn collect_def_sites(
+pub(super) fn collect_def_sites(
     doc: Doc,
     name: NAbsName,
     locations: &mut Vec<Location>,
@@ -485,7 +407,7 @@ fn collect_def_sites(
     );
 }
 
-fn collect_use_sites(
+pub(super) fn collect_use_sites(
     doc: Doc,
     name: NAbsName,
     locations: &mut Vec<Location>,
