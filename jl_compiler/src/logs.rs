@@ -6,7 +6,6 @@
 use crate::{
     parse::{PLoc, PRoot},
     source::{loc::LocResolver, Doc, HaveLoc, Loc, TRange},
-    token::TokenSource,
 };
 use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
 
@@ -126,7 +125,7 @@ impl Logger {
         for item in logs.finish() {
             let (loc, message) = (item.loc, item.message);
             items.push(LogItem::OnLoc {
-                loc: Loc::new(TokenSource::File(doc), loc.range(root)),
+                loc: Loc::new(doc, PLoc::Range(loc.range(root))),
                 message,
             });
         }

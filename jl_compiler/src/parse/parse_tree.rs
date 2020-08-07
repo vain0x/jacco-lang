@@ -3,7 +3,6 @@
 use super::*;
 use crate::{
     source::{Doc, HaveLoc, Loc, TRange},
-    token::TokenSource,
     utils::{DebugWith, DebugWithContext, VecArena, VecArenaId},
 };
 use std::{
@@ -11,13 +10,18 @@ use std::{
     iter::once,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum PLoc {
+    #[allow(unused)]
     Unknown(&'static str),
     Range(TRange),
     Token(PToken),
     TokenBehind(PToken),
-    TokenRange { first: PToken, last: PToken },
+    #[allow(unused)]
+    TokenRange {
+        first: PToken,
+        last: PToken,
+    },
     Element(PElement),
 }
 
@@ -30,6 +34,14 @@ impl PLoc {
         match self {
             PLoc::Token(token) => PLoc::TokenBehind(token),
             _ => self,
+        }
+    }
+
+    pub(crate) fn try_range(self) -> Result<TRange, &'static str> {
+        match self {
+            PLoc::Unknown(hint) => Err(hint),
+            PLoc::Range(range) => Ok(range),
+            _ => Err("<PLoc::try_range>"),
         }
     }
 
@@ -47,28 +59,15 @@ impl PLoc {
         }
     }
 
-    #[allow(unused)]
-    pub(crate) fn to_loc(self, doc: Doc) -> Loc {
-        match self {
-            PLoc::Unknown(hint) => Loc::Unknown(hint),
-            PLoc::Range(range) => Loc::Range { doc, range },
-            PLoc::Token(token) => Loc::Token { doc, token },
-            PLoc::TokenBehind(token) => Loc::TokenBehind { doc, token },
-            PLoc::TokenRange { first, last } => Loc::TokenRange { doc, first, last },
-            PLoc::Element(element) => Loc::Element { doc, element },
+    pub(crate) fn from_loc(loc: Loc) -> Self {
+        match loc.inner() {
+            Ok((_, loc)) => loc,
+            Err(hint) => PLoc::Unknown(hint),
         }
     }
 
-    #[allow(unused)]
-    pub(crate) fn from_loc(loc: Loc) -> Self {
-        match loc {
-            Loc::Unknown(hint) => PLoc::Unknown(hint),
-            Loc::Range { range, .. } => PLoc::Range(range),
-            Loc::Token { token, .. } => PLoc::Token(token),
-            Loc::TokenBehind { token, .. } => PLoc::TokenBehind(token),
-            Loc::TokenRange { first, last, .. } => PLoc::TokenRange { first, last },
-            Loc::Element { element, .. } => PLoc::Element(element),
-        }
+    pub(crate) fn to_loc(self, doc: Doc) -> Loc {
+        Loc::new(doc, self)
     }
 }
 
@@ -647,7 +646,7 @@ macro_rules! impl_node {
         $(
             impl HaveLoc for $node_ty {
                 fn loc(&self) -> Loc {
-                    Loc::new(TokenSource::Special(stringify!($node_ty)), TRange::ZERO)
+                    Loc::new_unknown(stringify!($node_ty))
                 }
             }
 

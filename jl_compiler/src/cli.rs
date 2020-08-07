@@ -7,7 +7,7 @@ use crate::{
     front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PRoot, PToken, PTokens},
-    source::{loc::LocResolver, Doc, Loc, TRange},
+    source::{loc::LocResolver, Doc, TRange},
     token::{tokenize, TokenSource},
     utils::VecArena,
 };
@@ -207,12 +207,12 @@ impl Project {
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {
-                let doc = match item.loc() {
-                    Loc::Unknown(name) => {
+                let doc = match item.loc().doc_opt() {
+                    Ok(it) => it,
+                    Err(name) => {
                         error!("'{}' {}", name, item.message());
                         continue;
                     }
-                    loc => loc.doc(),
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();
@@ -324,12 +324,12 @@ impl Project {
         if logs.is_fatal() {
             let mut errors = vec![];
             for item in logs.finish() {
-                let doc = match item.loc() {
-                    Loc::Unknown(name) => {
-                        error!("'{}' {}", name, item.message());
+                let doc = match item.loc().doc_opt() {
+                    Ok(it) => it,
+                    Err(hint) => {
+                        error!("'{}' {}", hint, item.message());
                         continue;
                     }
-                    loc => loc.doc(),
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();

@@ -1,7 +1,6 @@
 use super::{KLabelArena, KLocalArena, KModOutline, KPrim, KSymbol, KTerm, KTy};
 use crate::{
-    source::{HaveLoc, Loc, TRange},
-    token::TokenSource,
+    source::{HaveLoc, Loc},
     utils::{DebugWith, DebugWithContext},
 };
 use std::fmt::{self, Debug, Formatter};
@@ -141,7 +140,7 @@ impl Default for KNode {
             args: Default::default(),
             results: Default::default(),
             conts: Default::default(),
-            loc: Loc::new(TokenSource::Special("<KNode::default>"), TRange::ZERO),
+            loc: Loc::new_unknown("<KNode::default>"),
         }
     }
 }

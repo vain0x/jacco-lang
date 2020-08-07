@@ -10,6 +10,7 @@ pub struct Doc {
 }
 
 impl Doc {
+    #[allow(unused)]
     pub(crate) const MAX: Doc = Doc { raw_id: RawId::MAX };
 
     pub(crate) const fn new(id: usize) -> Self {

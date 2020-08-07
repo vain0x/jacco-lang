@@ -4,6 +4,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 /// 字句のもとになるもの
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TokenSource {
+    #[allow(unused)]
     /// コンパイラ側で生成された字句などの出処となるもの。
     Special(&'static str),
     File(Doc),
