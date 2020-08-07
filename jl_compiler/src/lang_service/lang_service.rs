@@ -1,17 +1,16 @@
-use super::actions;
+use super::{
+    actions,
+    doc_analysis::{AnalysisCache, Cps, Symbols, Syntax},
+};
 use crate::{
-    cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines, KTy2, KTyEnv},
-    front::{self, validate_syntax, NAbsName, NName, NParentFn, NameResolution, Occurrences},
-    logs::{DocLogs, Logs},
-    parse::{self, PRoot, PToken},
-    source::{loc::LocResolver, Doc, TPos, TPos16, TRange},
-    token::{self, TokenSource},
+    cps::{KModData, KTy2, KTyEnv},
+    front::{NAbsName, NName, NParentFn},
+    source::{Doc, TPos16, TRange},
 };
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    path::PathBuf,
     rc::Rc,
-    sync::Arc,
 };
 
 pub struct Location {
@@ -27,177 +26,6 @@ impl Location {
 
     pub fn range(&self) -> TRange {
         self.range
-    }
-}
-
-pub(super) struct Syntax {
-    root: PRoot,
-    pub(super) errors: Vec<(TRange, String)>,
-}
-
-pub(crate) struct Symbols {
-    name_resolution_opt: Option<NameResolution>,
-    occurrences: Occurrences,
-    pub(super) errors: Vec<(TRange, String)>,
-}
-
-#[allow(unused)]
-struct Cps {
-    mod_outline: KModOutline,
-    root: KModData,
-    errors: Vec<(TRange, String)>,
-}
-
-pub(super) struct AnalysisCache {
-    doc: Doc,
-    version: i64,
-    text: Rc<String>,
-    source_path: Arc<PathBuf>,
-    syntax_opt: Option<Syntax>,
-    symbols_opt: Option<Symbols>,
-    cps_opt: Option<Cps>,
-}
-
-impl AnalysisCache {
-    pub(crate) fn version(&self) -> i64 {
-        self.version
-    }
-}
-
-impl LocResolver for AnalysisCache {
-    fn doc_path(&self, _doc: Doc) -> Option<&Path> {
-        Some(self.source_path.as_ref())
-    }
-
-    fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
-        match &self.syntax_opt {
-            Some(syntax) => token.loc(&syntax.root.tokens).range().into(),
-            None => TPos::ZERO.to_empty_range(),
-        }
-    }
-}
-
-impl AnalysisCache {
-    fn set_text(&mut self, version: i64, text: Rc<String>) {
-        self.version = version;
-        self.text = text;
-        self.syntax_opt = None;
-        self.symbols_opt = None;
-        self.cps_opt = None;
-    }
-
-    pub(super) fn request_syntax(&mut self) -> &mut Syntax {
-        if self.syntax_opt.is_some() {
-            return self.syntax_opt.as_mut().unwrap();
-        }
-
-        let tokens = {
-            Doc::set_path(self.doc, &self.source_path);
-            let token_source = TokenSource::File(self.doc);
-            let source_code = self.text.clone();
-            token::tokenize(token_source, source_code)
-        };
-        let syntax = {
-            let logs = Logs::new();
-            let root = parse::parse_tokens(tokens, logs.logger());
-
-            let doc_logs = DocLogs::new();
-            validate_syntax(&root, doc_logs.logger());
-
-            let errors = {
-                logs.logger()
-                    .extend_from_doc_logs(self.doc, doc_logs, &root);
-                logs_into_errors(logs, self)
-            };
-
-            Syntax { root, errors }
-        };
-
-        self.syntax_opt = Some(syntax);
-        self.syntax_opt.as_mut().unwrap()
-    }
-
-    pub(super) fn request_symbols(&mut self) -> &mut Symbols {
-        if self.symbols_opt.is_some() {
-            return self.symbols_opt.as_mut().unwrap();
-        }
-
-        let doc = self.doc;
-        let symbols = {
-            let syntax = self.request_syntax();
-
-            let doc_logs = DocLogs::new();
-            let res = front::resolve_name(&mut syntax.root, doc_logs.logger());
-
-            let res = Rc::new(res);
-            let occurrences = {
-                let res = res.clone();
-                front::collect_occurrences(&syntax.root, res)
-            };
-            let res = Rc::try_unwrap(res).ok().unwrap();
-
-            let errors = {
-                let logs = Logs::new();
-                logs.logger()
-                    .extend_from_doc_logs(doc, doc_logs, &syntax.root);
-                logs_into_errors(logs, self)
-            };
-
-            Symbols {
-                name_resolution_opt: Some(res),
-                occurrences,
-                errors,
-            }
-        };
-
-        self.symbols_opt = Some(symbols);
-        self.symbols_opt.as_mut().unwrap()
-    }
-
-    /// FIXME: rename to request_typed_cps?
-    #[allow(unused)]
-    fn request_cps(&mut self) -> &mut Cps {
-        if self.cps_opt.is_some() {
-            return self.cps_opt.as_mut().unwrap();
-        }
-
-        let cps = {
-            self.request_symbols();
-            let syntax = self.syntax_opt.as_mut().unwrap();
-            let symbols = self.symbols_opt.as_mut().unwrap();
-
-            let logs = Logs::new();
-            let doc_logs = DocLogs::new();
-            let (mut outline, mut root) = front::cps_conversion(
-                KMod::TODO,
-                &syntax.root,
-                symbols.name_resolution_opt.as_ref().unwrap(),
-                doc_logs.logger(),
-            );
-
-            logs.logger()
-                .extend_from_doc_logs(self.doc, doc_logs, &syntax.root);
-
-            // FIXME: mod_outlines を用意する
-            resolve_types(
-                KMod::from_index(0),
-                &outline,
-                &mut root,
-                &KModOutlines::default(),
-                logs.logger(),
-            );
-
-            let errors = logs_into_errors(logs, self);
-
-            Cps {
-                mod_outline: outline,
-                root,
-                errors,
-            }
-        };
-
-        self.cps_opt = Some(cps);
-        self.cps_opt.as_mut().unwrap()
     }
 }
 
@@ -217,7 +45,7 @@ impl LangService {
     pub fn shutdown(&mut self) {}
 
     pub(super) fn doc_to_version(&self, doc: Doc) -> Option<i64> {
-        self.docs.get(&doc).map(|cache| cache.version)
+        self.docs.get(&doc).map(|cache| cache.version())
     }
 
     #[allow(unused)]
@@ -225,7 +53,7 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    pub(crate) fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
+    pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
@@ -316,16 +144,6 @@ impl LangService {
     pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(TRange, String)>) {
         actions::validate(doc, self)
     }
-}
-
-fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(TRange, String)> {
-    logs.finish()
-        .into_iter()
-        .map(|item| {
-            let (message, _, range) = item.resolve(resolver);
-            (range.into(), message.to_string())
-        })
-        .collect()
 }
 
 impl NParentFn {
