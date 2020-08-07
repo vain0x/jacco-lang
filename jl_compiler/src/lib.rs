@@ -6,7 +6,7 @@ mod tests;
 pub mod rust_api {
     pub use super::cli::{compile, compile_v2, Project};
     pub use super::lang_service::lang_service::LangService;
-    pub use super::source::{doc::Doc, t_pos::TPos, t_pos16::TPos16, t_range::TRange};
+    pub use super::source::{doc::Doc, TPos, TPos16, TRange};
 }
 
 mod clang {
@@ -213,24 +213,24 @@ mod source {
 
     pub(crate) mod doc;
     pub(crate) mod loc;
-    pub(crate) mod t_pos;
-    pub(crate) mod t_pos16;
-    pub(crate) mod t_range;
 
     #[cfg(test)]
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
     pub(crate) use loc::{HaveLoc, Loc};
-    pub(crate) use t_pos::TPos;
-    pub(crate) use t_pos16::TPos16;
-    pub(crate) use t_range::TRange;
 
     #[allow(unused)]
     #[cfg(test)]
     pub(crate) use cursor_text::CursorText;
 
     pub(crate) type SourceCode = String;
+
+    pub use text_position_rs::CompositePosition as TPos;
+    pub use text_position_rs::Utf16Position as TPos16;
+
+    pub type TRange = text_position_rs::TextRange<TPos>;
+    pub type TRange16 = text_position_rs::TextRange<TPos16>;
 }
 
 mod token {

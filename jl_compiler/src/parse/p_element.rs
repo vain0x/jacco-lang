@@ -118,7 +118,7 @@ impl PElementData {
             (Some(first), Some(last)) => first
                 .loc(&root.tokens)
                 .range()
-                .unite(&last.loc(&root.tokens).range()),
+                .join(last.loc(&root.tokens).range()),
             (Some(token), None) | (None, Some(token)) => token.loc(&root.tokens).range(),
             (None, None) => TRange::ZERO,
         }

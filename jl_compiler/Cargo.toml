@@ -14,3 +14,7 @@ log = "0.4"
 # 安全にグローバル変数を扱うためのもの。
 # <https://github.com/matklad/once_cell>
 once_cell = "1"
+
+# テキスト上の位置を表現するもの。(リリースされていない。)
+# <https://github.com/vain0x/text-position-rs>
+text-position-rs = { version = "0.2.0", git = "https://github.com/vain0x/text-position-rs", rev = "bf5fc2f5292b3592553d690417827b8adca834b1" }

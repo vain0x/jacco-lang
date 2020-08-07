@@ -50,11 +50,11 @@ impl PLoc {
             PLoc::Unknown(_) => TRange::ZERO,
             PLoc::Range(range) => range,
             PLoc::Token(token) => token.of(&root.tokens).loc().range(),
-            PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().behind(),
+            PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().to_end(),
             PLoc::TokenRange { first, last } => first
                 .loc(&root.tokens)
                 .range()
-                .unite(&last.loc(&root.tokens).range()),
+                .join(last.loc(&root.tokens).range()),
             PLoc::Element(element) => element.of(&root.elements).range(root),
         }
     }

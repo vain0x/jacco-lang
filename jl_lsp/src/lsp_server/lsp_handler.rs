@@ -27,13 +27,13 @@ fn lsp_display_name() -> String {
 }
 
 fn from_lsp_pos(position: Position) -> jl_compiler::rust_api::TPos16 {
-    jl_compiler::rust_api::TPos16::new(position.line as usize, position.character as usize)
+    jl_compiler::rust_api::TPos16::new(position.line as u32, position.character as u32)
 }
 
 fn to_lsp_pos(pos: jl_compiler::rust_api::TPos) -> Position {
     Position {
-        line: pos.row() as u64,
-        character: pos.column16() as u64,
+        line: pos.row as u64,
+        character: pos.column16 as u64,
     }
 }
 

@@ -5,7 +5,7 @@ use super::{
 use crate::{
     cps::{KModData, KTy2, KTyEnv},
     front::{NAbsName, NName, NParentFn},
-    source::{Doc, TPos16, TRange},
+    source::{Doc, TPos16, TRange, TRange16},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -185,6 +185,10 @@ impl NAbsName {
     }
 }
 
+fn contains_pos16(range: TRange, pos: TPos16) -> bool {
+    TRange16::at(TPos16::from(range.index), TPos16::from(range.len)).contains_inclusive(pos)
+}
+
 pub(super) fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Location)> {
     symbols
         .occurrences
@@ -193,7 +197,7 @@ pub(super) fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbs
         .chain(symbols.occurrences.use_sites.iter())
         .find_map(|(&name, locations)| {
             locations.iter().find_map(|&location| {
-                if location.range().contains_loosely_pos16(pos) {
+                if contains_pos16(location.range(), pos) {
                     Some((
                         name,
                         Location {

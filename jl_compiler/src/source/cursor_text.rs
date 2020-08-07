@@ -1,5 +1,6 @@
 use super::{TPos, TRange};
 use std::mem::take;
+use text_position_rs::TextPosition as _;
 
 /// カーソルつき文字列をパースした結果
 ///
@@ -103,7 +104,7 @@ fn parse_cursor_name(s: &str) -> (&str, usize) {
 fn skip_plain_text(i: usize, px: &mut CursorTextParser<'_>) {
     let t = &px.text[px.last..i];
     px.plain_text += t;
-    px.pos += TPos::from(t);
+    px.pos += TPos::from_str(t);
 }
 
 /// カーソルつき文字列をパースする。
@@ -162,7 +163,7 @@ pub(crate) fn parse_cursor_text(s: &str) -> Result<CursorText<'_>, String> {
                 }
                 i += ">".len();
 
-                start_pos.to_empty_range()
+                TRange::empty(start_pos)
             }
             CursorKind::Range => {
                 px.last = i;
@@ -176,7 +177,7 @@ pub(crate) fn parse_cursor_text(s: &str) -> Result<CursorText<'_>, String> {
                 let end_pos = px.pos;
                 i += offset + "]>".len();
 
-                TRange::new(start_pos, end_pos)
+                TRange::from(start_pos..end_pos)
             }
         };
 
@@ -195,6 +196,10 @@ pub(crate) fn parse_cursor_text(s: &str) -> Result<CursorText<'_>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn pos_of(s: &str) -> TPos {
+        TPos::from_str(s)
+    }
 
     #[test]
     fn test_anonymous_pos_cursors() {
@@ -215,8 +220,8 @@ mod tests {
         assert_eq!(
             result.to_pos_assoc(),
             vec![
-                ("A", TPos::from("first ")),
-                ("B", TPos::from("first line\nsecond "))
+                ("A", pos_of("first ")),
+                ("B", pos_of("first line\nsecond "))
             ]
         );
     }
@@ -229,10 +234,9 @@ mod tests {
         assert_eq!(
             result.to_range_vec(),
             vec![
-                TRange::new(TPos::from("first "), TPos::from("first line")),
-                TRange::new(
-                    TPos::from("first line\nsecond "),
-                    TPos::from("first line\nsecond line\nthird")
+                TRange::from(pos_of("first ")..pos_of("first line")),
+                TRange::from(
+                    pos_of("first line\nsecond ")..pos_of("first line\nsecond line\nthird")
                 ),
             ]
         );
@@ -246,15 +250,11 @@ mod tests {
         assert_eq!(
             result.to_range_assoc(),
             vec![
-                (
-                    "A",
-                    TRange::new(TPos::from("first "), TPos::from("first line"))
-                ),
+                ("A", TRange::from(pos_of("first ")..pos_of("first line"))),
                 (
                     "B",
-                    TRange::new(
-                        TPos::from("first line\nsecond "),
-                        TPos::from("first line\nsecond line\nthird")
+                    TRange::from(
+                        pos_of("first line\nsecond ")..pos_of("first line\nsecond line\nthird")
                     )
                 ),
             ]
