@@ -9,24 +9,12 @@ pub(crate) fn references(
     let symbols = ls.request_symbols(doc)?;
 
     let (name, _) = hit_test(doc, pos, symbols)?;
-    let mut references = vec![];
-    let mut locations = vec![];
+    let mut ref_sites = vec![];
 
     if include_definition {
-        collect_def_sites(doc, name, &mut locations, symbols);
-        references.extend(
-            locations
-                .drain(..)
-                .map(|location| Location::new(doc, location.range())),
-        );
+        collect_def_sites(doc, name, &mut ref_sites, symbols);
     }
+    collect_use_sites(doc, name, &mut ref_sites, symbols);
 
-    collect_use_sites(doc, name, &mut locations, symbols);
-    references.extend(
-        locations
-            .drain(..)
-            .map(|location| Location::new(doc, location.range())),
-    );
-
-    Some(references)
+    Some(ref_sites)
 }

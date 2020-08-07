@@ -1,6 +1,8 @@
 use super::{Doc, LangService, TPos16};
 
 pub(crate) fn hover(_doc: Doc, _pos: TPos16, _ls: &mut LangService) -> Option<String> {
+    // 頻繁にクラッシュするので無効化
+
     // let (name, _) = {
     //     let symbols = ls.request_symbols(doc)?;
     //     hit_test(doc, pos, symbols)?
