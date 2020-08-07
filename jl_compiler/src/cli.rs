@@ -165,7 +165,7 @@ impl Project {
             for (doc, items) in logs_list {
                 let doc_data = &self.docs[doc.inner()];
                 for item in items {
-                    let range = TRange::from(item.loc().range());
+                    let range = item.loc().range();
                     let message = item.message().to_string();
                     errors.push((doc, doc_data.path.as_path(), range, message));
                 }
@@ -216,7 +216,7 @@ impl Project {
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();
-                let range = TRange::from(item.loc().range());
+                let range = item.loc().range();
                 let message = item.message().to_string();
                 errors.push((doc, path, range, message));
             }
@@ -280,7 +280,7 @@ impl Project {
             for (doc, items) in logs_list {
                 let doc_data = &self.docs[doc.inner()];
                 for item in items {
-                    let range = TRange::from(item.loc().range());
+                    let range = item.loc().range();
                     let message = item.message().to_string();
                     errors.push((doc, doc_data.path.as_path(), range, message));
                 }
@@ -333,7 +333,7 @@ impl Project {
                 };
 
                 let path = self.docs[doc.inner()].path.as_path();
-                let range = TRange::from(item.loc().range());
+                let range = item.loc().range();
                 let message = item.message().to_string();
                 errors.push((doc, path, range, message));
             }

@@ -55,7 +55,7 @@ impl LocResolver for AnalysisCache {
 
     fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
         match &self.syntax_opt {
-            Some(syntax) => token.loc(&syntax.root.tokens).range().into(),
+            Some(syntax) => token.loc(&syntax.root.tokens).range(),
             None => TPos::ZERO.to_empty_range(),
         }
     }

@@ -78,7 +78,7 @@ impl LogItem {
                     Ok(doc) => resolver.doc_path(doc).map(PathBuf::from),
                     Err(name) => Some(PathBuf::from(name)),
                 };
-                let range = TRange::from(loc.range());
+                let range = loc.range();
                 (message, path_opt, range)
             }
         }
