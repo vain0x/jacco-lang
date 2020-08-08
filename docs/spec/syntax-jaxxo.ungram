@@ -243,14 +243,13 @@ ValDecl =
 
 ConstDecl =
   Attr* Vis?
-  'const' UnqualName ':' Ty ('=' init:Expr)? ';'
+  'const' Param ';'
 
 StaticDecl =
   Attr* Vis?
-  'static' UnqualName ':' Ty ('=' init:Expr)? ';'
+  'static' Param ';'
 
-Param =
-  UnqualName ':' Ty
+Param = UnqualName ':' Ty ('=' init:Expr)?
 
 FnDecl =
   Attr* Vis?
@@ -267,7 +266,7 @@ ConstVariantDecl =
   UnqualName (':' Ty)? ('=' init:Expr)?
 
 FieldDecl =
-  'val' UnqualName ':' Ty ('=' init:Expr)?
+  'val' Param
 
 RecordVariantDecl =
   UnqualName '('
