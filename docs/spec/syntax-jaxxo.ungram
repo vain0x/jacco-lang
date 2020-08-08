@@ -228,6 +228,7 @@ Decl =
 | FnDecl
 | EnumDecl
 | StructDecl
+| TypeDecl
 | UseDecl
 
 Vis =
@@ -292,6 +293,10 @@ EnumDecl =
 StructDecl =
   Attr* Vis?
   'struct' VariantDecl? ';'?
+
+TypeDecl =
+  Attr* Vis?
+  'type' UnqualName '=' Ty ';'
 
 UseDecl =
   Attr* Vis?
