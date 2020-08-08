@@ -227,7 +227,7 @@ Decl =
 | StaticDecl
 | FnDecl
 | EnumDecl
-| StructDecl
+| RecordDecl
 | TypeDecl
 | UseDecl
 
@@ -290,9 +290,9 @@ EnumDecl =
   Attr* Vis?
   'enum' UnqualName '{' (VariantDecl (',' VariantDecl)* ','?)? '}'
 
-StructDecl =
+RecordDecl =
   Attr* Vis?
-  'struct' VariantDecl? ';'?
+  'record' VariantDecl? ';'?
 
 TypeDecl =
   Attr* Vis?
