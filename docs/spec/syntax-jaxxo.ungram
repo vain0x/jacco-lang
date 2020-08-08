@@ -275,8 +275,8 @@ RecordVariantDecl =
   ')'
 
 VariantDecl =
-  ConstVariantDecl
-| RecordVariantDecl
+  'const' ConstVariantDecl
+| 'record' RecordVariantDecl
 
 ConstEnum =
   Attr* Vis?
