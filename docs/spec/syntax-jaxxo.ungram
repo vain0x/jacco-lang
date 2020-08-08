@@ -292,7 +292,7 @@ EnumDecl =
 
 RecordDecl =
   Attr* Vis?
-  'record' VariantDecl? ';'?
+  'record' RecordVariantDecl? ';'?
 
 TypeDecl =
   Attr* Vis?
