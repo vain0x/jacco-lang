@@ -277,6 +277,14 @@ VariantDecl =
   ConstVariantDecl
 | RecordVariantDecl
 
+ConstEnum =
+  Attr* Vis?
+  'const' 'enum' UnqualName
+  (':' repr:Ty)?
+  '{'
+    (ConstVariantDecl (',' ConstVariantDecl)* ','?)?
+  '}'
+
 EnumDecl =
   Attr* Vis?
   'enum' UnqualName '{' (VariantDecl (',' VariantDecl)* ','?)? '}'
