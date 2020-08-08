@@ -214,7 +214,7 @@ WhileExpr =
 
 Decl =
   AttrDecl
-| LetDecl
+| ValDecl
 | ConstDecl
 | StaticDecl
 | FnDecl
@@ -229,9 +229,9 @@ Vis =
 AttrDecl =
   '#' '!' '[' AttrItem (',' AttrItem)* ','? ']'
 
-LetDecl =
+ValDecl =
   Attr* Vis?
-  'let' Pat (':' Ty)? ('=' :Expr)? ';'
+  'val' Pat (':' Ty)? ('=' init:Expr)? ';'
 
 ConstDecl =
   Attr* Vis?
