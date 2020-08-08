@@ -271,7 +271,7 @@ fn alloc_outline(
     let ast = &root.ast;
 
     for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter_mut()) {
-        let loc = decl_id.loc(root).to_loc(doc);
+        let loc = Loc::new(doc, PLoc::Decl(decl_id));
         let symbol = match decl {
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {

@@ -23,6 +23,7 @@ pub(crate) enum PLoc {
         last: PToken,
     },
     Element(PElement),
+    Decl(ADeclId),
 }
 
 impl PLoc {
@@ -56,6 +57,7 @@ impl PLoc {
                 .range()
                 .join(last.loc(&root.tokens).range()),
             PLoc::Element(element) => element.of(&root.elements).range(root),
+            PLoc::Decl(decl_id) => decl_id.element(root).of(&root.elements).range(root),
         }
     }
 
@@ -82,6 +84,7 @@ impl Debug for PLoc {
                 return write!(f, "token#({}..{})", first.to_index(), last.to_index());
             }
             PLoc::Element(element) => return write!(f, "element#{}", element.to_index()),
+            PLoc::Decl(decl_id) => return write!(f, "decl#{}", decl_id.to_index()),
         };
 
         Debug::fmt(&token, f)?;
