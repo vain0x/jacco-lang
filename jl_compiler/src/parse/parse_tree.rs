@@ -22,6 +22,7 @@ pub(crate) enum PLoc {
         first: PToken,
         last: PToken,
     },
+    #[allow(unused)]
     Element(PElement),
     // KTy に位置情報が含まれないので未使用
     #[allow(unused)]
@@ -29,6 +30,13 @@ pub(crate) enum PLoc {
     Pat(APatId),
     Expr(AExprId),
     Decl(ADeclId),
+    Name(ANameKey),
+    #[allow(unused)]
+    ParamDecl(AParamDeclKey),
+    #[allow(unused)]
+    FieldDecl(AFieldDeclKey),
+    #[allow(unused)]
+    VariantDecl(AVariantDeclKey),
 }
 
 impl PLoc {
@@ -57,6 +65,10 @@ impl PLoc {
             PLoc::Pat(pat_id) => pat_id.element(root).range(root)?,
             PLoc::Expr(expr_id) => expr_id.element(root).range(root)?,
             PLoc::Decl(decl_id) => decl_id.element(root).range(root)?,
+            PLoc::Name(key) => key.element(root).range(root)?,
+            PLoc::ParamDecl(key) => key.element(root).range(root)?,
+            PLoc::FieldDecl(key) => key.element(root).range(root)?,
+            PLoc::VariantDecl(key) => key.element(root).range(root)?,
         };
         Ok(range)
     }
@@ -68,6 +80,7 @@ impl PLoc {
         }
     }
 
+    #[allow(unused)]
     pub(crate) fn to_loc(self, doc: Doc) -> Loc {
         Loc::new(doc, self)
     }
@@ -88,6 +101,10 @@ impl Debug for PLoc {
             PLoc::Pat(pat_id) => return write!(f, "pat#{}", pat_id.to_index()),
             PLoc::Expr(expr_id) => return write!(f, "expr#{}", expr_id.to_index()),
             PLoc::Decl(decl_id) => return write!(f, "decl#{}", decl_id.to_index()),
+            PLoc::Name(_) => return write!(f, "Name"),
+            PLoc::ParamDecl(_) => return write!(f, "ParamDecl"),
+            PLoc::FieldDecl(_) => return write!(f, "FieldDecl"),
+            PLoc::VariantDecl(_) => return write!(f, "VariantDecl"),
         };
 
         Debug::fmt(&token, f)?;

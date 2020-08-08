@@ -1675,7 +1675,7 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
         ATy::Name(AName { text, .. }) => match resolve_ty_name2(&text, xx.env) {
             Some(ty) => ty,
             None => {
-                error_unresolved_ty(ty_id.loc(xx.root), xx.logger);
+                error_unresolved_ty(PLoc::Ty(ty_id), xx.logger);
                 KTy::Unresolved
             }
         },
@@ -1787,7 +1787,7 @@ fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> Branch {
 
 fn convert_pat_as_assign(pat_id: APatId, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     let pat = pat_id.of(xx.ast.pats());
-    let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
+    let loc = Loc::new(xx.doc, PLoc::Pat(pat_id));
     do_convert_pat_as_assign(pat, cond, term, loc, xx)
 }
 
@@ -2606,7 +2606,7 @@ fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
-    let loc = expr_id.loc(xx.root).to_loc(xx.doc);
+    let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
         AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
@@ -2733,10 +2733,18 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
     };
 }
 
+fn new_param_name_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
+    Loc::new(
+        doc,
+        PLoc::Name(ANameKey::Param(AParamDeclKey::new(decl_id, index))),
+    )
+}
+
 fn convert_param_decls(
     param_decls: &[AParamDecl],
     param_tys: &[KTy],
-    loc: Loc,
+    doc: Doc,
+    decl_id: ADeclId,
     locals: &mut KLocalArena,
     env: &mut Env,
 ) -> Vec<KSymbol> {
@@ -2744,9 +2752,10 @@ fn convert_param_decls(
 
     param_decls
         .iter()
+        .enumerate()
         .zip(param_tys)
-        .map(|(param_decl, param_ty)| {
-            // FIXME: param_decl のロケーションを取る
+        .map(|((index, param_decl), param_ty)| {
+            let loc = new_param_name_loc(doc, decl_id, index);
             let name = param_decl.name.text.to_string();
             let local = locals.alloc(KLocalData::new(name.to_string(), loc));
             env.insert_value(name, KLocalValue::LocalVar(local));
@@ -2755,13 +2764,14 @@ fn convert_param_decls(
         .collect()
 }
 
-fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
+fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
     let mut locals = KLocalArena::new();
 
     let params = convert_param_decls(
         &fn_decl.params,
         k_fn.param_tys(&xx.mod_outline.fns),
-        loc,
+        xx.doc,
+        decl_id,
         &mut locals,
         &mut xx.env,
     );
@@ -2831,9 +2841,9 @@ fn emit_return(term: KTerm, loc: Loc, xx: &mut Xx) {
 }
 
 fn convert_extern_fn_decl(
+    decl_id: ADeclId,
     extern_fn: KExternFn,
     extern_fn_decl: &AFnLikeDecl,
-    loc: Loc,
     xx: &mut Xx,
 ) {
     let mut locals = KLocalArena::new();
@@ -2841,7 +2851,8 @@ fn convert_extern_fn_decl(
     let params = convert_param_decls(
         &extern_fn_decl.params,
         extern_fn.param_tys(&xx.mod_outline.extern_fns),
-        loc,
+        xx.doc,
+        decl_id,
         &mut locals,
         &mut xx.env,
     );
@@ -2897,14 +2908,14 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
                 Some(KModLocalSymbol::Fn(it)) => it,
                 _ => return,
             };
-            convert_fn_decl(k_fn, fn_decl, loc, xx);
+            convert_fn_decl(decl_id, k_fn, fn_decl, loc, xx);
         }
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
                 Some(KModLocalSymbol::ExternFn(it)) => it,
                 _ => return,
             };
-            convert_extern_fn_decl(extern_fn, extern_fn_decl, loc, xx);
+            convert_extern_fn_decl(decl_id, extern_fn, extern_fn_decl, xx);
         }
         ADecl::Enum(enum_decl) => {
             let k_enum = match symbol_opt {

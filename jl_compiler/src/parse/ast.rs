@@ -4,10 +4,11 @@
 
 use super::{
     p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
-    PElementArena, PElementData, PLoc, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
+    PElementArena, PElementData, PElementKind, PLoc, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
 };
 use crate::{
     cps::{KMut, KVis},
+    token::TokenKind,
     utils::{VecArena, VecArenaId, VecArenaSlice},
 };
 use std::fmt::{self, Debug, Formatter};
@@ -19,6 +20,36 @@ use std::fmt::{self, Debug, Formatter};
 pub(crate) struct AName {
     pub(crate) text: String,
     pub(crate) full_name: String,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum ANameKey {
+    Ty(ATyId),
+    Pat(APatId),
+    Expr(AExprId),
+    /// static や fn などの名前。
+    Decl(ADeclId),
+    Param(AParamDeclKey),
+    Field(AFieldDeclKey),
+    Variant(AVariantDeclKey),
+}
+
+impl ANameKey {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let parent = match self {
+            ANameKey::Ty(ty_id) => ty_id.element(root),
+            ANameKey::Pat(pat_id) => pat_id.element(root),
+            ANameKey::Expr(expr_id) => expr_id.element(root),
+            ANameKey::Decl(decl_id) => decl_id.element(root),
+            ANameKey::Param(key) => key.element(root),
+            ANameKey::Field(key) => key.element(root),
+            ANameKey::Variant(key) => key.element(root),
+        };
+        parent
+            .of(&root.elements)
+            .nth_child_element_of(PElementKind::Name, 0, root)
+            .unwrap()
+    }
 }
 
 // -----------------------------------------------
@@ -199,6 +230,26 @@ pub(crate) struct AFieldLikeDecl {
     pub(crate) value_opt: Option<AExprId>,
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct AFieldDeclKey {
+    parent: AVariantDeclKey,
+    index: usize,
+}
+
+impl AFieldDeclKey {
+    pub(crate) fn new(parent: AVariantDeclKey, index: usize) -> Self {
+        Self { parent, index }
+    }
+
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        self.parent
+            .element(root)
+            .of(&root.elements)
+            .nth_child_element_of(PElementKind::FieldDecl, self.index, root)
+            .unwrap()
+    }
+}
+
 pub(crate) struct AExprDecl {
     pub(crate) expr: AExprId,
 }
@@ -206,6 +257,26 @@ pub(crate) struct AExprDecl {
 pub(crate) struct AParamDecl {
     pub(crate) name: AName,
     pub(crate) ty_opt: Option<ATyId>,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct AParamDeclKey {
+    parent: ADeclId,
+    index: usize,
+}
+
+impl AParamDeclKey {
+    pub(crate) fn new(parent: ADeclId, index: usize) -> Self {
+        Self { parent, index }
+    }
+
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        self.parent
+            .element(root)
+            .of(&root.elements)
+            .nth_child_element_of(PElementKind::ParamDecl, self.index, root)
+            .unwrap()
+    }
 }
 
 pub(crate) struct AFnLikeDecl {
@@ -224,6 +295,27 @@ pub(crate) struct ARecordVariantDecl {
 pub(crate) enum AVariantDecl {
     Const(AFieldLikeDecl),
     Record(ARecordVariantDecl),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum AVariantDeclKey {
+    Enum(ADeclId, usize),
+    Struct(ADeclId),
+}
+
+impl AVariantDeclKey {
+    pub(crate) fn element(self, root: &PRoot) -> PElement {
+        let (parent, index) = match self {
+            AVariantDeclKey::Enum(parent, index) => (parent, index),
+            AVariantDeclKey::Struct(parent) => (parent, 0),
+        };
+
+        parent
+            .element(root)
+            .of(&root.elements)
+            .nth_child_element_either_of(PElementKind::VARIANT_DECL, index, root)
+            .unwrap()
+    }
 }
 
 pub(crate) struct AEnumDecl {
@@ -269,8 +361,8 @@ impl ATyId {
         self.element(root).of(&root.elements)
     }
 
-    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
-        PLoc::Element(self.element(root))
+    pub(crate) fn loc(self) -> PLoc {
+        PLoc::Ty(self)
     }
 }
 
@@ -284,8 +376,8 @@ impl APatId {
         self.element(root).of(&root.elements)
     }
 
-    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
-        PLoc::Element(self.element(root))
+    pub(crate) fn loc(self) -> PLoc {
+        PLoc::Pat(self)
     }
 }
 
@@ -299,8 +391,8 @@ impl AExprId {
         self.element(root).of(&root.elements)
     }
 
-    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
-        PLoc::Element(self.element(root))
+    pub(crate) fn loc(self) -> PLoc {
+        PLoc::Expr(self)
     }
 }
 
@@ -315,7 +407,7 @@ impl ADeclId {
     }
 
     pub(crate) fn loc(self, root: &PRoot) -> PLoc {
-        PLoc::Element(self.element(root))
+        PLoc::Decl(self)
     }
 }
 

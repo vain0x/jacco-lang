@@ -34,6 +34,13 @@ pub(crate) enum PNode {
 
 impl PNode {
     #[allow(unused)]
+    pub(crate) fn as_token(self) -> Option<PToken> {
+        match self {
+            PNode::Token(token) => Some(token),
+            _ => None,
+        }
+    }
+
     pub(crate) fn as_element(self) -> Option<PElement> {
         match self {
             PNode::Element(element) => Some(element),

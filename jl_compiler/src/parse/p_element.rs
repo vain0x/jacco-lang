@@ -71,6 +71,13 @@ pub(crate) enum PElementKind {
     RootDecl,
 }
 
+impl PElementKind {
+    pub(crate) const VARIANT_DECL: &'static [PElementKind] = &[
+        PElementKind::ConstVariantDecl,
+        PElementKind::RecordVariantDecl,
+    ];
+}
+
 pub(crate) struct PElementTag;
 
 /// 構文要素 (構文木の非終端ノード)
@@ -126,5 +133,48 @@ impl PElementData {
             (None, None) => return Err("<PElementData::range>"),
         };
         Ok(range)
+    }
+
+    #[allow(unused)]
+    pub(crate) fn nth_child_token_of(
+        &self,
+        kind: TokenKind,
+        index: usize,
+        root: &PRoot,
+    ) -> Option<PToken> {
+        self.children()
+            .iter()
+            .copied()
+            .filter_map(PNode::as_token)
+            .filter(|token| token.of(&root.tokens).kind() == kind)
+            .nth(index)
+    }
+
+    pub(crate) fn nth_child_element_of(
+        &self,
+        kind: PElementKind,
+        index: usize,
+        root: &PRoot,
+    ) -> Option<PElement> {
+        self.children()
+            .iter()
+            .copied()
+            .filter_map(PNode::as_element)
+            .filter(|element| element.of(&root.elements).kind() == kind)
+            .nth(index)
+    }
+
+    pub(crate) fn nth_child_element_either_of(
+        &self,
+        kinds: &[PElementKind],
+        index: usize,
+        root: &PRoot,
+    ) -> Option<PElement> {
+        self.children()
+            .iter()
+            .copied()
+            .filter_map(PNode::as_element)
+            .filter(|element| kinds.contains(&element.of(&root.elements).kind()))
+            .nth(index)
     }
 }
