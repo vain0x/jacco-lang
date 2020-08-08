@@ -1,4 +1,5 @@
 // jaxxo 言語の "ungrammar" 構文定義ファイル
+// ジャッコ言語の「他の言語になるべく似せる」という設計方針をもしやめたとしたら、どういう構文になるかの実験。
 //
 // "ungrammar" は <https://github.com/rust-analyzer/ungrammar> を参照。
 // 同リポジトリにある Rust の構文定義を参考にしている。
