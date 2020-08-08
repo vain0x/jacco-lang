@@ -246,12 +246,12 @@ Param =
 
 FnDecl =
   Attr* Vis?
-  'extern'?
   'fn' UnqualName
   '(' params:(Param (',' Param)*)? ','? ')'
   ('->' Ty)?
   (
-    body:BlockExpr
+   '=' 'extern'
+  | body:BlockExpr
   | ';'
   )
 
