@@ -163,7 +163,7 @@ AsExpr =
   Expr 'as' Ty
 
 UnaryOpExpr =
-  op:('!' | '-' | '*' | '&' ('const' |'mut')?) Expr
+  op:('-' | '*' | '&' ('const' |'mut')?) Expr
 
 BinaryOpExpr =
   left:Expr
