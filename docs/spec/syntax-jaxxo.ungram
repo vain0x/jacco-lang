@@ -1,4 +1,4 @@
-// ジャッコ言語の "ungrammar" 構文定義ファイル
+// jaxxo 言語の "ungrammar" 構文定義ファイル
 //
 // "ungrammar" は <https://github.com/rust-analyzer/ungrammar> を参照。
 // 同リポジトリにある Rust の構文定義を参考にしている。
@@ -20,7 +20,7 @@
 // -----------------------------------------------
 
 Literal =
-  '(' ')'
+  'unit'
 | 'true'
 | 'false'
 | 'number'
@@ -55,20 +55,12 @@ Attr =
 
 Ty =
   InferTy
-| NeverTy
-| UnitTy
 | NameTy
 | GroupTy
 | PtrTy
 
 InferTy =
   '_'
-
-NeverTy =
-  '!'
-
-UnitTy =
-  '(' ')'
 
 NameTy =
   Name
