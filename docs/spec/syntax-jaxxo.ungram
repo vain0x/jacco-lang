@@ -58,6 +58,8 @@ Ty =
 | NameTy
 | GroupTy
 | PtrTy
+| ArrayTy
+| SliceTy
 
 InferTy =
   '_'
@@ -70,6 +72,12 @@ GroupTy =
 
 PtrTy =
   '*' ('const' | 'mut')? Ty
+
+ArrayTy =
+  '[' Ty ';' Expr ']'
+
+SliceTy =
+  '[' Ty ']'
 
 // -----------------------------------------------
 // パターン
