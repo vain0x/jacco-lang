@@ -100,12 +100,12 @@ NamePat =
   Name
 
 RecordPat =
-  Name '{'
+  Name? '('
     fields:(RecordFieldPat (',' RecordFieldPat)* ','?)?
-  '}'
+  ')'
 
 RecordFieldPat =
-  UnqualName ':' Pat
+  (UnqualName ':')? Pat
 
 GroupPat =
   '(' Pat ')'
@@ -140,19 +140,17 @@ Cond =
 NameExpr =
   Name
 
-RecordExpr =
-  Name '{'
-    fields:(RecordFieldExpr (',' RecordFieldExpr)* ','?)?
-  '}'
-
-RecordFieldExpr =
-  UnqualName (':' Expr)?
-
 GroupExpr =
   '(' Expr ')'
 
+Arg =
+  (UnqualName ':')? Expr
+
 CallExpr =
-  Expr '(' args:(Expr (',' Expr)* ','?)? ')'
+  Expr '(' args:(Arg (',' Arg)* ','?)? ')'
+
+WithExpr =
+  Expr 'with' '(' args:(Arg (',' Arg)* ','?)? ')'
 
 IndexExpr =
   Expr '[' Expr ']'
@@ -232,7 +230,7 @@ AttrDecl =
 
 LetDecl =
   Attr* Vis?
-  'let' Pat (':' Ty)? ('=' init:Expr)? ';'
+  'let' Pat (':' Ty)? ('=' :Expr)? ';'
 
 ConstDecl =
   Attr* Vis?
@@ -260,12 +258,12 @@ ConstVariantDecl =
   UnqualName (':' Ty)? ('=' init:Expr)?
 
 FieldDecl =
-  UnqualName ':' Ty
+  'val' UnqualName ':' Ty ('=' init:Expr)?
 
 RecordVariantDecl =
-  UnqualName '{'
+  UnqualName '('
     fields:(FieldDecl (',' FieldDecl)* ','?)?
-  '}'
+  ')'
 
 VariantDecl =
   ConstVariantDecl
