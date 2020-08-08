@@ -122,7 +122,9 @@ Expr =
 | GroupExpr
 | CallExpr
 | IndexExpr
-| DotFieldExpr
+| FieldExpr
+| RefExpr
+| DerefExpr
 | AsExpr
 | UnaryOpExpr
 | BinaryOpExpr
@@ -156,14 +158,20 @@ WithExpr =
 IndexExpr =
   Expr '[' Expr ']'
 
-DotFieldExpr =
+FieldExpr =
   Expr '.' UnqualName
+
+RefExpr =
+  Expr '.' '&' ('const' |'mut')?
+
+DerefExpr =
+  Expr '.' '*'
 
 AsExpr =
   Expr 'as' Ty
 
 UnaryOpExpr =
-  op:('-' | '*' | '&' ('const' |'mut')?) Expr
+  op:'-' Expr
 
 BinaryOpExpr =
   left:Expr
