@@ -23,6 +23,11 @@ pub(crate) enum PLoc {
         last: PToken,
     },
     Element(PElement),
+    // KTy に位置情報が含まれないので未使用
+    #[allow(unused)]
+    Ty(ATyId),
+    Pat(APatId),
+    Expr(AExprId),
     Decl(ADeclId),
 }
 
@@ -57,6 +62,9 @@ impl PLoc {
                 .range()
                 .join(last.loc(&root.tokens).range()),
             PLoc::Element(element) => element.of(&root.elements).range(root),
+            PLoc::Ty(ty_id) => ty_id.element(root).of(&root.elements).range(root),
+            PLoc::Pat(pat_id) => pat_id.element(root).of(&root.elements).range(root),
+            PLoc::Expr(expr_id) => expr_id.element(root).of(&root.elements).range(root),
             PLoc::Decl(decl_id) => decl_id.element(root).of(&root.elements).range(root),
         }
     }
@@ -84,6 +92,9 @@ impl Debug for PLoc {
                 return write!(f, "token#({}..{})", first.to_index(), last.to_index());
             }
             PLoc::Element(element) => return write!(f, "element#{}", element.to_index()),
+            PLoc::Ty(ty_id) => return write!(f, "ty#{}", ty_id.to_index()),
+            PLoc::Pat(pat_id) => return write!(f, "pat#{}", pat_id.to_index()),
+            PLoc::Expr(expr_id) => return write!(f, "expr#{}", expr_id.to_index()),
             PLoc::Decl(decl_id) => return write!(f, "decl#{}", decl_id.to_index()),
         };
 

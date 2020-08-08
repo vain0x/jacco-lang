@@ -1781,7 +1781,7 @@ fn do_convert_pat_as_assign(pat: &APat, cond: &KTerm, term: KTerm, loc: Loc, xx:
 
 fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> Branch {
     let pat = pat_id.of(xx.ast.pats());
-    let loc = pat_id.loc(&xx.root).to_loc(xx.doc);
+    let loc = Loc::new(xx.doc, PLoc::Pat(pat_id));
     do_convert_pat_as_cond(pat_id, pat, loc, xx)
 }
 
@@ -2636,7 +2636,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
 
 /// `&expr` を生成する。
 fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
-    let loc = expr_id.loc(xx.root).to_loc(xx.doc);
+    let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, loc, xx),
@@ -2867,7 +2867,7 @@ fn convert_enum_decl(k_enum: KEnum, decl: &AEnumDecl, loc: Loc, xx: &mut Xx) {
 
 fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>, xx: &mut Xx) {
     let symbol_opt = *decl_id.of(xx.decl_symbols);
-    let loc = decl_id.loc(xx.root).to_loc(xx.doc);
+    let loc = Loc::new(xx.doc, PLoc::Decl(decl_id));
 
     match decl {
         ADecl::Attr => {}
