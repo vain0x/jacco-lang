@@ -270,9 +270,10 @@ FieldDecl =
   'val' Param
 
 RecordVariantDecl =
-  UnqualName '('
+  UnqualName
+  ('('
     fields:(FieldDecl (',' FieldDecl)* ','?)?
-  ')'
+  ')')?
 
 VariantDecl =
   'const' ConstVariantDecl
