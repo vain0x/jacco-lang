@@ -1,5 +1,6 @@
+use super::PLoc;
 use crate::{
-    source::Loc,
+    source::{Loc, TRange},
     token::TokenData,
     utils::{TakeOut, VecArena, VecArenaId, VecArenaSlice},
 };
@@ -18,6 +19,15 @@ impl PToken {
 
     pub(crate) fn loc(self, tokens: &PTokens) -> Loc {
         tokens[self].loc()
+    }
+
+    pub(crate) fn range(self, tokens: &PTokens) -> Result<TRange, &'static str> {
+        let (_, loc) = tokens[self].loc().inner()?;
+        match loc {
+            PLoc::Unknown(hint) => Err(hint),
+            PLoc::Range(range) => Ok(range),
+            _ => unreachable!(),
+        }
     }
 
     pub(crate) fn decompose(self, tokens: &PTokens) -> (String, Loc) {

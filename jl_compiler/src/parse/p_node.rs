@@ -64,9 +64,9 @@ impl PNode {
     }
 
     #[allow(unused)]
-    pub(crate) fn range(self, root: &PRoot) -> TRange {
+    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
         match self {
-            PNode::Token(token) => token.of(&root.tokens).loc().range(),
+            PNode::Token(token) => token.range(&root.tokens),
             PNode::Element(element) => element.of(&root.elements).range(root),
         }
     }

@@ -78,6 +78,12 @@ pub(crate) type PElement = VecArenaId<PElementTag>;
 
 pub(crate) type PElementArena = VecArena<PElementTag, PElementData>;
 
+impl PElement {
+    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
+        self.of(&root.elements).range(root)
+    }
+}
+
 /// 構文要素のデータ
 #[derive(Clone, Debug)]
 pub(crate) struct PElementData {
@@ -113,14 +119,12 @@ impl PElementData {
             .find_map(|node| node.last_token(root))
     }
 
-    pub(crate) fn range(&self, root: &PRoot) -> TRange {
-        match (self.first_token(root), self.last_token(root)) {
-            (Some(first), Some(last)) => first
-                .loc(&root.tokens)
-                .range()
-                .join(last.loc(&root.tokens).range()),
-            (Some(token), None) | (None, Some(token)) => token.loc(&root.tokens).range(),
-            (None, None) => TRange::ZERO,
-        }
+    pub(crate) fn range(&self, root: &PRoot) -> Result<TRange, &'static str> {
+        let range = match (self.first_token(root), self.last_token(root)) {
+            (Some(first), Some(last)) => first.range(&root.tokens)?.join(last.range(&root.tokens)?),
+            (Some(token), None) | (None, Some(token)) => token.range(&root.tokens)?,
+            (None, None) => return Err("<PElementData::range>"),
+        };
+        Ok(range)
     }
 }

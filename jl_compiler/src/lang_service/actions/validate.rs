@@ -8,7 +8,7 @@ pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRa
 
             let mut errors = analysis.request_syntax().errors.clone();
             if errors.is_empty() {
-                errors.extend(analysis.request_symbols().errors.clone());
+                errors.extend(analysis.request_symbols().symbols.errors.clone());
             }
             // 頻繁にクラッシュするので無効化
             // if errors.is_empty() {

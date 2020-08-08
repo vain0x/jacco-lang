@@ -4,18 +4,14 @@ use crate::{
     cps::{resolve_types, KMod, KModData, KModOutline, KModOutlines},
     front::{self, validate_syntax, NameResolution, Occurrences},
     logs::{DocLogs, Logs},
-    parse::{self, PRoot, PToken},
-    source::{loc::LocResolver, Doc, TRange},
+    parse::{self, PRoot},
+    source::{Doc, TRange},
     token::{self, TokenSource},
 };
-use std::{
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::Arc,
-};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) struct Syntax {
-    root: PRoot,
+    pub(super) root: PRoot,
     pub(super) errors: Vec<(TRange, String)>,
 }
 
@@ -32,6 +28,11 @@ pub(super) struct Cps {
     pub(super) errors: Vec<(TRange, String)>,
 }
 
+pub(super) struct DocSymbolAnalysisMut<'a> {
+    pub(crate) syntax: &'a mut Syntax,
+    pub(crate) symbols: &'a mut Symbols,
+}
+
 pub(super) struct AnalysisCache {
     pub(super) doc: Doc,
     pub(super) version: i64,
@@ -46,22 +47,7 @@ impl AnalysisCache {
     pub(crate) fn version(&self) -> i64 {
         self.version
     }
-}
 
-impl LocResolver for AnalysisCache {
-    fn doc_path(&self, _doc: Doc) -> Option<&Path> {
-        Some(self.source_path.as_ref())
-    }
-
-    fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
-        match &self.syntax_opt {
-            Some(syntax) => token.loc(&syntax.root.tokens).range(),
-            None => TRange::ZERO,
-        }
-    }
-}
-
-impl AnalysisCache {
     pub(super) fn set_text(&mut self, version: i64, text: Rc<String>) {
         self.version = version;
         self.text = text;
@@ -75,6 +61,7 @@ impl AnalysisCache {
             return self.syntax_opt.as_mut().unwrap();
         }
 
+        let logs = Logs::new();
         let tokens = {
             Doc::set_path(self.doc, &self.source_path);
             let token_source = TokenSource::File(self.doc);
@@ -82,17 +69,13 @@ impl AnalysisCache {
             token::tokenize(token_source, source_code)
         };
         let syntax = {
-            let logs = Logs::new();
             let root = parse::parse_tokens(tokens, logs.logger());
 
             let doc_logs = DocLogs::new();
             validate_syntax(&root, doc_logs.logger());
 
-            let errors = {
-                logs.logger()
-                    .extend_from_doc_logs(self.doc, doc_logs, &root);
-                logs_into_errors(logs, self)
-            };
+            logs.logger().extend_from_doc_logs(self.doc, doc_logs);
+            let errors = logs_into_errors(logs, &root);
 
             Syntax { root, errors }
         };
@@ -101,9 +84,12 @@ impl AnalysisCache {
         self.syntax_opt.as_mut().unwrap()
     }
 
-    pub(super) fn request_symbols(&mut self) -> &mut Symbols {
-        if self.symbols_opt.is_some() {
-            return self.symbols_opt.as_mut().unwrap();
+    pub(super) fn request_symbols(&mut self) -> DocSymbolAnalysisMut {
+        if self.syntax_opt.is_some() && self.symbols_opt.is_some() {
+            return DocSymbolAnalysisMut {
+                syntax: self.syntax_opt.as_mut().unwrap(),
+                symbols: self.symbols_opt.as_mut().unwrap(),
+            };
         }
 
         let doc = self.doc;
@@ -122,9 +108,8 @@ impl AnalysisCache {
 
             let errors = {
                 let logs = Logs::new();
-                logs.logger()
-                    .extend_from_doc_logs(doc, doc_logs, &syntax.root);
-                logs_into_errors(logs, self)
+                logs.logger().extend_from_doc_logs(doc, doc_logs);
+                logs_into_errors(logs, &syntax.root)
             };
 
             Symbols {
@@ -135,7 +120,11 @@ impl AnalysisCache {
         };
 
         self.symbols_opt = Some(symbols);
-        self.symbols_opt.as_mut().unwrap()
+
+        DocSymbolAnalysisMut {
+            syntax: self.syntax_opt.as_mut().unwrap(),
+            symbols: self.symbols_opt.as_mut().unwrap(),
+        }
     }
 
     /// FIXME: rename to request_typed_cps?
@@ -159,8 +148,7 @@ impl AnalysisCache {
                 doc_logs.logger(),
             );
 
-            logs.logger()
-                .extend_from_doc_logs(self.doc, doc_logs, &syntax.root);
+            logs.logger().extend_from_doc_logs(self.doc, doc_logs);
 
             // FIXME: mod_outlines を用意する
             resolve_types(
@@ -171,7 +159,7 @@ impl AnalysisCache {
                 logs.logger(),
             );
 
-            let errors = logs_into_errors(logs, self);
+            let errors = logs_into_errors(logs, &syntax.root);
 
             Cps {
                 mod_outline: outline,
@@ -185,12 +173,19 @@ impl AnalysisCache {
     }
 }
 
-fn logs_into_errors(logs: Logs, resolver: &impl LocResolver) -> Vec<(TRange, String)> {
+fn logs_into_errors(logs: Logs, root: &PRoot) -> Vec<(TRange, String)> {
     logs.finish()
         .into_iter()
         .map(|item| {
-            let (message, _, range) = item.resolve(resolver);
-            (range.into(), message.to_string())
+            let mut message = item.message().to_string();
+            let range = match item.loc().inner().and_then(|(_, loc)| loc.range(root)) {
+                Ok(it) => it,
+                Err(hint) => {
+                    message += &format!(" loc={}", hint);
+                    TRange::ZERO
+                }
+            };
+            (range, message)
         })
         .collect()
 }

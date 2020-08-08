@@ -6,8 +6,8 @@ use crate::{
     },
     front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
     logs::{DocLogs, Logs},
-    parse::{parse_tokens, PRoot, PToken, PTokens},
-    source::{loc::LocResolver, Doc, TRange},
+    parse::{parse_tokens, PRoot},
+    source::{Doc, TRange},
     token::{tokenize, TokenSource},
     utils::VecArena,
 };
@@ -69,6 +69,30 @@ impl Project {
         Ok(doc)
     }
 
+    fn logs_into_errors(&mut self, logs: Logs, errors: &mut Vec<(Doc, PathBuf, TRange, String)>) {
+        for item in logs.finish() {
+            let (doc, loc) = match item.loc().inner() {
+                Ok(it) => it,
+                Err(hint) => {
+                    error!("'{}' {}", hint, item.message());
+                    continue;
+                }
+            };
+
+            let mut message = item.message().to_string();
+            let root = &self.syntaxes[doc.inner()].root;
+            let range = match loc.range(root) {
+                Ok(it) => it,
+                Err(hint) => {
+                    message += &format!(" loc={}", hint);
+                    TRange::ZERO
+                }
+            };
+            let path = self.docs[doc.inner()].path.to_path_buf();
+            errors.push((doc, path, range, message));
+        }
+    }
+
     /// プロジェクト内の各ドキュメントをパースする。
     ///
     /// unresolved_mod_names に、use 宣言から参照されているドキュメントの名前のうち、
@@ -118,7 +142,7 @@ impl Project {
     /// プロジェクトをコンパイルして、C言語のソースコードを生成する。
     ///
     /// パースされていないドキュメントは単に無視される。
-    pub fn compile(&mut self) -> Result<String, Vec<(Doc, &Path, TRange, String)>> {
+    pub fn compile(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let mut logs_list = vec![];
 
         self.names = VecArena::from_iter(self.syntaxes.enumerate_mut().map(|(id, syntax)| {
@@ -129,8 +153,7 @@ impl Project {
             validate_syntax(&syntax.root, doc_logs.logger());
             let name_resolution = resolve_name(&mut syntax.root, doc_logs.logger());
 
-            logs.logger()
-                .extend_from_doc_logs(doc, doc_logs, &syntax.root);
+            logs.logger().extend_from_doc_logs(doc, doc_logs);
 
             (name_resolution, logs)
         }));
@@ -141,7 +164,7 @@ impl Project {
             let name_resolution = &pair.0;
             let logs = take(&mut pair.1);
             if logs.is_fatal() {
-                logs_list.push((doc, logs.finish()));
+                logs_list.push((doc, logs));
                 continue;
             }
 
@@ -151,8 +174,7 @@ impl Project {
                 cps_conversion(k_mod, &syntax.root, name_resolution, doc_logs.logger());
             mod_outline.name = self.docs[id].name.to_string();
 
-            logs.logger()
-                .extend_from_doc_logs(doc, doc_logs, &syntax.root);
+            logs.logger().extend_from_doc_logs(doc, doc_logs);
 
             let k_mod2 = self.mod_outlines.alloc(mod_outline);
             let k_mod3 = self.mods.alloc(mod_data);
@@ -162,13 +184,8 @@ impl Project {
 
         if !logs_list.is_empty() {
             let mut errors = vec![];
-            for (doc, items) in logs_list {
-                let doc_data = &self.docs[doc.inner()];
-                for item in items {
-                    let range = item.loc().range();
-                    let message = item.message().to_string();
-                    errors.push((doc, doc_data.path.as_path(), range, message));
-                }
+            for (_, logs) in logs_list {
+                self.logs_into_errors(logs, &mut errors);
             }
             return Err(errors);
         }
@@ -206,20 +223,7 @@ impl Project {
 
         if logs.is_fatal() {
             let mut errors = vec![];
-            for item in logs.finish() {
-                let doc = match item.loc().doc_opt() {
-                    Ok(it) => it,
-                    Err(name) => {
-                        error!("'{}' {}", name, item.message());
-                        continue;
-                    }
-                };
-
-                let path = self.docs[doc.inner()].path.as_path();
-                let range = item.loc().range();
-                let message = item.message().to_string();
-                errors.push((doc, path, range, message));
-            }
+            self.logs_into_errors(logs, &mut errors);
             return Err(errors);
         }
 
@@ -238,7 +242,7 @@ impl Project {
     }
 
     // V2
-    pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, &Path, TRange, String)>> {
+    pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let mut logs_list = vec![];
 
         for (id, syntax) in self.syntaxes.enumerate_mut() {
@@ -267,23 +271,17 @@ impl Project {
             assert_eq!(k_mod, k_mod3);
 
             let logs = take(&mut syntax.logs);
-            logs.logger()
-                .extend_from_doc_logs(doc, doc_logs, &syntax.root);
+            logs.logger().extend_from_doc_logs(doc, doc_logs);
 
             if logs.is_fatal() {
-                logs_list.push((doc, logs.finish()));
+                logs_list.push(logs);
             }
         }
 
         if !logs_list.is_empty() {
             let mut errors = vec![];
-            for (doc, items) in logs_list {
-                let doc_data = &self.docs[doc.inner()];
-                for item in items {
-                    let range = item.loc().range();
-                    let message = item.message().to_string();
-                    errors.push((doc, doc_data.path.as_path(), range, message));
-                }
+            for logs in logs_list {
+                self.logs_into_errors(logs, &mut errors);
             }
             return Err(errors);
         }
@@ -323,20 +321,7 @@ impl Project {
 
         if logs.is_fatal() {
             let mut errors = vec![];
-            for item in logs.finish() {
-                let doc = match item.loc().doc_opt() {
-                    Ok(it) => it,
-                    Err(hint) => {
-                        error!("'{}' {}", hint, item.message());
-                        continue;
-                    }
-                };
-
-                let path = self.docs[doc.inner()].path.as_path();
-                let range = item.loc().range();
-                let message = item.message().to_string();
-                errors.push((doc, path, range, message));
-            }
+            self.logs_into_errors(logs, &mut errors);
             return Err(errors);
         }
 
@@ -510,21 +495,6 @@ pub fn compile_v2(source_path: &Path, source_code: &str) -> Option<String> {
             }
             None
         }
-    }
-}
-
-pub(crate) struct MyLocResolver<'a> {
-    doc_path: &'a Path,
-    tokens: &'a PTokens,
-}
-
-impl<'a> LocResolver for MyLocResolver<'a> {
-    fn doc_path(&self, _doc: Doc) -> Option<&Path> {
-        Some(self.doc_path)
-    }
-
-    fn token_range(&self, _doc: Doc, token: PToken) -> TRange {
-        token.loc(self.tokens).range().into()
     }
 }
 

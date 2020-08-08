@@ -1,10 +1,10 @@
 use super::{Doc, TRange};
 use crate::{
-    parse::{PLoc, PToken},
+    parse::PLoc,
     token::{TokenData, TokenSource},
     utils::TakeOut,
 };
-use std::{fmt::Debug, mem::replace, path::Path};
+use std::{fmt::Debug, mem::replace};
 
 /// 位置情報
 ///
@@ -32,21 +32,6 @@ impl Loc {
         self.0
     }
 
-    pub(crate) fn doc_opt(self) -> Result<Doc, &'static str> {
-        self.0.map(|(doc, _)| doc)
-    }
-
-    pub(crate) fn range_opt(self) -> Result<TRange, &'static str> {
-        match self.0 {
-            Ok((_, loc)) => loc.try_range(),
-            Err(hint) => Err(hint),
-        }
-    }
-
-    pub(crate) fn range(self) -> TRange {
-        self.range_opt().unwrap_or(TRange::ZERO)
-    }
-
     pub(crate) fn unite(self, _other: Loc) -> Self {
         // ロケーションの併合は無理
         Self(Err("<Loc::unite_opt>"))
@@ -63,12 +48,6 @@ impl TakeOut for Loc {
     fn take_out(&mut self) -> Loc {
         replace(self, Loc::new_unknown("<Loc::take_out>"))
     }
-}
-
-pub(crate) trait LocResolver {
-    fn doc_path(&self, doc: Doc) -> Option<&Path>;
-
-    fn token_range(&self, doc: Doc, token: PToken) -> TRange;
 }
 
 pub(crate) trait HaveLoc {

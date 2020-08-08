@@ -4,10 +4,10 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    parse::{PLoc, PRoot},
-    source::{loc::LocResolver, Doc, HaveLoc, Loc, TRange},
+    parse::PLoc,
+    source::{Doc, HaveLoc, Loc},
 };
-use std::{cell::RefCell, mem::take, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, mem::take, rc::Rc};
 
 /// 位置情報と関連付けられたエラーメッセージ
 #[derive(Clone)]
@@ -70,19 +70,6 @@ impl LogItem {
             LogItem::OnLoc { loc, .. } => *loc,
         }
     }
-
-    pub(crate) fn resolve(self, resolver: &impl LocResolver) -> (String, Option<PathBuf>, TRange) {
-        match self {
-            LogItem::OnLoc { message, loc } => {
-                let path_opt = match loc.doc_opt() {
-                    Ok(doc) => resolver.doc_path(doc).map(PathBuf::from),
-                    Err(name) => Some(PathBuf::from(name)),
-                };
-                let range = loc.range();
-                (message, path_opt, range)
-            }
-        }
-    }
 }
 
 /// 位置情報と関連付けられたエラーメッセージのコンテナ。
@@ -120,12 +107,12 @@ pub(crate) struct Logger {
 }
 
 impl Logger {
-    pub(crate) fn extend_from_doc_logs(&self, doc: Doc, logs: DocLogs, root: &PRoot) {
+    pub(crate) fn extend_from_doc_logs(&self, doc: Doc, logs: DocLogs) {
         let mut items = self.parent.inner.borrow_mut();
         for item in logs.finish() {
             let (loc, message) = (item.loc, item.message);
             items.push(LogItem::OnLoc {
-                loc: Loc::new(doc, PLoc::Range(loc.range(root))),
+                loc: Loc::new(doc, loc),
                 message,
             });
         }

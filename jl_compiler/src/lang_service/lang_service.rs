@@ -1,6 +1,6 @@
 use super::{
     actions,
-    doc_analysis::{AnalysisCache, Cps, Symbols, Syntax},
+    doc_analysis::{AnalysisCache, Cps, DocSymbolAnalysisMut, Symbols, Syntax},
 };
 use crate::{
     cps::{KModData, KTy2, KTyEnv},
@@ -44,16 +44,17 @@ impl LangService {
 
     pub fn shutdown(&mut self) {}
 
+    #[allow(unused)]
     pub(super) fn doc_to_version(&self, doc: Doc) -> Option<i64> {
         self.docs.get(&doc).map(|cache| cache.version())
     }
 
     #[allow(unused)]
-    fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
+    pub(super) fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<&mut Symbols> {
+    pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<DocSymbolAnalysisMut<'_>> {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
@@ -62,12 +63,6 @@ impl LangService {
         // 頻繁にクラッシュするので無効化
         // self.docs.get_mut(&doc).map(|cache| cache.request_cps())
         None
-    }
-
-    #[allow(unused)]
-    fn hit_test(&mut self, doc: Doc, pos: TPos16) -> Option<(NAbsName, Location)> {
-        let symbols = self.request_symbols(doc)?;
-        hit_test(doc, pos, symbols)
     }
 
     pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
@@ -189,25 +184,28 @@ fn contains_pos16(range: TRange, pos: TPos16) -> bool {
     TRange16::at(TPos16::from(range.index), TPos16::from(range.len)).contains_inclusive(pos)
 }
 
-pub(super) fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbsName, Location)> {
+pub(super) fn hit_test(
+    doc: Doc,
+    pos: TPos16,
+    syntax: &Syntax,
+    symbols: &Symbols,
+) -> Option<(NAbsName, Location)> {
     symbols
         .occurrences
         .def_sites
         .iter()
         .chain(symbols.occurrences.use_sites.iter())
         .find_map(|(&name, locations)| {
-            locations.iter().find_map(|&location| {
-                if contains_pos16(location.range(), pos) {
-                    Some((
-                        name,
-                        Location {
-                            doc,
-                            range: location.range().into(),
-                        },
-                    ))
-                } else {
-                    None
-                }
+            locations.iter().find_map(|&loc| {
+                let range = {
+                    let (_, loc) = loc.inner().ok()?;
+                    let range = loc.range(&syntax.root).ok()?;
+                    if !contains_pos16(range, pos) {
+                        return None;
+                    }
+                    range
+                };
+                Some((name, Location { doc, range }))
             })
         })
 }
@@ -215,8 +213,9 @@ pub(super) fn hit_test(doc: Doc, pos: TPos16, symbols: &Symbols) -> Option<(NAbs
 pub(super) fn collect_def_sites(
     doc: Doc,
     name: NAbsName,
+    syntax: &Syntax,
+    symbols: &Symbols,
     locations: &mut Vec<Location>,
-    symbols: &mut Symbols,
 ) {
     locations.extend(
         symbols
@@ -224,16 +223,20 @@ pub(super) fn collect_def_sites(
             .def_sites
             .get(&name)
             .iter()
-            .flat_map(|locations| locations.iter().map(|location| location.range()))
-            .map(|range| Location::new(doc, range.into())),
+            .flat_map(|locs| {
+                locs.iter()
+                    .filter_map(|loc| loc.inner().ok()?.1.range(&syntax.root).ok())
+            })
+            .map(|range| Location::new(doc, range)),
     );
 }
 
 pub(super) fn collect_use_sites(
     doc: Doc,
     name: NAbsName,
+    syntax: &Syntax,
+    symbols: &Symbols,
     locations: &mut Vec<Location>,
-    symbols: &mut Symbols,
 ) {
     locations.extend(
         symbols
@@ -241,7 +244,10 @@ pub(super) fn collect_use_sites(
             .use_sites
             .get(&name)
             .iter()
-            .flat_map(|locations| locations.iter().map(|location| location.range()))
+            .flat_map(|locs| {
+                locs.iter()
+                    .filter_map(|loc| loc.inner().ok()?.1.range(&syntax.root).ok())
+            })
             .map(|range| Location::new(doc, range.into())),
     );
 }

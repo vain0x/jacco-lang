@@ -43,30 +43,22 @@ impl PLoc {
         }
     }
 
-    pub(crate) fn try_range(self) -> Result<TRange, &'static str> {
-        match self {
-            PLoc::Unknown(hint) => Err(hint),
-            PLoc::Range(range) => Ok(range),
-            _ => Err("<PLoc::try_range>"),
-        }
-    }
-
-    pub(crate) fn range(self, root: &PRoot) -> TRange {
-        match self {
-            PLoc::Unknown(_) => TRange::ZERO,
+    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
+        let range = match self {
+            PLoc::Unknown(hint) => return Err(hint),
             PLoc::Range(range) => range,
-            PLoc::Token(token) => token.of(&root.tokens).loc().range(),
-            PLoc::TokenBehind(token) => token.of(&root.tokens).loc().range().to_end(),
-            PLoc::TokenRange { first, last } => first
-                .loc(&root.tokens)
-                .range()
-                .join(last.loc(&root.tokens).range()),
-            PLoc::Element(element) => element.of(&root.elements).range(root),
-            PLoc::Ty(ty_id) => ty_id.element(root).of(&root.elements).range(root),
-            PLoc::Pat(pat_id) => pat_id.element(root).of(&root.elements).range(root),
-            PLoc::Expr(expr_id) => expr_id.element(root).of(&root.elements).range(root),
-            PLoc::Decl(decl_id) => decl_id.element(root).of(&root.elements).range(root),
-        }
+            PLoc::Token(token) => token.range(&root.tokens)?,
+            PLoc::TokenBehind(token) => token.range(&root.tokens)?.to_end(),
+            PLoc::TokenRange { first, last } => {
+                first.range(&root.tokens)?.join(last.range(&root.tokens)?)
+            }
+            PLoc::Element(element) => element.range(root)?,
+            PLoc::Ty(ty_id) => ty_id.element(root).range(root)?,
+            PLoc::Pat(pat_id) => pat_id.element(root).range(root)?,
+            PLoc::Expr(expr_id) => expr_id.element(root).range(root)?,
+            PLoc::Decl(decl_id) => decl_id.element(root).range(root)?,
+        };
+        Ok(range)
     }
 
     pub(crate) fn from_loc(loc: Loc) -> Self {
