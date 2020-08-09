@@ -4,7 +4,7 @@ use super::*;
 use crate::{source::HaveLoc, source::Loc};
 use k_meta_ty::KMetaTyData;
 use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
-use k_ty::{KEnumOrStruct, KTy2, Variance};
+use k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance};
 use std::{
     cell::RefCell,
     mem::{replace, swap, take},
@@ -84,11 +84,11 @@ impl<'a> UnificationContext<'a> {
         self.variance = variance;
     }
 
-    fn bug_unresolved(&self, other: &KTy2) {
+    fn bug_unresolved(&self, other: &KTy2, cause: KTyCause) {
         log::error!(
-            "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?})",
+            "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?}, cause={:?})",
             other.display(self.ty_env, self.mod_outlines),
-            self.loc
+            self.loc,cause
         );
     }
 
@@ -134,8 +134,8 @@ fn can_cast_number(
 
 fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
     match (left, right) {
-        (KTy2::Unresolved, other) | (other, KTy2::Unresolved) => {
-            ux.bug_unresolved(other);
+        (KTy2::Unresolved { cause }, other) | (other, KTy2::Unresolved { cause }) => {
+            ux.bug_unresolved(other, *cause);
         }
 
         // never は任意の型に upcast できる。
@@ -293,7 +293,9 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
                 loc,
                 "解決されていないエイリアスの型が {unresolved} になりました",
             );
-            return KTy2::Unresolved;
+            return KTy2::Unresolved {
+                cause: KTyCause::Alias,
+            };
         }
     };
 
@@ -573,7 +575,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 resolve_symbol_def2(result, Some(&target_ty), tx);
 
                 // FIXME: 同じ型へのキャストは警告?
-                if let KTy2::Unresolved | KTy2::Never = arg_ty {
+                if let KTy2::Unresolved { .. } | KTy2::Never = arg_ty {
                     // Skip.
                 } else if !arg_ty.is_primitive(&tx.ty_env) {
                     tx.logger.error(

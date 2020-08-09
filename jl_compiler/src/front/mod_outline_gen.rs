@@ -41,7 +41,7 @@ fn alloc_const(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -
 
     let k_const = mod_outline.consts.alloc(KConstData {
         name,
-        value_ty: KTy::Unresolved,
+        value_ty: KTy::init_later(loc),
         value_opt: None,
         parent_opt: None,
         loc,
@@ -64,7 +64,7 @@ fn alloc_static(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) 
 
     mod_outline.static_vars.alloc(KStaticVarData {
         name,
-        ty: KTy::Unresolved,
+        ty: KTy::init_later(loc),
         value_opt: None,
         loc,
     })
@@ -95,7 +95,7 @@ fn alloc_fn(decl: &AFnLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KFn 
         name,
         vis_opt,
         param_tys: vec![],
-        result_ty: KTy::Unresolved,
+        result_ty: KTy::init_later(loc),
         loc,
     })
 }
@@ -106,7 +106,7 @@ fn alloc_extern_fn(decl: &AFnLikeDecl, loc: Loc, mod_outline: &mut KModOutline) 
     mod_outline.extern_fns.alloc(KExternFnOutline {
         name,
         param_tys: vec![],
-        result_ty: KTy::Unresolved,
+        result_ty: KTy::init_later(loc),
         loc,
     })
 }
@@ -121,7 +121,7 @@ fn alloc_const_variant(
 
     mod_outline.consts.alloc(KConstData {
         name,
-        value_ty: KTy::Unresolved,
+        value_ty: KTy::init_later(loc),
         value_opt: None,
         parent_opt,
         loc,
@@ -137,7 +137,7 @@ fn resolve_field_decl(decl: &AFieldLikeDecl, loc: Loc) -> KFieldOutline {
 
     KFieldOutline {
         name,
-        ty: KTy::Unresolved,
+        ty: KTy::init_later(loc),
         loc,
     }
 }

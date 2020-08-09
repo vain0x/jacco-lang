@@ -18,7 +18,7 @@ pub(crate) type KTyEnv = VecArena<KMetaTyTag, KMetaTyData>;
 impl KMetaTy {
     pub(crate) fn try_unwrap(self, ty_env: &KTyEnv) -> Option<&RefCell<KTy2>> {
         let cell = ty_env[self].ty();
-        if *cell.borrow() == KTy2::Unresolved {
+        if cell.borrow().is_unresolved() {
             return None;
         }
 
@@ -27,13 +27,13 @@ impl KMetaTy {
 
     pub(crate) fn bind(self, new_ty: KTy2, ty_env: &KTyEnv) {
         debug_assert!(self.try_unwrap(ty_env).is_none());
-        debug_assert_ne!(new_ty, KTy2::Unresolved);
+        debug_assert!(!new_ty.is_unresolved());
 
         let data = &ty_env[self];
         let old = replace(&mut *data.ty().borrow_mut(), new_ty);
 
         // バインドは1回のみ。
-        debug_assert_eq!(old, KTy2::Unresolved);
+        debug_assert!(old.is_unresolved());
     }
 }
 

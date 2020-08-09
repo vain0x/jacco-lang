@@ -1,7 +1,12 @@
 use super::{KAlias, KEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KTyEnv};
-use crate::utils::{DebugWith, DebugWithContext};
+use crate::{
+    parse::ATyId,
+    source::Loc,
+    utils::{DebugWith, DebugWithContext},
+};
 use std::{
     fmt::{self, Debug, Formatter},
+    hash::{Hash, Hasher},
     ops::Deref,
 };
 
@@ -104,7 +109,9 @@ impl Debug for KNumberTy {
 /// 目的: 単一化の実装を簡略化すること、メタ型変数を含むこと、他のモジュールの enum/struct の型を表現すること
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KTy2 {
-    Unresolved,
+    Unresolved {
+        cause: KTyCause,
+    },
     Meta(KMetaTy),
     Never,
     Unit,
@@ -122,6 +129,9 @@ pub(crate) enum KTy2 {
 }
 
 impl KTy2 {
+    pub(crate) const DEFAULT: KTy2 = KTy2::Unresolved {
+        cause: KTyCause::Default,
+    };
     #[allow(unused)]
     pub(crate) const I8: KTy2 = KTy2::Number(KNumberTy::I8);
     #[allow(unused)]
@@ -179,7 +189,7 @@ impl KTy2 {
 
     pub(crate) fn from_ty1(ty: KTy, k_mod: KMod) -> Self {
         match ty {
-            KTy::Unresolved => KTy2::Unresolved,
+            KTy::Unresolved { cause } => KTy2::Unresolved { cause },
             KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::Unit,
             KTy::Number(number_ty) => KTy2::Number(number_ty),
@@ -191,7 +201,9 @@ impl KTy2 {
                 param_tys.into_iter().map(|ty| KTy2::from_ty1(ty, k_mod)),
                 KTy2::from_ty1(*result_ty, k_mod),
             ),
-            KTy::Alias(_) => KTy2::Unresolved,
+            KTy::Alias(_) => KTy2::Unresolved {
+                cause: KTyCause::Alias,
+            },
             KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         }
@@ -199,13 +211,16 @@ impl KTy2 {
 
     pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
-            KTy2::Unresolved => true,
+            KTy2::Unresolved { .. } => true,
             _ => false,
         })
     }
 
     pub(crate) fn is_unresolved(&self) -> bool {
-        *self == KTy2::Unresolved
+        match *self {
+            KTy2::Unresolved { .. } => true,
+            _ => false,
+        }
     }
 
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
@@ -217,7 +232,7 @@ impl KTy2 {
 
     pub(crate) fn is_unit_or_never(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Unresolved | KTy2::Never | KTy2::Unit => true,
+            KTy2::Unresolved { .. } | KTy2::Never | KTy2::Unit => true,
             _ => false,
         })
     }
@@ -296,7 +311,9 @@ impl KTy2 {
 
 impl Default for KTy2 {
     fn default() -> Self {
-        KTy2::Unresolved
+        KTy2::Unresolved {
+            cause: KTyCause::Default,
+        }
     }
 }
 
@@ -305,7 +322,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
         let (ty_env, mod_outlines) = context;
 
         match self {
-            KTy2::Unresolved => write!(f, "{{unresolved}}"),
+            KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
             KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
                 Some(ty) => DebugWithContext::fmt(ty.borrow().deref(), context, f),
                 None => write!(f, "?{}", meta_ty.to_index()),
@@ -355,7 +372,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
 impl Debug for KTy2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            KTy2::Unresolved => write!(f, "{{unresolved}}"),
+            KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Never => write!(f, "!"),
             KTy2::Unit => write!(f, "()"),
@@ -380,15 +397,43 @@ fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
     match ty {
         KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
             Some(ty) => ty2_map(&ty.borrow(), ty_env, f),
-            None => f(&KTy2::Unresolved),
+            None => f(&KTy2::Unresolved {
+                cause: KTyCause::Unbound,
+            }),
         },
         _ => f(ty),
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum KTyCause {
+    Default,
+    InitLater(Loc),
+    Miss,
+    Alias,
+    FieldTag,
+    NameUnresolved(ATyId),
+    Unbound,
+    Loc(Loc),
+}
+
+impl PartialEq for KTyCause {
+    fn eq(&self, _: &KTyCause) -> bool {
+        true
+    }
+}
+
+impl Eq for KTyCause {}
+
+impl Hash for KTyCause {
+    fn hash<H: Hasher>(&self, _: &mut H) {}
+}
+
+#[derive(Clone, PartialEq)]
 pub(crate) enum KTy {
-    Unresolved,
+    Unresolved {
+        cause: KTyCause,
+    },
     Never,
     Unit,
     Number(KNumberTy),
@@ -406,6 +451,9 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
+    pub(crate) const DEFAULT: KTy = KTy::Unresolved {
+        cause: KTyCause::Default,
+    };
     pub(crate) const I8: KTy = KTy::Number(KNumberTy::I8);
     pub(crate) const I16: KTy = KTy::Number(KNumberTy::I16);
     pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
@@ -430,6 +478,12 @@ impl KTy {
     #[allow(unused)]
     pub(crate) const CNN: KTy = KTy::Number(KNumberTy::CNN);
     pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
+
+    pub(crate) fn init_later(loc: Loc) -> Self {
+        KTy::Unresolved {
+            cause: KTyCause::InitLater(loc),
+        }
+    }
 
     #[allow(unused)]
     pub(crate) fn from_number_ty(number_ty: KNumberTy) -> &'static KTy {
@@ -470,7 +524,7 @@ impl KTy {
 
     pub(crate) fn is_unresolved(&self) -> bool {
         match self {
-            KTy::Unresolved => true,
+            KTy::Unresolved { .. } => true,
             _ => false,
         }
     }
@@ -500,14 +554,16 @@ impl KTy {
 
 impl Default for KTy {
     fn default() -> Self {
-        KTy::Unresolved
+        KTy::Unresolved {
+            cause: KTyCause::Default,
+        }
     }
 }
 
 impl Debug for KTy {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            KTy::Unresolved => write!(f, "???"),
+            KTy::Unresolved { .. } => write!(f, "???"),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::Number(number_ty) => write!(f, "{}", number_ty.as_str()),

@@ -232,8 +232,8 @@ fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     // FIXME: 整数型は std::int32_t とかの方がよいかも
     match ty {
-        KTy::Unresolved => {
-            error!("Unexpected unresolved type {:?}", ty);
+        KTy::Unresolved { cause } => {
+            error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
             CTy::Other("/* unresolved */ void")
         }
         KTy::Never => {
@@ -270,8 +270,8 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
 
 fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     match ty {
-        KTy2::Unresolved => {
-            error!("Unexpected unresolved type {:?}", ty);
+        KTy2::Unresolved { cause } => {
+            error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
             CTy::Other("/* unresolved */ void")
         }
         KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(&ty_env) {

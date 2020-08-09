@@ -154,7 +154,7 @@ impl NAbsName {
     #[allow(unused)]
     pub(crate) fn ty(self, k_root: &KModData) -> &KTy2 {
         match self {
-            NAbsName::Unresolved => return &KTy2::Unresolved,
+            NAbsName::Unresolved => return &KTy2::DEFAULT,
             NAbsName::LocalVar {
                 parent_fn: NParentFn::Fn(k_fn),
                 local,
@@ -165,7 +165,7 @@ impl NAbsName {
             } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
             NAbsName::Other(_) => {
                 // FIXME: 実装
-                &KTy2::Unresolved
+                &KTy2::DEFAULT
             }
         }
     }

@@ -288,7 +288,9 @@ pub(crate) fn gen_ty_name(p_name: PName, name_res: &VecArena<PNameTag, NName>) -
         NName::Alias(alias) => KTy::Alias(alias),
         NName::Enum(n_enum) => KTy::Enum(n_enum),
         NName::Struct(n_struct) => KTy::Struct(n_struct),
-        _ => KTy::Unresolved,
+        _ => KTy::Unresolved {
+            cause: KTyCause::Default,
+        },
     }
 }
 
@@ -303,7 +305,11 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
             let k_mut = gen_mut(mut_opt.as_ref());
             let base_ty = match ty_opt.as_deref() {
                 Some(ty) => gen_ty(ty, name_res),
-                None => return KTy::Unresolved,
+                None => {
+                    return KTy::Unresolved {
+                        cause: KTyCause::Default,
+                    }
+                }
             };
             base_ty.into_ptr(k_mut)
         }
@@ -1150,9 +1156,12 @@ fn gen_decl(decl: &PDecl, gx: &mut Gx) {
             init_opt,
             ..
         }) => {
-            let ty = ty_opt
-                .as_ref()
-                .map_or(KTy::Unresolved, |ty| gen_ty(ty, &gx.name_res));
+            let ty = match ty_opt {
+                Some(ty) => gen_ty(ty, &gx.name_res),
+                None => KTy::Unresolved {
+                    cause: KTyCause::Default,
+                },
+            };
 
             let k_init = gen_expr(init_opt.as_ref().unwrap(), gx);
             let mut result = gen_name(name_opt.unwrap(), gx).as_symbol().unwrap();
@@ -1676,7 +1685,9 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
             Some(ty) => ty,
             None => {
                 error_unresolved_ty(PLoc::Ty(ty_id), xx.logger);
-                KTy::Unresolved
+                KTy::Unresolved {
+                    cause: KTyCause::NameUnresolved(ty_id),
+                }
             }
         },
         ATy::Never => KTy::Never,
@@ -1695,7 +1706,12 @@ pub(crate) fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
 }
 
 pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
-    ty_opt.map_or(KTy::Unresolved, |ty| convert_ty(ty, xx))
+    match ty_opt {
+        Some(ty) => convert_ty(ty, xx),
+        None => KTy::Unresolved {
+            cause: KTyCause::Miss,
+        },
+    }
 }
 
 // -----------------------------------------------

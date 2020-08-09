@@ -1,5 +1,6 @@
 use super::*;
 use crate::{source::Loc, utils::DebugWithContext};
+use k_ty::KTyCause;
 use std::fmt::{self, Debug, Formatter};
 
 /// CPS 原子項
@@ -42,7 +43,9 @@ impl KTerm {
             KTerm::Name(symbol) => symbol.local.ty(&locals),
             KTerm::Alias { .. } => {
                 // FIXME: 実装. mod_outlines を受け取る必要がある
-                KTy2::Unresolved
+                KTy2::Unresolved {
+                    cause: KTyCause::Alias,
+                }
             }
             KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).to_ty2(k_mod),
             KTerm::StaticVar { static_var, .. } => {
@@ -59,7 +62,9 @@ impl KTerm {
                 .to_ty2(k_mod),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
-                KTy2::Unresolved
+                KTy2::Unresolved {
+                    cause: KTyCause::FieldTag,
+                }
             }
         }
     }

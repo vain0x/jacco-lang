@@ -376,7 +376,7 @@ fn resolve_local_var_def(name: PName, nx: &mut Nx) -> KLocal {
     // alloc local
     let local_var = nx.parent_local_vars.alloc(NLocalVarData {
         name: name.text(&nx.names).to_string(),
-        ty: KTy::Unresolved,
+        ty: KTy::DEFAULT,
         loc: name.loc(),
     });
 
@@ -584,7 +584,7 @@ fn resolve_param_list_opt(
             Some(ty) => gen_ty(ty, &nx.res.names),
             None => {
                 error_on_name(param.name, "param type is mandatory", nx);
-                KTy::Unresolved
+                KTy::DEFAULT
             }
         };
         nx.parent_local_vars[local].ty = ty;
@@ -609,7 +609,7 @@ fn resolve_variant(
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: name.text(&nx.names).to_string(),
-                value_ty: KTy::Unresolved,
+                value_ty: KTy::DEFAULT,
                 parent_opt,
                 loc: name.loc(),
             });
@@ -637,7 +637,7 @@ fn resolve_variant(
                 // alloc field
                 let n_field = nx.res.fields.alloc(NFieldData {
                     name: field.name.text(&nx.names).to_string(),
-                    ty: KTy::Unresolved,
+                    ty: KTy::DEFAULT,
                     loc: name.loc(),
                 });
                 field.field_id_opt = Some(n_field.to_index());
@@ -662,7 +662,7 @@ fn resolve_variant2(variant: &PVariantDecl, nx: &mut Nx) {
                 let ty = p_field
                     .ty_opt
                     .as_ref()
-                    .map_or(KTy::Unresolved, |ty| gen_ty(ty, &nx.res.names));
+                    .map_or(KTy::DEFAULT, |ty| gen_ty(ty, &nx.res.names));
                 k_field.of_mut(&mut nx.res.fields).ty = ty;
             }
         }
@@ -823,7 +823,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             // alloc const
             let n_const = nx.res.consts.alloc(NConstData {
                 name: String::new(),
-                value_ty: KTy::Unresolved,
+                value_ty: KTy::DEFAULT,
                 parent_opt: None,
                 loc: keyword.loc(&nx.tokens()),
             });
@@ -845,7 +845,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                     }
                     ty
                 }
-                None => KTy::Unresolved,
+                None => KTy::DEFAULT,
             };
             n_const.of_mut(&mut nx.res.consts).value_ty = value_ty;
         }
@@ -859,7 +859,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             // alloc static var
             let n_static_var = nx.res.static_vars.alloc(NStaticVarData {
                 name: String::new(),
-                ty: KTy::Unresolved,
+                ty: KTy::DEFAULT,
                 loc: keyword.loc(&nx.tokens()),
             });
 
@@ -880,7 +880,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
                     }
                     ty
                 }
-                None => KTy::Unresolved,
+                None => KTy::DEFAULT,
             };
             n_static_var.of_mut(&mut nx.res.static_vars).ty = ty;
         }
@@ -896,7 +896,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
 
             let vis_opt = vis_opt.as_ref().map(|(vis, _)| *vis);
             let mut params = vec![];
-            let mut result_ty = KTy::Unresolved;
+            let mut result_ty = KTy::DEFAULT;
 
             nx.enter_fn(k_fn, |nx| {
                 nx.enter_scope(|nx| {
@@ -925,7 +925,7 @@ fn resolve_decl(decl: &mut PDecl, nx: &mut Nx) {
             let parent_fn = replace(&mut nx.parent_fn, Some(NParentFn::ExternFn(extern_fn)));
             let parent_local_vars = take(&mut nx.parent_local_vars);
             let mut params = vec![];
-            let mut result_ty = KTy::Unresolved;
+            let mut result_ty = KTy::DEFAULT;
 
             nx.enter_scope(|nx| {
                 resolve_param_list_opt(param_list_opt.as_mut(), &mut params, nx);

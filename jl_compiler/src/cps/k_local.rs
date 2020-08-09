@@ -1,4 +1,4 @@
-use super::k_ty::KTy2;
+use super::k_ty::{KTy2, KTyCause};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -33,15 +33,17 @@ impl KLocalData {
     pub(crate) fn new(name: String, loc: Loc) -> Self {
         Self {
             name,
-            ty: KTy2::Unresolved,
+            ty: KTy2::Unresolved {
+                cause: KTyCause::Loc(loc),
+            },
             loc,
             is_alive: true,
         }
     }
 
     pub(crate) fn with_ty(mut self, ty: KTy2) -> Self {
-        if ty != KTy2::Unresolved {
-            assert_eq!(self.ty, KTy2::Unresolved);
+        if !ty.is_unresolved() {
+            assert!(self.ty.is_unresolved());
             self.ty = ty;
         }
         self
