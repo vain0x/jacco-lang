@@ -1735,7 +1735,6 @@ pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
 
 // 入れ子のパターンはまだコンパイルできない
 enum Branch {
-    Error(Loc),
     Case(KTerm),
     Default { symbol: KSymbol, loc: Loc },
 }
@@ -2548,7 +2547,6 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         .iter()
         .map(|arm| {
             let term = match convert_pat_as_cond(arm.pat, xx) {
-                Branch::Error(loc) => new_error_term(loc),
                 Branch::Case(term) => term,
                 Branch::Default { symbol, .. } => KTerm::Name(symbol),
             };
