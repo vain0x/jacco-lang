@@ -231,6 +231,25 @@ impl<Tag, T> VecArena<Tag, T> {
         id.to_index() < self.inner.len()
     }
 
+    /// 要素への参照から ID を逆算する。
+    #[allow(unused)]
+    pub(crate) fn id_from_ref<'a>(&'a self, value: &'a T) -> Option<VecArenaId<Tag>> {
+        assert_ne!(std::mem::size_of::<T>(), 0);
+
+        // ptr < start のとき (ptr - start) は巨大な数になるので、結果として None を返す。
+        let i = {
+            let start = self.inner.as_ptr();
+            let ptr = value as *const T;
+            (ptr as usize).wrapping_sub(start as usize) / std::mem::size_of::<T>()
+        };
+
+        if i < self.len() {
+            Some(VecArenaId::from_index(i))
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn alloc(&mut self, value: T) -> VecArenaId<Tag> {
         let id = self.next_id();
         self.inner.push(value);
@@ -474,5 +493,26 @@ mod tests {
             format!("{:?}", arena),
             r#"{0: "Alice", 1: "Bob", 2: "Catherine", 3: "Dave"}"#
         );
+    }
+
+    #[test]
+    fn test_id_from_ref() {
+        let mut arena = StrArena::new();
+        let alice = arena.alloc("Alice");
+        let bob = arena.alloc("Bob");
+
+        assert_eq!(arena.id_from_ref(alice.of(&arena)), Some(alice));
+        assert_eq!(arena.id_from_ref(bob.of(&arena)), Some(bob));
+
+        let cloned_alice = alice.of(&arena).clone();
+        assert_eq!(arena.id_from_ref(&cloned_alice), None);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_id_from_ref_does_not_work_for_zero_sided_types() {
+        let mut arena: VecArena<(), ()> = VecArena::new();
+        let id = arena.alloc(());
+        arena.id_from_ref(id.of(&arena));
     }
 }
