@@ -2712,7 +2712,7 @@ fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mu
     }
 }
 
-fn convert_let_decl(decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let name = decl
         .name_opt
         .as_ref()
@@ -2726,7 +2726,10 @@ fn convert_let_decl(decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
         .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
     let symbol = KSymbol {
         local,
-        cause: loc.into(),
+        cause: KSymbolCause::LetDecl {
+            doc: xx.doc,
+            decl_id,
+        },
     };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
@@ -2934,7 +2937,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
         }
         ADecl::Let(decl) => {
             assert_eq!(symbol_opt, None);
-            convert_let_decl(decl, loc, xx);
+            convert_let_decl(decl_id, decl, loc, xx);
         }
         ADecl::Const(decl) => {
             let k_const = match symbol_opt {

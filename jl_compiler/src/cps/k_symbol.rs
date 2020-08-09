@@ -12,6 +12,10 @@ use std::fmt::{self, Formatter};
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KSymbolCause {
     Loc(Loc),
+    LetDecl {
+        doc: Doc,
+        decl_id: ADeclId,
+    },
     ParamDecl {
         doc: Doc,
         decl_id: ADeclId,
@@ -23,6 +27,9 @@ impl KSymbolCause {
     pub(crate) fn loc(self) -> Loc {
         match self {
             KSymbolCause::Loc(loc) => loc,
+            KSymbolCause::LetDecl { doc, decl_id } => {
+                Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)))
+            }
             KSymbolCause::ParamDecl {
                 doc,
                 decl_id,
