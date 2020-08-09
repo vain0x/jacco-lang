@@ -134,13 +134,13 @@ impl KTerm {
     pub(crate) fn loc(&self) -> Loc {
         match self {
             KTerm::Int { cause, .. } => cause.loc(),
+            KTerm::Name(KSymbol { cause, .. }) => cause.loc(),
             KTerm::Unit { loc }
             | KTerm::Float { loc, .. }
             | KTerm::Char { loc, .. }
             | KTerm::Str { loc, .. }
             | KTerm::True { loc }
             | KTerm::False { loc }
-            | KTerm::Name(KSymbol { loc, .. })
             | KTerm::Alias { loc, .. }
             | KTerm::Const { loc, .. }
             | KTerm::StaticVar { loc, .. }
@@ -179,7 +179,7 @@ impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelA
             KTerm::False { .. } => write!(f, "false"),
             KTerm::Name(symbol) => match local_opt {
                 Some((locals, _)) => write!(f, "{}", symbol.local.of(locals).name),
-                None => write!(f, "symbol({:?})", symbol.loc),
+                None => write!(f, "symbol({:?})", symbol.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
             KTerm::Const { k_const, .. } => write!(f, "{}", k_const.of(&mod_outline.consts).name),

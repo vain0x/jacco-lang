@@ -258,7 +258,7 @@ fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx:
 
     if let Some(expected_ty) = expected_ty_opt {
         let symbol_ty = symbol.ty(&tx.locals);
-        unify2(&symbol_ty, expected_ty, symbol.loc, tx);
+        unify2(&symbol_ty, expected_ty, symbol.loc(), tx);
     }
 }
 
@@ -545,7 +545,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
-                    tx.logger.error(&result.loc, "expected a reference");
+                    tx.logger.error(&result.loc(), "expected a reference");
                 }
                 resolve_symbol_def2(result, result_ty_opt.as_ref(), tx);
             }

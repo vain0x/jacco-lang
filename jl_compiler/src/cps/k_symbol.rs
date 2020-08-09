@@ -4,11 +4,30 @@ use super::{
 use crate::{source::HaveLoc, source::Loc, utils::DebugWithContext};
 use std::fmt::{self, Formatter};
 
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum KSymbolCause {
+    Loc(Loc),
+}
+
+impl KSymbolCause {
+    pub(crate) fn loc(self) -> Loc {
+        match self {
+            KSymbolCause::Loc(loc) => loc,
+        }
+    }
+}
+
+impl From<Loc> for KSymbolCause {
+    fn from(loc: Loc) -> Self {
+        KSymbolCause::Loc(loc)
+    }
+}
+
 /// ローカル変数の出現
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct KSymbol {
     pub(crate) local: KLocal,
-    pub(crate) loc: Loc,
+    pub(crate) cause: KSymbolCause,
 }
 
 impl KSymbol {
@@ -19,17 +38,26 @@ impl KSymbol {
     pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut KLocalArena) -> &'a mut KTy2 {
         &mut self.local.of_mut(locals).ty
     }
+
+    pub(crate) fn loc(&self) -> Loc {
+        self.cause.loc()
+    }
 }
 
 impl HaveLoc for KSymbol {
     fn loc(&self) -> Loc {
-        self.loc
+        KSymbol::loc(self)
     }
 }
 
 impl DebugWithContext<KLocalArena> for KSymbol {
     fn fmt(&self, context: &KLocalArena, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} (loc = {:?})", self.local.of(context).name, self.loc)
+        write!(
+            f,
+            "{} (cause = {:?})",
+            self.local.of(context).name,
+            self.cause
+        )
     }
 }
 

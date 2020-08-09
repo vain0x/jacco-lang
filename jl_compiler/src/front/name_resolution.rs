@@ -591,7 +591,7 @@ fn resolve_param_list_opt(
 
         k_params.push(KSymbol {
             local,
-            loc: param.name.loc(),
+            cause: param.name.loc().into(),
         });
     }
 }

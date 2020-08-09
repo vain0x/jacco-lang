@@ -25,7 +25,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
             let local_data = &mut ex.locals[symbol.local];
             if local_data.ty.is_unit_or_never(&ex.ty_env) {
                 local_data.is_alive = false;
-                let loc = symbol.loc;
+                let loc = symbol.loc();
                 *arg = KTerm::Unit { loc };
             }
         }

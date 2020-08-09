@@ -73,7 +73,10 @@ impl<'a> Gx<'a> {
             .current_locals
             .alloc(KLocalData::new(hint.to_string(), loc));
 
-        KSymbol { local, loc }
+        KSymbol {
+            local,
+            cause: loc.into(),
+        }
     }
 
     fn fresh_label(&mut self, hint: &str, _loc: Loc) -> KLabel {
@@ -96,7 +99,7 @@ impl<'a> Gx<'a> {
 
     // ちょうど1つの継続を持つプリミティブノードを生成する。
     fn push_prim_1(&mut self, prim: KPrim, args: Vec<KTerm>, result: KSymbol) {
-        let loc = result.loc;
+        let loc = result.loc();
         self.push(KCommand::Node {
             prim,
             tys: vec![],
@@ -373,7 +376,10 @@ fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
             local_data.name = name.to_string();
             local_data.is_alive = true;
 
-            KSymbolExt::Symbol(KSymbol { local, loc })
+            KSymbolExt::Symbol(KSymbol {
+                local,
+                cause: loc.into(),
+            })
         }
         NName::Fn(k_fn) => KSymbolExt::Fn(k_fn),
         NName::ExternFn(extern_fn) => KSymbolExt::ExternFn(extern_fn),
@@ -2000,7 +2006,10 @@ fn emit_unit_like_struct(
 
 fn fresh_symbol(hint: &str, loc: Loc, xx: &mut Xx) -> KSymbol {
     let local = xx.local_vars.alloc(KLocalData::new(hint.to_string(), loc));
-    KSymbol { local, loc }
+    KSymbol {
+        local,
+        cause: loc.into(),
+    }
 }
 
 fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
@@ -2015,7 +2024,7 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     match value {
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
             local: local_var,
-            loc,
+            cause: loc.into(),
         }),
         KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
@@ -2040,7 +2049,10 @@ fn convert_name_lval(name: &AName, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm 
     };
 
     let term = match value {
-        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol { local, loc }),
+        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol {
+            local,
+            cause: KSymbolCause::Loc(loc),
+        }),
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::Const(_)
@@ -2712,7 +2724,10 @@ fn convert_let_decl(decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let local = xx
         .local_vars
         .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
-    let symbol = KSymbol { local, loc };
+    let symbol = KSymbol {
+        local,
+        cause: loc.into(),
+    };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
@@ -2784,7 +2799,10 @@ fn convert_param_decls(
             let name = param_decl.name.text.to_string();
             let local = locals.alloc(KLocalData::new(name.to_string(), loc));
             env.insert_value(name, KLocalValue::LocalVar(local));
-            KSymbol { local, loc }
+            KSymbol {
+                local,
+                cause: loc.into(),
+            }
         })
         .collect()
 }

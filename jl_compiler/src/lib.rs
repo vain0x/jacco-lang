@@ -94,7 +94,7 @@ mod cps {
         KStaticVar, KStaticVarData, KStaticVarInit, KStaticVarInits, KStaticVarTag,
     };
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
-    pub(crate) use k_symbol::{KSymbol, KSymbolExt};
+    pub(crate) use k_symbol::{KSymbol, KSymbolCause, KSymbolExt};
     pub(crate) use k_term::{KTerm, KTermCause};
     pub(crate) use k_ty::{KNumberTy, KTy, KTy2, KTyCause};
     pub(crate) use k_vis::KVis;
