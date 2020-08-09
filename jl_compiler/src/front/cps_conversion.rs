@@ -1736,12 +1736,12 @@ pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
 // 入れ子のパターンはまだコンパイルできない
 enum Branch {
     Case(KTerm),
-    Default { symbol: KSymbol, loc: Loc },
+    Default(KSymbol),
 }
 
 fn convert_discard_pat_as_cond(_token: PToken, loc: Loc, xx: &mut Xx) -> Branch {
     let symbol = fresh_symbol("_", loc, xx);
-    Branch::Default { symbol, loc }
+    Branch::Default(symbol)
 }
 
 fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> Branch {
@@ -1756,7 +1756,7 @@ fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> Branch {
         }
         _ => {
             let symbol = fresh_symbol(&name.full_name, loc, xx);
-            Branch::Default { symbol, loc }
+            Branch::Default(symbol)
         }
     }
 }
@@ -2548,7 +2548,7 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         .map(|arm| {
             let term = match convert_pat_as_cond(arm.pat, xx) {
                 Branch::Case(term) => term,
-                Branch::Default { symbol, .. } => KTerm::Name(symbol),
+                Branch::Default(symbol) => KTerm::Name(symbol),
             };
             (arm, term)
         })
