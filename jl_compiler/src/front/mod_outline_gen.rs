@@ -32,6 +32,10 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
     }
 }
 
+fn new_decl_loc(doc: Doc, decl_id: ADeclId) -> Loc {
+    Loc::new(doc, PLoc::Decl(decl_id))
+}
+
 fn alloc_const(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KConst {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
@@ -124,6 +128,10 @@ fn alloc_const_variant(
     })
 }
 
+fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
+    Loc::new(doc, PLoc::FieldDecl(AFieldDeclKey::new(parent, index)))
+}
+
 fn resolve_field_decl(decl: &AFieldLikeDecl, loc: Loc) -> KFieldOutline {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
@@ -137,15 +145,15 @@ fn resolve_field_decl(decl: &AFieldLikeDecl, loc: Loc) -> KFieldOutline {
 fn alloc_record_variant(
     decl: &ARecordVariantDecl,
     parent_opt: Option<KStructParent>,
-    loc: Loc,
+    doc: Doc,
+    key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
 ) -> KStruct {
     let name = decl.name.text.to_string();
 
     let fields = {
-        let fields = decl.fields.iter().map(|field_decl| {
-            // FIXME: フィールドのロケーションを取る
-            resolve_field_decl(field_decl, loc)
+        let fields = decl.fields.iter().enumerate().map(|(index, field_decl)| {
+            resolve_field_decl(field_decl, new_field_loc(doc, key, index))
         });
         mod_outline.fields.alloc_slice(fields).iter().collect()
     };
@@ -154,23 +162,38 @@ fn alloc_record_variant(
         name,
         fields,
         parent_opt,
-        loc,
+        loc: new_struct_loc(doc, key),
     })
+}
+
+fn new_variant_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
+    Loc::new(
+        doc,
+        PLoc::VariantDecl(AVariantDeclKey::Enum(decl_id, index)),
+    )
 }
 
 fn alloc_variant(
     variant_decl: &AVariantDecl,
     parent_opt: Option<KEnum>,
-    loc: Loc,
+    doc: Doc,
+    key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
 ) -> KVariant {
     match variant_decl {
         AVariantDecl::Const(decl) => {
+            let loc = Loc::new(doc, PLoc::VariantDecl(key));
             KVariant::Const(alloc_const_variant(decl, parent_opt, loc, mod_outline))
         }
         AVariantDecl::Record(decl) => {
             let parent_opt = parent_opt.map(KStructParent::new);
-            KVariant::Record(alloc_record_variant(decl, parent_opt, loc, mod_outline))
+            KVariant::Record(alloc_record_variant(
+                decl,
+                parent_opt,
+                doc,
+                key,
+                mod_outline,
+            ))
         }
     }
 }
@@ -198,20 +221,26 @@ fn resolve_variant_decl(
     }
 }
 
-fn alloc_enum(decl: &AEnumDecl, loc: Loc, mod_outline: &mut KModOutline) -> KEnum {
+fn alloc_enum(
+    decl_id: ADeclId,
+    decl: &AEnumDecl,
+    doc: Doc,
+    mod_outline: &mut KModOutline,
+) -> KEnum {
     let name = resolve_name_opt(decl.name_opt.as_ref());
     let k_enum = mod_outline.enums.alloc(KEnumOutline {
         name,
         variants: vec![],
-        loc,
+        loc: new_decl_loc(doc, decl_id),
     });
 
     let variants = decl
         .variants
         .iter()
-        .map(|variant| {
-            // FIXME: バリアントのロケーションを取る
-            alloc_variant(variant, Some(k_enum), loc, mod_outline)
+        .enumerate()
+        .map(|(index, variant)| {
+            let key = AVariantDeclKey::Enum(decl_id, index);
+            alloc_variant(variant, Some(k_enum), doc, key, mod_outline)
         })
         .collect();
 
@@ -231,8 +260,18 @@ fn resolve_enum_decl(
     }
 }
 
-fn alloc_struct(decl: &AStructDecl, loc: Loc, mod_outline: &mut KModOutline) -> Option<KVariant> {
-    let variant = alloc_variant(decl.variant_opt.as_ref()?, None, loc, mod_outline);
+fn new_struct_loc(doc: Doc, key: AVariantDeclKey) -> Loc {
+    Loc::new(doc, PLoc::VariantDecl(key))
+}
+
+fn alloc_struct(
+    decl_id: ADeclId,
+    decl: &AStructDecl,
+    doc: Doc,
+    mod_outline: &mut KModOutline,
+) -> Option<KVariant> {
+    let key = AVariantDeclKey::Struct(decl_id);
+    let variant = alloc_variant(decl.variant_opt.as_ref()?, None, doc, key, mod_outline);
     Some(variant)
 }
 
@@ -291,11 +330,11 @@ fn alloc_outline(
                 KModLocalSymbol::ExternFn(extern_fn)
             }
             ADecl::Enum(enum_decl) => {
-                let k_enum = alloc_enum(enum_decl, loc, mod_outline);
+                let k_enum = alloc_enum(decl_id, enum_decl, doc, mod_outline);
                 KModLocalSymbol::Enum(k_enum)
             }
             ADecl::Struct(struct_decl) => {
-                let variant = match alloc_struct(struct_decl, loc, mod_outline) {
+                let variant = match alloc_struct(decl_id, struct_decl, doc, mod_outline) {
                     Some(it) => it,
                     None => continue,
                 };
