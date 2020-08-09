@@ -1739,8 +1739,11 @@ enum Branch {
     Default(KSymbol),
 }
 
-fn convert_discard_pat_as_cond(_token: PToken, loc: Loc, xx: &mut Xx) -> Branch {
-    let symbol = fresh_symbol("_", loc, xx);
+fn convert_discard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
+    let symbol = {
+        let cause = KSymbolCause::DiscardPat(xx.doc, token);
+        fresh_symbol("_", cause, xx)
+    };
     Branch::Default(symbol)
 }
 
@@ -1794,7 +1797,7 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         APat::Str(token) => convert_str_expr(*token, xx.tokens),
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
-        APat::Discard(token) => return convert_discard_pat_as_cond(*token, loc, xx),
+        APat::Discard(token) => return convert_discard_pat_as_cond(*token, xx),
         APat::Name(name) => return convert_name_pat_as_cond(name, loc, xx),
         APat::Unit => KTerm::Unit { loc },
         APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
