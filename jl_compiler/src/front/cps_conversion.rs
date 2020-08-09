@@ -2003,12 +2003,11 @@ fn emit_unit_like_struct(
     KTerm::Name(result)
 }
 
-fn fresh_symbol(hint: &str, loc: Loc, xx: &mut Xx) -> KSymbol {
+fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSymbol {
+    let cause = cause.into();
+    let loc = cause.loc();
     let local = xx.local_vars.alloc(KLocalData::new(hint.to_string(), loc));
-    KSymbol {
-        local,
-        cause: loc.into(),
-    }
+    KSymbol { local, cause }
 }
 
 fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
