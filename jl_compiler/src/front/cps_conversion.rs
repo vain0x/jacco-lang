@@ -2801,7 +2801,11 @@ fn convert_param_decls(
             env.insert_value(name, KLocalValue::LocalVar(local));
             KSymbol {
                 local,
-                cause: loc.into(),
+                cause: KSymbolCause::ParamDecl {
+                    doc,
+                    decl_id,
+                    index,
+                },
             }
         })
         .collect()
