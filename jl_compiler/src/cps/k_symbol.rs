@@ -2,7 +2,7 @@ use super::{
     k_local::KLocalArena, k_ty::KTy2, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct,
 };
 use crate::{
-    parse::{ADeclId, ANameKey, AParamDeclKey, PLoc},
+    parse::{ANameKey, PLoc},
     source::Loc,
     source::{Doc, HaveLoc},
     utils::DebugWithContext,
@@ -12,32 +12,14 @@ use std::fmt::{self, Formatter};
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KSymbolCause {
     Loc(Loc),
-    LetDecl {
-        doc: Doc,
-        decl_id: ADeclId,
-    },
-    ParamDecl {
-        doc: Doc,
-        decl_id: ADeclId,
-        index: usize,
-    },
+    NameDef(Doc, ANameKey),
 }
 
 impl KSymbolCause {
     pub(crate) fn loc(self) -> Loc {
         match self {
             KSymbolCause::Loc(loc) => loc,
-            KSymbolCause::LetDecl { doc, decl_id } => {
-                Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)))
-            }
-            KSymbolCause::ParamDecl {
-                doc,
-                decl_id,
-                index,
-            } => Loc::new(
-                doc,
-                PLoc::Name(ANameKey::Param(AParamDeclKey::new(decl_id, index))),
-            ),
+            KSymbolCause::NameDef(doc, key) => Loc::new(doc, PLoc::Name(key)),
         }
     }
 }

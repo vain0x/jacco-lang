@@ -2724,10 +2724,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
         .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
     let symbol = KSymbol {
         local,
-        cause: KSymbolCause::LetDecl {
-            doc: xx.doc,
-            decl_id,
-        },
+        cause: KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id)),
     };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
@@ -2774,11 +2771,8 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
     };
 }
 
-fn new_param_name_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
-    Loc::new(
-        doc,
-        PLoc::Name(ANameKey::Param(AParamDeclKey::new(decl_id, index))),
-    )
+fn new_param_name_key(decl_id: ADeclId, index: usize) -> ANameKey {
+    ANameKey::Param(AParamDeclKey::new(decl_id, index))
 }
 
 fn convert_param_decls(
@@ -2796,17 +2790,14 @@ fn convert_param_decls(
         .enumerate()
         .zip(param_tys)
         .map(|((index, param_decl), param_ty)| {
-            let loc = new_param_name_loc(doc, decl_id, index);
+            let name_key = new_param_name_key(decl_id, index);
+            let loc = Loc::new(doc, PLoc::Name(name_key));
             let name = param_decl.name.text.to_string();
             let local = locals.alloc(KLocalData::new(name.to_string(), loc));
             env.insert_value(name, KLocalValue::LocalVar(local));
             KSymbol {
                 local,
-                cause: KSymbolCause::ParamDecl {
-                    doc,
-                    decl_id,
-                    index,
-                },
+                cause: KSymbolCause::NameDef(doc, name_key),
             }
         })
         .collect()

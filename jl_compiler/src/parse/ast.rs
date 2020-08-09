@@ -22,7 +22,7 @@ pub(crate) struct AName {
     pub(crate) full_name: String,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum ANameKey {
     Ty(ATyId),
     Pat(APatId),
@@ -230,7 +230,7 @@ pub(crate) struct AFieldLikeDecl {
     pub(crate) value_opt: Option<AExprId>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct AFieldDeclKey {
     parent: AVariantDeclKey,
     index: usize,
@@ -259,7 +259,7 @@ pub(crate) struct AParamDecl {
     pub(crate) ty_opt: Option<ATyId>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct AParamDeclKey {
     parent: ADeclId,
     index: usize,
@@ -297,7 +297,7 @@ pub(crate) enum AVariantDecl {
     Record(ARecordVariantDecl),
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum AVariantDeclKey {
     Enum(ADeclId, usize),
     Struct(ADeclId),
