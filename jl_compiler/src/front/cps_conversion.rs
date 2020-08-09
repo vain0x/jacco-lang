@@ -1747,7 +1747,8 @@ fn convert_discard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
     Branch::Default(symbol)
 }
 
-fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> Branch {
+fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
+    let loc = Loc::new(xx.doc, PLoc::Name(key));
     match resolve_value_name(&name.full_name, loc, &mut xx.env) {
         Some(KLocalValue::Const(k_const)) => Branch::Case(KTerm::Const { k_const, loc }),
         Some(KLocalValue::UnitLikeStruct(k_struct)) => {
@@ -1758,7 +1759,10 @@ fn convert_name_pat_as_cond(name: &AName, loc: Loc, xx: &mut Xx) -> Branch {
             Branch::Case(KTerm::Alias { alias, loc })
         }
         _ => {
-            let symbol = fresh_symbol(&name.full_name, loc, xx);
+            let symbol = {
+                let cause = KSymbolCause::NameDef(xx.doc, key);
+                fresh_symbol(&name.full_name, cause, xx)
+            };
             Branch::Default(symbol)
         }
     }
@@ -1798,7 +1802,7 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
         APat::Discard(token) => return convert_discard_pat_as_cond(*token, xx),
-        APat::Name(name) => return convert_name_pat_as_cond(name, loc, xx),
+        APat::Name(name) => return convert_name_pat_as_cond(name, ANameKey::Pat(pat_id), xx),
         APat::Unit => KTerm::Unit { loc },
         APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
     };
