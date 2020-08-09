@@ -142,6 +142,7 @@ impl AnalysisCache {
             let logs = Logs::new();
             let doc_logs = DocLogs::new();
             let (mut outline, mut root) = front::cps_conversion(
+                Doc::MAX,
                 KMod::TODO,
                 &syntax.root,
                 symbols.name_resolution_opt.as_ref().unwrap(),

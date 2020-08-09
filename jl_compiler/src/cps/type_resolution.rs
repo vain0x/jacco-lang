@@ -379,6 +379,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let def_fn_ty = resolve_term(label, tx);
                 let arg_tys = resolve_terms(args, tx);
 
+                // FIXME: unwrap しない
                 let (param_tys, _) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
 
                 // FIXME: 引数の個数を検査する
@@ -394,6 +395,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let def_fn_ty = resolve_term(callee, tx);
                 let arg_tys = resolve_terms(args, tx);
 
+                // FIXME: unwrap しない
                 let (param_tys, result_ty) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
 
                 // FIXME: 引数の個数を検査する

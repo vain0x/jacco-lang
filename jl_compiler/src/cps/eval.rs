@@ -25,7 +25,11 @@ struct Xx<'a> {
 fn eval_term(term: &KTerm, xx: &Xx) -> Result<Option<KConstValue>, (EvalError, Loc)> {
     let value = match term {
         KTerm::Unit { .. } => return Ok(None),
-        KTerm::Int { text, loc, .. } | KTerm::Float { text, loc, .. } => {
+        KTerm::Int { text, cause, .. } => {
+            let pair = eval_number(&text).map_err(|err| (EvalError::Lit(err), cause.loc()))?;
+            KConstValue::from(pair)
+        }
+        KTerm::Float { text, loc, .. } => {
             let pair = eval_number(&text).map_err(|err| (EvalError::Lit(err), *loc))?;
             KConstValue::from(pair)
         }

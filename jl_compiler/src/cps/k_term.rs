@@ -1,27 +1,89 @@
 use super::*;
-use crate::{source::Loc, utils::DebugWithContext};
+use crate::{
+    parse::{PLoc, PToken},
+    source::{Doc, Loc},
+    utils::DebugWithContext,
+};
 use k_ty::KTyCause;
 use std::fmt::{self, Debug, Formatter};
+
+#[derive(Copy, Clone)]
+pub(crate) enum KTermCause {
+    Token(Doc, PToken),
+}
+
+impl KTermCause {
+    pub(crate) fn loc(self) -> Loc {
+        match self {
+            KTermCause::Token(doc, token) => Loc::new(doc, PLoc::Token(token)),
+        }
+    }
+}
 
 /// CPS 原子項
 #[derive(Clone)]
 pub(crate) enum KTerm {
-    Unit { loc: Loc },
-    Int { text: String, ty: KTy2, loc: Loc },
-    Float { text: String, ty: KTy2, loc: Loc },
-    Char { text: String, ty: KTy2, loc: Loc },
-    Str { text: String, loc: Loc },
-    True { loc: Loc },
-    False { loc: Loc },
+    Unit {
+        loc: Loc,
+    },
+    Int {
+        text: String,
+        ty: KTy2,
+        cause: KTermCause,
+    },
+    Float {
+        text: String,
+        ty: KTy2,
+        loc: Loc,
+    },
+    Char {
+        text: String,
+        ty: KTy2,
+        loc: Loc,
+    },
+    Str {
+        text: String,
+        loc: Loc,
+    },
+    True {
+        loc: Loc,
+    },
+    False {
+        loc: Loc,
+    },
     Name(KSymbol),
-    Alias { alias: KAlias, loc: Loc },
-    Const { k_const: KConst, loc: Loc },
-    StaticVar { static_var: KStaticVar, loc: Loc },
-    Fn { k_fn: KFn, loc: Loc },
-    Label { label: KLabel, loc: Loc },
-    Return { k_fn: KFn, loc: Loc },
-    ExternFn { extern_fn: KExternFn, loc: Loc },
-    RecordTag { k_struct: KStruct, loc: Loc },
+    Alias {
+        alias: KAlias,
+        loc: Loc,
+    },
+    Const {
+        k_const: KConst,
+        loc: Loc,
+    },
+    StaticVar {
+        static_var: KStaticVar,
+        loc: Loc,
+    },
+    Fn {
+        k_fn: KFn,
+        loc: Loc,
+    },
+    Label {
+        label: KLabel,
+        loc: Loc,
+    },
+    Return {
+        k_fn: KFn,
+        loc: Loc,
+    },
+    ExternFn {
+        extern_fn: KExternFn,
+        loc: Loc,
+    },
+    RecordTag {
+        k_struct: KStruct,
+        loc: Loc,
+    },
     FieldTag(KFieldTag),
 }
 
@@ -71,8 +133,8 @@ impl KTerm {
 
     pub(crate) fn loc(&self) -> Loc {
         match self {
+            KTerm::Int { cause, .. } => cause.loc(),
             KTerm::Unit { loc }
-            | KTerm::Int { loc, .. }
             | KTerm::Float { loc, .. }
             | KTerm::Char { loc, .. }
             | KTerm::Str { loc, .. }

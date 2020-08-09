@@ -36,6 +36,7 @@ struct Gx<'a> {
     fns: KFnArena,
     fn_loops: VecArena<KFnTag, NLoopArena>,
     extern_fns: KExternFnArena,
+    doc: Doc,
     tokens: &'a PTokens,
     names: &'a PNameArena,
     name_res: &'a VecArena<PNameTag, NName>,
@@ -44,6 +45,7 @@ struct Gx<'a> {
 
 impl<'a> Gx<'a> {
     fn new(
+        doc: Doc,
         tokens: &'a PTokens,
         names: &'a PNameArena,
         name_res: &'a VecArena<PNameTag, NName>,
@@ -58,6 +60,7 @@ impl<'a> Gx<'a> {
             fns: Default::default(),
             fn_loops: Default::default(),
             extern_fns: Default::default(),
+            doc,
             tokens,
             names,
             name_res,
@@ -316,7 +319,7 @@ pub(crate) fn gen_ty(ty: &PTy, name_res: &VecArena<PNameTag, NName>) -> KTy {
     }
 }
 
-fn convert_number_lit(token: PToken, tokens: &PTokens, logger: &DocLogger) -> KTerm {
+fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLogger) -> KTerm {
     let result = eval_number(token.text(tokens));
 
     match result {
@@ -333,10 +336,14 @@ fn convert_number_lit(token: PToken, tokens: &PTokens, logger: &DocLogger) -> KT
                     KTerm::Int {
                         text,
                         ty: KTy2::I32,
-                        loc,
+                        cause: KTermCause::Token(doc, token),
                     }
                 }
-                _ => KTerm::Int { text, ty, loc },
+                _ => KTerm::Int {
+                    text,
+                    ty,
+                    cause: KTermCause::Token(doc, token),
+                },
             }
         }
         Err(err) => {
@@ -351,7 +358,7 @@ fn convert_number_lit(token: PToken, tokens: &PTokens, logger: &DocLogger) -> KT
 }
 
 fn gen_number_lit(token: PToken, gx: &Gx) -> KTerm {
-    convert_number_lit(token, &gx.tokens, &gx.logger)
+    convert_number_lit(token, &gx.tokens, gx.doc, &gx.logger)
 }
 
 fn gen_name(name: PName, gx: &mut Gx) -> KSymbolExt {
@@ -1326,6 +1333,7 @@ fn gen_root(root: &PRoot, gx: &mut Gx) {
 }
 
 pub(crate) fn cps_conversion(
+    doc: Doc,
     k_mod: KMod,
     p_root: &PRoot,
     name_resolution: &NameResolution,
@@ -1466,6 +1474,7 @@ pub(crate) fn cps_conversion(
             .collect();
 
         let mut gx = Gx::new(
+            doc,
             &p_root.tokens,
             &p_root.names,
             &name_resolution.names,
@@ -1776,7 +1785,7 @@ fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm 
 fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
     let term = match pat {
         APat::Char(token) => convert_char_expr(*token, xx.tokens),
-        APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
+        APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         APat::Str(token) => convert_str_expr(*token, xx.tokens),
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
@@ -2625,7 +2634,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
-        AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.logger),
+        AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.tokens),
         AExpr::True => KTerm::True { loc },

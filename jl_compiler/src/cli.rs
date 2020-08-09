@@ -171,7 +171,7 @@ impl Project {
             let doc_logs = DocLogs::new();
             let k_mod = self.mod_docs.alloc(doc);
             let (mut mod_outline, mod_data) =
-                cps_conversion(k_mod, &syntax.root, name_resolution, doc_logs.logger());
+                cps_conversion(doc, k_mod, &syntax.root, name_resolution, doc_logs.logger());
             mod_outline.name = self.docs[id].name.to_string();
 
             logs.logger().extend_from_doc_logs(doc, doc_logs);
