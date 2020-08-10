@@ -32,11 +32,12 @@ fn new_never_term(loc: Loc) -> KTerm {
 }
 
 fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLogger) -> KTerm {
-    let result = eval_number(token.text(tokens));
+    let text = token.text(tokens).to_string();
+    let cause = KTermCause::Token(doc, token);
+    let loc = cause.loc();
 
-    match result {
+    match eval_number(&text) {
         Ok((_, number_ty)) => {
-            let (text, loc) = token.decompose(&tokens);
             let ty = KTy2::Number(number_ty);
             match number_ty {
                 KNumberTy::F32 | KNumberTy::F64 | KNumberTy::FNN => KTerm::Float { text, ty, loc },
@@ -48,14 +49,10 @@ fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLog
                     KTerm::Int {
                         text,
                         ty: KTy2::I32,
-                        cause: KTermCause::Token(doc, token),
+                        cause,
                     }
                 }
-                _ => KTerm::Int {
-                    text,
-                    ty,
-                    cause: KTermCause::Token(doc, token),
-                },
+                _ => KTerm::Int { text, ty, cause },
             }
         }
         Err(err) => {
@@ -64,7 +61,7 @@ fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLog
                 LitErr::UnknownSuffix => "不正なサフィックスです",
             };
             logger.error(PLoc::new(token), message);
-            new_never_term(token.loc(tokens))
+            new_never_term(cause.loc())
         }
     }
 }
@@ -342,9 +339,9 @@ fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm 
 
 fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
     let term = match pat {
-        APat::Char(token) => convert_char_expr(*token, xx.tokens),
+        APat::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
-        APat::Str(token) => convert_str_expr(*token, xx.tokens),
+        APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
         APat::Discard(token) => return convert_discard_pat_as_cond(*token, xx),
@@ -529,18 +526,18 @@ fn do_in_loop(loc: Loc, xx: &mut Xx, f: impl FnOnce(&mut Xx, FreshLabel, FreshLa
     }
 }
 
-fn convert_char_expr(token: PToken, tokens: &PTokens) -> KTerm {
+fn convert_char_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
     KTerm::Char {
         text: token.text(tokens).to_string(),
         ty: KTy2::C8,
-        loc: token.loc(tokens),
+        loc: KTermCause::Token(doc, token).loc(),
     }
 }
 
-fn convert_str_expr(token: PToken, tokens: &PTokens) -> KTerm {
+fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
     KTerm::Str {
         text: token.text(tokens).to_string(),
-        loc: token.loc(tokens),
+        loc: KTermCause::Token(doc, token).loc(),
     }
 }
 
@@ -1206,8 +1203,8 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
 
     match expr {
         AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
-        AExpr::Char(token) => convert_char_expr(*token, xx.tokens),
-        AExpr::Str(token) => convert_str_expr(*token, xx.tokens),
+        AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
+        AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         AExpr::True => KTerm::True { loc },
         AExpr::False => KTerm::False { loc },
         AExpr::Name(name) => convert_name_expr(&name.full_name, ANameKey::Expr(expr_id), xx),
