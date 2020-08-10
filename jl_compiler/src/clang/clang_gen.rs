@@ -926,7 +926,7 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let stmts = cx.enter_block(|cx| {
-            for label_data in labels.iter() {
+            for label_data in labels.iter().skip(1) {
                 for param in label_data.params.iter() {
                     emit_var_decl(param, None, &ty_env, cx);
                 }
@@ -940,7 +940,7 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
             cx.label_ident_ids.resize(labels.len(), None);
             gen_node(&fn_data.body, &ty_env, cx);
 
-            for (label, label_data) in labels.enumerate() {
+            for (label, label_data) in labels.enumerate().skip(1) {
                 let name = unique_label_name(label, cx);
                 cx.stmts.push(CStmt::Label { label: name });
 
