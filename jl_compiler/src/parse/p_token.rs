@@ -16,8 +16,8 @@ impl PToken {
         tokens[self].text()
     }
 
-    pub(crate) fn range(self, tokens: &PTokens) -> Result<TRange, &'static str> {
-        Ok(tokens[self].range())
+    pub(crate) fn range(self, tokens: &PTokens) -> TRange {
+        tokens[self].range()
     }
 }
 

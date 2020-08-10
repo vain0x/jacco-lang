@@ -128,8 +128,8 @@ impl PElementData {
 
     pub(crate) fn range(&self, root: &PRoot) -> Result<TRange, &'static str> {
         let range = match (self.first_token(root), self.last_token(root)) {
-            (Some(first), Some(last)) => first.range(&root.tokens)?.join(last.range(&root.tokens)?),
-            (Some(token), None) | (None, Some(token)) => token.range(&root.tokens)?,
+            (Some(first), Some(last)) => first.range(&root.tokens).join(last.range(&root.tokens)),
+            (Some(token), None) | (None, Some(token)) => token.range(&root.tokens),
             (None, None) => return Err("<PElementData::range>"),
         };
         Ok(range)

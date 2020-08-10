@@ -53,10 +53,10 @@ impl PLoc {
         let range = match self {
             PLoc::Unknown(hint) => return Err(hint),
             PLoc::Range(range) => range,
-            PLoc::Token(token) => token.range(&root.tokens)?,
-            PLoc::TokenBehind(token) => token.range(&root.tokens)?.to_end(),
+            PLoc::Token(token) => token.range(&root.tokens),
+            PLoc::TokenBehind(token) => token.range(&root.tokens).to_end(),
             PLoc::TokenRange { first, last } => {
-                first.range(&root.tokens)?.join(last.range(&root.tokens)?)
+                first.range(&root.tokens).join(last.range(&root.tokens))
             }
             PLoc::Element(element) => element.range(root)?,
             PLoc::Ty(ty_id) => ty_id.element(root).range(root)?,

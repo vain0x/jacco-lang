@@ -73,7 +73,7 @@ impl PNode {
     #[allow(unused)]
     pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
         match self {
-            PNode::Token(token) => token.range(&root.tokens),
+            PNode::Token(token) => Ok(token.range(&root.tokens)),
             PNode::Element(element) => element.of(&root.elements).range(root),
         }
     }
