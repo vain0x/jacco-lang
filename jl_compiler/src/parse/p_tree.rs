@@ -4,13 +4,22 @@ use crate::{
 };
 use std::fmt::{self, Debug, Formatter};
 
+/// 構文木
 #[derive(Clone)]
 pub(crate) struct PTree {
+    /// EOF トークン
+    /// パースが末尾に到達したことを保証するためのもの。
     pub(crate) eof: PToken,
+    /// 型なし具象構文木のルート要素
     pub(crate) root: PElement,
+    /// トークン列。
+    /// トリビアは除く。
     pub(crate) tokens: PTokens,
+    /// パーサーがエラー回復のためにスキップしたトークンのリスト
     pub(crate) skipped: Vec<PToken>,
+    /// 型なし具象構文木の要素のデータ
     pub(crate) elements: PElementArena,
+    /// 型つき抽象構文木
     pub(crate) ast: ATree,
 }
 
