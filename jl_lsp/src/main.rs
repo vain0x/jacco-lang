@@ -78,11 +78,7 @@ fn init_log() {
     use simplelog::{Config, WriteLogger};
     use std::{env::temp_dir, fs::OpenOptions};
 
-    let log_filter = if cfg!(debug_assertions) {
-        LevelFilter::Trace
-    } else {
-        LevelFilter::Warn
-    };
+    let log_filter = LevelFilter::Info;
 
     let file_path = if cfg!(debug_assertions) {
         PathBuf::from("jacco_lsp.log")
