@@ -87,7 +87,9 @@ fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &TyResolver) -> Ve
         .collect()
 }
 
-fn alloc_fn(decl: &AFnLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KFn {
+fn alloc_fn(decl_id: ADeclId, decl: &AFnLikeDecl, doc: Doc, mod_outline: &mut KModOutline) -> KFn {
+    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
+
     let vis_opt = resolve_modifiers(&decl.modifiers);
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
@@ -322,7 +324,7 @@ fn alloc_outline(
                 KModLocalSymbol::StaticVar(static_var)
             }
             ADecl::Fn(fn_decl) => {
-                let k_fn = alloc_fn(fn_decl, loc, mod_outline);
+                let k_fn = alloc_fn(decl_id, fn_decl, doc, mod_outline);
                 KModLocalSymbol::Fn(k_fn)
             }
             ADecl::ExternFn(extern_fn_decl) => {
