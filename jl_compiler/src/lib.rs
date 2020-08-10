@@ -148,6 +148,7 @@ mod parse {
     mod ast_gen;
     mod p_binary_op;
     mod p_element;
+    mod p_loc;
     mod p_node;
     mod p_token;
     mod p_tree_builder;
@@ -162,6 +163,7 @@ mod parse {
     pub(crate) use ast::*;
     pub(crate) use p_binary_op::PBinaryOp;
     pub(crate) use p_element::*;
+    pub(crate) use p_loc::PLoc;
     pub(crate) use p_node::*;
     pub(crate) use p_token::{PToken, PTokens};
     pub(crate) use p_tree_builder::*;
