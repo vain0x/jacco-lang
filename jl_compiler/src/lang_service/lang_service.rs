@@ -3,11 +3,7 @@ use super::{
     doc_analysis::{AnalysisCache, DocSymbolAnalysisMut, Symbols, Syntax},
 };
 use crate::{
-    cps::{
-        KFn, KLocalVarParent, KModData, KModLocalSymbol, KNode, KSymbol, KSymbolCause, KTerm, KTy2,
-        KTyEnv,
-    },
-    front::{NAbsName, NName, NParentFn},
+    cps::{KFn, KLocalVarParent, KModLocalSymbol, KNode, KSymbol, KSymbolCause, KTerm},
     parse::PRoot,
     source::{Doc, Loc, TPos16, TRange, TRange16},
 };
@@ -49,7 +45,6 @@ impl LangService {
 
     pub fn shutdown(&mut self) {}
 
-    #[allow(unused)]
     pub(super) fn doc_to_version(&self, doc: Doc) -> Option<i64> {
         self.docs.get(&doc).map(|cache| cache.version())
     }
@@ -135,45 +130,6 @@ impl LangService {
 
     pub fn validate(&mut self, doc: Doc) -> (Option<i64>, Vec<(TRange, String)>) {
         actions::validate(doc, self)
-    }
-}
-
-impl NParentFn {
-    fn ty_env(self, k_root: &KModData) -> &KTyEnv {
-        match self {
-            NParentFn::Fn(k_fn) => &k_fn.of(&k_root.fns).ty_env,
-            NParentFn::ExternFn(_) => KTyEnv::EMPTY,
-        }
-    }
-}
-
-impl NAbsName {
-    #[allow(unused)]
-    pub(crate) fn ty(self, k_root: &KModData) -> &KTy2 {
-        match self {
-            NAbsName::Unresolved => return &KTy2::DEFAULT,
-            NAbsName::LocalVar {
-                parent_fn: NParentFn::Fn(k_fn),
-                local,
-            } => return &local.of(&k_fn.of(&k_root.fns).locals).ty,
-            NAbsName::LocalVar {
-                parent_fn: NParentFn::ExternFn(extern_fn),
-                local,
-            } => return &local.of(&extern_fn.of(&k_root.extern_fns).locals).ty,
-            NAbsName::Other(_) => {
-                // FIXME: 実装
-                &KTy2::DEFAULT
-            }
-        }
-    }
-
-    #[allow(unused)]
-    pub(crate) fn ty_env(self, k_root: &KModData) -> &KTyEnv {
-        match self {
-            NAbsName::LocalVar { parent_fn, .. } => parent_fn.ty_env(k_root),
-            NAbsName::Other(NName::Fn(k_fn)) => &k_fn.of(&k_root.fns).ty_env,
-            _ => KTyEnv::EMPTY,
-        }
     }
 }
 

@@ -4,7 +4,7 @@ mod tests;
 
 /// API for Rust.
 pub mod rust_api {
-    pub use super::cli::{compile, compile_v2, Project};
+    pub use super::cli::{compile_v2, Project};
     pub use super::lang_service::lang_service::LangService;
     pub use super::source::{doc::Doc, TPos, TPos16, TRange};
 }
@@ -39,11 +39,9 @@ mod clang {
 mod cps {
     //! CPS 中間表現
 
-    mod cps_fold;
     mod eliminate_unit;
     mod eval;
     mod k_alias;
-    mod k_command;
     mod k_const;
     mod k_enum;
     mod k_extern_fn;
@@ -64,24 +62,18 @@ mod cps {
     mod k_vis;
     mod type_resolution;
 
-    pub(crate) use cps_fold::fold_block;
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
-    pub(crate) use k_command::KCommand;
-    pub(crate) use k_const::{
-        KConst, KConstData, KConstInit, KConstInits, KConstTag, KConstValue, KNumber,
-    };
-    pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KEnumTag, KVariant};
-    pub(crate) use k_extern_fn::{
-        KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnTag,
-    };
+    pub(crate) use k_const::{KConst, KConstData, KConstInit, KConstValue, KNumber};
+    pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KVariant};
+    pub(crate) use k_extern_fn::{KExternFn, KExternFnArena, KExternFnData, KExternFnOutline};
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
-    pub(crate) use k_fn::{KFn, KFnArena, KFnData, KFnOutline, KFnTag};
+    pub(crate) use k_fn::{KFn, KFnArena, KFnData, KFnOutline};
     pub(crate) use k_label::{
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };
-    pub(crate) use k_local::{KLocal, KLocalArena, KLocalData, KLocalTag};
+    pub(crate) use k_local::{KLocal, KLocalArena, KLocalData};
     pub(crate) use k_meta_ty::{KMetaTy, KTyEnv};
     pub(crate) use k_mod::{
         resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,
@@ -90,18 +82,16 @@ mod cps {
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::*;
-    pub(crate) use k_static_var::{
-        KStaticVar, KStaticVarData, KStaticVarInit, KStaticVarInits, KStaticVarTag,
-    };
-    pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent, KStructTag};
-    pub(crate) use k_symbol::{KSymbol, KSymbolCause, KSymbolExt};
+    pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarInit};
+    pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent};
+    pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
     pub(crate) use k_ty::{KNumberTy, KTy, KTy2, KTyCause};
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 
     use crate::logs::Logger;
-    use log::{error, trace};
+    use log::error;
 }
 
 mod front {
@@ -111,14 +101,12 @@ mod front {
     mod env;
     mod mod_outline_gen;
     mod name_resolution;
-    mod occurrence_collection;
     mod syntax_validation;
 
-    pub(crate) use cps_conversion::{convert_to_cps, cps_conversion};
+    pub(crate) use cps_conversion::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;
-    pub(crate) use name_resolution::{resolve_name, NAbsName, NName, NParentFn, NameResolution};
-    pub(crate) use occurrence_collection::{collect_occurrences, Occurrences};
-    pub(crate) use syntax_validation::validate_syntax;
+    // FIXME: 構文検査？
+    // pub(crate) use syntax_validation::validate_syntax;
 
     use crate::parse::*;
 }
@@ -195,17 +183,6 @@ mod parse {
     pub(crate) type PMut = (KMut, PToken);
 
     pub(crate) type PVis = (KVis, PToken);
-
-    /// 関数の中か外か。
-    /// FIXME: より適切な名前？
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub(crate) enum Placement {
-        /// 関数の内
-        Local,
-
-        /// 関数の外 (モジュールの直下)
-        Global,
-    }
 }
 
 mod source {

@@ -1,5 +1,5 @@
 use crate::util::{dyn_error::DynError, package_info::PackageInfo};
-use jl_compiler::rust_api::{compile, compile_v2};
+use jl_compiler::rust_api::compile_v2;
 use std::{
     env::{self, Args},
     fs,
@@ -22,7 +22,6 @@ pub(crate) fn do_exec_build_cmd(mut args: impl Iterator<Item = String>) -> Resul
     let mut source_path_opt = None;
     // or stdout
     let mut output_path_opt = None;
-    let mut v2 = false;
 
     loop {
         let arg = match args.next() {
@@ -31,7 +30,7 @@ pub(crate) fn do_exec_build_cmd(mut args: impl Iterator<Item = String>) -> Resul
         };
 
         match arg.as_str() {
-            "--v2" => v2 = true,
+            "--v2" => {}
             "-o" | "--out" => {
                 let output_path = args
                     .next()
@@ -47,11 +46,11 @@ pub(crate) fn do_exec_build_cmd(mut args: impl Iterator<Item = String>) -> Resul
         let source_path = env::current_dir()?.join("STDIN.jacco");
         let mut src = String::new();
         io::stdin().read_to_string(&mut src)?;
-        compile_with_version(&source_path, &src, v2)
+        compile_with_version(&source_path, &src)
     } else if let Some(source_path) = source_path_opt {
         let source_path = PathBuf::from(source_path);
         let src = fs::read_to_string(&source_path)?;
-        compile_with_version(&source_path, &src, v2)
+        compile_with_version(&source_path, &src)
     } else {
         return Err("ソースファイルが指定されていません。".into());
     };
@@ -74,12 +73,8 @@ pub(crate) fn do_exec_build_cmd(mut args: impl Iterator<Item = String>) -> Resul
     Ok(())
 }
 
-fn compile_with_version(source_path: &PathBuf, src: &String, v2: bool) -> Option<String> {
-    if v2 {
-        compile_v2(source_path, src)
-    } else {
-        Some(compile(source_path, src))
-    }
+fn compile_with_version(source_path: &PathBuf, src: &String) -> Option<String> {
+    compile_v2(source_path, src)
 }
 
 pub(crate) fn exec_build_cmd(args: Args, help: bool) -> Result<(), DynError> {

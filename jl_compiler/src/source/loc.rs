@@ -31,11 +31,6 @@ impl Loc {
     pub(crate) fn inner(self) -> Result<(Doc, PLoc), &'static str> {
         self.0
     }
-
-    pub(crate) fn unite(self, _other: Loc) -> Self {
-        // ロケーションの併合は無理
-        Self(Err("<Loc::unite_opt>"))
-    }
 }
 
 impl Default for Loc {

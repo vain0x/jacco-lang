@@ -181,12 +181,12 @@ fn parse_field_decls(px: &mut Px) -> AfterFieldDecls {
                 let event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_field_decl(event, name, px);
-                let can_continue = field.0.comma_opt.is_some();
+                // let can_continue = field.0.comma_opt.is_some();
                 fields.push(field);
 
-                if !can_continue {
-                    break;
-                }
+                // if !can_continue {
+                //     break;
+                // }
             }
             _ => px.skip(),
         }
@@ -254,7 +254,7 @@ fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) 
     let variants = if left_brace_opt.is_some() {
         parse_variants(px)
     } else {
-        (vec![], vec![])
+        vec![]
     };
     let right_brace_opt = if left_brace_opt.is_some() {
         px.eat(TokenKind::RightBrace)
@@ -390,23 +390,7 @@ fn do_parse_decls(decls: &mut Vec<AfterDecl>, px: &mut Px) {
 pub(crate) fn parse_semi(px: &mut Px) -> AfterSemi {
     let mut decls = vec![];
     do_parse_decls(&mut decls, px);
-
-    let (mut decls, a_decls): (Vec<_>, Vec<_>) = decls.into_iter().unzip();
-
-    // 末尾が式文で、セミコロンで終止していなければ、それは最後の式とみなす。
-    let last_opt = match decls.pop() {
-        Some(PDecl::Expr(PExprDecl {
-            expr: last,
-            semi_opt: None,
-        })) => Some(last),
-        Some(last) => {
-            decls.push(last);
-            None
-        }
-        None => None,
-    };
-
-    (decls, last_opt, a_decls)
+    decls
 }
 
 fn parse_root(px: &mut Px) -> AfterRoot {
@@ -438,18 +422,15 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
     let mut px = Px::new(tokens, logger);
 
     let decls = parse_root(&mut px);
-    let (decls, a_decls): (Vec<_>, Vec<_>) = decls.into_iter().unzip();
-    let a_decls = px.alloc_decls(a_decls);
-    let (eof, names, skipped, tokens, mut elements, mut ast, builder) = px.finish();
+    let a_decls = px.alloc_decls(decls);
+    let (eof, skipped, tokens, mut elements, mut ast, builder) = px.finish();
 
     let (root, events) = builder.finish(&mut elements);
     ast.root = ARoot { decls: a_decls };
     ast.events = events;
 
     PRoot {
-        decls,
         eof,
-        names,
         elements,
         skipped,
         tokens,
@@ -475,6 +456,6 @@ mod tests {
         let tokens = token::tokenize(token_source, source_code.to_string().into());
         let p_root = parse::parse_tokens(tokens, logs.logger());
 
-        assert!(p_root.decls.is_empty());
+        assert!(p_root.ast.decls().is_empty());
     }
 }

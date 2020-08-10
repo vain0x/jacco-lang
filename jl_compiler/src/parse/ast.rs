@@ -22,6 +22,12 @@ pub(crate) struct AName {
     pub(crate) full_name: String,
 }
 
+impl AName {
+    pub(crate) fn root_text(&self) -> &str {
+        self.full_name.split("::").next().unwrap_or("")
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum ANameKey {
     Ty(ATyId),

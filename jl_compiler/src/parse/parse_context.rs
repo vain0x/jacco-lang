@@ -4,7 +4,6 @@ use super::*;
 pub(crate) struct Px {
     tokens: PTokens,
     current: usize,
-    pub(crate) names: PNameArena,
     elements: PElementArena,
     skipped: Vec<PToken>,
     pub(crate) ast: ATree,
@@ -18,7 +17,6 @@ impl Px {
         Px {
             tokens,
             current: 0,
-            names: PNameArena::new(),
             elements: PElementArena::new(),
             builder: PTreeBuilder::new(),
             ast: ATree::default(),
@@ -90,7 +88,6 @@ impl Px {
         mut self,
     ) -> (
         PToken,
-        PNameArena,
         Vec<PToken>,
         PTokens,
         PElementArena,
@@ -103,7 +100,6 @@ impl Px {
         let eof = self.bump();
         (
             eof,
-            self.names,
             self.skipped,
             self.tokens,
             self.elements,

@@ -45,11 +45,11 @@ pub(crate) struct KModData {
     pub(crate) extern_fns: KExternFnArena,
 }
 
-#[allow(unused)]
 /// ローカル変数の親
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KLocalVarParent {
     Fn(KFn),
+    #[allow(unused)]
     ExternFn(KExternFn),
 }
 
@@ -74,7 +74,6 @@ impl KLocalVarParent {
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KModLocalSymbol {
-    #[allow(unused)]
     LocalVar {
         parent: KLocalVarParent,
         local_var: KLocal,
@@ -85,12 +84,10 @@ pub(crate) enum KModLocalSymbol {
     ExternFn(KExternFn),
     Enum(KEnum),
     Struct(KStruct),
-    #[allow(unused)]
     Alias(KAlias),
 }
 
 impl KModLocalSymbol {
-    #[allow(unused)]
     pub(crate) fn from_variant(variant: KVariant) -> Self {
         match variant {
             KVariant::Const(k_const) => KModLocalSymbol::Const(k_const),
@@ -137,7 +134,6 @@ impl KModLocalSymbol {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn name(self, mod_outline: &KModOutline) -> Option<&str> {
         let name = match self.outline(mod_outline) {
             KModLocalSymbolOutline::LocalVar(..) => return None,

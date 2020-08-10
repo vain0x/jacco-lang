@@ -68,7 +68,6 @@ pub(crate) struct KStructOutline {
 }
 
 impl KStructOutline {
-    #[allow(unused)]
     pub(crate) fn is_unit_like(&self) -> bool {
         self.fields.is_empty()
     }

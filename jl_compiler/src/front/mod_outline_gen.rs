@@ -1,16 +1,13 @@
-#![allow(unused)]
-
 use super::{
     cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
     env::Env,
-    name_resolution::{add_decl_to_local_env, do_add_ty_symbol_to_local_env, DeclSymbols},
+    name_resolution::{do_add_ty_symbol_to_local_env, DeclSymbols},
 };
 use crate::{
     cps::*,
     logs::DocLogger,
     parse::*,
     source::{Doc, Loc},
-    utils::VecArena,
 };
 
 fn resolve_modifiers(modifiers: &ADeclModifiers) -> Option<KVis> {
@@ -168,6 +165,7 @@ fn alloc_record_variant(
     })
 }
 
+#[allow(unused)]
 fn new_variant_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
     Loc::new(
         doc,
@@ -277,6 +275,7 @@ fn alloc_struct(
     Some(variant)
 }
 
+#[allow(unused)]
 fn resolve_struct_decl(
     decl: &AStructDecl,
     variant: KVariant,

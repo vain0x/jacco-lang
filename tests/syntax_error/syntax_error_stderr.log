@@ -1,8 +1,3 @@
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:2.1-2.3 missed param list?
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:7.1-7.3 missed the body?
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:7.33-7.34 not allowed
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.1-12.3 missed the body?
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.47-12.48 not allowed
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:8.5-8.6 this token is ignored
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.41-12.42 this token is ignored
-[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:13.5-13.6 this token is ignored
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:7.29-9.2 これはレコードでなければいけません。
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.43-14.2 これはレコードでなければいけません。
+[ERROR jacco] "コンパイルエラーが発生しました"

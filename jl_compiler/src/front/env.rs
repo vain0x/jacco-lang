@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use self::map_stack::MapStack;
 use super::name_resolution::KLocalValue;
 use crate::cps::KTy;

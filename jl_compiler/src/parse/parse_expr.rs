@@ -24,11 +24,11 @@ pub(crate) fn parse_qualifiable_name(px: &mut Px) -> Option<AfterQualifiableName
             break;
         }
 
-        let colon_colon = px.bump();
+        px.bump();
         let right = px.bump();
 
         let name = replace(&mut left, right);
-        quals.push(PNameQual { name, colon_colon });
+        quals.push(name);
     }
 
     Some(alloc_name(event, quals, left, px))
@@ -79,12 +79,12 @@ fn parse_field_exprs(px: &mut Px) -> Vec<AfterFieldExpr> {
                 let event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_field_expr(event, name, px);
-                let can_continue = field.0.comma_opt.is_some();
+                // let can_continue = field.0.comma_opt.is_some();
                 fields.push(field);
 
-                if !can_continue {
-                    break;
-                }
+                // if !can_continue {
+                //     break;
+                // }
             }
             _ => px.skip(),
         }
@@ -149,19 +149,19 @@ fn parse_suffix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
     loop {
         match px.next() {
             TokenKind::Dot => {
-                let event = px.start_parent(&(left.1).1);
+                let event = px.start_parent(&left.1);
                 let dot = px.bump();
                 let name_opt = px.eat(TokenKind::Ident);
                 left = alloc_dot_field_expr(event, left, dot, name_opt, px);
             }
             TokenKind::LeftParen => {
-                let event = px.start_parent(&(left.1).1);
+                let event = px.start_parent(&left.1);
                 let left_paren = px.bump();
                 let arg_list = parse_tuple_arg_list(left_paren, px);
                 left = alloc_call_expr(event, left, arg_list, px);
             }
             TokenKind::LeftBracket => {
-                let event = px.start_parent(&(left.1).1);
+                let event = px.start_parent(&left.1);
                 let left_bracket = px.bump();
                 let arg_list = parse_array_arg_list(left_bracket, px);
                 left = alloc_index_expr(event, left, arg_list, px);
@@ -180,7 +180,7 @@ fn parse_as_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let keyword = px.bump();
         let ty_opt = parse_ty(px);
         left = alloc_as_expr(event, left, keyword, ty_opt, px);
@@ -220,7 +220,7 @@ fn parse_mul(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let op_token = px.bump();
         let right_opt = parse_prefix_expr(allow_struct, px);
         left = alloc_binary_op_expr(event, op, left, op_token, right_opt, px);
@@ -237,7 +237,7 @@ fn parse_add(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let op_token = px.bump();
         let right_opt = parse_mul(allow_struct, px);
         left = alloc_binary_op_expr(event, op, left, op_token, right_opt, px);
@@ -257,7 +257,7 @@ fn parse_bit(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let op_token = px.bump();
         let right_opt = parse_add(allow_struct, px);
         left = alloc_binary_op_expr(event, op, left, op_token, right_opt, px);
@@ -278,7 +278,7 @@ fn parse_comparison(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr>
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let op_token = px.bump();
         let right_opt = parse_bit(allow_struct, px);
         left = alloc_binary_op_expr(event, op, left, op_token, right_opt, px);
@@ -295,7 +295,7 @@ fn parse_logical(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
             _ => return Some(left),
         };
 
-        let event = px.start_parent(&(left.1).1);
+        let event = px.start_parent(&left.1);
         let op_token = px.bump();
         let right_opt = parse_comparison(allow_struct, px);
         left = alloc_binary_op_expr(event, op, left, op_token, right_opt, px);
@@ -320,7 +320,7 @@ fn parse_assign(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
         _ => return Some(left),
     };
 
-    let event = px.start_parent(&(left.1).1);
+    let event = px.start_parent(&left.1);
     let op_token = px.bump();
     let right_opt = parse_assign(allow_struct, px);
     Some(alloc_binary_op_expr(

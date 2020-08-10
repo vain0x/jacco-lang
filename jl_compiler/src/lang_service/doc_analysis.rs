@@ -2,7 +2,7 @@
 
 use crate::{
     cps::{KMod, KModData, KModOutline},
-    front::{self, validate_syntax},
+    front,
     logs::{DocLogs, Logs},
     parse::{self, PRoot},
     source::{Doc, TRange},
@@ -63,7 +63,8 @@ impl AnalysisCache {
             let root = parse::parse_tokens(tokens, logs.logger());
 
             let doc_logs = DocLogs::new();
-            validate_syntax(&root, doc_logs.logger());
+            // FIXME: 構文検査
+            // validate_syntax(&root, doc_logs.logger());
 
             logs.logger().extend_from_doc_logs(self.doc, doc_logs);
             let errors = logs_into_errors(logs, &root);
@@ -99,7 +100,6 @@ impl AnalysisCache {
                 &mod_outline,
                 &doc_logs.logger(),
             );
-            let res = front::resolve_name(&mut syntax.root, doc_logs.logger());
 
             let errors = {
                 let logs = Logs::new();

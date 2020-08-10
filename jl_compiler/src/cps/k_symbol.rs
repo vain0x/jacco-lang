@@ -1,6 +1,4 @@
-use super::{
-    k_local::KLocalArena, k_ty::KTy2, KAlias, KConst, KExternFn, KFn, KLocal, KStaticVar, KStruct,
-};
+use super::{k_local::KLocalArena, k_ty::KTy2, KLocal};
 use crate::{
     parse::{ANameKey, PLoc, PToken},
     source::Loc,
@@ -70,27 +68,5 @@ impl DebugWithContext<KLocalArena> for KSymbol {
             self.local.of(context).name,
             self.cause
         )
-    }
-}
-
-/// 名前を解決した結果。
-#[derive(Clone, Debug)]
-pub(crate) enum KSymbolExt {
-    Unresolved,
-    Alias { alias: KAlias, loc: Loc },
-    Symbol(KSymbol),
-    Const(KConst),
-    StaticVar(KStaticVar),
-    Fn(KFn),
-    ExternFn(KExternFn),
-    UnitLikeStruct { k_struct: KStruct, loc: Loc },
-}
-
-impl KSymbolExt {
-    pub(crate) fn as_symbol(self) -> Option<KSymbol> {
-        match self {
-            KSymbolExt::Symbol(symbol) => Some(symbol),
-            _ => None,
-        }
     }
 }

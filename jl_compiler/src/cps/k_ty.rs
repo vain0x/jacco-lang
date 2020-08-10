@@ -129,6 +129,7 @@ pub(crate) enum KTy2 {
 }
 
 impl KTy2 {
+    #[allow(unused)]
     pub(crate) const DEFAULT: KTy2 = KTy2::Unresolved {
         cause: KTyCause::Default,
     };
@@ -451,6 +452,7 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
+    #[allow(unused)]
     pub(crate) const DEFAULT: KTy = KTy::Unresolved {
         cause: KTyCause::Default,
     };
@@ -532,14 +534,6 @@ impl KTy {
     pub(crate) fn is_unit(&self) -> bool {
         match self {
             KTy::Unit => true,
-            _ => false,
-        }
-    }
-
-    pub(crate) fn is_primitive(&self) -> bool {
-        match self {
-            KTy::Number(_) => true,
-            KTy::Ptr { .. } => true,
             _ => false,
         }
     }

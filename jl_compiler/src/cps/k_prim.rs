@@ -58,7 +58,6 @@ impl KPrim {
 }
 
 // 末尾でない `jump`
-#[allow(unused)]
 pub(crate) fn new_jump_node(
     label: KLabel,
     args: impl IntoIterator<Item = KTerm>,

@@ -4,14 +4,13 @@ use crate::{
         eliminate_unit, resolve_aliases, resolve_types, KEnumOutline, KEnumRepr, KEnumReprs,
         KModData, KModOutline, KModTag,
     },
-    front::{cps_conversion, resolve_name, validate_syntax, NameResolution},
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PRoot},
     source::{Doc, TRange},
     token::{tokenize, TokenSource},
     utils::VecArena,
 };
-use log::{error, trace};
+use log::error;
 use std::{
     collections::{HashMap, HashSet},
     io,
@@ -42,7 +41,6 @@ pub struct Project {
     docs: DocArena,
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
-    names: VecArena<DocTag, (NameResolution, Logs)>,
     mod_docs: VecArena<KModTag, Doc>,
     mod_outlines: VecArena<KModTag, KModOutline>,
     mods: VecArena<KModTag, KModData>,
@@ -142,106 +140,6 @@ impl Project {
     /// プロジェクトをコンパイルして、C言語のソースコードを生成する。
     ///
     /// パースされていないドキュメントは単に無視される。
-    pub fn compile(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
-        let mut logs_list = vec![];
-
-        self.names = VecArena::from_iter(self.syntaxes.enumerate_mut().map(|(id, syntax)| {
-            let doc = Doc::from(id.to_index());
-            let doc_logs = DocLogs::new();
-            let logs = take(&mut syntax.logs);
-
-            validate_syntax(&syntax.root, doc_logs.logger());
-            let name_resolution = resolve_name(&mut syntax.root, doc_logs.logger());
-
-            logs.logger().extend_from_doc_logs(doc, doc_logs);
-
-            (name_resolution, logs)
-        }));
-
-        for ((id, pair), syntax) in self.names.enumerate_mut().zip(self.syntaxes.iter()) {
-            let doc = Doc::from(id.to_index());
-
-            let name_resolution = &pair.0;
-            let logs = take(&mut pair.1);
-            if logs.is_fatal() {
-                logs_list.push((doc, logs));
-                continue;
-            }
-
-            let doc_logs = DocLogs::new();
-            let k_mod = self.mod_docs.alloc(doc);
-            let (mut mod_outline, mod_data) =
-                cps_conversion(doc, k_mod, &syntax.root, name_resolution, doc_logs.logger());
-            mod_outline.name = self.docs[id].name.to_string();
-
-            logs.logger().extend_from_doc_logs(doc, doc_logs);
-
-            let k_mod2 = self.mod_outlines.alloc(mod_outline);
-            let k_mod3 = self.mods.alloc(mod_data);
-            assert_eq!(k_mod, k_mod2);
-            assert_eq!(k_mod, k_mod3);
-        }
-
-        if !logs_list.is_empty() {
-            let mut errors = vec![];
-            for (_, logs) in logs_list {
-                self.logs_into_errors(logs, &mut errors);
-            }
-            return Err(errors);
-        }
-
-        let logs = Logs::new();
-        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
-        for k_mod in mod_ids {
-            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
-            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
-            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
-        }
-
-        for mod_outline in self.mod_outlines.iter_mut() {
-            assert!(mod_outline.enum_reprs.is_empty());
-            let enum_reprs =
-                KEnumReprs::from_iter(mod_outline.enums.iter().map(|enum_data| {
-                    KEnumRepr::determine(&enum_data.variants, &mod_outline.consts)
-                }));
-            mod_outline.enum_reprs = enum_reprs;
-        }
-
-        let mut mods = take(&mut self.mods);
-        for ((k_mod, mod_outline), ref mut mod_data) in
-            self.mod_outlines.enumerate().zip(mods.iter_mut())
-        {
-            resolve_types(
-                k_mod,
-                mod_outline,
-                *mod_data,
-                &self.mod_outlines,
-                logs.logger(),
-            );
-        }
-        self.mods = mods;
-
-        if logs.is_fatal() {
-            let mut errors = vec![];
-            self.logs_into_errors(logs, &mut errors);
-            return Err(errors);
-        }
-
-        for (mod_outline, mod_data) in self.mod_outlines.iter_mut().zip(self.mods.iter_mut()) {
-            KEnumOutline::determine_tags(
-                &mut mod_outline.consts,
-                &mut mod_outline.enums,
-                &mut mod_outline.enum_reprs,
-                &mut mod_outline.structs,
-            );
-
-            eliminate_unit(mod_outline, mod_data);
-        }
-
-        Ok(clang_dump(&self.mod_outlines, &self.mods))
-    }
-
-    // V2
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let mut logs_list = vec![];
 
@@ -341,84 +239,6 @@ impl Project {
 }
 
 /// 一連のコンパイル処理を行う。
-pub fn compile(source_path: &Path, source_code: &str) -> String {
-    trace!("source_path = {:?}", source_path);
-
-    let project_dir = source_path.parent();
-    let mut project = Project::new();
-
-    let name = source_path
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .unwrap_or("<main>")
-        .to_string();
-    let source_path = make_path_relative_to_manifest_dir(source_path);
-    let text = source_code.to_string();
-    project.insert(name, source_path, text).ok().unwrap();
-
-    // 一度探して、見つからなかったファイル名。
-    let mut missed_files = HashSet::new();
-
-    let mut unresolved_doc_names = vec![];
-    loop {
-        assert!(unresolved_doc_names.is_empty());
-
-        project.parse(&mut unresolved_doc_names);
-
-        if unresolved_doc_names.is_empty() {
-            break;
-        }
-
-        let project_dir = project_dir.unwrap();
-        let mut stuck = true;
-
-        // use されているファイル名を列挙する。(このあたりの仕様はよく決まっていない。とりあえず、最初に与えられたファイルと同じディレクトリにある <name>.jacco ファイルを読むことにする。)
-        for doc_name in unresolved_doc_names.drain(..) {
-            let file_path = project_dir.join(format!("{}.jacco", doc_name));
-            if missed_files.contains(&file_path) {
-                continue;
-            }
-
-            let source_code = match std::fs::read_to_string(&file_path) {
-                Ok(text) => text,
-                Err(_) => {
-                    missed_files.insert(file_path.to_path_buf());
-                    continue;
-                }
-            };
-
-            project
-                .insert(doc_name, file_path.to_path_buf(), source_code)
-                .ok();
-            stuck = false;
-        }
-
-        if stuck {
-            break;
-        }
-    }
-
-    if !missed_files.is_empty() {
-        for path in missed_files {
-            error!(
-                "このファイルが use 宣言で必要とされていますが、見つかりませんでした {:?}",
-                path.to_string_lossy(),
-            );
-        }
-        return String::new();
-    }
-
-    match project.compile() {
-        Ok(code) => code,
-        Err(errors) => {
-            for (_, path, range, message) in errors {
-                error!("{}:{} {}", path.to_string_lossy(), range, message);
-            }
-            String::new()
-        }
-    }
-}
-
 pub fn compile_v2(source_path: &Path, source_code: &str) -> Option<String> {
     let project_dir = source_path.parent();
     let mut project = Project::new();

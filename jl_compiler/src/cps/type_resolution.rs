@@ -391,12 +391,19 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             _ => unimplemented!(),
         },
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            ([callee, args @ ..], [result]) => {
+            ([callee, args @ ..], [result]) => loop {
                 let def_fn_ty = resolve_term(callee, tx);
                 let arg_tys = resolve_terms(args, tx);
 
                 // FIXME: unwrap しない
-                let (param_tys, result_ty) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
+                let (param_tys, result_ty) = match def_fn_ty.as_fn(&tx.ty_env) {
+                    Some(it) => it,
+                    None => {
+                        tx.logger
+                            .error(node.loc(), "関数ではないものは呼び出せません");
+                        break;
+                    }
+                };
 
                 // FIXME: 引数の個数を検査する
 
@@ -404,7 +411,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify2(param_ty, arg_ty, node.loc, tx);
                 }
                 resolve_symbol_def2(result, Some(&result_ty), tx);
-            }
+                break;
+            },
             _ => unimplemented!(),
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
