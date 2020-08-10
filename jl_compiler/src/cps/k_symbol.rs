@@ -14,6 +14,7 @@ pub(crate) enum KSymbolCause {
     Loc(Loc),
     DiscardPat(Doc, PToken),
     NameDef(Doc, ANameKey),
+    NameUse(Doc, ANameKey),
 }
 
 impl KSymbolCause {
@@ -21,7 +22,9 @@ impl KSymbolCause {
         match self {
             KSymbolCause::Loc(loc) => loc,
             KSymbolCause::DiscardPat(doc, token) => Loc::new(doc, PLoc::Token(token)),
-            KSymbolCause::NameDef(doc, key) => Loc::new(doc, PLoc::Name(key)),
+            KSymbolCause::NameDef(doc, key) | KSymbolCause::NameUse(doc, key) => {
+                Loc::new(doc, PLoc::Name(key))
+            }
         }
     }
 }

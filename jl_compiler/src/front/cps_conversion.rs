@@ -2017,7 +2017,10 @@ fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSym
     KSymbol { local, cause }
 }
 
-fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_name_expr(name: &str, key: ANameKey, xx: &mut Xx) -> KTerm {
+    let loc = Loc::new(xx.doc, PLoc::Name(key));
+    let cause = KSymbolCause::NameUse(xx.doc, key);
+
     let value = match resolve_value_name(name, loc, &mut xx.env) {
         Some(it) => it,
         None => {
@@ -2029,7 +2032,7 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
     match value {
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
             local: local_var,
-            cause: loc.into(),
+            cause,
         }),
         KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
@@ -2037,46 +2040,46 @@ fn convert_name_expr(name: &str, loc: Loc, xx: &mut Xx) -> KTerm {
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
             let name = k_struct.name(&xx.mod_outline.structs);
-            let result = fresh_symbol(name, loc, xx);
+            let result = fresh_symbol(name, cause, xx);
             emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)
         }
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
     }
 }
 
-fn convert_name_lval(name: &AName, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> KTerm {
+    let loc = Loc::new(xx.doc, PLoc::Name(key));
+    let cause = KSymbolCause::NameUse(xx.doc, key);
+
     let value = match resolve_value_name(&name.full_name, loc, &xx.env) {
         Some(it) => it,
         None => {
-            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+            error_unresolved_value(PLoc::Name(key), xx.logger);
             return new_error_term(loc);
         }
     };
 
     let term = match value {
-        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol {
-            local,
-            cause: KSymbolCause::Loc(loc),
-        }),
+        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol { local, cause }),
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::Const(_)
         | KLocalValue::Fn(_)
         | KLocalValue::ExternFn(_)
         | KLocalValue::UnitLikeStruct(_) => {
-            error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
+            error_rval_used_as_lval(PLoc::Name(key), xx.logger);
             return new_error_term(loc);
         }
     };
 
     match k_mut {
         KMut::Const => {
-            let result = fresh_symbol("ref", loc, xx);
+            let result = fresh_symbol("ref", cause, xx);
             xx.nodes.push(new_ref_node(term, result, new_cont(), loc));
             KTerm::Name(result)
         }
         KMut::Mut => {
-            let result = fresh_symbol("refmut", loc, xx);
+            let result = fresh_symbol("refmut", cause, xx);
             xx.nodes
                 .push(new_ref_mut_node(term, result, new_cont(), loc));
             KTerm::Name(result)
@@ -2655,7 +2658,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Str(token) => convert_str_expr(*token, xx.tokens),
         AExpr::True => KTerm::True { loc },
         AExpr::False => KTerm::False { loc },
-        AExpr::Name(AName { full_name, .. }) => convert_name_expr(full_name, loc, xx),
+        AExpr::Name(name) => convert_name_expr(&name.full_name, ANameKey::Expr(expr_id), xx),
         AExpr::Unit => KTerm::Unit { loc },
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::DotField(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
@@ -2680,7 +2683,7 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, loc: Loc, xx: &m
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
-        AExpr::Name(name) => convert_name_lval(name, k_mut, loc, xx),
+        AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
         AExpr::DotField(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
