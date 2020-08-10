@@ -2720,6 +2720,8 @@ fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mu
 }
 
 fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let cause = KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
+
     let name = decl
         .name_opt
         .as_ref()
@@ -2730,11 +2732,8 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
 
     let local = xx
         .local_vars
-        .alloc(KLocalData::new(name.to_string(), loc).with_ty(ty));
-    let symbol = KSymbol {
-        local,
-        cause: KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id)),
-    };
+        .alloc(KLocalData::new(name.to_string(), cause.loc()).with_ty(ty));
+    let symbol = KSymbol { local, cause };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
