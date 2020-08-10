@@ -1,11 +1,15 @@
 use super::{
     actions,
-    doc_analysis::{AnalysisCache, Cps, DocSymbolAnalysisMut, Symbols, Syntax},
+    doc_analysis::{AnalysisCache, DocSymbolAnalysisMut, Symbols, Syntax},
 };
 use crate::{
-    cps::{KModData, KTy2, KTyEnv},
+    cps::{
+        KFn, KLocalVarParent, KModData, KModLocalSymbol, KNode, KSymbol, KSymbolCause, KTerm, KTy2,
+        KTyEnv,
+    },
     front::{NAbsName, NName, NParentFn},
-    source::{Doc, TPos16, TRange, TRange16},
+    parse::PRoot,
+    source::{Doc, Loc, TPos16, TRange, TRange16},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -13,6 +17,7 @@ use std::{
     rc::Rc,
 };
 
+#[derive(Ord, PartialOrd, Eq, PartialEq)]
 pub struct Location {
     #[allow(unused)]
     doc: Doc,
@@ -58,13 +63,6 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
-    #[allow(unused)]
-    fn request_cps(&mut self, _doc: Doc) -> Option<&mut Cps> {
-        // 頻繁にクラッシュするので無効化
-        // self.docs.get_mut(&doc).map(|cache| cache.request_cps())
-        None
-    }
-
     pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
         self.docs.insert(
             doc,
@@ -76,7 +74,6 @@ impl LangService {
                 source_path: PathBuf::from("main.jacco").into(),
                 syntax_opt: None,
                 symbols_opt: None,
-                cps_opt: None,
             },
         );
         self.dirty_sources.insert(doc);
@@ -180,8 +177,100 @@ impl NAbsName {
     }
 }
 
-fn contains_pos16(range: TRange, pos: TPos16) -> bool {
-    TRange16::at(TPos16::from(range.index), TPos16::from(range.len)).contains_inclusive(pos)
+fn to_range16(range: TRange) -> TRange16 {
+    TRange16::at(TPos16::from(range.index), TPos16::from(range.len))
+}
+
+fn loc_to_range(loc: Loc, root: &PRoot) -> Option<TRange> {
+    let opt = (|| {
+        let (_, loc) = loc.inner().ok()?;
+        let range = loc.range(root).ok()?;
+        Some(range)
+    })();
+
+    if opt.is_none() {
+        log::trace!("not resolved loc={:?}", loc);
+    }
+
+    opt
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum DefOrUse {
+    Def,
+    Use,
+}
+
+type Sites = Vec<(KModLocalSymbol, DefOrUse, TRange)>;
+
+fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
+    fn go(node: &KNode, k_fn: KFn, syntax: &Syntax, sites: &mut Sites) {
+        for arg in &node.args {
+            match arg {
+                KTerm::Name(KSymbol {
+                    local,
+                    cause: KSymbolCause::NameUse(_, key),
+                }) => {
+                    let range = match key.element(&syntax.root).range(&syntax.root) {
+                        Ok(it) => it,
+                        Err(_) => continue,
+                    };
+                    sites.push((
+                        KModLocalSymbol::LocalVar {
+                            local_var: *local,
+                            parent: KLocalVarParent::Fn(k_fn),
+                        },
+                        DefOrUse::Use,
+                        range,
+                    ));
+                }
+                KTerm::Fn { k_fn, loc } => {
+                    let range = match loc_to_range(*loc, &syntax.root) {
+                        Some(it) => it,
+                        None => continue,
+                    };
+                    sites.push((KModLocalSymbol::Fn(*k_fn), DefOrUse::Use, range));
+                }
+                _ => {}
+            }
+        }
+
+        for cont in &node.conts {
+            go(cont, k_fn, syntax, sites);
+        }
+    }
+
+    // FIXME: とりあえず関数とローカルのみ。その他のシンボルを追加する
+    for ((k_fn, fn_outline), fn_data) in symbols
+        .mod_outline
+        .fns
+        .enumerate()
+        .zip(symbols.mod_data.fns.iter())
+    {
+        go(&fn_data.body, k_fn, syntax, sites);
+
+        for (local_var, local_var_data) in fn_data.locals.enumerate() {
+            let range = match loc_to_range(local_var_data.loc, &syntax.root) {
+                Some(it) => it,
+                None => continue,
+            };
+            sites.push((
+                KModLocalSymbol::LocalVar {
+                    local_var,
+                    parent: KLocalVarParent::Fn(k_fn),
+                },
+                DefOrUse::Use,
+                range,
+            ));
+        }
+
+        let def_site = match loc_to_range(fn_outline.loc, &syntax.root) {
+            Some(it) => it,
+            None => continue,
+        };
+
+        sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, def_site));
+    }
 }
 
 pub(super) fn hit_test(
@@ -189,67 +278,55 @@ pub(super) fn hit_test(
     pos: TPos16,
     syntax: &Syntax,
     symbols: &Symbols,
-) -> Option<(NAbsName, Location)> {
-    symbols
-        .occurrences
-        .def_sites
-        .iter()
-        .chain(symbols.occurrences.use_sites.iter())
-        .find_map(|(&name, locations)| {
-            locations.iter().find_map(|&loc| {
-                let range = {
-                    let (_, loc) = loc.inner().ok()?;
-                    let range = loc.range(&syntax.root).ok()?;
-                    if !contains_pos16(range, pos) {
-                        return None;
-                    }
-                    range
-                };
-                Some((name, Location { doc, range }))
-            })
-        })
+) -> Option<(KModLocalSymbol, Location)> {
+    let mut sites = vec![];
+    collect_symbols(syntax, symbols, &mut sites);
+
+    sites.iter().find_map(|(symbol, _, range)| {
+        if to_range16(*range).contains_inclusive(pos) {
+            Some((*symbol, Location::new(doc, *range)))
+        } else {
+            None
+        }
+    })
 }
 
 pub(super) fn collect_def_sites(
     doc: Doc,
-    name: NAbsName,
+    symbol: KModLocalSymbol,
     syntax: &Syntax,
     symbols: &Symbols,
     locations: &mut Vec<Location>,
 ) {
-    locations.extend(
-        symbols
-            .occurrences
-            .def_sites
-            .get(&name)
-            .iter()
-            .flat_map(|locs| {
-                locs.iter()
-                    .filter_map(|loc| loc.inner().ok()?.1.range(&syntax.root).ok())
-            })
-            .map(|range| Location::new(doc, range)),
-    );
+    let mut sites = vec![];
+    collect_symbols(syntax, symbols, &mut sites);
+
+    locations.extend(sites.iter().filter_map(|&(s, def_or_use, range)| {
+        if s == symbol && def_or_use == DefOrUse::Def {
+            Some(Location::new(doc, range))
+        } else {
+            None
+        }
+    }));
 }
 
 pub(super) fn collect_use_sites(
     doc: Doc,
-    name: NAbsName,
+    symbol: KModLocalSymbol,
     syntax: &Syntax,
     symbols: &Symbols,
     locations: &mut Vec<Location>,
 ) {
-    locations.extend(
-        symbols
-            .occurrences
-            .use_sites
-            .get(&name)
-            .iter()
-            .flat_map(|locs| {
-                locs.iter()
-                    .filter_map(|loc| loc.inner().ok()?.1.range(&syntax.root).ok())
-            })
-            .map(|range| Location::new(doc, range.into())),
-    );
+    let mut sites = vec![];
+    collect_symbols(syntax, symbols, &mut sites);
+
+    locations.extend(sites.iter().filter_map(|&(s, def_or_use, range)| {
+        if s == symbol && def_or_use == DefOrUse::Use {
+            Some(Location::new(doc, range))
+        } else {
+            None
+        }
+    }));
 }
 
 #[cfg(test)]
@@ -298,7 +375,7 @@ mod tests {
     fn test_definition() {
         let mut lang_service = new_service_from_str("fn foo() { foo(); }");
 
-        let defs = lang_service.definitions(DOC, TPos16::from("foo"));
+        let defs = lang_service.definitions(DOC, TPos16::from("fn foo"));
         assert_eq!(
             defs.unwrap()
                 .into_iter()
@@ -336,7 +413,11 @@ mod tests {
         let mut lang_service = new_service_from_str(cursor_text.as_str());
 
         let cursors = cursor_text.to_pos_vec();
-        let refs = lang_service.references(DOC, cursors[0].into(), true);
+        let mut refs = lang_service.references(DOC, cursors[0].into(), true);
+        if let Some(refs) = refs.as_mut() {
+            refs.sort();
+        }
+
         assert_eq!(
             refs.into_iter()
                 .flatten()
