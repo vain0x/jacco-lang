@@ -4,14 +4,14 @@ use crate::{
     cps::{KMod, KModData, KModOutline},
     front,
     logs::{DocLogs, Logs},
-    parse::{self, PRoot},
+    parse::{self, PTree},
     source::{Doc, TRange},
     token,
 };
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) struct Syntax {
-    pub(super) root: PRoot,
+    pub(super) tree: PTree,
     pub(super) errors: Vec<(TRange, String)>,
 }
 
@@ -59,16 +59,16 @@ impl AnalysisCache {
             token::tokenize(source_code)
         };
         let syntax = {
-            let root = parse::parse_tokens(tokens, self.doc, logs.logger());
+            let tree = parse::parse_tokens(tokens, self.doc, logs.logger());
 
             let doc_logs = DocLogs::new();
             // FIXME: 構文検査
             // validate_syntax(&root, doc_logs.logger());
 
             logs.logger().extend_from_doc_logs(self.doc, doc_logs);
-            let errors = logs_into_errors(logs, &root);
+            let errors = logs_into_errors(logs, &tree);
 
-            Syntax { root, errors }
+            Syntax { tree, errors }
         };
 
         self.syntax_opt = Some(syntax);
@@ -90,11 +90,11 @@ impl AnalysisCache {
 
             let doc_logs = DocLogs::new();
             let (mod_outline, decl_symbols) =
-                front::generate_outline(doc, &syntax.root, &doc_logs.logger());
+                front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
             let mod_data = front::convert_to_cps(
                 doc,
                 k_mod,
-                &syntax.root,
+                &syntax.tree,
                 &decl_symbols,
                 &mod_outline,
                 &doc_logs.logger(),
@@ -103,7 +103,7 @@ impl AnalysisCache {
             let errors = {
                 let logs = Logs::new();
                 logs.logger().extend_from_doc_logs(doc, doc_logs);
-                logs_into_errors(logs, &syntax.root)
+                logs_into_errors(logs, &syntax.tree)
             };
 
             Symbols {
@@ -122,12 +122,12 @@ impl AnalysisCache {
     }
 }
 
-fn logs_into_errors(logs: Logs, root: &PRoot) -> Vec<(TRange, String)> {
+fn logs_into_errors(logs: Logs, tree: &PTree) -> Vec<(TRange, String)> {
     logs.finish()
         .into_iter()
         .map(|item| {
             let mut message = item.message().to_string();
-            let range = match item.loc().inner().and_then(|(_, loc)| loc.range(root)) {
+            let range = match item.loc().inner().and_then(|(_, loc)| loc.range(tree)) {
                 Ok(it) => it,
                 Err(hint) => {
                     message += &format!(" loc={}", hint);

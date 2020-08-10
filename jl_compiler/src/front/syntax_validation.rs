@@ -9,19 +9,19 @@ enum IsRequired {
 }
 
 struct Vx<'a> {
-    root: &'a PRoot,
+    root: &'a PTree,
     logger: DocLogger,
 }
 
 impl<'a> Vx<'a> {
-    fn new(root: &'a PRoot, logger: DocLogger) -> Self {
+    fn new(root: &'a PTree, logger: DocLogger) -> Self {
         Vx { root, logger }
     }
 }
 
 fn error_node<'a, T: 'a>(node: &'a T, message: impl Into<String>, vx: &'a Vx)
 where
-    PToken: From<(&'a T, &'a PRoot)>,
+    PToken: From<(&'a T, &'a PTree)>,
 {
     let token = PToken::from((node, &vx.root));
     let loc = PLoc::new(token);
@@ -30,7 +30,7 @@ where
 
 fn error_behind_node<'a, T: 'a>(node: &'a T, message: impl Into<String>, vx: &'a Vx)
 where
-    PToken: From<(&'a T, &'a PRoot)>,
+    PToken: From<(&'a T, &'a PTree)>,
 {
     let token = PToken::from((node, &vx.root));
     let loc = PLoc::new(token).behind();
@@ -602,7 +602,7 @@ fn validate_decl(decl: &PDecl, vx: &Vx, placement: Placement, semi_required: boo
     }
 }
 
-fn validate_root(root: &PRoot, vx: &Vx) {
+fn validate_root(root: &PTree, vx: &Vx) {
     const SEMI_REQUIRED: bool = true;
 
     for decl in &root.decls {
@@ -614,7 +614,7 @@ fn validate_root(root: &PRoot, vx: &Vx) {
     }
 }
 
-pub(crate) fn validate_syntax(root: &PRoot, logger: DocLogger) {
+pub(crate) fn validate_syntax(root: &PTree, logger: DocLogger) {
     let vx = Vx::new(root, logger);
     // validate_root(root, &vx);
 }

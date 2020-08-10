@@ -151,13 +151,13 @@ mod parse {
     mod p_loc;
     mod p_node;
     mod p_token;
+    mod p_tree;
     mod p_tree_builder;
     mod p_unary_op;
     mod parse_context;
     mod parse_decl;
     mod parse_expr;
     mod parse_pat;
-    mod parse_tree;
     mod parse_ty;
 
     pub(crate) use ast::*;
@@ -166,10 +166,10 @@ mod parse {
     pub(crate) use p_loc::PLoc;
     pub(crate) use p_node::*;
     pub(crate) use p_token::{PToken, PTokens};
+    pub(crate) use p_tree::PTree;
     pub(crate) use p_tree_builder::*;
     pub(crate) use p_unary_op::PUnaryOp;
     pub(crate) use parse_decl::parse_tokens;
-    pub(crate) use parse_tree::*;
 
     use crate::logs::Logger;
     use crate::{

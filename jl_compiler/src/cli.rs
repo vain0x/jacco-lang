@@ -5,7 +5,7 @@ use crate::{
         KModData, KModOutline, KModTag,
     },
     logs::{DocLogs, Logs},
-    parse::{parse_tokens, PRoot},
+    parse::{parse_tokens, PTree},
     source::{Doc, TRange},
     token::tokenize,
     utils::VecArena,
@@ -31,7 +31,7 @@ pub(crate) struct DocData {
 type SyntaxArena = VecArena<DocTag, SyntaxData>;
 
 struct SyntaxData {
-    root: PRoot,
+    tree: PTree,
     mod_names: Vec<String>,
     logs: Logs,
 }
@@ -78,8 +78,8 @@ impl Project {
             };
 
             let mut message = item.message().to_string();
-            let root = &self.syntaxes[doc.inner()].root;
-            let range = match loc.range(root) {
+            let tree = &self.syntaxes[doc.inner()].tree;
+            let range = match loc.range(tree) {
                 Ok(it) => it,
                 Err(hint) => {
                     message += &format!(" loc={}", hint);
@@ -110,12 +110,12 @@ impl Project {
 
             let logs = Logs::new();
             let tokens = tokenize(doc_data.text.clone().into());
-            let root = parse_tokens(tokens, doc, logs.logger());
-            root.write_trace();
-            root.collect_used_mod_names(&mut mod_names);
+            let tree = parse_tokens(tokens, doc, logs.logger());
+            tree.write_trace();
+            tree.collect_used_mod_names(&mut mod_names);
 
             let id2 = self.syntaxes.alloc(SyntaxData {
-                root,
+                tree,
                 mod_names: mod_names.split_off(0),
                 logs,
             });
@@ -148,7 +148,7 @@ impl Project {
             // アウトライン生成
             let k_mod = self.mod_docs.alloc(doc);
             let (mut mod_outline, decl_symbols) =
-                super::front::generate_outline(doc, &syntax.root, &doc_logs.logger());
+                super::front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
             mod_outline.name = doc_name;
             let k_mod2 = self.mod_outlines.alloc(mod_outline);
             assert_eq!(k_mod, k_mod2);
@@ -157,7 +157,7 @@ impl Project {
             let mod_data = super::front::convert_to_cps(
                 doc,
                 k_mod,
-                &syntax.root,
+                &syntax.tree,
                 &decl_symbols,
                 k_mod.of(&self.mod_outlines),
                 &doc_logs.logger(),

@@ -303,12 +303,12 @@ fn alloc_alias(decl: &AUseDecl, loc: Loc, mod_outline: &mut KModOutline) -> KAli
 
 fn alloc_outline(
     doc: Doc,
-    root: &PRoot,
+    tree: &PTree,
     decl_symbols: &mut DeclSymbols,
     env: &mut Env,
     mod_outline: &mut KModOutline,
 ) {
-    let ast = &root.ast;
+    let ast = &tree.ast;
 
     for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter_mut()) {
         let loc = Loc::new(doc, PLoc::Decl(decl_id));
@@ -357,19 +357,14 @@ fn alloc_outline(
 }
 
 fn resolve_outline(
-    root: &PRoot,
+    tree: &PTree,
     env: &Env,
     mod_outline: &mut KModOutline,
     decl_symbols: &DeclSymbols,
     logger: &DocLogger,
 ) {
-    let ast = &root.ast;
-    let ty_resolver = TyResolver {
-        env,
-        root,
-        ast,
-        logger,
-    };
+    let ast = &tree.ast;
+    let ty_resolver = TyResolver { env, ast, logger };
 
     for (decl, decl_symbol_opt) in ast.decls().iter().zip(decl_symbols.iter()) {
         let symbol = match decl_symbol_opt {
@@ -441,16 +436,16 @@ fn resolve_outline(
 
 pub(crate) fn generate_outline(
     doc: Doc,
-    root: &PRoot,
+    tree: &PTree,
     logger: &DocLogger,
 ) -> (KModOutline, DeclSymbols) {
-    let mut decl_symbols = root.ast.decls().slice().map_with_value(None);
+    let mut decl_symbols = tree.ast.decls().slice().map_with_value(None);
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
 
     env.enter_scope();
-    alloc_outline(doc, root, &mut decl_symbols, &mut env, &mut mod_outline);
-    resolve_outline(root, &env, &mut mod_outline, &decl_symbols, logger);
+    alloc_outline(doc, tree, &mut decl_symbols, &mut env, &mut mod_outline);
+    resolve_outline(tree, &env, &mut mod_outline, &decl_symbols, logger);
     env.leave_scope();
 
     (mod_outline, decl_symbols)

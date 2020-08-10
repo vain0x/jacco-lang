@@ -86,8 +86,8 @@ pub(crate) type PElement = VecArenaId<PElementTag>;
 pub(crate) type PElementArena = VecArena<PElementTag, PElementData>;
 
 impl PElement {
-    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
-        self.of(&root.elements).range(root)
+    pub(crate) fn range(self, tree: &PTree) -> Result<TRange, &'static str> {
+        self.of(&tree.elements).range(tree)
     }
 }
 
@@ -113,23 +113,23 @@ impl PElementData {
         &self.children
     }
 
-    pub(crate) fn first_token(&self, root: &PRoot) -> Option<PToken> {
+    pub(crate) fn first_token(&self, tree: &PTree) -> Option<PToken> {
         self.children()
             .iter()
-            .find_map(|node| node.first_token(root))
+            .find_map(|node| node.first_token(tree))
     }
 
-    pub(crate) fn last_token(&self, root: &PRoot) -> Option<PToken> {
+    pub(crate) fn last_token(&self, tree: &PTree) -> Option<PToken> {
         self.children()
             .iter()
             .rev()
-            .find_map(|node| node.last_token(root))
+            .find_map(|node| node.last_token(tree))
     }
 
-    pub(crate) fn range(&self, root: &PRoot) -> Result<TRange, &'static str> {
-        let range = match (self.first_token(root), self.last_token(root)) {
-            (Some(first), Some(last)) => first.range(&root.tokens).join(last.range(&root.tokens)),
-            (Some(token), None) | (None, Some(token)) => token.range(&root.tokens),
+    pub(crate) fn range(&self, tree: &PTree) -> Result<TRange, &'static str> {
+        let range = match (self.first_token(tree), self.last_token(tree)) {
+            (Some(first), Some(last)) => first.range(&tree.tokens).join(last.range(&tree.tokens)),
+            (Some(token), None) | (None, Some(token)) => token.range(&tree.tokens),
             (None, None) => return Err("<PElementData::range>"),
         };
         Ok(range)
@@ -140,13 +140,13 @@ impl PElementData {
         &self,
         kind: TokenKind,
         index: usize,
-        root: &PRoot,
+        tree: &PTree,
     ) -> Option<PToken> {
         self.children()
             .iter()
             .copied()
             .filter_map(PNode::as_token)
-            .filter(|token| token.of(&root.tokens).kind() == kind)
+            .filter(|token| token.of(&tree.tokens).kind() == kind)
             .nth(index)
     }
 
@@ -154,13 +154,13 @@ impl PElementData {
         &self,
         kind: PElementKind,
         index: usize,
-        root: &PRoot,
+        tree: &PTree,
     ) -> Option<PElement> {
         self.children()
             .iter()
             .copied()
             .filter_map(PNode::as_element)
-            .filter(|element| element.of(&root.elements).kind() == kind)
+            .filter(|element| element.of(&tree.elements).kind() == kind)
             .nth(index)
     }
 
@@ -168,13 +168,13 @@ impl PElementData {
         &self,
         kinds: &[PElementKind],
         index: usize,
-        root: &PRoot,
+        tree: &PTree,
     ) -> Option<PElement> {
         self.children()
             .iter()
             .copied()
             .filter_map(PNode::as_element)
-            .filter(|element| kinds.contains(&element.of(&root.elements).kind()))
+            .filter(|element| kinds.contains(&element.of(&tree.elements).kind()))
             .nth(index)
     }
 }

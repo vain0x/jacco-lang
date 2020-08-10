@@ -4,7 +4,7 @@
 
 use super::{
     p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
-    PElementArena, PElementData, PElementKind, PLoc, PRoot, PToken, PUnaryOp, PatEnd, TyEnd,
+    PElementArena, PElementData, PElementKind, PLoc, PToken, PTree, PUnaryOp, PatEnd, TyEnd,
 };
 use crate::{
     cps::{KMut, KVis},
@@ -41,19 +41,19 @@ pub(crate) enum ANameKey {
 }
 
 impl ANameKey {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
         let parent = match self {
-            ANameKey::Ty(ty_id) => ty_id.element(root),
-            ANameKey::Pat(pat_id) => pat_id.element(root),
-            ANameKey::Expr(expr_id) => expr_id.element(root),
-            ANameKey::Decl(decl_id) => decl_id.element(root),
-            ANameKey::Param(key) => key.element(root),
-            ANameKey::Field(key) => key.element(root),
-            ANameKey::Variant(key) => key.element(root),
+            ANameKey::Ty(ty_id) => ty_id.element(tree),
+            ANameKey::Pat(pat_id) => pat_id.element(tree),
+            ANameKey::Expr(expr_id) => expr_id.element(tree),
+            ANameKey::Decl(decl_id) => decl_id.element(tree),
+            ANameKey::Param(key) => key.element(tree),
+            ANameKey::Field(key) => key.element(tree),
+            ANameKey::Variant(key) => key.element(tree),
         };
         parent
-            .of(&root.elements)
-            .nth_child_element_of(PElementKind::Name, 0, root)
+            .of(&tree.elements)
+            .nth_child_element_of(PElementKind::Name, 0, tree)
             .unwrap()
     }
 }
@@ -247,11 +247,11 @@ impl AFieldDeclKey {
         Self { parent, index }
     }
 
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
         self.parent
-            .element(root)
-            .of(&root.elements)
-            .nth_child_element_of(PElementKind::FieldDecl, self.index, root)
+            .element(tree)
+            .of(&tree.elements)
+            .nth_child_element_of(PElementKind::FieldDecl, self.index, tree)
             .unwrap()
     }
 }
@@ -276,11 +276,11 @@ impl AParamDeclKey {
         Self { parent, index }
     }
 
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
         self.parent
-            .element(root)
-            .of(&root.elements)
-            .nth_child_element_of(PElementKind::ParamDecl, self.index, root)
+            .element(tree)
+            .of(&tree.elements)
+            .nth_child_element_of(PElementKind::ParamDecl, self.index, tree)
             .unwrap()
     }
 }
@@ -310,16 +310,16 @@ pub(crate) enum AVariantDeclKey {
 }
 
 impl AVariantDeclKey {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
         let (parent, index) = match self {
             AVariantDeclKey::Enum(parent, index) => (parent, index),
             AVariantDeclKey::Struct(parent) => (parent, 0),
         };
 
         parent
-            .element(root)
-            .of(&root.elements)
-            .nth_child_element_either_of(PElementKind::VARIANT_DECL, index, root)
+            .element(tree)
+            .of(&tree.elements)
+            .nth_child_element_either_of(PElementKind::VARIANT_DECL, index, tree)
             .unwrap()
     }
 }
@@ -358,13 +358,13 @@ pub(crate) enum ADecl {
 // -----------------------------------------------
 
 impl ATyId {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
-        let event_id = self.of(&root.ast.ty_events).id();
-        event_id.of(&root.ast.events).unwrap()
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
+        let event_id = self.of(&tree.ast.ty_events).id();
+        event_id.of(&tree.ast.events).unwrap()
     }
 
-    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
-        self.element(root).of(&root.elements)
+    pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
+        self.element(tree).of(&tree.elements)
     }
 
     pub(crate) fn loc(self) -> PLoc {
@@ -373,13 +373,13 @@ impl ATyId {
 }
 
 impl APatId {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
-        let event_id = self.of(&root.ast.pat_events).id();
-        event_id.of(&root.ast.events).unwrap()
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
+        let event_id = self.of(&tree.ast.pat_events).id();
+        event_id.of(&tree.ast.events).unwrap()
     }
 
-    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
-        self.element(root).of(&root.elements)
+    pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
+        self.element(tree).of(&tree.elements)
     }
 
     pub(crate) fn loc(self) -> PLoc {
@@ -388,13 +388,13 @@ impl APatId {
 }
 
 impl AExprId {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
-        let event_id = self.of(&root.ast.expr_events).id();
-        event_id.of(&root.ast.events).unwrap()
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
+        let event_id = self.of(&tree.ast.expr_events).id();
+        event_id.of(&tree.ast.events).unwrap()
     }
 
-    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
-        self.element(root).of(&root.elements)
+    pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
+        self.element(tree).of(&tree.elements)
     }
 
     pub(crate) fn loc(self) -> PLoc {
@@ -403,16 +403,16 @@ impl AExprId {
 }
 
 impl ADeclId {
-    pub(crate) fn element(self, root: &PRoot) -> PElement {
-        let event_id = self.of(&root.ast.decl_events).id();
-        event_id.of(&root.ast.events).unwrap()
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
+        let event_id = self.of(&tree.ast.decl_events).id();
+        event_id.of(&tree.ast.events).unwrap()
     }
 
-    pub(crate) fn element_data(self, root: &PRoot) -> &PElementData {
-        self.element(root).of(&root.elements)
+    pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
+        self.element(tree).of(&tree.elements)
     }
 
-    pub(crate) fn loc(self, root: &PRoot) -> PLoc {
+    pub(crate) fn loc(self, tree: &PTree) -> PLoc {
         PLoc::Decl(self)
     }
 }
@@ -443,22 +443,22 @@ impl AElementId {
         }
     }
 
-    fn event_id(self, root: &PRoot) -> EventId {
+    fn event_id(self, tree: &PTree) -> EventId {
         match self {
-            AElementId::Ty(ty) => ty.of(&root.ast.ty_events).id(),
-            AElementId::Pat(pat) => pat.of(&root.ast.pat_events).id(),
-            AElementId::Expr(expr) => expr.of(&root.ast.expr_events).id(),
-            AElementId::Decl(decl) => decl.of(&root.ast.decl_events).id(),
+            AElementId::Ty(ty) => ty.of(&tree.ast.ty_events).id(),
+            AElementId::Pat(pat) => pat.of(&tree.ast.pat_events).id(),
+            AElementId::Expr(expr) => expr.of(&tree.ast.expr_events).id(),
+            AElementId::Decl(decl) => decl.of(&tree.ast.decl_events).id(),
         }
     }
 
-    fn untyped(self, root: &PRoot) -> PElement {
-        let ast = &root.ast;
-        self.event_id(root).of(&ast.events).unwrap()
+    fn untyped(self, tree: &PTree) -> PElement {
+        let ast = &tree.ast;
+        self.event_id(tree).of(&ast.events).unwrap()
     }
 
-    fn as_untyped(self, root: &PRoot) -> &PElementData {
-        self.untyped(root).of(&root.elements)
+    fn as_untyped(self, tree: &PTree) -> &PElementData {
+        self.untyped(tree).of(&tree.elements)
     }
 }
 
@@ -534,7 +534,7 @@ impl Debug for ATree {
 #[derive(Copy, Clone)]
 struct Render<'a> {
     element: AElementId,
-    p_root: &'a super::PRoot,
+    tree: &'a super::PTree,
 }
 
 impl<'a> Render<'a> {
@@ -567,25 +567,25 @@ impl<'a> Render<'a> {
     }
 
     fn element(self) -> PElement {
-        let ast = &self.p_root.ast;
+        let ast = &self.tree.ast;
         let event_id = match self.element {
             AElementId::Ty(ty) => ty.of(&ast.ty_events).id(),
             AElementId::Pat(pat) => pat.of(&ast.pat_events).id(),
             AElementId::Expr(expr) => expr.of(&ast.expr_events).id(),
             AElementId::Decl(decl) => decl.of(&ast.decl_events).id(),
         };
-        event_id.of(&self.p_root.ast.events).unwrap()
+        event_id.of(&self.tree.ast.events).unwrap()
     }
 }
 
-fn go(element: AElementId, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
-    for node in element.as_untyped(root).children() {
+fn go(element: AElementId, tree: &PTree, f: &mut Formatter<'_>) -> fmt::Result {
+    for node in element.as_untyped(tree).children() {
         match node {
             super::PNode::Token(token) => {
-                write!(f, "{}", token.text(&root.tokens))?;
+                write!(f, "{}", token.text(&tree.tokens))?;
             }
             super::PNode::Element(element) => {
-                write!(f, "<{:?}>", element.of(&root.elements).kind())?
+                write!(f, "<{:?}>", element.of(&tree.elements).kind())?
             }
         }
     }
@@ -594,10 +594,10 @@ fn go(element: AElementId, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
 
 impl<'a> Debug for Render<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let ast = &self.p_root.ast;
+        let ast = &self.tree.ast;
         match self.element {
-            AElementId::Ty(ty) => match ty.of(&self.p_root.ast.tys) {
-                ATy::Name(_) => go(self.element, self.p_root, f),
+            AElementId::Ty(ty) => match ty.of(&self.tree.ast.tys) {
+                ATy::Name(_) => go(self.element, self.tree, f),
                 ATy::Never => write!(f, "!"),
                 ATy::Unit => write!(f, "()"),
                 ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {
@@ -613,7 +613,7 @@ impl<'a> Debug for Render<'a> {
                     }
                 }
             },
-            AElementId::Pat(pat) => match pat.of(&self.p_root.ast.pats) {
+            AElementId::Pat(pat) => match pat.of(&self.tree.ast.pats) {
                 APat::Number(_)
                 | APat::Char(_)
                 | APat::Str(_)
@@ -621,18 +621,18 @@ impl<'a> Debug for Render<'a> {
                 | APat::False(_)
                 | APat::Discard(_)
                 | APat::Name(_)
-                | APat::Unit => go(self.element, self.p_root, f),
+                | APat::Unit => go(self.element, self.tree, f),
                 APat::Record(ARecordPat { .. }) => write!(f, "??? {{ .. }}"),
             },
-            AElementId::Expr(expr) => match expr.of(&self.p_root.ast.exprs) {
+            AElementId::Expr(expr) => match expr.of(&self.tree.ast.exprs) {
                 AExpr::Number(_)
                 | AExpr::Char(_)
                 | AExpr::Str(_)
                 | AExpr::True
                 | AExpr::False
-                | AExpr::Name(_) => go(self.element, self.p_root, f),
+                | AExpr::Name(_) => go(self.element, self.tree, f),
                 AExpr::Unit => write!(f, "()"),
-                AExpr::Record(_) | AExpr::DotField(_) => go(self.element, self.p_root, f),
+                AExpr::Record(_) | AExpr::DotField(_) => go(self.element, self.tree, f),
                 AExpr::Call(ACallLikeExpr { left, args }) => {
                     self.with_expr(*left).fmt(f)?;
 
@@ -684,12 +684,12 @@ impl<'a> Debug for Render<'a> {
                 | AExpr::If(_)
                 | AExpr::Match(_)
                 | AExpr::While(_)
-                | AExpr::Loop(_) => go(self.element, self.p_root, f),
+                | AExpr::Loop(_) => go(self.element, self.tree, f),
             },
-            AElementId::Decl(decl) => match decl.of(&self.p_root.ast.decls) {
+            AElementId::Decl(decl) => match decl.of(&self.tree.ast.decls) {
                 ADecl::Expr(expr) => Debug::fmt(&self.with_expr(*expr), f),
                 ADecl::Attr | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => {
-                    go(self.element, self.p_root, f)
+                    go(self.element, self.tree, f)
                 }
                 ADecl::Fn(AFnLikeDecl {
                     name_opt,
@@ -712,7 +712,7 @@ impl<'a> Debug for Render<'a> {
                     Ok(())
                 }
                 ADecl::ExternFn(_) | ADecl::Enum(_) | ADecl::Struct(_) | ADecl::Use(_) => {
-                    go(self.element, self.p_root, f)
+                    go(self.element, self.tree, f)
                 }
             },
         }
@@ -720,27 +720,27 @@ impl<'a> Debug for Render<'a> {
 }
 
 struct RenderRoot<'a> {
-    root: &'a PRoot,
+    tree: &'a PTree,
 }
 
 impl Debug for RenderRoot<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_list()
-            .entries(self.root.ast.root.decls.iter().map(|decl| Render {
+            .entries(self.tree.ast.root.decls.iter().map(|decl| Render {
                 element: AElementId::Decl(decl),
-                p_root: self.root,
+                tree: self.tree,
             }))
             .finish()
     }
 }
 
-pub(crate) fn dump_ast(p_root: &super::PRoot) {
+pub(crate) fn dump_ast(tree: &super::PTree) {
     log::trace!(
         "exprs {}, decls {}, root_decls {}",
-        p_root.ast.exprs.len(),
-        p_root.ast.decls.len(),
-        p_root.ast.root.decls.len()
+        tree.ast.exprs.len(),
+        tree.ast.decls.len(),
+        tree.ast.root.decls.len()
     );
 
-    log::trace!("AST = {:#?}", RenderRoot { root: p_root });
+    log::trace!("AST = {:#?}", RenderRoot { tree });
 }

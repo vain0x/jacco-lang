@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     cps::{KFn, KLocalVarParent, KModLocalSymbol, KNode, KSymbol, KSymbolCause, KTerm},
-    parse::PRoot,
+    parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
 };
 use std::{
@@ -137,10 +137,10 @@ fn to_range16(range: TRange) -> TRange16 {
     TRange16::at(TPos16::from(range.index), TPos16::from(range.len))
 }
 
-fn loc_to_range(loc: Loc, root: &PRoot) -> Option<TRange> {
+fn loc_to_range(loc: Loc, tree: &PTree) -> Option<TRange> {
     let opt = (|| {
         let (_, loc) = loc.inner().ok()?;
-        let range = loc.range(root).ok()?;
+        let range = loc.range(tree).ok()?;
         Some(range)
     })();
 
@@ -167,7 +167,7 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
                     local,
                     cause: KSymbolCause::NameUse(_, key),
                 }) => {
-                    let range = match key.element(&syntax.root).range(&syntax.root) {
+                    let range = match key.element(&syntax.tree).range(&syntax.tree) {
                         Ok(it) => it,
                         Err(_) => continue,
                     };
@@ -181,7 +181,7 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
                     ));
                 }
                 KTerm::Fn { k_fn, loc } => {
-                    let range = match loc_to_range(*loc, &syntax.root) {
+                    let range = match loc_to_range(*loc, &syntax.tree) {
                         Some(it) => it,
                         None => continue,
                     };
@@ -206,7 +206,7 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
         go(&fn_data.body, k_fn, syntax, sites);
 
         for (local_var, local_var_data) in fn_data.locals.enumerate() {
-            let range = match loc_to_range(local_var_data.loc, &syntax.root) {
+            let range = match loc_to_range(local_var_data.loc, &syntax.tree) {
                 Some(it) => it,
                 None => continue,
             };
@@ -220,7 +220,7 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
             ));
         }
 
-        let def_site = match loc_to_range(fn_outline.loc, &syntax.root) {
+        let def_site = match loc_to_range(fn_outline.loc, &syntax.tree) {
             Some(it) => it,
             None => continue,
         };

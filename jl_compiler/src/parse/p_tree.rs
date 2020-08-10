@@ -5,7 +5,7 @@ use crate::{
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone)]
-pub(crate) struct PRoot {
+pub(crate) struct PTree {
     pub(crate) eof: PToken,
     pub(crate) root: PElement,
     pub(crate) tokens: PTokens,
@@ -14,7 +14,7 @@ pub(crate) struct PRoot {
     pub(crate) ast: ATree,
 }
 
-impl PRoot {
+impl PTree {
     pub(crate) fn write_trace(&self) {
         log::trace!(
             "SyntaxTree (untyped):\n{:#?}",
@@ -25,37 +25,37 @@ impl PRoot {
     }
 }
 
-impl DebugWithContext<PRoot> for PToken {
-    fn fmt(&self, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self.of(&root.tokens), f)
+impl DebugWithContext<PTree> for PToken {
+    fn fmt(&self, tree: &PTree, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self.of(&tree.tokens), f)
     }
 }
 
-impl DebugWithContext<PRoot> for PElement {
-    fn fmt(&self, root: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
-        let data = self.of(&root.elements);
+impl DebugWithContext<PTree> for PElement {
+    fn fmt(&self, tree: &PTree, f: &mut Formatter<'_>) -> fmt::Result {
+        let data = self.of(&tree.elements);
         write!(f, "{:?} ", data.kind())?;
 
         f.debug_list()
             .entries(
                 data.children()
                     .iter()
-                    .map(|child| DebugWith::new(child, root)),
+                    .map(|child| DebugWith::new(child, tree)),
             )
             .finish()
     }
 }
 
-impl DebugWithContext<PRoot> for PNode {
-    fn fmt(&self, context: &PRoot, f: &mut Formatter<'_>) -> fmt::Result {
+impl DebugWithContext<PTree> for PNode {
+    fn fmt(&self, tree: &PTree, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            PNode::Token(inner) => DebugWithContext::fmt(inner, context, f),
-            PNode::Element(inner) => DebugWithContext::fmt(inner, context, f),
+            PNode::Token(inner) => DebugWithContext::fmt(inner, tree, f),
+            PNode::Element(inner) => DebugWithContext::fmt(inner, tree, f),
         }
     }
 }
 
-impl Debug for PRoot {
+impl Debug for PTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         DebugWithContext::fmt(&self.root, self, f)?;
 
@@ -70,7 +70,7 @@ impl Debug for PRoot {
     }
 }
 
-impl PRoot {
+impl PTree {
     /// use 宣言で指名されているモジュールの名前を収集する。(いまのところトップレベルにある use 宣言の先頭にある名前だけを収集する。)
     pub(crate) fn collect_used_mod_names(&self, mod_names: &mut Vec<String>) {
         for decl in self.ast.decls.iter() {

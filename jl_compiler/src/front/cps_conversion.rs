@@ -110,7 +110,6 @@ struct Xx<'a> {
     doc: Doc,
     k_mod: KMod,
     tokens: &'a PTokens,
-    root: &'a PRoot,
     ast: &'a ATree,
     decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
@@ -121,7 +120,7 @@ impl<'a> Xx<'a> {
     fn new(
         doc: Doc,
         k_mod: KMod,
-        root: &'a PRoot,
+        tree: &'a PTree,
         decl_symbols: &'a DeclSymbols,
         mod_outline: &'a KModOutline,
         logger: &'a DocLogger,
@@ -136,9 +135,8 @@ impl<'a> Xx<'a> {
             mod_data: KModData::default(),
             doc,
             k_mod,
-            tokens: &root.tokens,
-            root,
-            ast: &root.ast,
+            tokens: &tree.tokens,
+            ast: &tree.ast,
             decl_symbols,
             mod_outline,
             logger,
@@ -222,8 +220,6 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 
 pub(crate) struct TyResolver<'a> {
     pub(crate) env: &'a Env,
-    #[allow(unused)]
-    pub(crate) root: &'a PRoot,
     pub(crate) ast: &'a ATree,
     pub(crate) logger: &'a DocLogger,
 }
@@ -231,7 +227,6 @@ pub(crate) struct TyResolver<'a> {
 fn new_ty_resolver<'a>(xx: &'a Xx<'a>) -> TyResolver<'a> {
     TyResolver {
         env: &xx.env,
-        root: xx.root,
         ast: xx.ast,
         logger: xx.logger,
     }
@@ -1548,12 +1543,12 @@ fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
 pub(crate) fn convert_to_cps(
     doc: Doc,
     k_mod: KMod,
-    root: &PRoot,
+    tree: &PTree,
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
     logger: &DocLogger,
 ) -> KModData {
-    let mut xx = Xx::new(doc, k_mod, root, decl_symbols, mod_outline, logger);
+    let mut xx = Xx::new(doc, k_mod, tree, decl_symbols, mod_outline, logger);
 
     xx.mod_data = KModData {
         consts: mod_outline.consts.slice().map_with(KConstInit::new_empty),
@@ -1566,7 +1561,7 @@ pub(crate) fn convert_to_cps(
     };
 
     xx.do_in_scope(|xx| {
-        convert_decls(root.ast.root_decls(), xx);
+        convert_decls(tree.ast.root_decls(), xx);
     });
 
     xx.mod_data

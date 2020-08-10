@@ -47,24 +47,24 @@ impl PLoc {
         }
     }
 
-    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
+    pub(crate) fn range(self, tree: &PTree) -> Result<TRange, &'static str> {
         let range = match self {
             PLoc::Unknown(hint) => return Err(hint),
             PLoc::Range(range) => range,
-            PLoc::Token(token) => token.range(&root.tokens),
-            PLoc::TokenBehind(token) => token.range(&root.tokens).to_end(),
+            PLoc::Token(token) => token.range(&tree.tokens),
+            PLoc::TokenBehind(token) => token.range(&tree.tokens).to_end(),
             PLoc::TokenRange { first, last } => {
-                first.range(&root.tokens).join(last.range(&root.tokens))
+                first.range(&tree.tokens).join(last.range(&tree.tokens))
             }
-            PLoc::Element(element) => element.range(root)?,
-            PLoc::Ty(ty_id) => ty_id.element(root).range(root)?,
-            PLoc::Pat(pat_id) => pat_id.element(root).range(root)?,
-            PLoc::Expr(expr_id) => expr_id.element(root).range(root)?,
-            PLoc::Decl(decl_id) => decl_id.element(root).range(root)?,
-            PLoc::Name(key) => key.element(root).range(root)?,
-            PLoc::ParamDecl(key) => key.element(root).range(root)?,
-            PLoc::FieldDecl(key) => key.element(root).range(root)?,
-            PLoc::VariantDecl(key) => key.element(root).range(root)?,
+            PLoc::Element(element) => element.range(tree)?,
+            PLoc::Ty(ty_id) => ty_id.element(tree).range(tree)?,
+            PLoc::Pat(pat_id) => pat_id.element(tree).range(tree)?,
+            PLoc::Expr(expr_id) => expr_id.element(tree).range(tree)?,
+            PLoc::Decl(decl_id) => decl_id.element(tree).range(tree)?,
+            PLoc::Name(key) => key.element(tree).range(tree)?,
+            PLoc::ParamDecl(key) => key.element(tree).range(tree)?,
+            PLoc::FieldDecl(key) => key.element(tree).range(tree)?,
+            PLoc::VariantDecl(key) => key.element(tree).range(tree)?,
         };
         Ok(range)
     }

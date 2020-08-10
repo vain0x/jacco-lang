@@ -49,32 +49,32 @@ impl PNode {
     }
 
     #[allow(unused)]
-    pub(crate) fn of(self, root: &PRoot) -> PNodeRef<'_> {
+    pub(crate) fn of(self, tree: &PTree) -> PNodeRef<'_> {
         match self {
-            PNode::Token(token) => PNodeRef::Token(token.of(&root.tokens)),
-            PNode::Element(element) => PNodeRef::Element(element.of(&root.elements)),
+            PNode::Token(token) => PNodeRef::Token(token.of(&tree.tokens)),
+            PNode::Element(element) => PNodeRef::Element(element.of(&tree.elements)),
         }
     }
 
-    pub(crate) fn first_token(self, root: &PRoot) -> Option<PToken> {
+    pub(crate) fn first_token(self, tree: &PTree) -> Option<PToken> {
         match self {
             PNode::Token(token) => Some(token),
-            PNode::Element(element) => element.of(&root.elements).first_token(root),
+            PNode::Element(element) => element.of(&tree.elements).first_token(tree),
         }
     }
 
-    pub(crate) fn last_token(self, root: &PRoot) -> Option<PToken> {
+    pub(crate) fn last_token(self, tree: &PTree) -> Option<PToken> {
         match self {
             PNode::Token(token) => Some(token),
-            PNode::Element(element) => element.of(&root.elements).last_token(root),
+            PNode::Element(element) => element.of(&tree.elements).last_token(tree),
         }
     }
 
     #[allow(unused)]
-    pub(crate) fn range(self, root: &PRoot) -> Result<TRange, &'static str> {
+    pub(crate) fn range(self, tree: &PTree) -> Result<TRange, &'static str> {
         match self {
-            PNode::Token(token) => Ok(token.range(&root.tokens)),
-            PNode::Element(element) => element.of(&root.elements).range(root),
+            PNode::Token(token) => Ok(token.range(&tree.tokens)),
+            PNode::Element(element) => element.of(&tree.elements).range(tree),
         }
     }
 }

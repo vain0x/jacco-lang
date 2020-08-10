@@ -408,7 +408,7 @@ fn parse_root(px: &mut Px) -> AfterRoot {
     decls
 }
 
-pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, doc: Doc, logger: Logger) -> PRoot {
+pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, doc: Doc, logger: Logger) -> PTree {
     tokens.retain(|token| match token.kind() {
         TokenKind::Other => {
             logger.error(
@@ -432,7 +432,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, doc: Doc, logger: Logger)
     ast.root = ARoot { decls: a_decls };
     ast.events = events;
 
-    PRoot {
+    PTree {
         eof,
         elements,
         skipped,
