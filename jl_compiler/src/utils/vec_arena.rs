@@ -273,6 +273,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.get_mut(id.to_index())
     }
 
+    pub(crate) fn into_vec(self) -> Vec<T> {
+        self.inner
+    }
+
     pub(crate) fn keys(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
         (1..=self.inner.len() as u32).map(|id| unsafe { VecArenaId::new_unchecked(id) })
     }
