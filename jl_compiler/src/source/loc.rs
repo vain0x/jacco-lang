@@ -1,6 +1,6 @@
 use super::{Doc, TRange};
-use crate::{parse::PLoc, utils::TakeOut};
-use std::{fmt::Debug, mem::replace};
+use crate::parse::PLoc;
+use std::fmt::Debug;
 
 /// 位置情報
 ///
@@ -25,12 +25,6 @@ impl Loc {
 impl Default for Loc {
     fn default() -> Loc {
         Loc::new_unknown("<Loc::default>")
-    }
-}
-
-impl TakeOut for Loc {
-    fn take_out(&mut self) -> Loc {
-        replace(self, Loc::new_unknown("<Loc::take_out>"))
     }
 }
 

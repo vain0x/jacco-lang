@@ -1,5 +1,5 @@
 use super::*;
-use crate::{source::TRange, utils::TakeOut};
+use crate::source::TRange;
 use std::fmt::{self, Debug, Formatter};
 
 /// 字句データ
@@ -25,12 +25,6 @@ impl TokenData {
 
     pub(crate) fn range(&self) -> TRange {
         self.range
-    }
-}
-
-impl TakeOut for TokenData {
-    fn take_out(&mut self) -> TokenData {
-        TokenData::new(self.kind.take_out(), self.text.take_out(), self.range)
     }
 }
 

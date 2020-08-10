@@ -1,11 +1,6 @@
-use crate::utils::TakeOut;
-use std::mem::replace;
-
 /// 字句の種類
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum TokenKind {
-    /// `take_out` の呼び出し後
-    TakenOut,
     Eof,
     Space,
     Comment,
@@ -163,10 +158,4 @@ pub(crate) enum TokenKind {
     SlashEqual,
     Star,
     StarEqual,
-}
-
-impl TakeOut for TokenKind {
-    fn take_out(&mut self) -> Self {
-        replace(self, TokenKind::TakenOut)
-    }
 }
