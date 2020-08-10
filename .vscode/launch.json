@@ -10,7 +10,8 @@
                 "--extensionDevelopmentPath=${workspaceFolder}"
             ],
             "env": {
-                "JACCO_LSP_BIN": "${workspaceFolder}/target/debug/jacco_lsp"
+                "JACCO_LSP_BIN": "${workspaceFolder}/target/debug/jacco_lsp",
+                "RUST_BACKTRACE": "1"
             },
             "preLaunchTask": "jl_vscode_ext_build"
         }
