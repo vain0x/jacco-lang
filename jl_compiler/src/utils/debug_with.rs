@@ -25,3 +25,26 @@ where
         DebugWithContext::fmt(self.value, self.context, f)
     }
 }
+
+impl<T, Context> DebugWithContext<Context> for Vec<T>
+where
+    T: DebugWithContext<Context>,
+{
+    fn fmt(&self, context: &Context, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entries(self.iter().map(|item| DebugWith::new(item, context)))
+            .finish()
+    }
+}
+
+impl<T, Context> DebugWithContext<Context> for Option<T>
+where
+    T: DebugWithContext<Context>,
+{
+    fn fmt(&self, context: &Context, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Some(value) => DebugWithContext::fmt(value, context, f),
+            None => write!(f, "???"),
+        }
+    }
+}
