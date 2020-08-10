@@ -312,8 +312,8 @@ pub(crate) fn do_tokenize(tx: &mut Tx) {
     }
 }
 
-pub(crate) fn tokenize(source: TokenSource, source_code: Rc<SourceCode>) -> Vec<TokenData> {
-    let mut tx = Tx::new(source, source_code);
+pub(crate) fn tokenize(source_code: Rc<SourceCode>) -> Vec<TokenData> {
+    let mut tx = Tx::new(source_code);
     do_tokenize(&mut tx);
     tx.finish()
 }

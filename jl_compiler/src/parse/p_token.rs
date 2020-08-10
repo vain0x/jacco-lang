@@ -1,4 +1,3 @@
-use super::PLoc;
 use crate::{
     source::TRange,
     token::TokenData,
@@ -18,12 +17,7 @@ impl PToken {
     }
 
     pub(crate) fn range(self, tokens: &PTokens) -> Result<TRange, &'static str> {
-        let (_, loc) = tokens[self].loc().inner()?;
-        match loc {
-            PLoc::Unknown(hint) => Err(hint),
-            PLoc::Range(range) => Ok(range),
-            _ => unreachable!(),
-        }
+        Ok(tokens[self].range())
     }
 
     #[allow(unused)]

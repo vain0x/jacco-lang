@@ -1,9 +1,5 @@
 use super::{Doc, TRange};
-use crate::{
-    parse::PLoc,
-    token::{TokenData, TokenSource},
-    utils::TakeOut,
-};
+use crate::{parse::PLoc, utils::TakeOut};
 use std::{fmt::Debug, mem::replace};
 
 /// 位置情報
@@ -15,13 +11,6 @@ pub(crate) struct Loc(Result<(Doc, PLoc), &'static str>);
 impl Loc {
     pub(crate) fn new(doc: Doc, loc: PLoc) -> Self {
         Self(Ok((doc, loc)))
-    }
-
-    pub(crate) fn new_legacy(source: TokenSource, range: TRange) -> Self {
-        match source {
-            TokenSource::Special(hint) => Self(Err(hint)),
-            TokenSource::File(doc) => Self(Ok((doc, PLoc::Range(range)))),
-        }
     }
 
     pub(crate) fn new_unknown(hint: &'static str) -> Self {
@@ -71,11 +60,5 @@ impl<'a, T: HaveLoc> HaveLoc for &'a mut T {
 impl HaveLoc for Loc {
     fn loc(&self) -> Loc {
         *self
-    }
-}
-
-impl HaveLoc for TokenData {
-    fn loc(&self) -> Loc {
-        TokenData::loc(self)
     }
 }

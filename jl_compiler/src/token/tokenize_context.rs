@@ -1,11 +1,10 @@
 use super::*;
-use crate::source::{Loc, SourceCode, TPos, TRange};
+use crate::source::{SourceCode, TPos, TRange};
 use std::{cmp::min, rc::Rc};
 use text_position_rs::TextPosition as _;
 
 /// Tokenization context. 字句解析の文脈
 pub(crate) struct TokenizeContext {
-    source: TokenSource,
     source_code: Rc<SourceCode>,
     current_index: usize,
     last_index: usize,
@@ -14,9 +13,8 @@ pub(crate) struct TokenizeContext {
 }
 
 impl TokenizeContext {
-    pub(crate) fn new(source: TokenSource, source_code: Rc<SourceCode>) -> Self {
+    pub(crate) fn new(source_code: Rc<SourceCode>) -> Self {
         TokenizeContext {
-            source,
             source_code,
             current_index: 0,
             last_index: 0,
@@ -83,8 +81,7 @@ impl TokenizeContext {
 
         let text_len = TPos::from_str(&text);
         let range = TRange::at(self.last_pos, text_len);
-        let loc = Loc::new_legacy(self.source.clone(), range);
-        let token = TokenData::new(token, text, loc);
+        let token = TokenData::new(token, text, range);
 
         self.push_token(token);
 

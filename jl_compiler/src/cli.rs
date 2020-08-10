@@ -7,7 +7,7 @@ use crate::{
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PRoot},
     source::{Doc, TRange},
-    token::{tokenize, TokenSource},
+    token::tokenize,
     utils::VecArena,
 };
 use log::error;
@@ -109,11 +109,8 @@ impl Project {
             let doc = Doc::from(id.to_index());
 
             let logs = Logs::new();
-            let tokens = {
-                let source = TokenSource::File(doc);
-                tokenize(source, doc_data.text.clone().into())
-            };
-            let root = parse_tokens(tokens, logs.logger());
+            let tokens = tokenize(doc_data.text.clone().into());
+            let root = parse_tokens(tokens, doc, logs.logger());
             root.write_trace();
             root.collect_used_mod_names(&mut mod_names);
 

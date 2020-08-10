@@ -6,7 +6,7 @@ use crate::{
     logs::{DocLogs, Logs},
     parse::{self, PRoot},
     source::{Doc, TRange},
-    token::{self, TokenSource},
+    token,
 };
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
@@ -55,12 +55,11 @@ impl AnalysisCache {
         let logs = Logs::new();
         let tokens = {
             Doc::set_path(self.doc, &self.source_path);
-            let token_source = TokenSource::File(self.doc);
             let source_code = self.text.clone();
-            token::tokenize(token_source, source_code)
+            token::tokenize(source_code)
         };
         let syntax = {
-            let root = parse::parse_tokens(tokens, logs.logger());
+            let root = parse::parse_tokens(tokens, self.doc, logs.logger());
 
             let doc_logs = DocLogs::new();
             // FIXME: 構文検査

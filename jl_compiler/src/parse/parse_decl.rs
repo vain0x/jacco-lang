@@ -1,7 +1,7 @@
 //! 宣言の構文解析ルール
 
 use super::*;
-use crate::cps::KVis;
+use crate::{cps::KVis, source::Doc};
 use parse_expr::parse_unqualifiable_name;
 
 fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
@@ -408,10 +408,13 @@ fn parse_root(px: &mut Px) -> AfterRoot {
     decls
 }
 
-pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot {
+pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, doc: Doc, logger: Logger) -> PRoot {
     tokens.retain(|token| match token.kind() {
         TokenKind::Other => {
-            logger.error(token, format!("invalid token {:?}", token.text()));
+            logger.error(
+                (doc, token.range()),
+                format!("invalid token {:?}", token.text()),
+            );
             false
         }
         TokenKind::Space | TokenKind::Comment => false,
@@ -441,20 +444,15 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: Logger) -> PRoot 
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        logs::Logs,
-        parse,
-        token::{self, TokenSource},
-    };
+    use crate::{logs::Logs, parse, source::Doc, token};
 
     #[test]
     fn test_parse_does_not_stop() {
-        let token_source = TokenSource::Special("test");
         let source_code = "}}}}}";
 
         let logs = Logs::new();
-        let tokens = token::tokenize(token_source, source_code.to_string().into());
-        let p_root = parse::parse_tokens(tokens, logs.logger());
+        let tokens = token::tokenize(source_code.to_string().into());
+        let p_root = parse::parse_tokens(tokens, Doc::MAX, logs.logger());
 
         assert!(p_root.ast.decls().is_empty());
     }

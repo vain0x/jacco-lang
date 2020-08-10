@@ -220,7 +220,6 @@ mod token {
     mod punctuation;
     mod token_data;
     mod token_kind;
-    mod token_source;
     mod tokenize_context;
     mod tokenize_rules;
 
@@ -228,7 +227,6 @@ mod token {
     pub(crate) use lit_decimal::{eval_number, LitErr};
     pub(crate) use token_data::TokenData;
     pub(crate) use token_kind::TokenKind;
-    pub(crate) use token_source::TokenSource;
     pub(crate) use tokenize_rules::tokenize;
 }
 
