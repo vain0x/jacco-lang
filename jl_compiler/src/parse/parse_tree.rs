@@ -7,11 +7,11 @@ use std::fmt::{self, Debug, Formatter};
 #[derive(Clone)]
 pub(crate) struct PRoot {
     pub(crate) eof: PToken,
-    pub(crate) elements: PElementArena,
-    pub(crate) skipped: Vec<PToken>,
-    pub(crate) tokens: PTokens,
-    pub(crate) ast: ATree,
     pub(crate) root: PElement,
+    pub(crate) tokens: PTokens,
+    pub(crate) skipped: Vec<PToken>,
+    pub(crate) elements: PElementArena,
+    pub(crate) ast: ATree,
 }
 
 impl PRoot {
