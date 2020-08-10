@@ -1347,7 +1347,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         xx.local_vars = locals;
 
         // 関数の本体を格納しておくラベル
-        xx.labels.alloc(KLabelConstruction::default());
+        xx.label = xx.labels.alloc(KLabelConstruction::default());
 
         let term = convert_expr_opt(fn_decl.body_opt, loc, xx);
         emit_return(term, loc, xx);

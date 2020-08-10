@@ -1,0 +1,18 @@
+void b_1();
+
+void a_1();
+
+void b_1() {
+    return;
+}
+
+void a_1() {
+    if (1) {
+        goto next_1;
+    } else {
+        goto next_1;
+    }
+
+next_1:;
+    return;
+}

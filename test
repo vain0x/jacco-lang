@@ -108,6 +108,7 @@ f_all() {
     expect_compile_ok match
     expect_compile_ok enum_consts
     expect_compile_ok enum_records
+    expect_compile_ok label_containing_nested_fn_issue issues
     expect_compile_ok label_order_issue issues
     expect_compile_ok block
     expect_compile_ok use

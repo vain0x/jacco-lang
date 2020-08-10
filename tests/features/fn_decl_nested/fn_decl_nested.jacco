@@ -1,0 +1,9 @@
+#![test("run", 42)]
+
+pub fn main() -> i32 {
+    fn run() -> i32 {
+        40 + 2
+    }
+
+    run()
+}
