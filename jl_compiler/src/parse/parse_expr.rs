@@ -134,7 +134,7 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
                 _ => {
                     let body_opt = parse_expr(px);
                     let right_paren_opt = px.eat(TokenKind::RightParen);
-                    alloc_group_expr(event, left_paren, body_opt, right_paren_opt, px)
+                    alloc_paren_expr(event, left_paren, body_opt, right_paren_opt, px)
                 }
             }
         }

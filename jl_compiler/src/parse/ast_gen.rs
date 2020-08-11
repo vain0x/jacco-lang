@@ -221,7 +221,7 @@ pub(crate) fn alloc_unit_expr_from_parens(
     (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
 }
 
-pub(crate) fn alloc_group_expr(
+pub(crate) fn alloc_paren_expr(
     event: ExprStart,
     left_paren: PToken,
     body_opt: Option<AfterExpr>,
@@ -230,7 +230,7 @@ pub(crate) fn alloc_group_expr(
 ) -> AfterExpr {
     match body_opt {
         Some(a_expr) => {
-            event.end(PElementKind::GroupExpr, px);
+            event.end(PElementKind::ParenExpr, px);
             a_expr
         }
         None => ((AExpr::Unit, event.end(PElementKind::UnitExpr, px))),

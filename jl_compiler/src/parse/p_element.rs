@@ -36,7 +36,7 @@ pub(crate) enum PElementKind {
     FalseExpr,
     NameExpr,
     UnitExpr,
-    GroupExpr,
+    ParenExpr,
     RecordExpr,
     DotFieldExpr,
     CallExpr,

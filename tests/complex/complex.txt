@@ -41,9 +41,9 @@ next_2:;
     }
 
 next_3:;
-    // unit_1 is killed.
+    // unit_expr_1 is killed.
     (void)0;
-    int group_expr_1 = 1;
+    int paren_expr_1 = 1;
     int a_1 = 1;
     int const* ref_1 = &a_1;
     int const* p_1 = ref_1;
