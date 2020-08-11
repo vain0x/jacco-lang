@@ -1,15 +1,21 @@
-void unit_to_unit_1();
+void set_unit_1();
+
+void get_unit_1();
 
 int main();
 
-void unit_to_unit_1() {
+void set_unit_1() {
+    return;
+}
+
+void get_unit_1() {
     return;
 }
 
 int main() {
     // call_result_1 is killed.
-    unit_to_unit_1();
-    // it_1 is killed.
-    (void)0;
+    get_unit_1();
+    // call_result_2 is killed.
+    set_unit_1();
     return 0;
 }

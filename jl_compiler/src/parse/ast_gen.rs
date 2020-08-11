@@ -208,10 +208,14 @@ pub(crate) fn alloc_record_pat(
 // 式
 // -----------------------------------------------
 
-pub(crate) fn alloc_unit_expr(
+pub(crate) fn alloc_unit_expr(event: ExprStart, _token: PToken, px: &mut Px) -> AfterExpr {
+    (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
+}
+
+pub(crate) fn alloc_unit_expr_from_parens(
     event: ExprStart,
-    left_paren: PToken,
-    right_paren: PToken,
+    _left_paren: PToken,
+    _right_paren: PToken,
     px: &mut Px,
 ) -> AfterExpr {
     (AExpr::Unit, event.end(PElementKind::UnitExpr, px))

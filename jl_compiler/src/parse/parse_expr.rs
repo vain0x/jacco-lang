@@ -46,7 +46,7 @@ fn parse_tuple_expr(event: ExprStart, left_paren: PToken, px: &mut Px) -> AfterE
     match px.next() {
         TokenKind::RightParen => {
             let right_paren = px.bump();
-            alloc_unit_expr(event, left_paren, right_paren, px)
+            alloc_unit_expr_from_parens(event, left_paren, right_paren, px)
         }
         _ => {
             let body_opt = parse_expr(px);
@@ -118,6 +118,10 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         TokenKind::Str => {
             let token = px.bump();
             alloc_str(event, token, px)
+        }
+        TokenKind::Unit => {
+            let token = px.bump();
+            alloc_unit_expr(event, token, px)
         }
         TokenKind::True => {
             let token = px.bump();

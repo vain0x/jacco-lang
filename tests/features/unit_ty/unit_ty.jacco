@@ -1,10 +1,14 @@
 #![test("run", 0)]
 
-// unit キーワードは unit 型を表す。
+// unit キーワードは unit 型および unit 定数を表す。
 
-fn unit_to_unit(u: unit) -> unit {}
+fn set_unit(_unit: unit) {}
+
+fn get_unit() -> unit {
+    unit
+}
 
 pub fn main() -> i32 {
-    let it = unit_to_unit();
+    set_unit(get_unit());
     0
 }
