@@ -208,19 +208,6 @@ pub(crate) fn alloc_record_pat(
 // 式
 // -----------------------------------------------
 
-pub(crate) fn alloc_unit_expr(event: ExprStart, _token: PToken, px: &mut Px) -> AfterExpr {
-    (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
-}
-
-pub(crate) fn alloc_unit_expr_from_parens(
-    event: ExprStart,
-    _left_paren: PToken,
-    _right_paren: PToken,
-    px: &mut Px,
-) -> AfterExpr {
-    (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
-}
-
 pub(crate) fn alloc_paren_expr(
     event: ExprStart,
     left_paren: PToken,
@@ -250,6 +237,19 @@ pub(crate) fn alloc_char(event: ExprStart, token: PToken, px: &mut Px) -> AfterE
 
 pub(crate) fn alloc_str(event: ExprStart, token: PToken, px: &mut Px) -> AfterExpr {
     (AExpr::Str(token), event.end(PElementKind::StrExpr, px))
+}
+
+pub(crate) fn alloc_unit_expr(event: ExprStart, _token: PToken, px: &mut Px) -> AfterExpr {
+    (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
+}
+
+pub(crate) fn alloc_unit_expr_from_parens(
+    event: ExprStart,
+    _left_paren: PToken,
+    _right_paren: PToken,
+    px: &mut Px,
+) -> AfterExpr {
+    (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
 }
 
 pub(crate) fn alloc_true(event: ExprStart, token: PToken, px: &mut Px) -> AfterExpr {

@@ -11,10 +11,10 @@ pub(crate) enum PElementKind {
     Name,
 
     // 型
-    NameTy,
-    InferTy,
     NeverTy,
     UnitTy,
+    InferTy,
+    NameTy,
     PtrTy,
 
     // パターン
@@ -30,13 +30,13 @@ pub(crate) enum PElementKind {
     Arm,
 
     // 式
+    UnitExpr,
+    TrueExpr,
+    FalseExpr,
     NumberExpr,
     CharExpr,
     StrExpr,
-    TrueExpr,
-    FalseExpr,
     NameExpr,
-    UnitExpr,
     ParenExpr,
     RecordExpr,
     FieldExpr,

@@ -93,18 +93,6 @@ fn parse_record_expr(event: ExprStart, name: AfterQualifiableName, px: &mut Px) 
 fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
     let event = px.start_element();
     let expr = match px.next() {
-        TokenKind::Number => {
-            let token = px.bump();
-            alloc_number(event, token, px)
-        }
-        TokenKind::Char => {
-            let token = px.bump();
-            alloc_char(event, token, px)
-        }
-        TokenKind::Str => {
-            let token = px.bump();
-            alloc_str(event, token, px)
-        }
         TokenKind::Unit => {
             let token = px.bump();
             alloc_unit_expr(event, token, px)
@@ -116,6 +104,18 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         TokenKind::False => {
             let token = px.bump();
             alloc_false(event, token, px)
+        }
+        TokenKind::Number => {
+            let token = px.bump();
+            alloc_number(event, token, px)
+        }
+        TokenKind::Char => {
+            let token = px.bump();
+            alloc_char(event, token, px)
+        }
+        TokenKind::Str => {
+            let token = px.bump();
+            alloc_str(event, token, px)
         }
         TokenKind::Ident => {
             let name = parse_qualifiable_name(px).unwrap();

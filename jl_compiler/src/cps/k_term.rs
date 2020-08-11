@@ -26,6 +26,12 @@ pub(crate) enum KTerm {
     Unit {
         loc: Loc,
     },
+    True {
+        loc: Loc,
+    },
+    False {
+        loc: Loc,
+    },
     Int {
         text: String,
         ty: KTy2,
@@ -43,12 +49,6 @@ pub(crate) enum KTerm {
     },
     Str {
         text: String,
-        loc: Loc,
-    },
-    True {
-        loc: Loc,
-    },
-    False {
         loc: Loc,
     },
     Name(KSymbol),

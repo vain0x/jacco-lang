@@ -18,6 +18,7 @@ pub(crate) enum KEnumOrStruct {
 /// 組み込みの数値型
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum KNumberTy {
+    Bool,
     I8,
     I16,
     I32,
@@ -44,12 +45,12 @@ pub(crate) enum KNumberTy {
     C32,
     #[allow(unused)]
     CNN,
-    Bool,
 }
 
 impl KNumberTy {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
+            KNumberTy::Bool => "bool",
             KNumberTy::I8 => "i8",
             KNumberTy::I16 => "i16",
             KNumberTy::I32 => "i32",
@@ -69,13 +70,13 @@ impl KNumberTy {
             KNumberTy::C16 => "c16",
             KNumberTy::C32 => "c32",
             KNumberTy::CNN => "{cNN}",
-            KNumberTy::Bool => "bool",
         }
     }
 
     #[allow(unused)]
     pub(crate) fn parse(s: &str) -> Option<KNumberTy> {
         let ty = match s {
+            "bool" => KNumberTy::Bool,
             "i8" => KNumberTy::I8,
             "i16" => KNumberTy::I16,
             "i32" => KNumberTy::I32,
@@ -91,7 +92,6 @@ impl KNumberTy {
             "c8" => KNumberTy::C8,
             "c16" => KNumberTy::C16,
             "c32" => KNumberTy::C32,
-            "bool" => KNumberTy::Bool,
             _ => return None,
         };
         Some(ty)
@@ -457,6 +457,7 @@ impl KTy {
     pub(crate) const DEFAULT: KTy = KTy::Unresolved {
         cause: KTyCause::Default,
     };
+    pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
     pub(crate) const I8: KTy = KTy::Number(KNumberTy::I8);
     pub(crate) const I16: KTy = KTy::Number(KNumberTy::I16);
     pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
@@ -480,7 +481,6 @@ impl KTy {
     pub(crate) const C32: KTy = KTy::Number(KNumberTy::C32);
     #[allow(unused)]
     pub(crate) const CNN: KTy = KTy::Number(KNumberTy::CNN);
-    pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
 
     pub(crate) fn init_later(loc: Loc) -> Self {
         KTy::Unresolved {
@@ -491,6 +491,7 @@ impl KTy {
     #[allow(unused)]
     pub(crate) fn from_number_ty(number_ty: KNumberTy) -> &'static KTy {
         match number_ty {
+            KNumberTy::Bool => &KTy::BOOL,
             KNumberTy::I8 => &KTy::I8,
             KNumberTy::I16 => &KTy::I16,
             KNumberTy::I32 => &KTy::I32,
@@ -510,7 +511,6 @@ impl KTy {
             KNumberTy::C16 => &KTy::C16,
             KNumberTy::C32 => &KTy::C32,
             KNumberTy::CNN => &KTy::CNN,
-            KNumberTy::Bool => &KTy::BOOL,
         }
     }
 

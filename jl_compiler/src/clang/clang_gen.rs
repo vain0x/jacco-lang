@@ -184,9 +184,9 @@ fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx:
 
 fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     match basic_ty {
+        KNumberTy::Bool | KNumberTy::I32 | KNumberTy::CNN => CTy::Int,
         KNumberTy::I8 => CTy::SignedChar,
         KNumberTy::I16 => CTy::Short,
-        KNumberTy::I32 | KNumberTy::CNN | KNumberTy::Bool => CTy::Int,
         KNumberTy::I64 | KNumberTy::Isize | KNumberTy::INN => CTy::LongLong,
         KNumberTy::U8 | KNumberTy::C8 => CTy::UnsignedChar,
         KNumberTy::U16 | KNumberTy::C16 => CTy::UnsignedShort,
@@ -199,6 +199,8 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
 
 fn gen_constant_value(value: &KConstValue) -> CExpr {
     match value {
+        KConstValue::Bool(true) => CExpr::BoolLit("1"),
+        KConstValue::Bool(false) => CExpr::BoolLit("0"),
         KConstValue::I8(value) => CExpr::IntLit(value.to_string()),
         KConstValue::I16(value) => CExpr::IntLit(value.to_string()),
         KConstValue::I32(value) => CExpr::IntLit(value.to_string()),
@@ -214,8 +216,6 @@ fn gen_constant_value(value: &KConstValue) -> CExpr {
         KConstValue::C8(value) => CExpr::IntLit(value.to_string()),
         KConstValue::C16(value) => CExpr::IntLit(value.to_string()),
         KConstValue::C32(value) => CExpr::IntLit(value.to_string()),
-        KConstValue::Bool(true) => CExpr::BoolLit("1"),
-        KConstValue::Bool(false) => CExpr::BoolLit("0"),
     }
 }
 

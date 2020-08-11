@@ -49,6 +49,7 @@ impl KConstInit {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum KConstValue {
+    Bool(bool),
     I8(i8),
     I16(i16),
     I32(i32),
@@ -64,18 +65,17 @@ pub(crate) enum KConstValue {
     C8(u8),
     C16(u16),
     C32(u32),
-    Bool(bool),
 }
 
 impl KConstValue {
     pub(crate) fn cast_as_usize(&self) -> usize {
         match self {
+            KConstValue::Bool(value) => *value as usize,
             KConstValue::I32(value) => *value as usize,
             KConstValue::I64(value) => *value as usize,
             KConstValue::U64(value) => *value as usize,
             KConstValue::Usize(value) => *value,
             KConstValue::F64(value) => *value as usize,
-            KConstValue::Bool(value) => *value as usize,
             _ => unimplemented!(),
         }
     }
@@ -83,11 +83,11 @@ impl KConstValue {
     #[allow(unused)]
     pub(crate) fn ty(&self) -> KTy {
         match self {
+            KConstValue::Bool(_) => KTy::BOOL,
             KConstValue::I32(_) => KTy::I32,
             KConstValue::I64(_) => KTy::I64,
             KConstValue::Usize(_) => KTy::USIZE,
             KConstValue::F64(_) => KTy::F64,
-            KConstValue::Bool(_) => KTy::BOOL,
             _ => unimplemented!(),
         }
     }
@@ -96,6 +96,10 @@ impl KConstValue {
 impl From<(KNumber, KNumberTy)> for KConstValue {
     fn from((number, ty): (KNumber, KNumberTy)) -> Self {
         match (number, ty) {
+            (KNumber::INN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
+            (KNumber::UNN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
+            (KNumber::CNN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
+            (KNumber::FNN(_), KNumberTy::Bool) => KConstValue::Bool(true),
             (KNumber::INN(value), KNumberTy::I8) => KConstValue::I8(value as i8),
             (KNumber::INN(value), KNumberTy::I16) => KConstValue::I16(value as i16),
             (KNumber::INN(value), KNumberTy::I32) => KConstValue::I32(value as i32),
@@ -172,10 +176,6 @@ impl From<(KNumber, KNumberTy)> for KConstValue {
             (KNumber::CNN(value), KNumberTy::C16) => KConstValue::C16(value as u16),
             (KNumber::CNN(value), KNumberTy::C32) => KConstValue::C32(value as u32),
             (KNumber::CNN(value), KNumberTy::CNN) => KConstValue::C32(value as u32),
-            (KNumber::INN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
-            (KNumber::UNN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
-            (KNumber::CNN(value), KNumberTy::Bool) => KConstValue::Bool(value != 0),
-            (KNumber::FNN(_), KNumberTy::Bool) => KConstValue::Bool(true),
         }
     }
 }

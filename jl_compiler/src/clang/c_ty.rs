@@ -38,9 +38,9 @@ impl CTy {
 impl From<KNumberTy> for CTy {
     fn from(ty: KNumberTy) -> Self {
         match ty {
+            KNumberTy::Bool | KNumberTy::I32 => CTy::Int,
             KNumberTy::I8 => CTy::SignedChar,
             KNumberTy::I16 => CTy::Short,
-            KNumberTy::I32 | KNumberTy::Bool => CTy::Int,
             KNumberTy::I64 | KNumberTy::Isize | KNumberTy::INN => CTy::LongLong,
             KNumberTy::U8 | KNumberTy::C8 | KNumberTy::CNN => CTy::UnsignedChar,
             KNumberTy::U16 | KNumberTy::C16 => CTy::UnsignedShort,

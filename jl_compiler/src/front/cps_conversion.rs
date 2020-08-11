@@ -350,14 +350,14 @@ fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm 
 
 fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
     let term = match pat {
+        APat::Unit => KTerm::Unit { loc },
+        APat::True(_) => KTerm::True { loc },
+        APat::False(_) => KTerm::False { loc },
         APat::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        APat::True(_) => KTerm::True { loc },
-        APat::False(_) => KTerm::False { loc },
         APat::Wildcard(token) => return convert_wildcard_pat_as_cond(*token, xx),
         APat::Name(name) => return convert_name_pat_as_cond(name, ANameKey::Pat(pat_id), xx),
-        APat::Unit => KTerm::Unit { loc },
         APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
     };
     Branch::Case(term)
@@ -1194,13 +1194,13 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
+        AExpr::Unit => KTerm::Unit { loc },
+        AExpr::True => KTerm::True { loc },
+        AExpr::False => KTerm::False { loc },
         AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        AExpr::True => KTerm::True { loc },
-        AExpr::False => KTerm::False { loc },
         AExpr::Name(name) => convert_name_expr(&name.full_name, ANameKey::Expr(expr_id), xx),
-        AExpr::Unit => KTerm::Unit { loc },
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::Field(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),

@@ -98,14 +98,14 @@ pub(crate) struct ARecordPat {
 }
 
 pub(crate) enum APat {
+    Unit,
+    True(PToken),
+    False(PToken),
     Number(PToken),
     Char(PToken),
     Str(PToken),
-    True(PToken),
-    False(PToken),
     Wildcard(PToken),
     Name(AName),
-    Unit,
     Record(ARecordPat),
 }
 
@@ -190,13 +190,13 @@ pub(crate) struct ALoopExpr {
 }
 
 pub(crate) enum AExpr {
+    Unit,
+    True,
+    False,
     Number(PToken),
     Char(PToken),
     Str(PToken),
-    True,
-    False,
     Name(AName),
-    Unit,
     Record(ARecordExpr),
     Field(AFieldExpr),
     Call(ACallLikeExpr),
@@ -616,24 +616,24 @@ impl<'a> Debug for Render<'a> {
                 }
             },
             AElementId::Pat(pat) => match pat.of(&self.tree.ast.pats) {
-                APat::Number(_)
-                | APat::Char(_)
-                | APat::Str(_)
+                APat::Unit
                 | APat::True(_)
                 | APat::False(_)
+                | APat::Number(_)
+                | APat::Char(_)
+                | APat::Str(_)
                 | APat::Wildcard(_)
-                | APat::Name(_)
-                | APat::Unit => go(self.element, self.tree, f),
+                | APat::Name(_) => go(self.element, self.tree, f),
                 APat::Record(ARecordPat { .. }) => write!(f, "??? {{ .. }}"),
             },
             AElementId::Expr(expr) => match expr.of(&self.tree.ast.exprs) {
-                AExpr::Number(_)
+                AExpr::Unit => write!(f, "()"),
+                AExpr::True
+                | AExpr::False
+                | AExpr::Number(_)
                 | AExpr::Char(_)
                 | AExpr::Str(_)
-                | AExpr::True
-                | AExpr::False
                 | AExpr::Name(_) => go(self.element, self.tree, f),
-                AExpr::Unit => write!(f, "()"),
                 AExpr::Record(_) | AExpr::Field(_) => go(self.element, self.tree, f),
                 AExpr::Call(ACallLikeExpr { left, args }) => {
                     self.with_expr(*left).fmt(f)?;
