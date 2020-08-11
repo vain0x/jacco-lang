@@ -73,6 +73,7 @@ pub(crate) struct APtrTy {
 
 pub(crate) enum ATy {
     Name(AName),
+    InferTy,
     Never,
     Unit,
     Ptr(APtrTy),
@@ -598,6 +599,7 @@ impl<'a> Debug for Render<'a> {
         match self.element {
             AElementId::Ty(ty) => match ty.of(&self.tree.ast.tys) {
                 ATy::Name(_) => go(self.element, self.tree, f),
+                ATy::InferTy => write!(f, "_"),
                 ATy::Never => write!(f, "!"),
                 ATy::Unit => write!(f, "()"),
                 ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {

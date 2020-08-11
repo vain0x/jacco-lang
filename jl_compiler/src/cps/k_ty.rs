@@ -414,6 +414,7 @@ pub(crate) enum KTyCause {
     Alias,
     FieldTag,
     NameUnresolved(ATyId),
+    InferTy(ATyId),
     Unbound,
     Loc(Loc),
 }

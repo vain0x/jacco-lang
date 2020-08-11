@@ -12,6 +12,7 @@ pub(crate) enum PElementKind {
 
     // 型
     NameTy,
+    InferTy,
     NeverTy,
     UnitTy,
     PtrTy,

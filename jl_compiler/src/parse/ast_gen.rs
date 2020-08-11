@@ -131,6 +131,10 @@ pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut
     (ATy::Name(a_name), event.end(PElementKind::NameTy, px))
 }
 
+pub(crate) fn alloc_infer_ty(event: TyStart, token: PToken, px: &mut Px) -> AfterTy {
+    (ATy::InferTy, event.end(PElementKind::InferTy, px))
+}
+
 pub(crate) fn alloc_unit_ty(
     event: TyStart,
     left_paren: PToken,

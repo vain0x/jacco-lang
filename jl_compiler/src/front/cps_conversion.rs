@@ -252,6 +252,13 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
                 }
             }
         },
+        ATy::InferTy => {
+            // FIXME: メタ変数にする。シグネチャだったらエラーにする。
+            error_unresolved_ty(PLoc::Ty(ty_id), xx.logger);
+            KTy::Unresolved {
+                cause: KTyCause::InferTy(ty_id),
+            }
+        }
         ATy::Never => KTy::Never,
         ATy::Unit => KTy::Unit,
         ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {
