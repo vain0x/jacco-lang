@@ -65,6 +65,7 @@ pub(crate) enum TokenKind {
     Try,
     Type,
     Union,
+    Unit,
     Unless,
     Unsafe,
     Until,

@@ -20,10 +20,14 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
             let token = px.bump();
             alloc_infer_ty(event, token, px)
         }
+        TokenKind::Unit => {
+            let token = px.bump();
+            alloc_unit_ty(event, token, px)
+        }
         TokenKind::LeftParen => {
             let left_paren = px.bump();
             let right_paren_opt = px.eat(TokenKind::RightParen);
-            alloc_unit_ty(event, left_paren, right_paren_opt, px)
+            alloc_unit_ty_from_parens(event, left_paren, right_paren_opt, px)
         }
         TokenKind::Bang => {
             let bang = px.bump();

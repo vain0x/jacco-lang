@@ -125,7 +125,11 @@ pub(crate) fn alloc_infer_ty(event: TyStart, token: PToken, px: &mut Px) -> Afte
     (ATy::InferTy, event.end(PElementKind::InferTy, px))
 }
 
-pub(crate) fn alloc_unit_ty(
+pub(crate) fn alloc_unit_ty(event: TyStart, _token: PToken, px: &mut Px) -> AfterTy {
+    (ATy::Unit, event.end(PElementKind::UnitTy, px))
+}
+
+pub(crate) fn alloc_unit_ty_from_parens(
     event: TyStart,
     left_paren: PToken,
     right_paren_opt: Option<PToken>,

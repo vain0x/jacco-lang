@@ -65,6 +65,7 @@ impl Keyword {
             "try" => TokenKind::Try,
             "type" => TokenKind::Type,
             "union" => TokenKind::Union,
+            "unit" => TokenKind::Unit,
             "unless" => TokenKind::Unless,
             "unsafe" => TokenKind::Unsafe,
             "until" => TokenKind::Until,
