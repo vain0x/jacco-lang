@@ -38,6 +38,7 @@ impl Debug for TokenData {
             | TokenKind::Char
             | TokenKind::Str
             | TokenKind::Ident => write!(f, "{:?}", self.text()),
+            TokenKind::Underscore => write!(f, "_"),
             _ => write!(f, "{:?}", self.kind()),
         }
     }

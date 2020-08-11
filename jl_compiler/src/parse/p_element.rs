@@ -18,6 +18,7 @@ pub(crate) enum PElementKind {
 
     // パターン
     CharPat,
+    DiscardPat,
     NamePat,
     RecordPat,
 

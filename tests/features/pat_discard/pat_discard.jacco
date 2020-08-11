@@ -1,0 +1,6 @@
+pub fn main() -> i32 {
+    let _ = 0;
+    let _ = 'c';
+
+    0
+}

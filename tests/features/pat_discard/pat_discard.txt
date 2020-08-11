@@ -1,0 +1,9 @@
+int main();
+
+int main() {
+    // _1 is killed.
+    (void)0;
+    // _2 is killed.
+    (void)0;
+    return 0;
+}

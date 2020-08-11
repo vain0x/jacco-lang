@@ -170,6 +170,13 @@ pub(crate) fn alloc_char_pat(event: PatStart, token: PToken, px: &mut Px) -> Aft
     (APat::Char(token), event.end(PElementKind::CharPat, px))
 }
 
+pub(crate) fn alloc_discard_pat(event: PatStart, token: PToken, px: &mut Px) -> AfterPat {
+    (
+        APat::Discard(token),
+        event.end(PElementKind::DiscardPat, px),
+    )
+}
+
 pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &mut Px) -> AfterPat {
     let (a_name, _) = name;
 

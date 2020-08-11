@@ -16,6 +16,7 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
             let name = parse_qualifiable_name(px).unwrap();
             alloc_name_ty(event, name, px)
         }
+        TokenKind::Underscore => todo!(),
         TokenKind::LeftParen => {
             let left_paren = px.bump();
             let right_paren_opt = px.eat(TokenKind::RightParen);

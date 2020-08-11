@@ -9,6 +9,7 @@ pub(crate) enum TokenKind {
     Char,
     Str,
     Ident,
+    Underscore,
     /// `as` キーワード
     As,
     Box,
