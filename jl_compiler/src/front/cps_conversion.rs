@@ -790,7 +790,7 @@ fn convert_record_lval(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 // `x.field` ==> `*(&x)->field`
-fn convert_field_expr(expr: &ADotFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let result = {
         let name = match expr.field_opt {
             Some(token) => token.text(xx.tokens),
@@ -806,7 +806,7 @@ fn convert_field_expr(expr: &ADotFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 // `&x.field` ==> `&(&x)->field`
-fn convert_field_lval(expr: &ADotFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
     let name = match expr.field_opt {
         Some(token) => token.text(xx.tokens).to_string(),
         None => "_".to_string(),
@@ -1202,7 +1202,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Name(name) => convert_name_expr(&name.full_name, ANameKey::Expr(expr_id), xx),
         AExpr::Unit => KTerm::Unit { loc },
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
-        AExpr::DotField(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
+        AExpr::Field(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
         AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
@@ -1226,7 +1226,7 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
         AExpr::Record(expr) => convert_record_lval(expr, loc, xx),
-        AExpr::DotField(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
+        AExpr::Field(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
         _ => {

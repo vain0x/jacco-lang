@@ -152,7 +152,7 @@ fn parse_suffix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
                 let event = px.start_parent(&left.1);
                 let dot = px.bump();
                 let name_opt = px.eat(TokenKind::Ident);
-                left = alloc_dot_field_expr(event, left, dot, name_opt, px);
+                left = alloc_field_expr(event, left, dot, name_opt, px);
             }
             TokenKind::LeftParen => {
                 let event = px.start_parent(&left.1);

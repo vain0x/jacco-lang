@@ -292,7 +292,7 @@ pub(crate) fn alloc_record_expr(
     )
 }
 
-pub(crate) fn alloc_dot_field_expr(
+pub(crate) fn alloc_field_expr(
     event: ExprStart,
     left: AfterExpr,
     dot: PToken,
@@ -302,11 +302,11 @@ pub(crate) fn alloc_dot_field_expr(
     let a_left = px.alloc_expr(left);
 
     (
-        AExpr::DotField(ADotFieldExpr {
+        AExpr::Field(AFieldExpr {
             left: a_left,
             field_opt: name_opt,
         }),
-        event.end(PElementKind::DotFieldExpr, px),
+        event.end(PElementKind::FieldExpr, px),
     )
 }
 

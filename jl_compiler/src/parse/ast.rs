@@ -118,7 +118,7 @@ pub(crate) type AExprId = VecArenaId<AExprTag>;
 pub(crate) type AExprIds = VecArenaSlice<AExprTag>;
 pub(crate) type AExprArena = VecArena<AExprTag, AExpr>;
 
-pub(crate) struct ADotFieldExpr {
+pub(crate) struct AFieldExpr {
     pub(crate) left: AExprId,
     pub(crate) field_opt: Option<PToken>,
 }
@@ -198,7 +198,7 @@ pub(crate) enum AExpr {
     Name(AName),
     Unit,
     Record(ARecordExpr),
-    DotField(ADotFieldExpr),
+    Field(AFieldExpr),
     Call(ACallLikeExpr),
     Index(ACallLikeExpr),
     As(AAsExpr),
@@ -634,7 +634,7 @@ impl<'a> Debug for Render<'a> {
                 | AExpr::False
                 | AExpr::Name(_) => go(self.element, self.tree, f),
                 AExpr::Unit => write!(f, "()"),
-                AExpr::Record(_) | AExpr::DotField(_) => go(self.element, self.tree, f),
+                AExpr::Record(_) | AExpr::Field(_) => go(self.element, self.tree, f),
                 AExpr::Call(ACallLikeExpr { left, args }) => {
                     self.with_expr(*left).fmt(f)?;
 
