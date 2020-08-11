@@ -714,7 +714,7 @@ fn report_record_expr_errors(
     loc: Loc,
     mod_outline: &KModOutline,
     logger: &DocLogger,
-) -> KTerm {
+) {
     // FIXME: フィールドの位置情報を取る。
     let mut missed = vec![];
 
@@ -737,17 +737,15 @@ fn report_record_expr_errors(
             logger,
         );
     }
-
-    new_error_term(loc)
 }
 
-fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KSymbol> {
     let k_struct = match resolve_ty_name2(&expr.left.full_name, &xx.env) {
         Some(KTy::Struct(k_struct)) => k_struct,
         _ => {
             // FIXME: エイリアス
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
-            return new_error_term(loc);
+            return None;
         }
     };
     let ty = KTy::Struct(k_struct);
@@ -759,7 +757,8 @@ fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
         }) {
             Ok(it) => it,
             Err(errors) => {
-                return report_record_expr_errors(fields, &errors, loc, xx.mod_outline, xx.logger);
+                report_record_expr_errors(fields, &errors, loc, xx.mod_outline, xx.logger);
+                return None;
             }
         };
 
@@ -771,6 +770,26 @@ fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let result = fresh_symbol(k_struct.name(&xx.mod_outline.structs), loc, xx);
     xx.nodes
         .push(new_record_node(ty, args, result, new_cont(), loc));
+    Some(result)
+}
+
+fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    match do_convert_record_expr(expr, loc, xx) {
+        Some(result) => KTerm::Name(result),
+        None => new_error_term(loc),
+    }
+}
+
+// `&A { .. }`
+fn convert_record_lval(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+    let arg = match do_convert_record_expr(expr, loc, xx) {
+        Some(it) => it,
+        None => return new_error_term(loc),
+    };
+
+    let result = fresh_symbol("ref", loc, xx);
+    xx.nodes
+        .push(new_ref_node(KTerm::Name(arg), result, new_cont(), loc));
     KTerm::Name(result)
 }
 
@@ -1210,6 +1229,7 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
+        AExpr::Record(expr) => convert_record_lval(expr, loc, xx),
         AExpr::DotField(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
