@@ -155,6 +155,13 @@ pub(crate) fn alloc_ptr_ty(
     ty_opt: Option<AfterTy>,
     px: &mut Px,
 ) -> AfterTy {
+    if ty_opt.is_none() {
+        px.logger().error(
+            PLoc::TokenBehind(star),
+            "ポインタ型の * の後ろに型が必要です。",
+        );
+    }
+
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
     (

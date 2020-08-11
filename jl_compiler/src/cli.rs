@@ -33,7 +33,7 @@ type SyntaxArena = VecArena<DocTag, SyntaxData>;
 struct SyntaxData {
     tree: PTree,
     mod_names: Vec<String>,
-    logs: Logs,
+    logs: DocLogs,
 }
 
 #[derive(Default)]
@@ -106,11 +106,9 @@ impl Project {
         self.syntaxes.reserve(additional);
 
         for (id, doc_data) in self.docs.enumerate().skip(offset) {
-            let doc = Doc::from(id.to_index());
-
-            let logs = Logs::new();
+            let logs = DocLogs::new();
             let tokens = tokenize(doc_data.text.clone().into());
-            let tree = parse_tokens(tokens, doc, logs.logger());
+            let tree = parse_tokens(tokens, logs.logger());
             tree.write_trace();
             tree.collect_used_mod_names(&mut mod_names);
 
@@ -138,12 +136,12 @@ impl Project {
     ///
     /// パースされていないドキュメントは単に無視される。
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
-        let mut logs_list = vec![];
+        let logs = Logs::new();
 
         for (id, syntax) in self.syntaxes.enumerate_mut() {
             let doc = Doc::from(id.to_index());
             let doc_name = self.docs[id].name.to_string();
-            let doc_logs = DocLogs::new();
+            let doc_logs = take(&mut syntax.logs);
 
             // アウトライン生成
             let k_mod = self.mod_docs.alloc(doc);
@@ -165,23 +163,15 @@ impl Project {
             let k_mod3 = self.mods.alloc(mod_data);
             assert_eq!(k_mod, k_mod3);
 
-            let logs = take(&mut syntax.logs);
             logs.logger().extend_from_doc_logs(doc, doc_logs);
-
-            if logs.is_fatal() {
-                logs_list.push(logs);
-            }
         }
 
-        if !logs_list.is_empty() {
+        if logs.is_fatal() {
             let mut errors = vec![];
-            for logs in logs_list {
-                self.logs_into_errors(logs, &mut errors);
-            }
+            self.logs_into_errors(logs, &mut errors);
             return Err(errors);
         }
 
-        let logs = Logs::new();
         let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
         for k_mod in mod_ids {
             let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);

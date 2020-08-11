@@ -52,16 +52,17 @@ impl AnalysisCache {
             return self.syntax_opt.as_mut().unwrap();
         }
 
-        let logs = Logs::new();
         let tokens = {
             Doc::set_path(self.doc, &self.source_path);
             let source_code = self.text.clone();
             token::tokenize(source_code)
         };
         let syntax = {
-            let tree = parse::parse_tokens(tokens, self.doc, logs.logger());
-
             let doc_logs = DocLogs::new();
+            let logs = Logs::new();
+
+            let tree = parse::parse_tokens(tokens, doc_logs.logger());
+
             // FIXME: 構文検査
             // validate_syntax(&root, doc_logs.logger());
 

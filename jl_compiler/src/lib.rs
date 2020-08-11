@@ -171,7 +171,6 @@ mod parse {
     pub(crate) use p_unary_op::PUnaryOp;
     pub(crate) use parse_decl::parse_tokens;
 
-    use crate::logs::Logger;
     use crate::{
         cps::{KMut, KVis},
         token::{TokenData, TokenKind},

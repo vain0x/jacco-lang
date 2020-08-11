@@ -1,4 +1,5 @@
 use super::*;
+use crate::logs::DocLogger;
 
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
@@ -8,12 +9,11 @@ pub(crate) struct Px {
     skipped: Vec<PToken>,
     pub(crate) ast: ATree,
     pub(crate) builder: PTreeBuilder,
-    #[allow(unused)]
-    logger: Logger,
+    logger: DocLogger,
 }
 
 impl Px {
-    pub(crate) fn new(tokens: PTokens, logger: Logger) -> Self {
+    pub(crate) fn new(tokens: PTokens, logger: DocLogger) -> Self {
         Px {
             tokens,
             current: 0,
@@ -30,7 +30,7 @@ impl Px {
     }
 
     #[allow(unused)]
-    pub(crate) fn logger(&self) -> &Logger {
+    pub(crate) fn logger(&self) -> &DocLogger {
         &self.logger
     }
 
