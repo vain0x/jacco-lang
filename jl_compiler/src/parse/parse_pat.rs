@@ -41,7 +41,7 @@ pub(crate) fn parse_pat(px: &mut Px) -> Option<AfterPat> {
         }
         TokenKind::Underscore => {
             let token = px.bump();
-            alloc_discard_pat(event, token, px)
+            alloc_wildcard_pat(event, token, px)
         }
         _ => return None,
     };

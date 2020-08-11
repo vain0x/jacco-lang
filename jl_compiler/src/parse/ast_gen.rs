@@ -175,10 +175,10 @@ pub(crate) fn alloc_char_pat(event: PatStart, token: PToken, px: &mut Px) -> Aft
     (APat::Char(token), event.end(PElementKind::CharPat, px))
 }
 
-pub(crate) fn alloc_discard_pat(event: PatStart, token: PToken, px: &mut Px) -> AfterPat {
+pub(crate) fn alloc_wildcard_pat(event: PatStart, token: PToken, px: &mut Px) -> AfterPat {
     (
-        APat::Discard(token),
-        event.end(PElementKind::DiscardPat, px),
+        APat::Wildcard(token),
+        event.end(PElementKind::WildcardPat, px),
     )
 }
 

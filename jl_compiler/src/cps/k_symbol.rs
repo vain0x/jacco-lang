@@ -10,7 +10,7 @@ use std::fmt::{self, Formatter};
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KSymbolCause {
     Loc(Loc),
-    DiscardPat(Doc, PToken),
+    WildcardPat(Doc, PToken),
     NameDef(Doc, ANameKey),
     NameUse(Doc, ANameKey),
 }
@@ -19,7 +19,7 @@ impl KSymbolCause {
     pub(crate) fn loc(self) -> Loc {
         match self {
             KSymbolCause::Loc(loc) => loc,
-            KSymbolCause::DiscardPat(doc, token) => Loc::new(doc, PLoc::Token(token)),
+            KSymbolCause::WildcardPat(doc, token) => Loc::new(doc, PLoc::Token(token)),
             KSymbolCause::NameDef(doc, key) | KSymbolCause::NameUse(doc, key) => {
                 Loc::new(doc, PLoc::Name(key))
             }

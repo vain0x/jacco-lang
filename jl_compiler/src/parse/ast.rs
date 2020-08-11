@@ -103,7 +103,7 @@ pub(crate) enum APat {
     Str(PToken),
     True(PToken),
     False(PToken),
-    Discard(PToken),
+    Wildcard(PToken),
     Name(AName),
     Unit,
     Record(ARecordPat),
@@ -621,7 +621,7 @@ impl<'a> Debug for Render<'a> {
                 | APat::Str(_)
                 | APat::True(_)
                 | APat::False(_)
-                | APat::Discard(_)
+                | APat::Wildcard(_)
                 | APat::Name(_)
                 | APat::Unit => go(self.element, self.tree, f),
                 APat::Record(ARecordPat { .. }) => write!(f, "??? {{ .. }}"),
