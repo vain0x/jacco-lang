@@ -146,14 +146,14 @@ pub(crate) struct ABinaryOpExpr {
     pub(crate) right_opt: Option<AExprId>,
 }
 
-pub(crate) struct AFieldExpr {
+pub(crate) struct ALabeledArg {
     pub(crate) field_name: AName,
     pub(crate) value_opt: Option<AExprId>,
 }
 
 pub(crate) struct ARecordExpr {
     pub(crate) left: AName,
-    pub(crate) fields: Vec<AFieldExpr>,
+    pub(crate) fields: Vec<ALabeledArg>,
 }
 
 pub(crate) struct AJumpExpr {

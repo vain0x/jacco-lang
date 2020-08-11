@@ -10,7 +10,7 @@ pub(crate) type AfterArg = (AExpr, ExprEnd);
 pub(crate) type AfterArgList = Vec<(AExpr, ExprEnd)>;
 pub(crate) type AfterTy = (ATy, TyEnd);
 pub(crate) type AfterPat = (APat, PatEnd);
-pub(crate) type AfterFieldExpr = (AFieldExpr, ParseEnd);
+pub(crate) type AfterLabeledArg = (ALabeledArg, ParseEnd);
 pub(crate) type AfterArm = (AArm, ParseEnd);
 pub(crate) type AfterExpr = (AExpr, ExprEnd);
 pub(crate) type AfterBlock = (Vec<(ADecl, DeclEnd)>, ExprEnd);
@@ -237,26 +237,6 @@ pub(crate) fn alloc_paren_expr(
     }
 }
 
-pub(crate) fn alloc_field_expr(
-    event: ParseStart,
-    name: AfterUnqualifiableName,
-    colon_opt: Option<PToken>,
-    value_opt: Option<AfterExpr>,
-    comma_opt: Option<PToken>,
-    px: &mut Px,
-) -> AfterFieldExpr {
-    let (a_name, _) = name;
-    let a_value_opt = value_opt.map(|expr| px.alloc_expr(expr));
-
-    (
-        AFieldExpr {
-            field_name: a_name,
-            value_opt: a_value_opt,
-        },
-        event.end(PElementKind::FieldExpr, px),
-    )
-}
-
 pub(crate) fn alloc_number(event: ExprStart, token: PToken, px: &mut Px) -> AfterExpr {
     (
         AExpr::Number(token),
@@ -293,7 +273,7 @@ pub(crate) fn alloc_record_expr(
     event: ExprStart,
     name: AfterQualifiableName,
     left_brace: PToken,
-    fields: Vec<AfterFieldExpr>,
+    fields: Vec<AfterLabeledArg>,
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
@@ -592,6 +572,26 @@ pub(crate) fn alloc_arg(
 ) -> AfterArg {
     event.end(PElementKind::Arg, px);
     expr
+}
+
+pub(crate) fn alloc_labeled_arg(
+    event: ParseStart,
+    name: AfterUnqualifiableName,
+    colon_opt: Option<PToken>,
+    value_opt: Option<AfterExpr>,
+    comma_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterLabeledArg {
+    let (a_name, _) = name;
+    let a_value_opt = value_opt.map(|expr| px.alloc_expr(expr));
+
+    (
+        ALabeledArg {
+            field_name: a_name,
+            value_opt: a_value_opt,
+        },
+        event.end(PElementKind::Arg, px),
+    )
 }
 
 pub(crate) fn alloc_arg_list(

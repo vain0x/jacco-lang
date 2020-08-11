@@ -24,7 +24,8 @@ pub(crate) enum PElementKind {
     RecordPat,
 
     // 式の一部
-    FieldExpr,
+    /// 関数呼び出しの引数リストに含まれる1個の引数、
+    /// またはレコード式に含まれる1個の割り当て
     Arg,
     Arm,
 

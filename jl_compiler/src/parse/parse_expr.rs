@@ -42,18 +42,18 @@ pub(crate) fn parse_unqualifiable_name(px: &mut Px) -> Option<AfterUnqualifiable
     Some((p_name, a_name))
 }
 
-fn parse_field_expr(
+fn parse_labeled_arg(
     event: ParseStart,
     name: AfterUnqualifiableName,
     px: &mut Px,
-) -> AfterFieldExpr {
+) -> AfterLabeledArg {
     let colon_opt = px.eat(TokenKind::Colon);
     let value_opt = parse_expr(px);
     let comma_opt = px.eat(TokenKind::Comma);
-    alloc_field_expr(event, name, colon_opt, value_opt, comma_opt, px)
+    alloc_labeled_arg(event, name, colon_opt, value_opt, comma_opt, px)
 }
 
-fn parse_field_exprs(px: &mut Px) -> Vec<AfterFieldExpr> {
+fn parse_labeled_args(px: &mut Px) -> Vec<AfterLabeledArg> {
     let mut fields = vec![];
 
     loop {
@@ -64,7 +64,7 @@ fn parse_field_exprs(px: &mut Px) -> Vec<AfterFieldExpr> {
             TokenKind::Ident => {
                 let event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
-                let field = parse_field_expr(event, name, px);
+                let field = parse_labeled_arg(event, name, px);
                 // let can_continue = field.0.comma_opt.is_some();
                 fields.push(field);
 
@@ -85,7 +85,7 @@ fn parse_record_expr(event: ExprStart, name: AfterQualifiableName, px: &mut Px) 
         None => return alloc_name_expr(event, name, px),
     };
 
-    let fields = parse_field_exprs(px);
+    let fields = parse_labeled_args(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
     alloc_record_expr(event, name, left_brace, fields, right_brace_opt, px)
 }
