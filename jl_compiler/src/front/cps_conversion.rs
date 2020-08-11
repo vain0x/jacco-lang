@@ -1363,21 +1363,16 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
             );
         }
 
-        let mut labels = take(&mut xx.labels).into_vec();
-        let fn_body = {
-            let nodes = take(&mut labels[0].body);
-            fold_nodes(nodes, &local_context(xx))
-        };
-
         let locals = take(&mut xx.local_vars);
-        let labels = KLabelArena::from_iter(labels.into_iter().map(|label| {
-            let name = label.name;
-            let params = label.params;
-            let body = fold_nodes(label.body, &local_context(xx));
-            KLabelData { name, params, body }
-        }));
+        let labels =
+            KLabelArena::from_iter(take(&mut xx.labels).into_vec().into_iter().map(|label| {
+                let name = label.name;
+                let params = label.params;
+                let body = fold_nodes(label.body, &local_context(xx));
+                KLabelData { name, params, body }
+            }));
 
-        KFnData::new(params, fn_body, locals, labels)
+        KFnData::new(params, locals, labels)
     });
 
     *k_fn.of_mut(&mut xx.mod_data.fns) = fn_data;

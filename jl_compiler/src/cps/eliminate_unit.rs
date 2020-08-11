@@ -83,7 +83,6 @@ pub(crate) fn eliminate_unit(mod_outline: &mut KModOutline, k_root: &mut KModDat
                 local_data.is_alive = false;
             }
         }
-        on_node(&mut fn_data.body, &mut ex);
 
         for label_data in fn_data.labels.iter_mut() {
             // unit 型の引数は捨てる。

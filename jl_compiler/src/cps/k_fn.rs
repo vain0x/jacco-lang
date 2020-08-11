@@ -1,4 +1,4 @@
-use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KNode, KSymbol, KTy, KTyEnv, KVis};
+use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KSymbol, KTy, KTyEnv, KVis};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -63,7 +63,6 @@ impl KFnOutline {
 #[derive(Clone, Default, Debug)]
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KSymbol>,
-    pub(crate) body: KNode,
     pub(crate) labels: KLabelArena,
     pub(crate) label_sigs: KLabelSigArena,
     pub(crate) locals: KLocalArena,
@@ -71,15 +70,9 @@ pub(crate) struct KFnData {
 }
 
 impl KFnData {
-    pub(crate) fn new(
-        params: Vec<KSymbol>,
-        body: KNode,
-        locals: KLocalArena,
-        labels: KLabelArena,
-    ) -> Self {
+    pub(crate) fn new(params: Vec<KSymbol>, locals: KLocalArena, labels: KLabelArena) -> Self {
         KFnData {
             params,
-            body,
             labels,
             label_sigs: Default::default(),
             locals,

@@ -823,8 +823,6 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
-        resolve_node(&mut fn_data.body, tx);
-
         for label in fn_data.labels.iter_mut() {
             resolve_node(&mut label.body, tx);
         }

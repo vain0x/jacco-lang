@@ -926,7 +926,7 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
         cx.local_ident_ids.resize(cx.locals.len(), None);
 
         let stmts = cx.enter_block(|cx| {
-            for label_data in labels.iter().skip(1) {
+            for label_data in labels.iter() {
                 for param in label_data.params.iter() {
                     emit_var_decl(param, None, &ty_env, cx);
                 }
@@ -938,11 +938,13 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
                 VecArena::from_iter(labels.iter().map(|label| label.params.to_owned()));
             cx.label_ident_ids.clear();
             cx.label_ident_ids.resize(labels.len(), None);
-            gen_node(&fn_data.body, &ty_env, cx);
 
-            for (label, label_data) in labels.enumerate().skip(1) {
-                let name = unique_label_name(label, cx);
-                cx.stmts.push(CStmt::Label { label: name });
+            for (label, label_data) in labels.enumerate() {
+                // 最初のラベルは関数のエントリーポイントなのでラベルとして出力する必要はない。
+                if label.to_index() != 0 {
+                    let name = unique_label_name(label, cx);
+                    cx.stmts.push(CStmt::Label { label: name });
+                }
 
                 let body = &label_data.body;
                 gen_node(body, &ty_env, cx);

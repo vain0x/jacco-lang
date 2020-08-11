@@ -203,7 +203,9 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
         .enumerate()
         .zip(symbols.mod_data.fns.iter())
     {
-        go(&fn_data.body, k_fn, syntax, sites);
+        for label_data in fn_data.labels.iter() {
+            go(&label_data.body, k_fn, syntax, sites);
+        }
 
         for (local_var, local_var_data) in fn_data.locals.enumerate() {
             let range = match loc_to_range(local_var_data.loc, &syntax.tree) {
