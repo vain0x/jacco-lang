@@ -42,20 +42,6 @@ pub(crate) fn parse_unqualifiable_name(px: &mut Px) -> Option<AfterUnqualifiable
     Some((p_name, a_name))
 }
 
-fn parse_tuple_expr(event: ExprStart, left_paren: PToken, px: &mut Px) -> AfterExpr {
-    match px.next() {
-        TokenKind::RightParen => {
-            let right_paren = px.bump();
-            alloc_unit_expr_from_parens(event, left_paren, right_paren, px)
-        }
-        _ => {
-            let body_opt = parse_expr(px);
-            let right_paren_opt = px.eat(TokenKind::RightParen);
-            alloc_group_expr(event, left_paren, body_opt, right_paren_opt, px)
-        }
-    }
-}
-
 fn parse_field_expr(
     event: ParseStart,
     name: AfterUnqualifiableName,
@@ -140,7 +126,17 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         }
         TokenKind::LeftParen => {
             let left_paren = px.bump();
-            parse_tuple_expr(event, left_paren, px)
+            match px.next() {
+                TokenKind::RightParen => {
+                    let right_paren = px.bump();
+                    alloc_unit_expr_from_parens(event, left_paren, right_paren, px)
+                }
+                _ => {
+                    let body_opt = parse_expr(px);
+                    let right_paren_opt = px.eat(TokenKind::RightParen);
+                    alloc_group_expr(event, left_paren, body_opt, right_paren_opt, px)
+                }
+            }
         }
         _ => return None,
     };
