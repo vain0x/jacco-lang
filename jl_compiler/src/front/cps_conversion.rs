@@ -7,9 +7,8 @@ use crate::{
     parse::*,
     source::{Doc, Loc},
     token::{eval_number, LitErr},
-    utils::{DebugWith, VecArena},
+    utils::VecArena,
 };
-use log::trace;
 use std::{
     collections::HashSet,
     iter::once,
@@ -165,6 +164,7 @@ impl<'a> Xx<'a> {
     }
 }
 
+#[cfg(skip)]
 fn local_context<'a>(xx: &'a Xx) -> (&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>) {
     (
         xx.mod_outline,
@@ -405,12 +405,8 @@ fn new_cont() -> KNode {
     KNode::default()
 }
 
-fn fold_nodes(
-    mut nodes: Vec<KNode>,
-    local_context: &(&KModOutline, Option<(&KLocalArena, &KLabelArena)>),
-) -> KNode {
+fn fold_nodes(mut nodes: Vec<KNode>) -> KNode {
     let mut stack = vec![];
-    trace!("block: {:#?}", DebugWith::new(&nodes, local_context));
 
     while let Some(mut node) = nodes.pop() {
         // スタックに積まれているノードを継続として持たせる。
@@ -1295,9 +1291,10 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
         });
         swap(&mut xx.nodes, &mut nodes);
 
-        (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
+        (fold_nodes(nodes), term_opt.unwrap())
     };
 
+    #[cfg(skip)]
     log::trace!(
         "{} init = {:?}",
         k_const.of(&xx.mod_outline.consts).name,
@@ -1317,7 +1314,7 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
         });
         swap(&mut xx.nodes, &mut nodes);
 
-        (fold_nodes(nodes, &local_context(xx)), term_opt.unwrap())
+        (fold_nodes(nodes), term_opt.unwrap())
     };
 
     *static_var.of_mut(&mut xx.mod_data.static_vars) = KStaticVarInit {
@@ -1380,6 +1377,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         emit_return(term, loc, xx);
         commit_label(xx);
 
+        #[cfg(skip)]
         for label in xx.labels.iter() {
             log::trace!(
                 "label {}({:#?}) size={} = {:#?}",
@@ -1395,7 +1393,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
             KLabelArena::from_iter(take(&mut xx.labels).into_vec().into_iter().map(|label| {
                 let name = label.name;
                 let params = label.params;
-                let body = fold_nodes(label.body, &local_context(xx));
+                let body = fold_nodes(label.body);
                 KLabelData { name, params, body }
             }));
 

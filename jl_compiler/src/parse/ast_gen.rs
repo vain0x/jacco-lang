@@ -40,22 +40,12 @@ impl Px {
     }
 
     fn alloc_exprs(&mut self, exprs: Vec<(AExpr, ExprEnd)>) -> AExprIds {
-        log::trace!(
-            "alloc exprs {} -> {}",
-            self.ast.exprs.len(),
-            self.ast.exprs.len() + exprs.len()
-        );
         let (exprs, events): (Vec<_>, Vec<_>) = exprs.into_iter().unzip();
         self.ast.expr_events.alloc_slice(events);
         self.ast.exprs.alloc_slice(exprs)
     }
 
     pub(crate) fn alloc_decls(&mut self, decls: Vec<(ADecl, DeclEnd)>) -> ADeclIds {
-        log::trace!(
-            "alloc decls {} -> {}",
-            self.ast.decls.len(),
-            self.ast.decls.len() + decls.len()
-        );
         let (decls, events): (Vec<_>, Vec<_>) = decls.into_iter().unzip();
         self.ast.decl_events.alloc_slice(events);
         self.ast.decls.alloc_slice(decls)

@@ -744,5 +744,6 @@ pub(crate) fn dump_ast(tree: &super::PTree) {
         tree.ast.root.decls.len()
     );
 
+    #[cfg(skip)]
     log::trace!("AST = {:#?}", RenderRoot { tree });
 }
