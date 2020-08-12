@@ -36,10 +36,18 @@ pub(crate) fn parse_qualifiable_name(px: &mut Px) -> Option<AfterQualifiableName
 
 pub(crate) fn parse_unqualifiable_name(px: &mut Px) -> Option<AfterUnqualifiableName> {
     let event = px.start_element();
-    let token = px.eat(TokenKind::Ident)?;
-    let quals = vec![];
-    let (p_name, a_name) = alloc_name(event, quals, token, px);
-    Some((p_name, a_name))
+    let name = match px.next() {
+        TokenKind::Ident => {
+            let token = px.bump();
+            alloc_name(event, vec![], token, px)
+        }
+        TokenKind::Underscore => {
+            let token = px.bump();
+            alloc_name_from_underscore(event, token, px)
+        }
+        _ => return None,
+    };
+    Some(name)
 }
 
 fn parse_labeled_arg(
@@ -61,7 +69,7 @@ fn parse_labeled_args(px: &mut Px) -> Vec<AfterLabeledArg> {
             TokenKind::Eof | TokenKind::RightBrace => {
                 break;
             }
-            TokenKind::Ident => {
+            TokenKind::Ident | TokenKind::Underscore => {
                 let event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_labeled_arg(event, name, px);

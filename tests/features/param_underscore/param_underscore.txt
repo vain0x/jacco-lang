@@ -1,0 +1,7 @@
+int main(int _, unsigned char const* const* _);
+
+int main(int __1, unsigned char const* const* __2) {
+    // a_1 is killed.
+    (void)0;
+    return 0;
+}

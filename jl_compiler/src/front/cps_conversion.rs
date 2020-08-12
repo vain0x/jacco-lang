@@ -1266,22 +1266,25 @@ fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mu
 fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let cause = KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
 
-    let name = decl
-        .name_opt
-        .as_ref()
-        .map_or(String::new(), |name| name.text.to_string());
+    let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, loc, xx);
     let ty = convert_ty_opt(decl.ty_opt, &new_ty_resolver(xx)).to_ty2(xx.k_mod);
 
-    let local = xx
-        .local_vars
-        .alloc(KLocalData::new(name.to_string(), cause.loc()).with_ty(ty));
+    let local = xx.local_vars.alloc(
+        KLocalData::new(
+            name_opt.clone().unwrap_or_else(|| "_".to_string()),
+            cause.loc(),
+        )
+        .with_ty(ty),
+    );
     let symbol = KSymbol { local, cause };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
-    xx.env.insert_value(name, KLocalValue::LocalVar(local));
+    if let Some(name) = name_opt {
+        xx.env.insert_value(name, KLocalValue::LocalVar(local));
+    }
 }
 
 fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {

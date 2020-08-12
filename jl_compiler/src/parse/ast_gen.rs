@@ -3,6 +3,7 @@
 use super::*;
 
 pub(crate) type AfterQualifiableName = (AName, ParseEnd);
+pub(crate) type AfterUnderscore = (AName, ParseEnd);
 pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
 pub(crate) type AfterParam = (AParamDecl, ParseEnd);
 pub(crate) type AfterParamList = Vec<(AParamDecl, ParseEnd)>;
@@ -67,6 +68,21 @@ pub(crate) fn alloc_name(
 
     (
         AName { quals, token, text },
+        event.end(PElementKind::Name, px),
+    )
+}
+
+pub(crate) fn alloc_name_from_underscore(
+    event: ParseStart,
+    token: PToken,
+    px: &mut Px,
+) -> AfterQualifiableName {
+    (
+        AName {
+            quals: vec![],
+            token,
+            text: "_".to_string(),
+        },
         event.end(PElementKind::Name, px),
     )
 }
