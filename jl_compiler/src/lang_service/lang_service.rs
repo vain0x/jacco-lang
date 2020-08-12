@@ -635,6 +635,14 @@ mod tests {
     }
 
     #[test]
+    fn test_references_on_fn_with_name_missing() {
+        let text = r#"
+            <$cursor|><[fn ()]>
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
     fn test_references_no_hit_on_operator() {
         let text = r#"
             fn f() -> i32 {

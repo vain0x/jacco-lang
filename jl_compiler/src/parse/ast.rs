@@ -74,7 +74,10 @@ impl ANameKey {
         parent
             .of(&tree.elements)
             .nth_child_element_of(PElementKind::Name, 0, tree)
-            .unwrap()
+            .unwrap_or(
+                // FIXME: 名前があるべき位置を見つける？
+                parent,
+            )
     }
 }
 
@@ -269,6 +272,7 @@ impl AFieldDeclKey {
     }
 
     pub(crate) fn element(self, tree: &PTree) -> PElement {
+        // OK: インデックスが与えられているので、要素は存在するはず
         self.parent
             .element(tree)
             .of(&tree.elements)
@@ -298,6 +302,7 @@ impl AParamDeclKey {
     }
 
     pub(crate) fn element(self, tree: &PTree) -> PElement {
+        // OK: インデックスが与えられているので、要素は存在するはず
         self.parent
             .element(tree)
             .of(&tree.elements)
@@ -337,11 +342,11 @@ impl AVariantDeclKey {
             AVariantDeclKey::Struct(parent) => (parent, 0),
         };
 
-        parent
-            .element(tree)
+        let ty_decl = parent.element(tree);
+        ty_decl
             .of(&tree.elements)
             .nth_child_element_either_of(PElementKind::VARIANT_DECL, index, tree)
-            .unwrap()
+            .unwrap_or(ty_decl)
     }
 }
 
