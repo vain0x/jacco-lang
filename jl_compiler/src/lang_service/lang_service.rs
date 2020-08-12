@@ -191,13 +191,13 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
         }
     }
 
-    fn go(node: &KNode, k_fn: KFn, sites: &mut Sites) {
+    fn on_node(node: &KNode, k_fn: KFn, sites: &mut Sites) {
         for arg in &node.args {
             on_term(arg, k_fn, sites);
         }
 
         for cont in &node.conts {
-            go(cont, k_fn, sites);
+            on_node(cont, k_fn, sites);
         }
     }
 
@@ -226,7 +226,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
         sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, fn_outline.loc));
 
         for label_data in fn_data.labels.iter() {
-            go(&label_data.body, k_fn, sites);
+            on_node(&label_data.body, k_fn, sites);
         }
 
         collect_local_vars(&fn_data.locals, KLocalVarParent::Fn(k_fn), sites);
