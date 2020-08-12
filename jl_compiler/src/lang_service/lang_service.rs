@@ -156,7 +156,7 @@ enum DefOrUse {
 
 type Sites = Vec<(KModLocalSymbol, DefOrUse, Loc)>;
 
-fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
+fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
     fn on_term(term: &KTerm, k_fn: KFn, sites: &mut Sites) {
         let (symbol, loc) = match *term {
             KTerm::Unit { .. }
@@ -247,7 +247,22 @@ fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
         collect_local_vars(&data.locals, KLocalVarParent::ExternFn(extern_fn), sites);
     }
 
-    // enum, structs, fields
+    for (k_enum, outline) in symbols.mod_outline.enums.enumerate() {
+        sites.push((KModLocalSymbol::Enum(k_enum), DefOrUse::Def, outline.loc));
+
+        // FIXME: variants
+    }
+
+    // FIXME: structs, fields
+
+    for (ty, loc) in &symbols.ty_use_sites {
+        // FIXME: alias, struct, never, etc.
+        let symbol = match ty {
+            KTy::Enum(k_enum) => KModLocalSymbol::Enum(*k_enum),
+            _ => continue,
+        };
+        sites.push((symbol, DefOrUse::Use, Loc::new(doc, *loc)));
+    }
 }
 
 pub(super) fn hit_test(
@@ -257,7 +272,7 @@ pub(super) fn hit_test(
     symbols: &Symbols,
 ) -> Option<(KModLocalSymbol, Location)> {
     let mut sites = vec![];
-    collect_symbols(symbols, &mut sites);
+    collect_symbols(doc, symbols, &mut sites);
 
     sites.iter().find_map(|&(symbol, _, loc)| {
         let range = loc_to_range(loc, &syntax.tree)?;
@@ -277,7 +292,7 @@ pub(super) fn collect_def_sites(
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(symbols, &mut sites);
+    collect_symbols(doc, symbols, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
@@ -300,7 +315,7 @@ pub(super) fn collect_use_sites(
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(symbols, &mut sites);
+    collect_symbols(doc, symbols, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {
@@ -494,6 +509,23 @@ mod tests {
 
             fn f() {
                 <[abort]>()
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_enum_name() {
+        let text = r#"
+            enum <[A]> {}
+
+            fn get_a() -> <$cursor|><[A]> {
+                loop {}
+            }
+
+            fn consume_a(a: <[A]>) {
+                let p: *<[A]> = &a;
+                match a {}
             }
         "#;
         do_test_references(text);

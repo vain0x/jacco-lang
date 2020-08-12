@@ -30,10 +30,6 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
     }
 }
 
-fn new_decl_loc(doc: Doc, decl_id: ADeclId) -> Loc {
-    Loc::new(doc, PLoc::Decl(decl_id))
-}
-
 fn alloc_const(
     decl_id: ADeclId,
     decl: &AFieldLikeDecl,
@@ -244,11 +240,13 @@ fn alloc_enum(
     doc: Doc,
     mod_outline: &mut KModOutline,
 ) -> KEnum {
+    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
+
     let name = resolve_name_opt(decl.name_opt.as_ref());
     let k_enum = mod_outline.enums.alloc(KEnumOutline {
         name,
         variants: vec![],
-        loc: new_decl_loc(doc, decl_id),
+        loc,
     });
 
     let variants = decl
