@@ -132,7 +132,7 @@ fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
     })
 }
 
-pub(crate) fn resolve_ty_name2(name: &str, env: &Env) -> Option<KTy> {
+pub(crate) fn resolve_ty_name(name: &str, env: &Env) -> Option<KTy> {
     env.find_ty(name)
         .cloned()
         .or_else(|| resolve_builtin_ty_name(name))

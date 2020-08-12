@@ -243,7 +243,7 @@ fn new_ty_resolver<'a>(xx: &'a Xx<'a>) -> TyResolver<'a> {
 
 fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
     match ty {
-        ATy::Name(AName { text, .. }) => match resolve_ty_name2(&text, xx.env) {
+        ATy::Name(AName { text, .. }) => match resolve_ty_name(&text, xx.env) {
             Some(ty) => ty,
             None => {
                 error_unresolved_ty(PLoc::Ty(ty_id), xx.logger);
@@ -338,7 +338,7 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
 }
 
 fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
-    let k_struct = match resolve_ty_name2(&pat.left.full_name(xx.tokens), &xx.env) {
+    let k_struct = match resolve_ty_name(&pat.left.full_name(xx.tokens), &xx.env) {
         Some(KTy::Struct(it)) => it,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -736,7 +736,7 @@ fn report_record_expr_errors(
 }
 
 fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KSymbol> {
-    let k_struct = match resolve_ty_name2(&expr.left.full_name(xx.tokens), &xx.env) {
+    let k_struct = match resolve_ty_name(&expr.left.full_name(xx.tokens), &xx.env) {
         Some(KTy::Struct(k_struct)) => k_struct,
         _ => {
             // FIXME: エイリアス
