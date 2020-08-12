@@ -276,7 +276,7 @@ fn resolve_enum_decl(
 }
 
 fn new_struct_loc(doc: Doc, key: AVariantDeclKey) -> Loc {
-    Loc::new(doc, PLoc::VariantDecl(key))
+    Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
 }
 
 fn alloc_struct(

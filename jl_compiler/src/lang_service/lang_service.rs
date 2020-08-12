@@ -250,15 +250,24 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
     for (k_enum, outline) in symbols.mod_outline.enums.enumerate() {
         sites.push((KModLocalSymbol::Enum(k_enum), DefOrUse::Def, outline.loc));
 
-        // FIXME: variants
+        // バリアントの定義位置は consts や structs の定義時に収集される。
     }
 
-    // FIXME: structs, fields
+    for (k_struct, outline) in symbols.mod_outline.structs.enumerate() {
+        sites.push((
+            KModLocalSymbol::Struct(k_struct),
+            DefOrUse::Def,
+            outline.loc,
+        ));
+    }
+
+    // FIXME: fields
 
     for (ty, loc) in &symbols.ty_use_sites {
         // FIXME: alias, struct, never, etc.
         let symbol = match ty {
             KTy::Enum(k_enum) => KModLocalSymbol::Enum(*k_enum),
+            KTy::Struct(k_struct) => KModLocalSymbol::Struct(*k_struct),
             _ => continue,
         };
         sites.push((symbol, DefOrUse::Use, Loc::new(doc, *loc)));
@@ -526,6 +535,33 @@ mod tests {
             fn consume_a(a: <[A]>) {
                 let p: *<[A]> = &a;
                 match a {}
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_record_struct() {
+        let text = r#"
+            extern fn print_sds(s1: *c8, d2: i32, s3: *c8);
+
+            struct <[A]> {
+                head: i32,
+                tail: *<[A]>,
+            }
+
+            fn singleton(value: i32) -> <$cursor|><[A]> {
+                <[A]> {
+                    head: value,
+                    tail: 0 as *<[A]>,
+                }
+            }
+
+            fn go(a: *<[A]>) {
+                if a as usize != 0 {
+                    print_sds("", (*a).head, "\n");
+                    go((*a).tail);
+                }
             }
         "#;
         do_test_references(text);
