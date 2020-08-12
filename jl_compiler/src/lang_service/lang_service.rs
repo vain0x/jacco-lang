@@ -1,9 +1,6 @@
-use super::{
-    actions,
-    doc_analysis::{AnalysisCache, DocSymbolAnalysisMut, Symbols, Syntax},
-};
+use super::{actions, doc_analysis::*};
 use crate::{
-    cps::{KFn, KLocalVarParent, KModLocalSymbol, KNode, KSymbol, KSymbolCause, KTerm},
+    cps::*,
     parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
 };
@@ -157,43 +154,60 @@ enum DefOrUse {
     Use,
 }
 
-type Sites = Vec<(KModLocalSymbol, DefOrUse, TRange)>;
+type Sites = Vec<(KModLocalSymbol, DefOrUse, Loc)>;
 
-fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
-    fn go(node: &KNode, k_fn: KFn, syntax: &Syntax, sites: &mut Sites) {
-        for arg in &node.args {
-            match arg {
-                KTerm::Name(KSymbol {
-                    local,
-                    cause: KSymbolCause::NameUse(_, key),
-                }) => {
-                    let range = match key.element(&syntax.tree).range(&syntax.tree) {
-                        Ok(it) => it,
-                        Err(_) => continue,
-                    };
-                    sites.push((
-                        KModLocalSymbol::LocalVar {
-                            local_var: *local,
-                            parent: KLocalVarParent::Fn(k_fn),
-                        },
-                        DefOrUse::Use,
-                        range,
-                    ));
-                }
-                KTerm::Fn { k_fn, loc } => {
-                    let range = match loc_to_range(*loc, &syntax.tree) {
-                        Some(it) => it,
-                        None => continue,
-                    };
-                    sites.push((KModLocalSymbol::Fn(*k_fn), DefOrUse::Use, range));
-                }
-                _ => {}
+fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
+    fn on_term(term: &KTerm, k_fn: KFn, sites: &mut Sites) {
+        let (symbol, loc) = match *term {
+            KTerm::Unit { .. }
+            | KTerm::True { .. }
+            | KTerm::False { .. }
+            | KTerm::Int { .. }
+            | KTerm::Float { .. }
+            | KTerm::Char { .. }
+            | KTerm::Str { .. } => return,
+            KTerm::Name(KSymbol { local, cause }) => {
+                let local_var = KModLocalSymbol::LocalVar {
+                    local_var: local,
+                    parent: KLocalVarParent::Fn(k_fn),
+                };
+                (local_var, cause.loc())
             }
+            KTerm::Alias { alias, loc } => (KModLocalSymbol::Alias(alias), loc),
+            KTerm::Const { k_const, loc } => (KModLocalSymbol::Const(k_const), loc),
+            KTerm::StaticVar { static_var, loc } => (KModLocalSymbol::StaticVar(static_var), loc),
+            KTerm::Fn { k_fn, loc } => (KModLocalSymbol::Fn(k_fn), loc),
+            KTerm::Label { .. } | KTerm::Return { .. } => return,
+            KTerm::ExternFn { extern_fn, loc } => (KModLocalSymbol::ExternFn(extern_fn), loc),
+            KTerm::RecordTag { .. } | KTerm::FieldTag(_) => return,
+        };
+        sites.push((symbol, DefOrUse::Use, loc));
+    }
+
+    fn go(node: &KNode, k_fn: KFn, sites: &mut Sites) {
+        for arg in &node.args {
+            on_term(arg, k_fn, sites);
         }
 
         for cont in &node.conts {
-            go(cont, k_fn, syntax, sites);
+            go(cont, k_fn, sites);
         }
+    }
+
+    for (k_const, const_data) in symbols.mod_outline.consts.enumerate() {
+        sites.push((
+            KModLocalSymbol::Const(k_const),
+            DefOrUse::Def,
+            const_data.loc,
+        ));
+    }
+
+    for (static_var, static_var_data) in symbols.mod_outline.static_vars.enumerate() {
+        sites.push((
+            KModLocalSymbol::StaticVar(static_var),
+            DefOrUse::Def,
+            static_var_data.loc,
+        ));
     }
 
     // FIXME: とりあえず関数とローカルのみ。その他のシンボルを追加する
@@ -203,31 +217,19 @@ fn collect_symbols(syntax: &Syntax, symbols: &Symbols, sites: &mut Sites) {
         .enumerate()
         .zip(symbols.mod_data.fns.iter())
     {
+        sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, fn_outline.loc));
+
         for label_data in fn_data.labels.iter() {
-            go(&label_data.body, k_fn, syntax, sites);
+            go(&label_data.body, k_fn, sites);
         }
 
         for (local_var, local_var_data) in fn_data.locals.enumerate() {
-            let range = match loc_to_range(local_var_data.loc, &syntax.tree) {
-                Some(it) => it,
-                None => continue,
+            let symbol = KModLocalSymbol::LocalVar {
+                local_var,
+                parent: KLocalVarParent::Fn(k_fn),
             };
-            sites.push((
-                KModLocalSymbol::LocalVar {
-                    local_var,
-                    parent: KLocalVarParent::Fn(k_fn),
-                },
-                DefOrUse::Use,
-                range,
-            ));
+            sites.push((symbol, DefOrUse::Use, local_var_data.loc));
         }
-
-        let def_site = match loc_to_range(fn_outline.loc, &syntax.tree) {
-            Some(it) => it,
-            None => continue,
-        };
-
-        sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, def_site));
     }
 }
 
@@ -238,11 +240,12 @@ pub(super) fn hit_test(
     symbols: &Symbols,
 ) -> Option<(KModLocalSymbol, Location)> {
     let mut sites = vec![];
-    collect_symbols(syntax, symbols, &mut sites);
+    collect_symbols(symbols, &mut sites);
 
-    sites.iter().find_map(|(symbol, _, range)| {
-        if to_range16(*range).contains_inclusive(pos) {
-            Some((*symbol, Location::new(doc, *range)))
+    sites.iter().find_map(|&(symbol, _, loc)| {
+        let range = loc_to_range(loc, &syntax.tree)?;
+        if to_range16(range).contains_inclusive(pos) {
+            Some((symbol, Location::new(doc, range)))
         } else {
             None
         }
@@ -257,15 +260,19 @@ pub(super) fn collect_def_sites(
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(syntax, symbols, &mut sites);
+    collect_symbols(symbols, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, range)| {
+    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
+            let range = loc_to_range(loc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
             None
         }
     }));
+
+    locations.sort();
+    locations.dedup();
 }
 
 pub(super) fn collect_use_sites(
@@ -276,15 +283,19 @@ pub(super) fn collect_use_sites(
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(syntax, symbols, &mut sites);
+    collect_symbols(symbols, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, range)| {
+    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {
+            let range = loc_to_range(loc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
             None
         }
     }));
+
+    locations.sort();
+    locations.dedup();
 }
 
 #[cfg(test)]
@@ -293,6 +304,10 @@ mod tests {
     use crate::source::{cursor_text::parse_cursor_text, TPos16};
 
     const DOC: Doc = Doc::new(1);
+
+    fn to_vec<T, I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
+        iter.into_iter().collect()
+    }
 
     fn new_service_from_str(s: &str) -> LangService {
         let mut it = LangService::new();
@@ -352,6 +367,82 @@ mod tests {
                 .join("; "),
             "1.4-1.7"
         );
+    }
+
+    fn do_test_references(text: &str) {
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+
+        let mut cursors = cursor_text.to_range_assoc();
+        let cursor_pos = match cursors.iter().position(|&(name, _)| name == "cursor") {
+            Some(i) => {
+                let (_, range) = cursors.remove(i);
+                range.start()
+            }
+            None => panic!(
+                "テキストに参照検索の基準となる位置を表すマーカー <$cursor|> が含まれていません。"
+            ),
+        };
+
+        // 入力されたテキストを検証する。
+        assert_ne!(cursors.len(), 0, "参照の範囲を表すマーカーがありません");
+        let expected = cursors.into_iter().map(|(_, range)| range);
+
+        let refs = lang_service.references(DOC, cursor_pos.into(), true);
+        let actual = refs.into_iter().flatten().map(|location| location.range);
+        assert_eq!(to_vec(actual), to_vec(expected));
+    }
+
+    #[test]
+    fn test_references_const() {
+        let text = r#"
+            const <$cursor|><[PI]>: f64 = 3.14;
+
+            fn f() -> f64 {
+                <[PI]>
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_static() {
+        let text = r#"
+            fn fresh_id() -> i64 {
+                static <$cursor|><[LAST_ID]>: i64 = 0_i64;
+                <[LAST_ID]> += 1;
+                <[LAST_ID]>
+            }
+
+            fn other() {
+                static LAST_ID: u64 = 0_u64;
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_param() {
+        let text = r#"
+            fn f(<[a]>: i32, b: i32) {
+                f(<$cursor|><[a]>);
+                <[a]> += 1;
+
+                // shadowing
+                {
+                    let a = 1;
+                    f(a);
+                }
+
+                // ブロックの中
+                {
+                    g(&mut <[a]>);
+                }
+            }
+
+            fn g(a: i64) {}
+        "#;
+        do_test_references(text);
     }
 
     #[test]

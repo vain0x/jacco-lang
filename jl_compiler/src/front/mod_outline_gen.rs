@@ -34,15 +34,20 @@ fn new_decl_loc(doc: Doc, decl_id: ADeclId) -> Loc {
     Loc::new(doc, PLoc::Decl(decl_id))
 }
 
-fn alloc_const(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KConst {
+fn alloc_const(
+    decl_id: ADeclId,
+    decl: &AFieldLikeDecl,
+    doc: Doc,
+    mod_outline: &mut KModOutline,
+) -> KConst {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
     let k_const = mod_outline.consts.alloc(KConstData {
         name,
-        value_ty: KTy::init_later(loc),
+        value_ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
         value_opt: None,
         parent_opt: None,
-        loc,
+        loc: Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id))),
     });
     k_const
 }
@@ -57,14 +62,19 @@ fn resolve_const_decl(
     k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
 }
 
-fn alloc_static(decl: &AFieldLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KStaticVar {
+fn alloc_static(
+    decl_id: ADeclId,
+    decl: &AFieldLikeDecl,
+    doc: Doc,
+    mod_outline: &mut KModOutline,
+) -> KStaticVar {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
     mod_outline.static_vars.alloc(KStaticVarData {
         name,
-        ty: KTy::init_later(loc),
+        ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
         value_opt: None,
-        loc,
+        loc: Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id))),
     })
 }
 
@@ -326,11 +336,11 @@ fn alloc_outline(
         let symbol = match decl {
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
-                let k_const = alloc_const(&const_decl, loc, mod_outline);
+                let k_const = alloc_const(decl_id, &const_decl, doc, mod_outline);
                 KModLocalSymbol::Const(k_const)
             }
             ADecl::Static(static_decl) => {
-                let static_var = alloc_static(&static_decl, loc, mod_outline);
+                let static_var = alloc_static(decl_id, &static_decl, doc, mod_outline);
                 KModLocalSymbol::StaticVar(static_var)
             }
             ADecl::Fn(fn_decl) => {
