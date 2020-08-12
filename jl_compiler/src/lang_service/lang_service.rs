@@ -553,6 +553,21 @@ mod tests {
     }
 
     #[test]
+    fn test_references_const_variant() {
+        let text = r#"
+            enum IsGood {
+                <[True]>,
+                False,
+            }
+
+            fn a() {
+                let is_good = <$cursor|><[IsGood::True]>;
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
     fn test_references_record_variant() {
         let text = r#"
             enum I32Option {

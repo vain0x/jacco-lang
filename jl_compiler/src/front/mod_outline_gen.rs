@@ -126,9 +126,11 @@ fn alloc_extern_fn(
 fn alloc_const_variant(
     decl: &AFieldLikeDecl,
     parent_opt: Option<KEnum>,
-    loc: Loc,
+    doc: Doc,
+    key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
 ) -> KConst {
+    let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
     mod_outline.consts.alloc(KConstData {
@@ -195,8 +197,7 @@ fn alloc_variant(
 ) -> KVariant {
     match variant_decl {
         AVariantDecl::Const(decl) => {
-            let loc = Loc::new(doc, PLoc::VariantDecl(key));
-            KVariant::Const(alloc_const_variant(decl, parent_opt, loc, mod_outline))
+            KVariant::Const(alloc_const_variant(decl, parent_opt, doc, key, mod_outline))
         }
         AVariantDecl::Record(decl) => {
             let parent_opt = parent_opt.map(KStructParent::new);
