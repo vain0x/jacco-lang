@@ -123,7 +123,13 @@ pub(crate) fn add_decl_to_local_env(
 // -----------------------------------------------
 
 fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
-    KNumberTy::parse(name).map(KTy::Number)
+    KNumberTy::parse(name).map(KTy::Number).or_else(|| {
+        if name == "never" {
+            Some(KTy::Never)
+        } else {
+            None
+        }
+    })
 }
 
 pub(crate) fn resolve_ty_name2(name: &str, env: &Env) -> Option<KTy> {

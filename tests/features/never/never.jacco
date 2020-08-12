@@ -1,0 +1,12 @@
+#![test("run", 42)]
+
+// never 型
+
+extern fn exit(code: i32) -> never;
+
+pub fn main() -> i32 {
+    // never 型は任意の型に暗黙キャストできる。
+    let _code: i32 = exit(42);
+
+    0
+}

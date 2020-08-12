@@ -1,0 +1,10 @@
+/* never */ void exit(int code_1);
+
+int main();
+
+int main() {
+    // call_result_1 is killed.
+    exit(42);
+    int _code_1 = (void)0;
+    return 0;
+}
