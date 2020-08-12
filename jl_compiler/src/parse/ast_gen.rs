@@ -62,20 +62,13 @@ pub(crate) fn alloc_name(
     token: PToken,
     px: &mut Px,
 ) -> AfterQualifiableName {
+    // text を参照する箇所に tokens を渡すのがめんどくさいので、ここで文字列にしておく。文字列は intern される予定なのでコピーのコストは考えなくてよい。
     let text = token.text(px.tokens()).to_string();
-    let full_name = {
-        let mut s = String::new();
 
-        for qual in &quals {
-            s += qual.text(px.tokens());
-            s += "::";
-        }
-
-        s += token.text(px.tokens());
-        s
-    };
-
-    (AName { text, full_name }, event.end(PElementKind::Name, px))
+    (
+        AName { quals, token, text },
+        event.end(PElementKind::Name, px),
+    )
 }
 
 // -----------------------------------------------

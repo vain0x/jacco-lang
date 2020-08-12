@@ -4,7 +4,8 @@
 
 use super::{
     p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
-    PElementArena, PElementData, PElementKind, PLoc, PToken, PTree, PUnaryOp, PatEnd, TyEnd,
+    PElementArena, PElementData, PElementKind, PLoc, PToken, PTokens, PTree, PUnaryOp, PatEnd,
+    TyEnd,
 };
 use crate::{
     cps::{KMut, KVis},
@@ -18,13 +19,32 @@ use std::fmt::{self, Debug, Formatter};
 // -----------------------------------------------
 
 pub(crate) struct AName {
+    pub(crate) quals: Vec<PToken>,
+    pub(crate) token: PToken,
     pub(crate) text: String,
-    pub(crate) full_name: String,
 }
 
 impl AName {
-    pub(crate) fn root_text(&self) -> &str {
-        self.full_name.split("::").next().unwrap_or("")
+    pub(crate) fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// 修飾子の最初のセグメントのテキスト
+    pub(crate) fn root_text<'a>(&self, tokens: &'a PTokens) -> &'a str {
+        self.quals
+            .first()
+            .map(|token| token.text(tokens))
+            .unwrap_or_else(|| self.token.text(tokens))
+    }
+
+    pub(crate) fn full_name(&self, tokens: &PTokens) -> String {
+        let mut name = String::new();
+        for token in self.quals.iter() {
+            name += token.text(tokens);
+            name += "::";
+        }
+        name += self.token.text(tokens);
+        name
     }
 }
 

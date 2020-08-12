@@ -87,7 +87,7 @@ impl PTree {
                 ADecl::Use(AUseDecl {
                     name_opt: Some(name),
                     ..
-                }) => mod_names.push(name.root_text().to_string()),
+                }) => mod_names.push(name.root_text(&self.tokens).to_string()),
                 _ => {}
             }
         }

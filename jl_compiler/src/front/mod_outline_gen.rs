@@ -9,6 +9,7 @@ use crate::{
     parse::*,
     source::{Doc, Loc},
 };
+use std::iter::once;
 
 fn resolve_modifiers(modifiers: &ADeclModifiers) -> Option<KVis> {
     modifiers.vis_opt
@@ -287,11 +288,21 @@ fn resolve_struct_decl(
     }
 }
 
-fn alloc_alias(decl: &AUseDecl, loc: Loc, mod_outline: &mut KModOutline) -> KAlias {
+fn alloc_alias(
+    decl: &AUseDecl,
+    loc: Loc,
+    tokens: &PTokens,
+    mod_outline: &mut KModOutline,
+) -> KAlias {
     let (name, path) = match &decl.name_opt {
-        Some(AName { text, full_name }) => (
+        Some(AName { quals, text, .. }) => (
             text.to_string(),
-            full_name.split("::").map(|part| part.to_string()).collect(),
+            quals
+                .iter()
+                .map(|token| token.text(tokens))
+                .chain(once(text.as_str()))
+                .map(|text| text.to_string())
+                .collect(),
         ),
         None => Default::default(),
     };
@@ -342,7 +353,7 @@ fn alloc_outline(
                 KModLocalSymbol::from_variant(variant)
             }
             ADecl::Use(use_decl) => {
-                let alias = alloc_alias(use_decl, loc, mod_outline);
+                let alias = alloc_alias(use_decl, loc, &tree.tokens, mod_outline);
                 KModLocalSymbol::Alias(alias)
             }
         };

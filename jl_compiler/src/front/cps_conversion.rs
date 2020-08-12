@@ -303,7 +303,7 @@ fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
 
 fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    match resolve_value_name(&name.full_name, loc, &mut xx.env) {
+    match resolve_value_name(&name.full_name(xx.tokens), loc, &mut xx.env) {
         Some(KLocalValue::Const(k_const)) => Branch::Case(KTerm::Const { k_const, loc }),
         Some(KLocalValue::UnitLikeStruct(k_struct)) => {
             Branch::Case(KTerm::RecordTag { k_struct, loc })
@@ -315,7 +315,7 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
         _ => {
             let symbol = {
                 let cause = KSymbolCause::NameDef(xx.doc, key);
-                fresh_symbol(&name.full_name, cause, xx)
+                fresh_symbol(&name.full_name(xx.tokens), cause, xx)
             };
             Branch::Default(symbol)
         }
@@ -338,7 +338,7 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
 }
 
 fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
-    let k_struct = match resolve_ty_name2(&pat.left.full_name, &xx.env) {
+    let k_struct = match resolve_ty_name2(&pat.left.full_name(xx.tokens), &xx.env) {
         Some(KTy::Struct(it)) => it,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -602,7 +602,7 @@ fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> K
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let value = match resolve_value_name(&name.full_name, loc, &xx.env) {
+    let value = match resolve_value_name(&name.full_name(xx.tokens), loc, &xx.env) {
         Some(it) => it,
         None => {
             error_unresolved_value(PLoc::Name(key), xx.logger);
@@ -736,7 +736,7 @@ fn report_record_expr_errors(
 }
 
 fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KSymbol> {
-    let k_struct = match resolve_ty_name2(&expr.left.full_name, &xx.env) {
+    let k_struct = match resolve_ty_name2(&expr.left.full_name(xx.tokens), &xx.env) {
         Some(KTy::Struct(k_struct)) => k_struct,
         _ => {
             // FIXME: エイリアス
@@ -1200,7 +1200,9 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        AExpr::Name(name) => convert_name_expr(&name.full_name, ANameKey::Expr(expr_id), xx),
+        AExpr::Name(name) => {
+            convert_name_expr(&name.full_name(xx.tokens), ANameKey::Expr(expr_id), xx)
+        }
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::Field(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
