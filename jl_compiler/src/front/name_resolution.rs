@@ -6,6 +6,16 @@ use crate::{cps::*, front::env::Env, front::*, source::Loc, utils::VecArena};
 // V2
 // =============================================================================
 
+pub(crate) trait NameResolutionListener {
+    fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy);
+}
+
+pub(crate) struct NullNameResolutionListener;
+
+impl NameResolutionListener for NullNameResolutionListener {
+    fn ty_did_resolve(&mut self, _loc: PLoc, _ty: &KTy) {}
+}
+
 pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
 
 #[derive(Copy, Clone)]
@@ -132,10 +142,21 @@ fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
     })
 }
 
-pub(crate) fn resolve_ty_name(name: &str, env: &Env) -> Option<KTy> {
-    env.find_ty(name)
+pub(crate) fn resolve_ty_name(
+    name: &str,
+    key: ANameKey,
+    env: &Env,
+    listener: &mut dyn NameResolutionListener,
+) -> Option<KTy> {
+    let ty_opt = env
+        .find_ty(name)
         .cloned()
-        .or_else(|| resolve_builtin_ty_name(name))
+        .or_else(|| resolve_builtin_ty_name(name));
+
+    if let Some(ty) = &ty_opt {
+        listener.ty_did_resolve(PLoc::Name(key), ty);
+    }
+    ty_opt
 }
 
 pub(crate) fn resolve_value_name(name: &str, _loc: Loc, env: &Env) -> Option<KLocalValue> {

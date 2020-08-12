@@ -1,14 +1,18 @@
 // テキストドキュメント単位の解析
 
 use crate::{
-    cps::{KMod, KModData, KModOutline},
+    cps::*,
     front,
     logs::{DocLogs, Logs},
     parse::{self, PTree},
     source::{Doc, TRange},
     token,
 };
+use front::NameResolutionListener;
+use parse::PLoc;
 use std::{path::PathBuf, rc::Rc, sync::Arc};
+
+pub(super) type TyUseSites = Vec<(KTy, PLoc)>;
 
 pub(super) struct Syntax {
     pub(super) tree: PTree,
@@ -18,6 +22,8 @@ pub(super) struct Syntax {
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
     pub(super) mod_data: KModData,
+    #[allow(unused)]
+    pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
 }
 
@@ -33,6 +39,17 @@ pub(super) struct AnalysisCache {
     pub(super) source_path: Arc<PathBuf>,
     pub(super) syntax_opt: Option<Syntax>,
     pub(super) symbols_opt: Option<Symbols>,
+}
+
+#[derive(Default)]
+struct ImplNameResolutionListener {
+    ty_use_sites: TyUseSites,
+}
+
+impl NameResolutionListener for ImplNameResolutionListener {
+    fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy) {
+        self.ty_use_sites.push((ty.clone(), loc));
+    }
 }
 
 impl AnalysisCache {
@@ -86,18 +103,22 @@ impl AnalysisCache {
 
         let doc = self.doc;
         let k_mod = KMod::from_index(0);
+
+        let mut listener = ImplNameResolutionListener::default();
+
         let symbols = {
             let syntax = self.request_syntax();
 
             let doc_logs = DocLogs::new();
             let (mod_outline, decl_symbols) =
-                front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
+                front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
             let mod_data = front::convert_to_cps(
                 doc,
                 k_mod,
                 &syntax.tree,
                 &decl_symbols,
                 &mod_outline,
+                &mut listener,
                 &doc_logs.logger(),
             );
 
@@ -110,6 +131,7 @@ impl AnalysisCache {
             Symbols {
                 mod_outline,
                 mod_data,
+                ty_use_sites: listener.ty_use_sites,
                 errors,
             }
         };
