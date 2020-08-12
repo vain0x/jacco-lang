@@ -553,6 +553,46 @@ mod tests {
     }
 
     #[test]
+    fn test_references_record_variant() {
+        let text = r#"
+            enum I32Option {
+                <[Some]> {
+                    value: i32,
+                },
+                None,
+            }
+
+            enum I64Option {
+                Some {
+                    value: i64,
+                },
+                None,
+            }
+
+            fn some(value: i32) -> I32Option {
+                <$cursor|><[I32Option::Some]> {
+                    value: value,
+                }
+            }
+
+            pub fn main() -> i32 {
+                let is_some = match some(42) {
+                    <[I32Option::Some]> { .. } => true,
+                    I32Option::None => false,
+                };
+
+                let another = I64Option::Some { value: 84 };
+                match another {
+                    I64Option::Some { .. } => {}
+                    I64Option::None => {}
+                }
+                0
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
     fn test_references_record_struct() {
         let text = r#"
             extern fn print_sds(s1: *c8, d2: i32, s3: *c8);
