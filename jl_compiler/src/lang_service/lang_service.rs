@@ -157,6 +157,24 @@ enum DefOrUse {
 type Sites = Vec<(KModLocalSymbol, DefOrUse, Loc)>;
 
 fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
+    fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
+        let kind = match symbol.cause {
+            KSymbolCause::NameDef(..) => DefOrUse::Def,
+            KSymbolCause::NameUse(..) => DefOrUse::Use,
+            _ => return,
+        };
+
+        let (local_var, loc) = (symbol.local, symbol.cause.loc());
+        let symbol = KModLocalSymbol::LocalVar { local_var, parent };
+        sites.push((symbol, kind, loc));
+    }
+
+    fn on_params(params: &[KSymbol], parent: KLocalVarParent, sites: &mut Sites) {
+        for symbol in params {
+            on_symbol(*symbol, parent, sites);
+        }
+    }
+
     fn on_term(term: &KTerm, k_fn: KFn, sites: &mut Sites) {
         let (symbol, loc) = match *term {
             KTerm::Unit { .. }
@@ -166,12 +184,9 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
             | KTerm::Float { .. }
             | KTerm::Char { .. }
             | KTerm::Str { .. } => return,
-            KTerm::Name(KSymbol { local, cause }) => {
-                let local_var = KModLocalSymbol::LocalVar {
-                    local_var: local,
-                    parent: KLocalVarParent::Fn(k_fn),
-                };
-                (local_var, cause.loc())
+            KTerm::Name(symbol) => {
+                on_symbol(symbol, KLocalVarParent::Fn(k_fn), sites);
+                return;
             }
             KTerm::Alias { alias, loc } => (KModLocalSymbol::Alias(alias), loc),
             KTerm::Const { k_const, loc } => (KModLocalSymbol::Const(k_const), loc),
@@ -184,16 +199,13 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
         sites.push((symbol, DefOrUse::Use, loc));
     }
 
-    fn collect_local_vars(local_vars: &KLocalArena, parent: KLocalVarParent, sites: &mut Sites) {
-        for (local_var, local_var_data) in local_vars.enumerate() {
-            let symbol = KModLocalSymbol::LocalVar { local_var, parent };
-            sites.push((symbol, DefOrUse::Use, local_var_data.loc));
-        }
-    }
-
     fn on_node(node: &KNode, k_fn: KFn, sites: &mut Sites) {
         for arg in &node.args {
             on_term(arg, k_fn, sites);
+        }
+
+        for result in &node.results {
+            on_symbol(*result, KLocalVarParent::Fn(k_fn), sites);
         }
 
         for cont in &node.conts {
@@ -225,11 +237,11 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
     {
         sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, fn_outline.loc));
 
+        on_params(&fn_data.params, KLocalVarParent::Fn(k_fn), sites);
+
         for label_data in fn_data.labels.iter() {
             on_node(&label_data.body, k_fn, sites);
         }
-
-        collect_local_vars(&fn_data.locals, KLocalVarParent::Fn(k_fn), sites);
     }
 
     for ((extern_fn, outline), data) in symbols
@@ -244,7 +256,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
             outline.loc,
         ));
 
-        collect_local_vars(&data.locals, KLocalVarParent::ExternFn(extern_fn), sites);
+        on_params(&data.params, KLocalVarParent::ExternFn(extern_fn), sites);
     }
 
     for (k_enum, outline) in symbols.mod_outline.enums.enumerate() {
@@ -565,6 +577,25 @@ mod tests {
             }
         "#;
         do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_no_hit_on_operator() {
+        let text = r#"
+            fn f() -> i32 {
+                2 + 3 <$cursor|>* 5
+            }
+        "#;
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+        let cursor_pos = cursor_text.to_pos_vec()[0];
+        let refs = lang_service
+            .references(DOC, cursor_pos.into(), true)
+            .into_iter()
+            .flatten()
+            .map(|location| location.range())
+            .collect::<Vec<_>>();
+        assert_eq!(refs.len(), 0, "{:?}", refs);
     }
 
     #[test]
