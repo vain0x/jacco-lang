@@ -110,7 +110,13 @@ fn alloc_fn(decl_id: ADeclId, decl: &AFnLikeDecl, doc: Doc, mod_outline: &mut KM
     })
 }
 
-fn alloc_extern_fn(decl: &AFnLikeDecl, loc: Loc, mod_outline: &mut KModOutline) -> KExternFn {
+fn alloc_extern_fn(
+    decl_id: ADeclId,
+    decl: &AFnLikeDecl,
+    doc: Doc,
+    mod_outline: &mut KModOutline,
+) -> KExternFn {
+    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
     mod_outline.extern_fns.alloc(KExternFnOutline {
@@ -348,7 +354,7 @@ fn alloc_outline(
                 KModLocalSymbol::Fn(k_fn)
             }
             ADecl::ExternFn(extern_fn_decl) => {
-                let extern_fn = alloc_extern_fn(extern_fn_decl, loc, mod_outline);
+                let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, mod_outline);
                 KModLocalSymbol::ExternFn(extern_fn)
             }
             ADecl::Enum(enum_decl) => {

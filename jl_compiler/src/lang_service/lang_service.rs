@@ -184,6 +184,13 @@ fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
         sites.push((symbol, DefOrUse::Use, loc));
     }
 
+    fn collect_local_vars(local_vars: &KLocalArena, parent: KLocalVarParent, sites: &mut Sites) {
+        for (local_var, local_var_data) in local_vars.enumerate() {
+            let symbol = KModLocalSymbol::LocalVar { local_var, parent };
+            sites.push((symbol, DefOrUse::Use, local_var_data.loc));
+        }
+    }
+
     fn go(node: &KNode, k_fn: KFn, sites: &mut Sites) {
         for arg in &node.args {
             on_term(arg, k_fn, sites);
@@ -210,7 +217,6 @@ fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
         ));
     }
 
-    // FIXME: とりあえず関数とローカルのみ。その他のシンボルを追加する
     for ((k_fn, fn_outline), fn_data) in symbols
         .mod_outline
         .fns
@@ -223,14 +229,25 @@ fn collect_symbols(symbols: &Symbols, sites: &mut Sites) {
             go(&label_data.body, k_fn, sites);
         }
 
-        for (local_var, local_var_data) in fn_data.locals.enumerate() {
-            let symbol = KModLocalSymbol::LocalVar {
-                local_var,
-                parent: KLocalVarParent::Fn(k_fn),
-            };
-            sites.push((symbol, DefOrUse::Use, local_var_data.loc));
-        }
+        collect_local_vars(&fn_data.locals, KLocalVarParent::Fn(k_fn), sites);
     }
+
+    for ((extern_fn, outline), data) in symbols
+        .mod_outline
+        .extern_fns
+        .enumerate()
+        .zip(symbols.mod_data.extern_fns.iter())
+    {
+        sites.push((
+            KModLocalSymbol::ExternFn(extern_fn),
+            DefOrUse::Def,
+            outline.loc,
+        ));
+
+        collect_local_vars(&data.locals, KLocalVarParent::ExternFn(extern_fn), sites);
+    }
+
+    // enum, structs, fields
 }
 
 pub(super) fn hit_test(
@@ -422,6 +439,31 @@ mod tests {
     }
 
     #[test]
+    fn test_references_fn() {
+        let text = r#"
+            fn <$cursor|><[f]>() {
+                <[f]>(<[f]>());
+
+                // shadowing
+                {
+                    fn f() {}
+                    f();
+                }
+
+                // ブロックの中
+                {
+                    <[f]>();
+                }
+            }
+
+            fn g() {
+                g();
+            }
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
     fn test_references_param() {
         let text = r#"
             fn f(<[a]>: i32, b: i32) {
@@ -441,6 +483,18 @@ mod tests {
             }
 
             fn g(a: i64) {}
+        "#;
+        do_test_references(text);
+    }
+
+    #[test]
+    fn test_references_extern_fn() {
+        let text = r#"
+            extern fn <$cursor|><[abort]>() -> never;
+
+            fn f() {
+                <[abort]>()
+            }
         "#;
         do_test_references(text);
     }
