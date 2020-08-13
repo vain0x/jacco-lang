@@ -107,6 +107,10 @@ pub(crate) fn validate_binary_op_expr(token: PToken, right_opt: Option<&AfterExp
     }
 }
 
+pub(crate) fn validate_block_expr(left_brace: PToken, right_brace_opt: Option<PToken>, px: &Px) {
+    validate_brace_matching(left_brace, right_brace_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -181,5 +185,10 @@ mod tests {
     #[test]
     fn test_binary_op_expr_syntax_error() {
         assert_syntax_error("a %<[]> ;")
+    }
+
+    #[test]
+    fn test_block_expr_syntax_error() {
+        assert_syntax_error("<[{]> ;");
     }
 }

@@ -443,6 +443,8 @@ pub(crate) fn alloc_block_expr(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_block_expr(left_brace, right_brace_opt, px);
+
     let a_decls = px.alloc_decls(semi);
 
     (
