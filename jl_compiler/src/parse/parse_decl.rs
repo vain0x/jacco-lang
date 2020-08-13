@@ -422,13 +422,13 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
     });
     let tokens = PTokens::from_vec(tokens);
 
-    let mut px = Px::new(tokens, logger);
+    let mut px = Px::new(tokens, logger.clone());
 
     let decls = parse_root(&mut px);
     let a_decls = px.alloc_decls(decls);
     let (eof, skipped, tokens, mut elements, mut ast, builder) = px.finish();
 
-    let (root, events) = builder.finish(&mut elements);
+    let (root, events) = builder.finish(&mut elements, &logger);
     ast.root = ARoot { decls: a_decls };
     ast.events = events;
 

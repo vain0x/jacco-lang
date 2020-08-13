@@ -1,5 +1,8 @@
 use super::*;
-use crate::utils::{VecArena, VecArenaId};
+use crate::{
+    logs::DocLogger,
+    utils::{VecArena, VecArenaId},
+};
 use std::marker::PhantomData;
 
 pub(crate) struct EventTag;
@@ -120,6 +123,9 @@ impl PNodeBuilder {
 pub(crate) struct PTreeBuilder {
     stack: Vec<PNodeBuilder>,
     events: EventArena,
+
+    /// パースイベント ID を位置情報の基準とするエラー情報
+    errors: Vec<(EventId, String)>,
 }
 
 impl PTreeBuilder {
@@ -127,6 +133,7 @@ impl PTreeBuilder {
         PTreeBuilder {
             stack: vec![],
             events: VecArena::new(),
+            errors: vec![],
         }
     }
 
@@ -218,7 +225,15 @@ impl PTreeBuilder {
         self.stack.push(PNodeBuilder::Token(token));
     }
 
-    pub(crate) fn finish(mut self, elements: &mut PElementArena) -> (PElement, EventArena) {
+    pub(crate) fn error_behind(&mut self, event_id: EventId, message: impl Into<String>) {
+        self.errors.push((event_id, message.into()));
+    }
+
+    pub(crate) fn finish(
+        mut self,
+        elements: &mut PElementArena,
+        logger: &DocLogger,
+    ) -> (PElement, EventArena) {
         let children = self.split_off(0);
         let eof = match children.last() {
             Some(Some(PNodeBuilder::Token(token))) => *token,
@@ -231,6 +246,12 @@ impl PTreeBuilder {
         };
         root.end(PElementKind::RootDecl, eof.to_index());
         let root = root.finish(elements, &mut self.events);
+
+        for (event_id, message) in self.errors {
+            if let Some(element) = event_id.of(&self.events) {
+                logger.error(PLoc::ElementBehind(*element), message);
+            }
+        }
 
         (root, self.events)
     }

@@ -111,6 +111,34 @@ pub(crate) fn validate_block_expr(left_brace: PToken, right_brace_opt: Option<PT
     validate_brace_matching(left_brace, right_brace_opt, px);
 }
 
+pub(crate) fn validate_if_expr(
+    keyword: PToken,
+    cond_opt: Option<&AfterExpr>,
+    body_opt: Option<&AfterBlock>,
+    else_opt: Option<PToken>,
+    alt_opt: Option<&AfterExpr>,
+    px: &mut Px,
+) {
+    match (cond_opt, body_opt, else_opt, alt_opt) {
+        (Some(_), Some(_), None, _) | (Some(_), Some(_), Some(_), Some(_)) => {}
+        (None, ..) => {
+            px.logger().error(
+                PLoc::TokenBehind(keyword),
+                "if キーワードの後ろに条件式が必要です。",
+            );
+        }
+        (Some(cond), None, ..) => {
+            px.builder.error_behind(
+                cond.1.id(),
+                "if 式の本体が見つかりません。(if 式の本体は波カッコ {} で囲む必要があります。)",
+            );
+        }
+        (Some(_), Some(_), Some(else_keyword), None) => {
+            px.logger().error(PLoc::TokenBehind(else_keyword), "else 節の本体が見つかりません。(else 節の本体は if 式かブロック { ... } に限られます。)");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -190,5 +218,20 @@ mod tests {
     #[test]
     fn test_block_expr_syntax_error() {
         assert_syntax_error("<[{]> ;");
+    }
+
+    #[test]
+    fn test_if_expr_syntax_error_no_cond() {
+        assert_syntax_error("if<[]> {}");
+    }
+
+    #[test]
+    fn test_if_expr_syntax_error_no_body() {
+        assert_syntax_error("if true<[]> ;");
+    }
+
+    #[test]
+    fn test_if_expr_syntax_error_no_alt() {
+        assert_syntax_error("if true {} else<[]> ;");
     }
 }
