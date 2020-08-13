@@ -83,6 +83,23 @@ pub(crate) fn validate_as_expr(
     }
 }
 
+pub(crate) fn validate_prefix_expr(
+    token: PToken,
+    mut_opt: Option<PMut>,
+    arg_opt: Option<&AfterExpr>,
+    px: &Px,
+) {
+    if arg_opt.is_none() {
+        let last = match mut_opt {
+            Some((_, token)) => token,
+            None => token,
+        };
+
+        px.logger()
+            .error(PLoc::TokenBehind(last), "前置演算子の後ろに式が必要です。");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -141,6 +158,16 @@ mod tests {
 
     #[test]
     fn test_as_expr_syntax_error() {
-        assert_syntax_error("0 as<[]> ;")
+        assert_syntax_error("0 as<[]> ;");
+    }
+
+    #[test]
+    fn test_prefix_expr_syntax_error() {
+        assert_syntax_error("*<[]> ;");
+    }
+
+    #[test]
+    fn test_prefix_expr_syntax_error_after_mut() {
+        assert_syntax_error("&mut<[]> ;");
     }
 }

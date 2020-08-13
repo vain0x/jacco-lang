@@ -382,6 +382,8 @@ pub(crate) fn alloc_prefix_expr(
     arg_opt: Option<AfterExpr>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_prefix_expr(token, mut_opt, arg_opt.as_ref(), px);
+
     let a_arg_opt = arg_opt.map(|expr| px.alloc_expr(expr));
 
     (
