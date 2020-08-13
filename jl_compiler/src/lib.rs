@@ -160,6 +160,7 @@ mod parse {
     mod parse_expr;
     mod parse_pat;
     mod parse_ty;
+    mod syntax_error;
 
     pub(crate) use ast::*;
     pub(crate) use p_binary_op::PBinaryOp;
