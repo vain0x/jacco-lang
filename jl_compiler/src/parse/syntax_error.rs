@@ -2,6 +2,13 @@
 
 use super::*;
 
+fn validate_paren_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
+    if right_opt.is_none() {
+        px.logger()
+            .error(PLoc::Token(left), "丸カッコが閉じられていません");
+    }
+}
+
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
     if right_opt.is_none() {
         px.logger()
@@ -38,6 +45,14 @@ pub(crate) fn validate_record_pat(
     px: &Px,
 ) {
     validate_brace_matching(left_brace, right_brace_opt, px);
+}
+
+// -----------------------------------------------
+// 式
+// -----------------------------------------------
+
+pub(crate) fn validate_paren_expr(left_paren: PToken, right_paren_opt: Option<PToken>, px: &Px) {
+    validate_paren_matching(left_paren, right_paren_opt, px);
 }
 
 #[cfg(test)]
@@ -79,5 +94,10 @@ mod tests {
                 }
             "#,
         );
+    }
+
+    #[test]
+    fn test_paren_expr_syntax_error() {
+        assert_syntax_error("const A: i32 = <[(]> 1;");
     }
 }

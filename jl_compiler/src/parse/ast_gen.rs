@@ -222,6 +222,8 @@ pub(crate) fn alloc_paren_expr(
     right_paren_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_paren_expr(left_paren, right_paren_opt, px);
+
     match body_opt {
         Some(a_expr) => {
             event.end(PElementKind::ParenExpr, px);
