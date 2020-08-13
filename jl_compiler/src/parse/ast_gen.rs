@@ -548,6 +548,15 @@ pub(crate) fn alloc_match_expr(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_match_expr(
+        keyword,
+        cond_opt.as_ref(),
+        left_brace_opt,
+        &arms,
+        right_brace_opt,
+        px,
+    );
+
     let a_cond_opt = cond_opt.map(|expr| px.alloc_expr(expr));
 
     let a_arms = arms.into_iter().map(|(a_arm, _)| a_arm).collect();

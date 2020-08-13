@@ -146,7 +146,7 @@ pub(crate) fn validate_arm(
     _comma_opt: Option<PToken>,
     px: &mut Px,
 ) {
-    // FIXME: 次のアームが存在し、本体が '{}' で終止していなければ、カンマの抜けを指摘する？
+    // FIXME: 次のアームが存在し、本体が '{}' で終止していなければ、カンマの抜けを指摘する？ (match 式の方で調査するほうがよいかもしれない)
 
     match (arrow_opt, body_opt) {
         (Some(_), Some(_)) => {}
@@ -159,6 +159,33 @@ pub(crate) fn validate_arm(
                 PLoc::TokenBehind(arrow),
                 "=> の後にアームの本体となる式が必要です。",
             );
+        }
+    }
+}
+
+pub(crate) fn validate_match_expr(
+    keyword: PToken,
+    cond_opt: Option<&AfterExpr>,
+    left_brace_opt: Option<PToken>,
+    _arms: &[AfterArm],
+    right_brace_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    match (cond_opt, left_brace_opt, right_brace_opt) {
+        (None, ..) => {
+            px.logger().error(
+                PLoc::TokenBehind(keyword),
+                "match キーワードの後ろに条件式が必要です。",
+            );
+        }
+        (Some(cond), None, ..) => {
+            px.builder.error_behind(
+                cond.1.id(),
+                "条件式の後に波カッコアームのブロックが必要です。",
+            );
+        }
+        (Some(_), Some(left_brace), right_brace_opt) => {
+            validate_brace_matching(left_brace, right_brace_opt, px);
         }
     }
 }
@@ -267,5 +294,15 @@ mod tests {
     #[test]
     fn test_arm_syntax_error_no_body() {
         assert_syntax_error("match a { _ =><[]> }");
+    }
+
+    #[test]
+    fn test_match_expr_syntax_error_no_cond() {
+        assert_syntax_error("match<[]> {}");
+    }
+
+    #[test]
+    fn test_match_expr_syntax_error_no_block() {
+        assert_syntax_error("match a<[]> ;");
     }
 }
