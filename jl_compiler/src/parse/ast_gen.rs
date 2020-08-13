@@ -577,6 +577,8 @@ pub(crate) fn alloc_while_expr(
     body_opt: Option<AfterBlock>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_while_expr(keyword, cond_opt.as_ref(), body_opt.as_ref(), px);
+
     let a_cond_opt = cond_opt.map(|expr| px.alloc_expr(expr));
     let a_body_opt = body_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
 

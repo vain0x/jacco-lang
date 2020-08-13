@@ -190,6 +190,27 @@ pub(crate) fn validate_match_expr(
     }
 }
 
+pub(crate) fn validate_while_expr(
+    keyword: PToken,
+    cond_opt: Option<&AfterExpr>,
+    body_opt: Option<&AfterBlock>,
+    px: &mut Px,
+) {
+    match (cond_opt, body_opt) {
+        (Some(_), Some(_)) => {}
+        (None, ..) => px.logger().error(
+            PLoc::TokenBehind(keyword),
+            "while キーワードの後ろに条件式が必要です。",
+        ),
+        (Some(cond), None) => {
+            px.builder.error_behind(
+                cond.1.id(),
+                "条件式の後に本体が必要です。(本体は波カッコ { } で囲む必要があります。)",
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -304,5 +325,15 @@ mod tests {
     #[test]
     fn test_match_expr_syntax_error_no_block() {
         assert_syntax_error("match a<[]> ;");
+    }
+
+    #[test]
+    fn test_while_expr_syntax_error_no_cond() {
+        assert_syntax_error("while<[]> {}");
+    }
+
+    #[test]
+    fn test_while_expr_syntax_error_no_block() {
+        assert_syntax_error("while true<[]> ;");
     }
 }
