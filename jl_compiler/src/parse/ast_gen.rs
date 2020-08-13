@@ -985,6 +985,16 @@ pub(crate) fn alloc_enum_decl(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {
+    validate_enum_decl(
+        &modifiers,
+        keyword,
+        name_opt.as_ref(),
+        left_brace_opt,
+        &variants,
+        right_brace_opt,
+        px,
+    );
+
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_name_opt = name_opt.map(|(name, _)| name);

@@ -487,6 +487,26 @@ pub(crate) fn validate_record_variant_decl(
     validate_brace_matching(left_brace, right_brace_opt, px);
 }
 
+pub(crate) fn validate_enum_decl(
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    left_brace_opt: Option<PToken>,
+    _variants: &AfterVariantDecls,
+    right_brace_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    // FIXME: カンマの抜けを報告する
+
+    match (name_opt, left_brace_opt, right_brace_opt) {
+        (None, ..) => error_behind_token(keyword, "enum キーワードの後に型名が必要です。", px),
+        (Some(name), None, ..) => {
+            error_behind_element(name.1.id(), "enum 宣言の本体が必要です。", px);
+        }
+        (Some(_), Some(left_brace), _) => validate_brace_matching(left_brace, right_brace_opt, px),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -735,6 +755,16 @@ mod tests {
 
     #[test]
     fn test_record_variant_syntax_error() {
-        assert_syntax_error("enum A { B <[{]> ");
+        assert_syntax_error("enum A <[{]> B <[{]> ");
+    }
+
+    #[test]
+    fn test_enum_decl_syntax_error_no_name() {
+        assert_syntax_error("enum<[]> {}");
+    }
+
+    #[test]
+    fn test_enum_decl_syntax_error_no_block() {
+        assert_syntax_error("enum Option<[]> ");
     }
 }
