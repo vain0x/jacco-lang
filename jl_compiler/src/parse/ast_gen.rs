@@ -200,6 +200,8 @@ pub(crate) fn alloc_record_pat(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterPat {
+    validate_record_pat(&name, left_brace, right_brace_opt, px);
+
     (
         APat::Record(ARecordPat {
             left: name.0,

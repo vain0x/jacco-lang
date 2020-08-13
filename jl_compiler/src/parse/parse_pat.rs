@@ -9,7 +9,8 @@ fn parse_record_pat(
 ) -> AfterPat {
     loop {
         match px.next() {
-            TokenKind::Eof | TokenKind::RightBrace => break,
+            // "=>" は確実にパターンの区切りになる。
+            TokenKind::Eof | TokenKind::RightBrace | TokenKind::RightFatArrow => break,
             _ => {
                 // FIXME: フィールドパターン
                 let _ = px.bump();

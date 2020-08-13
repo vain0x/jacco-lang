@@ -4,8 +4,8 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    parse::PLoc,
-    source::{Doc, HaveLoc, Loc},
+    parse::{PLoc, PTree},
+    source::{Doc, HaveLoc, Loc, TRange},
 };
 use std::{cell::RefCell, mem::take, rc::Rc};
 
@@ -14,6 +14,13 @@ use std::{cell::RefCell, mem::take, rc::Rc};
 pub(crate) struct DocLogItem {
     loc: PLoc,
     message: String,
+}
+
+impl DocLogItem {
+    #[allow(unused)]
+    pub(crate) fn range(&self, tree: &PTree) -> Result<TRange, &'static str> {
+        self.loc.range(tree)
+    }
 }
 
 #[derive(Clone, Default)]
