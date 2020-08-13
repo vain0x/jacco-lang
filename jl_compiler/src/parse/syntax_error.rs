@@ -431,6 +431,32 @@ pub(crate) fn validate_fn_decl(
     }
 }
 
+pub(crate) fn validate_extern_fn_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    _extern_keyword: PToken,
+    fn_keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    param_list_opt: Option<&AfterParamList>,
+    arrow_opt: Option<PToken>,
+    result_ty_opt: Option<&AfterTy>,
+    semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if !do_validate_fn_decl_sig(
+        fn_keyword,
+        name_opt,
+        param_list_opt,
+        arrow_opt,
+        result_ty_opt,
+        px,
+    ) {
+        return;
+    }
+
+    validate_decl_semi(event, semi_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -653,5 +679,12 @@ mod tests {
     #[test]
     fn test_fn_decl_no_body_after_ty() {
         assert_syntax_error("fn f() -> i32<[]> ;");
+    }
+
+    // extern fn はおおよそ fn と同じだから省略。
+
+    #[test]
+    fn test_extern_fn_decl_no_semi() {
+        assert_syntax_error("extern fn f()<[]> ");
     }
 }
