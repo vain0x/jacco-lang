@@ -59,6 +59,18 @@ pub(crate) fn validate_record_expr(left_brace: PToken, right_brace_opt: Option<P
     validate_brace_matching(left_brace, right_brace_opt, px);
 }
 
+pub(crate) fn validate_field_expr(
+    _left: &AfterExpr,
+    dot: PToken,
+    name_opt: Option<PToken>,
+    px: &Px,
+) {
+    if name_opt.is_none() {
+        px.logger()
+            .error(PLoc::TokenBehind(dot), ". の後ろにフィールド名が必要です。");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -108,5 +120,10 @@ mod tests {
     #[test]
     fn test_record_expr_syntax_error() {
         assert_syntax_error("Point <[{]> x: 0.0, y: 1.0");
+    }
+
+    #[test]
+    fn test_field_expr_syntax_error() {
+        assert_syntax_error("point.<[]> + 1;");
     }
 }

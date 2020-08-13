@@ -310,6 +310,8 @@ pub(crate) fn alloc_field_expr(
     name_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_field_expr(&left, dot, name_opt, px);
+
     let a_left = px.alloc_expr(left);
 
     (
