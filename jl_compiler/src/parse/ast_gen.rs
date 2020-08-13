@@ -930,6 +930,8 @@ pub(crate) fn alloc_field_decl(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterFieldDecl {
+    validate_field_decl(&name, colon_opt, ty_opt.as_ref(), px);
+
     let (a_name, _) = name;
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 

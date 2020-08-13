@@ -466,6 +466,15 @@ pub(crate) fn validate_const_variant_decl(
     validate_initializer(equal_opt, init_opt, px);
 }
 
+pub(crate) fn validate_field_decl(
+    name: &AfterUnqualifiableName,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    px: &mut Px,
+) {
+    validate_ty_ascription(Some(&name), colon_opt, ty_opt, IsRequired::True, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -700,5 +709,15 @@ mod tests {
     #[test]
     fn test_const_variant_decl_no_init() {
         assert_syntax_error("enum A { A =<[]> , }")
+    }
+
+    #[test]
+    fn test_field_decl_no_colon() {
+        assert_syntax_error("struct Point { x<[]> , }");
+    }
+
+    #[test]
+    fn test_field_decl_no_ty() {
+        assert_syntax_error("struct Point { x :<[]> , }");
     }
 }
