@@ -100,6 +100,13 @@ pub(crate) fn validate_prefix_expr(
     }
 }
 
+pub(crate) fn validate_binary_op_expr(token: PToken, right_opt: Option<&AfterExpr>, px: &Px) {
+    if right_opt.is_none() {
+        px.logger()
+            .error(PLoc::TokenBehind(token), "二項演算子の後ろに式が必要です。");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -169,5 +176,10 @@ mod tests {
     #[test]
     fn test_prefix_expr_syntax_error_after_mut() {
         assert_syntax_error("&mut<[]> ;");
+    }
+
+    #[test]
+    fn test_binary_op_expr_syntax_error() {
+        assert_syntax_error("a %<[]> ;")
     }
 }

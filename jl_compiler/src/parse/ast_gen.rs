@@ -404,6 +404,8 @@ pub(crate) fn alloc_binary_op_expr(
     right_opt: Option<AfterExpr>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_binary_op_expr(token, right_opt.as_ref(), px);
+
     let a_left = px.alloc_expr(left);
     let a_right_opt = right_opt.map(|expr| px.alloc_expr(expr));
 
