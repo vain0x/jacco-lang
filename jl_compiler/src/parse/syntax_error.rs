@@ -233,6 +233,53 @@ pub(crate) fn validate_arg_list(
     validate_paren_matching(left_paren, right_paren_opt, px);
 }
 
+// -----------------------------------------------
+// 宣言
+// -----------------------------------------------
+
+fn error_behind_token(token: PToken, message: impl Into<String>, px: &Px) {
+    px.logger().error(PLoc::TokenBehind(token), message);
+}
+
+fn error_semi(event_id: EventId, px: &mut Px) {
+    // 末尾がブロックなら省略可能。
+    px.builder.error_behind(event_id, "セミコロンが必要です。");
+}
+
+pub(crate) fn validate_let_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    equal_opt: Option<PToken>,
+    init_opt: Option<&AfterExpr>,
+    semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if name_opt.is_none() {
+        error_behind_token(keyword, "let キーワードの後にパターンが必要です。", px);
+        return;
+    }
+
+    if let Some(colon) = colon_opt {
+        if ty_opt.is_none() {
+            error_behind_token(colon, "コロン : の後に型が必要です。", px);
+        }
+    }
+
+    if let Some(equal) = equal_opt {
+        if init_opt.is_none() {
+            error_behind_token(equal, "等号 = の後に式が必要です。", px);
+        }
+    }
+
+    if semi_opt.is_none() {
+        error_semi(event.id(), px);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -367,5 +414,30 @@ mod tests {
     #[test]
     fn test_arg_list_syntax_error() {
         assert_syntax_error("f<[(]> ;");
+    }
+
+    #[test]
+    fn test_let_decl_no_pat() {
+        assert_syntax_error("let<[]> ;");
+    }
+
+    #[test]
+    fn test_let_decl_no_ty() {
+        assert_syntax_error("let _ :<[]> ;");
+    }
+
+    #[test]
+    fn test_let_decl_no_init() {
+        assert_syntax_error("let _ =<[]> ;");
+    }
+
+    #[test]
+    fn test_let_decl_no_semi_after_pat() {
+        assert_syntax_error("let _<[]>");
+    }
+
+    #[test]
+    fn test_let_decl_no_semi_after_init() {
+        assert_syntax_error("let n: i32 = 1<[]>");
     }
 }

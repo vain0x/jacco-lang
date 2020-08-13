@@ -677,6 +677,8 @@ pub(crate) fn alloc_expr_decl(
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {
+    // FIXME: セミコロンの抜けを報告する
+
     let a_expr = px.alloc_expr(expr);
 
     (ADecl::Expr(a_expr), event.end(PElementKind::ExprDecl, px))
@@ -693,6 +695,19 @@ pub(crate) fn alloc_let_decl(
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {
+    validate_let_decl(
+        &modifiers.0,
+        &modifiers,
+        keyword,
+        name_opt.as_ref(),
+        colon_opt,
+        ty_opt.as_ref(),
+        equal_opt,
+        init_opt.as_ref(),
+        semi_opt,
+        px,
+    );
+
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_name_opt = name_opt.map(|(name, _)| name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
