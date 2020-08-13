@@ -457,6 +457,15 @@ pub(crate) fn validate_extern_fn_decl(
     validate_decl_semi(event, semi_opt, px);
 }
 
+pub(crate) fn validate_const_variant_decl(
+    _name: &AfterUnqualifiableName,
+    equal_opt: Option<PToken>,
+    init_opt: Option<&AfterExpr>,
+    px: &mut Px,
+) {
+    validate_initializer(equal_opt, init_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -686,5 +695,10 @@ mod tests {
     #[test]
     fn test_extern_fn_decl_no_semi() {
         assert_syntax_error("extern fn f()<[]> ");
+    }
+
+    #[test]
+    fn test_const_variant_decl_no_init() {
+        assert_syntax_error("enum A { A =<[]> , }")
     }
 }

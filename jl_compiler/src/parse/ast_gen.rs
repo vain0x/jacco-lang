@@ -906,6 +906,8 @@ pub(crate) fn alloc_const_variant_decl(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterVariantDecl {
+    validate_const_variant_decl(&name, equal_opt, init_opt.as_ref(), px);
+
     let (a_name, _) = name;
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
