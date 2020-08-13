@@ -334,6 +334,28 @@ pub(crate) fn validate_const_decl(
     validate_decl_semi(event, semi_opt, px);
 }
 
+pub(crate) fn validate_static_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    equal_opt: Option<PToken>,
+    init_opt: Option<&AfterExpr>,
+    semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if name_opt.is_none() {
+        error_behind_token(keyword, "static キーワードの後に定数名が必要です。", px);
+        return;
+    }
+
+    validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::True, px);
+    validate_initializer(equal_opt, init_opt, px);
+    validate_decl_semi(event, semi_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -509,4 +531,6 @@ mod tests {
     fn test_const_decl_no_semi_after_init() {
         assert_syntax_error("{ const A: i32 = 1<[]> }");
     }
+
+    // static は const と同じだから省略。
 }
