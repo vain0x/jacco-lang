@@ -597,6 +597,8 @@ pub(crate) fn alloc_loop_expr(
     body_opt: Option<AfterBlock>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_loop_expr(keyword, body_opt.as_ref(), px);
+
     let a_body_opt = body_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
 
     (

@@ -213,6 +213,15 @@ pub(crate) fn validate_while_expr(
     }
 }
 
+pub(crate) fn validate_loop_expr(keyword: PToken, body_opt: Option<&AfterBlock>, px: &mut Px) {
+    if body_opt.is_none() {
+        px.logger().error(
+            PLoc::TokenBehind(keyword),
+            "loop キーワードの後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -337,5 +346,10 @@ mod tests {
     #[test]
     fn test_while_expr_syntax_error_no_block() {
         assert_syntax_error("while true<[]> ;");
+    }
+
+    #[test]
+    fn test_loop_expr_syntax_error_no_block() {
+        assert_syntax_error("loop<[]> ;");
     }
 }
