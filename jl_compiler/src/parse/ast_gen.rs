@@ -286,6 +286,8 @@ pub(crate) fn alloc_record_expr(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_record_expr(left_brace, right_brace_opt, px);
+
     let (a_name, _) = name;
     let a_fields = fields
         .into_iter()

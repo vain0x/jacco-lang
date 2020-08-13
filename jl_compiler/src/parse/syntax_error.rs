@@ -55,6 +55,10 @@ pub(crate) fn validate_paren_expr(left_paren: PToken, right_paren_opt: Option<PT
     validate_paren_matching(left_paren, right_paren_opt, px);
 }
 
+pub(crate) fn validate_record_expr(left_brace: PToken, right_brace_opt: Option<PToken>, px: &Px) {
+    validate_brace_matching(left_brace, right_brace_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -99,5 +103,10 @@ mod tests {
     #[test]
     fn test_paren_expr_syntax_error() {
         assert_syntax_error("const A: i32 = <[(]> 1;");
+    }
+
+    #[test]
+    fn test_record_expr_syntax_error() {
+        assert_syntax_error("Point <[{]> x: 0.0, y: 1.0");
     }
 }
