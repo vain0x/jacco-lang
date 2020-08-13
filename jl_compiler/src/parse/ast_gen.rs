@@ -959,6 +959,8 @@ pub(crate) fn alloc_record_variant_decl(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterVariantDecl {
+    validate_record_variant_decl(&name, left_brace, &fields, right_brace_opt, px);
+
     let (name, _) = name;
 
     (

@@ -2,17 +2,17 @@
 
 use super::*;
 
-fn validate_paren_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
-    if right_opt.is_none() {
+fn validate_paren_matching(left_paren: PToken, right_paren_opt: Option<PToken>, px: &Px) {
+    if right_paren_opt.is_none() {
         px.logger()
-            .error(PLoc::Token(left), "丸カッコ () が閉じられていません");
+            .error(PLoc::Token(left_paren), "丸カッコ () が閉じられていません");
     }
 }
 
-fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
-    if right_opt.is_none() {
+fn validate_brace_matching(left_brace: PToken, right_brace_opt: Option<PToken>, px: &Px) {
+    if right_brace_opt.is_none() {
         px.logger()
-            .error(PLoc::Token(left), "波カッコ {} が閉じられていません");
+            .error(PLoc::Token(left_brace), "波カッコ {} が閉じられていません");
     }
 }
 
@@ -475,6 +475,18 @@ pub(crate) fn validate_field_decl(
     validate_ty_ascription(Some(&name), colon_opt, ty_opt, IsRequired::True, px);
 }
 
+pub(crate) fn validate_record_variant_decl(
+    _name: &AfterUnqualifiableName,
+    left_brace: PToken,
+    _fields: &AfterFieldDecls,
+    right_brace_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    // FIXME: カンマの抜けを報告する
+
+    validate_brace_matching(left_brace, right_brace_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -719,5 +731,10 @@ mod tests {
     #[test]
     fn test_field_decl_no_ty() {
         assert_syntax_error("struct Point { x :<[]> , }");
+    }
+
+    #[test]
+    fn test_record_variant_syntax_error() {
+        assert_syntax_error("enum A { B <[{]> ");
     }
 }
