@@ -1037,6 +1037,15 @@ pub(crate) fn alloc_use_decl(
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {
+    validate_use_decl(
+        &modifiers.0,
+        &modifiers,
+        keyword,
+        name_opt.as_ref(),
+        semi_opt,
+        px,
+    );
+
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_name_opt = name_opt.map(|(name, _)| name);
 

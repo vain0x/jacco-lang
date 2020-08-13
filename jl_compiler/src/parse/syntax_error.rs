@@ -521,6 +521,21 @@ pub(crate) fn validate_struct_decl(
     // FIXME: セミコロンの抜けを報告する
 }
 
+pub(crate) fn validate_use_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterQualifiableName>,
+    semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if name_opt.is_none() {
+        error_behind_token(keyword, "use キーワードの後にパスが必要です。", px);
+    }
+
+    validate_decl_semi(event, semi_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -785,5 +800,15 @@ mod tests {
     #[test]
     fn test_struct_decl_syntax_error_no_name() {
         assert_syntax_error("struct<[]> ;");
+    }
+
+    #[test]
+    fn test_use_decl_syntax_error_no_name() {
+        assert_syntax_error("use<[]> ;");
+    }
+
+    #[test]
+    fn test_use_decl_syntax_error_no_semi() {
+        assert_syntax_error("{ use a::A<[]> }");
     }
 }
