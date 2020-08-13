@@ -139,6 +139,30 @@ pub(crate) fn validate_if_expr(
     }
 }
 
+pub(crate) fn validate_arm(
+    pat: &AfterPat,
+    arrow_opt: Option<PToken>,
+    body_opt: Option<&AfterExpr>,
+    _comma_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    // FIXME: 次のアームが存在し、本体が '{}' で終止していなければ、カンマの抜けを指摘する？
+
+    match (arrow_opt, body_opt) {
+        (Some(_), Some(_)) => {}
+        (None, ..) => {
+            px.builder
+                .error_behind(pat.1.id(), "パターンの後に => が必要です。");
+        }
+        (Some(arrow), _) => {
+            px.logger().error(
+                PLoc::TokenBehind(arrow),
+                "=> の後にアームの本体となる式が必要です。",
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -233,5 +257,15 @@ mod tests {
     #[test]
     fn test_if_expr_syntax_error_no_alt() {
         assert_syntax_error("if true {} else<[]> ;");
+    }
+
+    #[test]
+    fn test_arm_syntax_error_no_arrow() {
+        assert_syntax_error("match a { _<[]> }");
+    }
+
+    #[test]
+    fn test_arm_syntax_error_no_body() {
+        assert_syntax_error("match a { _ =><[]> }");
     }
 }

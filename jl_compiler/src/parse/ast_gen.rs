@@ -525,6 +525,8 @@ pub(crate) fn alloc_arm(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterArm {
+    validate_arm(&pat, arrow_opt, body_opt.as_ref(), comma_opt, px);
+
     let a_pat = px.alloc_pat(pat);
     let a_body_opt = body_opt.map(|expr| px.alloc_expr(expr));
 
