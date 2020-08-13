@@ -432,6 +432,13 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
     ast.root = ARoot { decls: a_decls };
     ast.events = events;
 
+    for token in &skipped {
+        logger.error(
+            PLoc::Token(*token),
+            "このトークンを有効な構文として解釈できません。",
+        );
+    }
+
     PTree {
         eof,
         elements,

@@ -571,6 +571,11 @@ mod tests {
     }
 
     #[test]
+    fn test_skipped_tokens() {
+        assert_syntax_error(" <[}]> ");
+    }
+
+    #[test]
     fn test_ptr_ty_syntax_error() {
         assert_syntax_error("fn f() -> *<[]> {}");
     }
@@ -689,8 +694,10 @@ mod tests {
 
     #[test]
     fn test_param_list_syntax_error_no_right_paren() {
+        assert_syntax_error("fn f<[(]><[]> ");
+
         // FIXME: 関数の本体がない旨のエラーが変な位置に出る。適切にエラー回復すれば出ないようにできる？
-        assert_syntax_error("fn f<[(]> a: i32 {<[]>}");
+        // assert_syntax_error("fn f<[(]> a: i32 {<[]>}");
     }
 
     #[test]
