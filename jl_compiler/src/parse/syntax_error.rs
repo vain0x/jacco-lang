@@ -5,14 +5,14 @@ use super::*;
 fn validate_paren_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
     if right_opt.is_none() {
         px.logger()
-            .error(PLoc::Token(left), "丸カッコが閉じられていません");
+            .error(PLoc::Token(left), "丸カッコ () が閉じられていません");
     }
 }
 
 fn validate_brace_matching(left: PToken, right_opt: Option<PToken>, px: &Px) {
     if right_opt.is_none() {
         px.logger()
-            .error(PLoc::Token(left), "波カッコが閉じられていません");
+            .error(PLoc::Token(left), "波カッコ {} が閉じられていません");
     }
 }
 
@@ -66,8 +66,10 @@ pub(crate) fn validate_field_expr(
     px: &Px,
 ) {
     if name_opt.is_none() {
-        px.logger()
-            .error(PLoc::TokenBehind(dot), ". の後ろにフィールド名が必要です。");
+        px.logger().error(
+            PLoc::TokenBehind(dot),
+            "ドット . の後ろにフィールド名が必要です。",
+        );
     }
 }
 
@@ -130,11 +132,11 @@ pub(crate) fn validate_if_expr(
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "if 式の本体が見つかりません。(if 式の本体は波カッコ {} で囲む必要があります。)",
+                "条件式の後ろに本体が必要です。(if 式の本体は波カッコ {} で囲む必要があります。)",
             );
         }
         (Some(_), Some(_), Some(else_keyword), None) => {
-            px.logger().error(PLoc::TokenBehind(else_keyword), "else 節の本体が見つかりません。(else 節の本体は if 式かブロック { ... } に限られます。)");
+            px.logger().error(PLoc::TokenBehind(else_keyword), "else 節の本体が見つかりません。(else 節の本体は if 式であるか、波カッコ {} で囲む必要があります。)");
         }
     }
 }
@@ -181,7 +183,7 @@ pub(crate) fn validate_match_expr(
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後に波カッコアームのブロックが必要です。",
+                "条件式の後にアームの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
             );
         }
         (Some(_), Some(left_brace), right_brace_opt) => {
@@ -205,7 +207,7 @@ pub(crate) fn validate_while_expr(
         (Some(cond), None) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後に本体が必要です。(本体は波カッコ { } で囲む必要があります。)",
+                "条件式の後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
             );
         }
     }
