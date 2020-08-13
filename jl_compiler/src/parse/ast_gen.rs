@@ -627,6 +627,8 @@ pub(crate) fn alloc_labeled_arg(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterLabeledArg {
+    // FIXME: 構文エラーを報告する
+
     let (a_name, _) = name;
     let a_value_opt = value_opt.map(|expr| px.alloc_expr(expr));
 
@@ -643,8 +645,10 @@ pub(crate) fn alloc_arg_list(
     left_paren: PToken,
     args: Vec<AfterArg>,
     right_paren_opt: Option<PToken>,
-    _px: &mut Px,
+    px: &mut Px,
 ) -> AfterArgList {
+    validate_arg_list(left_paren, &args, right_paren_opt, px);
+
     args
 }
 

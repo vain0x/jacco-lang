@@ -222,6 +222,17 @@ pub(crate) fn validate_loop_expr(keyword: PToken, body_opt: Option<&AfterBlock>,
     }
 }
 
+pub(crate) fn validate_arg_list(
+    left_paren: PToken,
+    _args: &Vec<AfterArg>,
+    right_paren_opt: Option<PToken>,
+    px: &Px,
+) {
+    // FIXME: カンマの抜けを報告する
+
+    validate_paren_matching(left_paren, right_paren_opt, px);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -351,5 +362,10 @@ mod tests {
     #[test]
     fn test_loop_expr_syntax_error_no_block() {
         assert_syntax_error("loop<[]> ;");
+    }
+
+    #[test]
+    fn test_arg_list_syntax_error() {
+        assert_syntax_error("f<[(]> ;");
     }
 }
