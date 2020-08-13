@@ -241,9 +241,53 @@ fn error_behind_token(token: PToken, message: impl Into<String>, px: &Px) {
     px.logger().error(PLoc::TokenBehind(token), message);
 }
 
-fn error_semi(event_id: EventId, px: &mut Px) {
-    // 末尾がブロックなら省略可能。
-    px.builder.error_behind(event_id, "セミコロンが必要です。");
+fn error_behind_element(event_id: EventId, message: impl Into<String>, px: &mut Px) {
+    px.builder.error_behind(event_id, message);
+}
+
+enum IsRequired {
+    True,
+    False,
+}
+
+/// `: ty` (必須)
+fn validate_ty_ascription(
+    name_opt: Option<&AfterUnqualifiableName>,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    is_required: IsRequired,
+    px: &mut Px,
+) {
+    match (name_opt, colon_opt, ty_opt, is_required) {
+        (None, ..) | (Some(_), Some(_), Some(_), _) | (Some(_), None, _, IsRequired::False) => {
+            // OK.
+        }
+        (Some(name), None, _, IsRequired::True) => error_behind_element(
+            name.1.id(),
+            "型注釈が必須です。(型注釈は `名前 : 型` と書きます。)",
+            px,
+        ),
+        (Some(_), Some(colon), None, _) => {
+            error_behind_token(colon, "コロン : の後に型が必要です。", px)
+        }
+    }
+}
+
+/// `= init` (省略可能)
+fn validate_initializer(equal_opt: Option<PToken>, init_opt: Option<&AfterExpr>, px: &Px) {
+    if let Some(equal) = equal_opt {
+        if init_opt.is_none() {
+            error_behind_token(equal, "等号 = の後に式が必要です。", px);
+        }
+    }
+}
+
+fn validate_decl_semi(event: &DeclStart, semi_opt: Option<PToken>, px: &mut Px) {
+    if semi_opt.is_none() {
+        // FIXME: 末尾がブロックなら省略可能。
+        px.builder
+            .error_behind(event.id(), "セミコロンが必要です。");
+    }
 }
 
 pub(crate) fn validate_let_decl(
@@ -263,21 +307,31 @@ pub(crate) fn validate_let_decl(
         return;
     }
 
-    if let Some(colon) = colon_opt {
-        if ty_opt.is_none() {
-            error_behind_token(colon, "コロン : の後に型が必要です。", px);
-        }
+    validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::False, px);
+    validate_initializer(equal_opt, init_opt, px);
+    validate_decl_semi(event, semi_opt, px);
+}
+
+pub(crate) fn validate_const_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    equal_opt: Option<PToken>,
+    init_opt: Option<&AfterExpr>,
+    semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if name_opt.is_none() {
+        error_behind_token(keyword, "const キーワードの後に定数名が必要です。", px);
+        return;
     }
 
-    if let Some(equal) = equal_opt {
-        if init_opt.is_none() {
-            error_behind_token(equal, "等号 = の後に式が必要です。", px);
-        }
-    }
-
-    if semi_opt.is_none() {
-        error_semi(event.id(), px);
-    }
+    validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::True, px);
+    validate_initializer(equal_opt, init_opt, px);
+    validate_decl_semi(event, semi_opt, px);
 }
 
 #[cfg(test)]
@@ -439,5 +493,20 @@ mod tests {
     #[test]
     fn test_let_decl_no_semi_after_init() {
         assert_syntax_error("let n: i32 = 1<[]>");
+    }
+
+    #[test]
+    fn test_const_decl_no_name() {
+        assert_syntax_error("const<[]> ;");
+    }
+
+    #[test]
+    fn test_const_decl_no_ty_ascription() {
+        assert_syntax_error("const A<[]> = 1;");
+    }
+
+    #[test]
+    fn test_const_decl_no_semi_after_init() {
+        assert_syntax_error("{ const A: i32 = 1<[]> }");
     }
 }
