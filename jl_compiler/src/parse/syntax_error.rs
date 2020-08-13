@@ -507,6 +507,20 @@ pub(crate) fn validate_enum_decl(
     }
 }
 
+pub(crate) fn validate_struct_decl(
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    variant_opt: Option<&AfterVariantDecl>,
+    _semi_opt: Option<PToken>,
+    px: &mut Px,
+) {
+    if variant_opt.is_none() {
+        error_behind_token(keyword, "struct キーワードの後に型名が必要です。", px);
+    }
+
+    // FIXME: セミコロンの抜けを報告する
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -766,5 +780,10 @@ mod tests {
     #[test]
     fn test_enum_decl_syntax_error_no_block() {
         assert_syntax_error("enum Option<[]> ");
+    }
+
+    #[test]
+    fn test_struct_decl_syntax_error_no_name() {
+        assert_syntax_error("struct<[]> ;");
     }
 }

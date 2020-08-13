@@ -1016,6 +1016,8 @@ pub(crate) fn alloc_struct_decl(
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterDecl {
+    validate_struct_decl(&modifiers, keyword, variant_opt.as_ref(), semi_opt, px);
+
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_variant_opt = variant_opt.map(|(variant_decl, _)| variant_decl);
 
