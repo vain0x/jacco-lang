@@ -100,6 +100,8 @@ pub(crate) fn alloc_param(
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterParam {
+    validate_param(&name, colon_opt, ty_opt.as_ref(), px);
+
     let (a_name, _) = name;
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
@@ -116,8 +118,10 @@ pub(crate) fn alloc_param_list(
     left_paren: PToken,
     params: Vec<AfterParam>,
     right_paren_opt: Option<PToken>,
-    _px: &mut Px,
+    px: &mut Px,
 ) -> AfterParamList {
+    validate_param_list(left_paren, &params, right_paren_opt, px);
+
     params
 }
 
@@ -814,6 +818,18 @@ pub(crate) fn alloc_fn_decl(
     block_opt: Option<AfterBlock>,
     px: &mut Px,
 ) -> AfterDecl {
+    validate_fn_decl(
+        &modifiers.0,
+        &modifiers,
+        keyword,
+        name_opt.as_ref(),
+        param_list_opt.as_ref(),
+        arrow_opt,
+        result_ty_opt.as_ref(),
+        block_opt.as_ref(),
+        px,
+    );
+
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|(name, _)| name);

@@ -290,6 +290,26 @@ fn validate_decl_semi(event: &DeclStart, semi_opt: Option<PToken>, px: &mut Px) 
     }
 }
 
+pub(crate) fn validate_param(
+    name: &AfterUnqualifiableName,
+    colon_opt: Option<PToken>,
+    ty_opt: Option<&AfterTy>,
+    px: &mut Px,
+) {
+    validate_ty_ascription(Some(name), colon_opt, ty_opt, IsRequired::True, px);
+}
+
+pub(crate) fn validate_param_list(
+    left_paren: PToken,
+    _params: &[AfterParam],
+    right_paren_opt: Option<PToken>,
+    px: &Px,
+) {
+    // FIXME: カンマの抜けを報告する
+
+    validate_paren_matching(left_paren, right_paren_opt, px);
+}
+
 pub(crate) fn validate_let_decl(
     event: &DeclStart,
     _modifiers: &AfterDeclModifiers,
@@ -356,6 +376,61 @@ pub(crate) fn validate_static_decl(
     validate_decl_semi(event, semi_opt, px);
 }
 
+fn do_validate_fn_decl_sig(
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    param_list_opt: Option<&AfterParamList>,
+    arrow_opt: Option<PToken>,
+    result_ty_opt: Option<&AfterTy>,
+    px: &mut Px,
+) -> bool {
+    match (name_opt, param_list_opt, arrow_opt, result_ty_opt) {
+        (Some(_), Some(_), None, _) | (Some(_), Some(_), Some(_), Some(_)) => return true,
+        (None, ..) => error_behind_token(keyword, "関数名が必要です。", px),
+        (Some(name), None, ..) => error_behind_element(
+            name.1.id(),
+            "パラメータリストの丸カッコ () が必要です。",
+            px,
+        ),
+        (Some(_), Some(_), Some(arrow), None) => {
+            error_behind_token(arrow, "矢印 -> の後に型が必要です。", px)
+        }
+    }
+
+    false
+}
+
+pub(crate) fn validate_fn_decl(
+    event: &DeclStart,
+    _modifiers: &AfterDeclModifiers,
+    keyword: PToken,
+    name_opt: Option<&AfterUnqualifiableName>,
+    param_list_opt: Option<&AfterParamList>,
+    arrow_opt: Option<PToken>,
+    result_ty_opt: Option<&AfterTy>,
+    block_opt: Option<&AfterBlock>,
+    px: &mut Px,
+) {
+    if !do_validate_fn_decl_sig(
+        keyword,
+        name_opt,
+        param_list_opt,
+        arrow_opt,
+        result_ty_opt,
+        px,
+    ) {
+        return;
+    }
+
+    if block_opt.is_none() {
+        error_behind_element(
+            event.id(),
+            "関数の本体が必要です。(本体は波カッコ { } で囲む必要があります。)",
+            px,
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -371,14 +446,23 @@ mod tests {
         let tokens = tokenize(text.into());
         let tree = &parse_tokens(tokens, logs.logger());
 
-        let mut actual = logs
-            .finish()
-            .into_iter()
+        let errors = logs.finish();
+        let mut actual = errors
+            .iter()
             .map(|loc| loc.range(tree).unwrap())
             .collect::<Vec<_>>();
         actual.sort();
 
-        assert_eq!(actual, expected, "{:#?}", tree);
+        let messages = errors
+            .into_iter()
+            .map(|item| item.into_message())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            actual, expected,
+            "messages={:#?}, tree={:#?}",
+            messages, tree
+        );
     }
 
     #[test]
@@ -493,6 +577,18 @@ mod tests {
     }
 
     #[test]
+    fn test_param_decl_syntax_error_no_colon() {
+        assert_syntax_error("fn f( a<[]> ) {}");
+        assert_syntax_error("fn f( a<[]> , b<[]> , c : i32 ) {}");
+    }
+
+    #[test]
+    fn test_param_list_syntax_error_no_right_paren() {
+        // FIXME: 関数の本体がない旨のエラーが変な位置に出る。適切にエラー回復すれば出ないようにできる？
+        assert_syntax_error("fn f<[(]> a: i32 {<[]>}");
+    }
+
+    #[test]
     fn test_let_decl_no_pat() {
         assert_syntax_error("let<[]> ;");
     }
@@ -533,4 +629,29 @@ mod tests {
     }
 
     // static は const と同じだから省略。
+
+    #[test]
+    fn test_fn_decl_no_name() {
+        assert_syntax_error("fn<[]> () {}");
+    }
+
+    #[test]
+    fn test_fn_decl_no_param_list() {
+        assert_syntax_error("fn f<[]> -> i32 {}");
+    }
+
+    #[test]
+    fn test_fn_decl_no_result_ty() {
+        assert_syntax_error("fn f() -><[]> {}");
+    }
+
+    #[test]
+    fn test_fn_decl_no_body_after_param_list() {
+        assert_syntax_error("fn f()<[]> ;");
+    }
+
+    #[test]
+    fn test_fn_decl_no_body_after_ty() {
+        assert_syntax_error("fn f() -> i32<[]> ;");
+    }
 }

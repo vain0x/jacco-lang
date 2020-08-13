@@ -18,6 +18,11 @@ pub(crate) struct DocLogItem {
 
 impl DocLogItem {
     #[allow(unused)]
+    pub(crate) fn into_message(self) -> String {
+        self.message
+    }
+
+    #[allow(unused)]
     pub(crate) fn range(&self, tree: &PTree) -> Result<TRange, &'static str> {
         self.loc.range(tree)
     }
