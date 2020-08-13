@@ -71,6 +71,18 @@ pub(crate) fn validate_field_expr(
     }
 }
 
+pub(crate) fn validate_as_expr(
+    _left: &AfterExpr,
+    keyword: PToken,
+    ty_opt: Option<&AfterTy>,
+    px: &Px,
+) {
+    if ty_opt.is_none() {
+        px.logger()
+            .error(PLoc::TokenBehind(keyword), "as の後ろに型が必要です。");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parse::parse_tokens;
@@ -125,5 +137,10 @@ mod tests {
     #[test]
     fn test_field_expr_syntax_error() {
         assert_syntax_error("point.<[]> + 1;");
+    }
+
+    #[test]
+    fn test_as_expr_syntax_error() {
+        assert_syntax_error("0 as<[]> ;")
     }
 }

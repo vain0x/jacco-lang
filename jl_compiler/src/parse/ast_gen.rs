@@ -360,6 +360,8 @@ pub(crate) fn alloc_as_expr(
     ty_opt: Option<AfterTy>,
     px: &mut Px,
 ) -> AfterExpr {
+    validate_as_expr(&left, keyword, ty_opt.as_ref(), px);
+
     let a_left = px.alloc_expr(left);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
