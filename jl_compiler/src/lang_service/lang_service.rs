@@ -1,11 +1,14 @@
 use super::{actions, doc_analysis::*};
 use crate::{
     cps::*,
+    logs::{LogItem, Logs},
     parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
+    utils::VecArena,
 };
 use std::{
     collections::{HashMap, HashSet},
+    mem::take,
     path::PathBuf,
     rc::Rc,
 };
@@ -31,6 +34,7 @@ impl Location {
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
     dirty_sources: HashSet<Doc>,
+    project_logs: Vec<LogItem>,
 }
 
 impl LangService {
@@ -55,6 +59,55 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
+    pub(super) fn request_types(&mut self) -> &[LogItem] {
+        if take(&mut self.dirty_sources).is_empty() {
+            return &self.project_logs;
+        }
+
+        let doc_len = self.docs.len();
+
+        let mut mod_docs: VecArena<KModTag, Doc> = VecArena::new();
+        let mut mod_outlines = KModOutlines::new();
+        let mut mods = KModArena::new();
+
+        mod_docs.reserve(doc_len);
+        mod_outlines.reserve(doc_len);
+        mods.reserve(doc_len);
+
+        // 各ドキュメントのデータをアリーナに移動する。
+        for (&doc, doc_data) in self.docs.iter_mut() {
+            let symbols = doc_data.request_symbols();
+
+            let k_mod = mod_docs.alloc(doc);
+            let mod_outline = take(&mut symbols.symbols.mod_outline);
+            let mod_data = take(&mut symbols.symbols.mod_data);
+
+            let k_mod2 = mod_outlines.alloc(mod_outline);
+            let k_mod3 = mods.alloc(mod_data);
+            assert_eq!(k_mod, k_mod2);
+            assert_eq!(k_mod, k_mod3);
+
+            doc_data.mod_opt = Some(k_mod);
+        }
+
+        let logs = Logs::new();
+        for ((k_mod, mod_outline), mod_data) in mod_outlines.enumerate().zip(mods.iter_mut()) {
+            resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
+        }
+
+        // アリーナを解体する。
+        for doc_data in self.docs.values_mut() {
+            let k_mod = doc_data.mod_opt.take().unwrap();
+            let symbols = doc_data.request_symbols();
+
+            symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
+            symbols.symbols.mod_data = take(&mut k_mod.of_mut(&mut mods));
+        }
+
+        self.project_logs = logs.finish();
+        &self.project_logs
+    }
+
     pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
         self.docs.insert(
             doc,
@@ -66,6 +119,7 @@ impl LangService {
                 source_path: PathBuf::from("main.jacco").into(),
                 syntax_opt: None,
                 symbols_opt: None,
+                mod_opt: None,
             },
         );
         self.dirty_sources.insert(doc);
@@ -392,9 +446,9 @@ mod tests {
 
     #[test]
     fn test_validate_type_errors() {
-        // let mut lang_service = new_service_from_str("fn f() { 2_i32 + 3_f64 }");
-        // let (_, errors) = lang_service.validate(DOC);
-        // assert_ne!(errors.len(), 0);
+        let mut lang_service = new_service_from_str("fn f() -> i32 { \"\" }");
+        let (_, errors) = lang_service.validate(DOC);
+        assert_ne!(errors.len(), 0);
     }
 
     #[test]

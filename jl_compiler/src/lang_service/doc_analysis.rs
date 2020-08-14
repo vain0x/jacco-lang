@@ -39,6 +39,7 @@ pub(super) struct AnalysisCache {
     pub(super) source_path: Arc<PathBuf>,
     pub(super) syntax_opt: Option<Syntax>,
     pub(super) symbols_opt: Option<Symbols>,
+    pub(super) mod_opt: Option<KMod>,
 }
 
 #[derive(Default)]
