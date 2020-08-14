@@ -328,8 +328,8 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 Some(ty) => DebugWithContext::fmt(ty.borrow().deref(), context, f),
                 None => write!(f, "?{}", meta_ty.to_index()),
             },
-            KTy2::Never => write!(f, "!"),
-            KTy2::Unit => write!(f, "()"),
+            KTy2::Never => write!(f, "never"),
+            KTy2::Unit => write!(f, "unit"),
             KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
             KTy2::Ptr { k_mut, base_ty } => {
                 match k_mut {

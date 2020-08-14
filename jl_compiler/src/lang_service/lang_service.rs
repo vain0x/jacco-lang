@@ -809,4 +809,20 @@ mod tests {
             Some("```jacco\ni64\n```"),
         );
     }
+
+    #[test]
+    fn test_hover_fn() {
+        do_test_hover(
+            "fn <|>f(x: i32, y: i64) {}",
+            Some("```jacco\nfn f(x: i32, y: i64);\n```"),
+        );
+    }
+
+    #[test]
+    fn test_hover_fn_with_result_ty() {
+        do_test_hover(
+            "fn g() -> never { g<|>() }",
+            Some("```jacco\nfn g() -> never;\n```"),
+        );
+    }
 }
