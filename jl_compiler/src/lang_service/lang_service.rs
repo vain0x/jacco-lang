@@ -30,6 +30,38 @@ impl Location {
     }
 }
 
+pub enum Content {
+    String(String),
+    JaccoCode(String),
+    #[cfg(skip)]
+    Concat(Vec<Content>),
+}
+
+impl Content {
+    #[allow(unused)]
+    pub(crate) fn to_string(&self) -> String {
+        use std::io::{self, Write};
+
+        fn write(f: &mut impl Write, content: &Content) -> io::Result<()> {
+            match content {
+                Content::String(text) => write!(f, "{}", text),
+                Content::JaccoCode(code) => write!(f, "```jacco\n{}\n```", code),
+                #[cfg(skip)]
+                Content::Concat(contents) => {
+                    for content in contents {
+                        write(f, content)?;
+                    }
+                    Ok(())
+                }
+            }
+        }
+
+        let mut out = Vec::new();
+        write(&mut out, self).unwrap();
+        unsafe { String::from_utf8_unchecked(out) }
+    }
+}
+
 #[derive(Default)]
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
@@ -162,7 +194,7 @@ impl LangService {
         actions::document_highlight(doc, pos, self)
     }
 
-    pub fn hover(&mut self, doc: Doc, pos: TPos16) -> Option<String> {
+    pub fn hover(&mut self, doc: Doc, pos: TPos16) -> Option<Content> {
         actions::hover(doc, pos, self)
     }
 
@@ -416,7 +448,7 @@ pub(super) fn collect_use_sites(
 
 #[cfg(test)]
 mod tests {
-    use super::{Doc, LangService};
+    use super::{Content, Doc, LangService};
     use crate::source::{cursor_text::parse_cursor_text, TPos16};
 
     const DOC: Doc = Doc::new(1);
@@ -762,16 +794,19 @@ mod tests {
 
         let pos = cursor_text.to_pos_vec()[0];
         let result = lang_service.hover(DOC, pos.into());
-        assert_eq!(result.as_deref(), expected);
+        assert_eq!(result.as_ref().map(Content::to_string).as_deref(), expected);
     }
 
     #[test]
     fn test_hover_param() {
-        do_test_hover("fn f(x: i32) -> i32 { <|>x }", Some("i32"));
+        do_test_hover("fn f(x: i32) -> i32 { <|>x }", Some("```jacco\ni32\n```"));
     }
 
     #[test]
     fn test_hover_local_var() {
-        do_test_hover("fn f() { let x = 2_i64 + 3; <|>x; }", Some("i64"));
+        do_test_hover(
+            "fn f() { let x = 2_i64 + 3; <|>x; }",
+            Some("```jacco\ni64\n```"),
+        );
     }
 }

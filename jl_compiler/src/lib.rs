@@ -5,7 +5,7 @@ mod tests;
 /// API for Rust.
 pub mod rust_api {
     pub use super::cli::{compile_v2, Project};
-    pub use super::lang_service::lang_service::LangService;
+    pub use super::lang_service::lang_service::{Content, LangService};
     pub use super::source::{doc::Doc, TPos, TPos16, TRange};
 }
 

@@ -2,7 +2,7 @@ use super::{
     lsp_receiver::LspReceiver, lsp_sender::LspSender, LspMessageOpaque, LspNotification, LspRequest,
 };
 use crate::docs::{DocChange, Docs};
-use jl_compiler::rust_api::{Doc, LangService};
+use jl_compiler::rust_api::{Content, Doc, LangService};
 use log::trace;
 use lsp_types::request::*;
 use lsp_types::*;
@@ -282,10 +282,19 @@ impl<W: Write> LspHandler<W> {
         let pos = from_lsp_pos(params.position);
 
         let doc = self.docs.url_to_doc(&url)?;
-        let text = self.service.hover(doc, pos)?;
-        let hover = Hover {
-            contents: HoverContents::Scalar(MarkedString::String(text)),
-            range: None,
+        let content = self.service.hover(doc, pos)?;
+        let hover = {
+            let string = match content {
+                Content::String(text) => MarkedString::String(text),
+                Content::JaccoCode(code) => MarkedString::LanguageString(LanguageString {
+                    language: "jacco".to_string(),
+                    value: code,
+                }),
+            };
+            Hover {
+                contents: HoverContents::Scalar(string),
+                range: None,
+            }
         };
         Some(hover)
     }

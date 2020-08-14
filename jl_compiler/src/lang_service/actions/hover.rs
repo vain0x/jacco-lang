@@ -1,10 +1,13 @@
 use super::{Doc, LangService, TPos16};
 use crate::{
     cps::{KLocalVarParent, KModLocalSymbol, KTyEnv},
-    lang_service::{doc_analysis::DocSymbolAnalysisMut, lang_service::hit_test},
+    lang_service::{
+        doc_analysis::DocSymbolAnalysisMut,
+        lang_service::{hit_test, Content},
+    },
 };
 
-pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<String> {
+pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Content> {
     ls.request_types();
 
     let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
@@ -29,7 +32,9 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Strin
                     }
                 };
 
-                contents_opt = Some(local_var.ty(locals).display(ty_env, mod_outlines));
+                contents_opt = Some(Content::JaccoCode(
+                    local_var.ty(locals).display(ty_env, mod_outlines),
+                ));
             });
         }
         KModLocalSymbol::Const(_) => {}
