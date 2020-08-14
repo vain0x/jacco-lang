@@ -1,17 +1,45 @@
 use super::{Doc, LangService, TPos16};
+use crate::{
+    cps::{KLocalVarParent, KModLocalSymbol, KTyEnv},
+    lang_service::{doc_analysis::DocSymbolAnalysisMut, lang_service::hit_test},
+};
 
-pub(crate) fn hover(_doc: Doc, _pos: TPos16, _ls: &mut LangService) -> Option<String> {
-    // 頻繁にクラッシュするので無効化
+pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<String> {
+    ls.request_types();
 
-    // let (name, _) = {
-    //     let symbols = ls.request_symbols(doc)?;
-    //     hit_test(doc, pos, symbols)?
-    // };
+    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+    let (symbol, _) = hit_test(doc, pos, syntax, symbols)?;
+    let mut contents_opt = None;
 
-    // let cps = ls.request_cps(doc)?;
-    // let ty = name.ty(&cps.root);
-    // let ty_env = name.ty_env(&cps.root);
-    // let mod_outlines = todo!();
-    // Some(ty.display(ty_env, &mod_outlines))
-    None
+    match symbol {
+        KModLocalSymbol::LocalVar { parent, local_var } => {
+            ls.do_with_mods(|ls, mod_outlines, mods| {
+                let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
+                let mod_data = k_mod.of_mut(mods);
+
+                let ty_env = match parent {
+                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).ty_env,
+                    KLocalVarParent::ExternFn(_) => KTyEnv::EMPTY,
+                };
+
+                let locals = match parent {
+                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
+                    KLocalVarParent::ExternFn(extern_fn) => {
+                        &extern_fn.of(&mod_data.extern_fns).locals
+                    }
+                };
+
+                contents_opt = Some(local_var.ty(locals).display(ty_env, mod_outlines));
+            });
+        }
+        KModLocalSymbol::Const(_) => {}
+        KModLocalSymbol::StaticVar(_) => {}
+        KModLocalSymbol::Fn(_) => {}
+        KModLocalSymbol::ExternFn(_) => {}
+        KModLocalSymbol::Enum(_) => {}
+        KModLocalSymbol::Struct(_) => {}
+        KModLocalSymbol::Alias(_) => {}
+    }
+
+    contents_opt
 }

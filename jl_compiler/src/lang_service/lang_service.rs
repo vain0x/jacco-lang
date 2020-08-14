@@ -59,11 +59,10 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
     }
 
-    pub(super) fn request_types(&mut self) -> &[LogItem] {
-        if take(&mut self.dirty_sources).is_empty() {
-            return &self.project_logs;
-        }
-
+    pub(super) fn do_with_mods(
+        &mut self,
+        f: impl FnOnce(&mut LangService, &mut KModOutlines, &mut KModArena),
+    ) {
         let doc_len = self.docs.len();
 
         let mut mod_docs: VecArena<KModTag, Doc> = VecArena::new();
@@ -90,10 +89,7 @@ impl LangService {
             doc_data.mod_opt = Some(k_mod);
         }
 
-        let logs = Logs::new();
-        for ((k_mod, mod_outline), mod_data) in mod_outlines.enumerate().zip(mods.iter_mut()) {
-            resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
-        }
+        f(self, &mut mod_outlines, &mut mods);
 
         // アリーナを解体する。
         for doc_data in self.docs.values_mut() {
@@ -103,6 +99,19 @@ impl LangService {
             symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
             symbols.symbols.mod_data = take(&mut k_mod.of_mut(&mut mods));
         }
+    }
+
+    pub(super) fn request_types(&mut self) -> &[LogItem] {
+        if take(&mut self.dirty_sources).is_empty() {
+            return &self.project_logs;
+        }
+
+        let logs = Logs::new();
+        self.do_with_mods(|_, mod_outlines, mods| {
+            for ((k_mod, mod_outline), mod_data) in mod_outlines.enumerate().zip(mods.iter_mut()) {
+                resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
+            }
+        });
 
         self.project_logs = logs.finish();
         &self.project_logs
@@ -745,5 +754,24 @@ mod tests {
                 .join("; "),
             "3.21-3.24; 4.17-4.20; 5.17-5.20"
         );
+    }
+
+    fn do_test_hover(text: &str, expected: Option<&str>) {
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+
+        let pos = cursor_text.to_pos_vec()[0];
+        let result = lang_service.hover(DOC, pos.into());
+        assert_eq!(result.as_deref(), expected);
+    }
+
+    #[test]
+    fn test_hover_param() {
+        do_test_hover("fn f(x: i32) -> i32 { <|>x }", Some("i32"));
+    }
+
+    #[test]
+    fn test_hover_local_var() {
+        do_test_hover("fn f() { let x = 2_i64 + 3; <|>x; }", Some("i64"));
     }
 }
