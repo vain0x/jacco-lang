@@ -161,3 +161,12 @@ pub(crate) enum TokenKind {
     Star,
     StarEqual,
 }
+
+impl TokenKind {
+    pub(crate) fn is_leading_trivia(self) -> bool {
+        match self {
+            TokenKind::Space | TokenKind::Comment | TokenKind::Other => true,
+            _ => false,
+        }
+    }
+}

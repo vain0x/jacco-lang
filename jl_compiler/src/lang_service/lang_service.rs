@@ -25,6 +25,10 @@ impl Location {
         Self { doc, range }
     }
 
+    pub fn doc(&self) -> Doc {
+        self.doc
+    }
+
     pub fn range(&self) -> TRange {
         self.range
     }
@@ -33,7 +37,6 @@ impl Location {
 pub enum Content {
     String(String),
     JaccoCode(String),
-    #[cfg(skip)]
     Concat(Vec<Content>),
 }
 
@@ -46,9 +49,12 @@ impl Content {
             match content {
                 Content::String(text) => write!(f, "{}", text),
                 Content::JaccoCode(code) => write!(f, "```jacco\n{}\n```", code),
-                #[cfg(skip)]
                 Content::Concat(contents) => {
-                    for content in contents {
+                    for (i, content) in contents.iter().enumerate() {
+                        if i != 0 {
+                            write!(f, "\n")?;
+                        }
+
                         write(f, content)?;
                     }
                     Ok(())
@@ -823,6 +829,25 @@ mod tests {
         do_test_hover(
             "fn g() -> never { g<|>() }",
             Some("```jacco\nfn g() -> never;\n```"),
+        );
+    }
+
+    #[test]
+    fn test_hover_fn_with_doc_comments() {
+        do_test_hover(
+            r#"
+                /// another
+                fn f() {}
+
+                /// 実行を終了します。
+                ///
+                /// 終了コードは 0 でない値になります。
+                extern fn <|>abort() -> never;
+
+                /// a
+                fn g() {}
+            "#,
+            Some("```jacco\n/// 終了コードは 0 でない値になります。\n///\n/// 実行を終了します。\n```\n```jacco\nextern fn abort() -> never;\n```"),
         );
     }
 

@@ -9,7 +9,7 @@ use lsp_types::*;
 use std::{
     collections::HashSet,
     io::{Read, Write},
-    mem::take,
+    mem::{replace, take},
     process,
     rc::Rc,
 };
@@ -283,18 +283,9 @@ impl<W: Write> LspHandler<W> {
 
         let doc = self.docs.url_to_doc(&url)?;
         let content = self.service.hover(doc, pos)?;
-        let hover = {
-            let string = match content {
-                Content::String(text) => MarkedString::String(text),
-                Content::JaccoCode(code) => MarkedString::LanguageString(LanguageString {
-                    language: "jacco".to_string(),
-                    value: code,
-                }),
-            };
-            Hover {
-                contents: HoverContents::Scalar(string),
-                range: None,
-            }
+        let hover = Hover {
+            contents: to_hover_content(content)?,
+            range: None,
         };
         Some(hover)
     }
@@ -450,5 +441,34 @@ impl<W: Write> LspHandler<W> {
         loop {
             receiver.read_next(|json| self.did_receive(json));
         }
+    }
+}
+
+fn do_convert_to_hover_content(content: Content, out: &mut Vec<MarkedString>) {
+    match content {
+        Content::String(text) => out.push(MarkedString::String(text)),
+        Content::JaccoCode(code) => out.push(MarkedString::LanguageString(LanguageString {
+            language: "jacco".to_string(),
+            value: code,
+        })),
+        Content::Concat(contents) => {
+            for content in contents {
+                do_convert_to_hover_content(content, out);
+            }
+        }
+    }
+}
+
+fn to_hover_content(content: Content) -> Option<HoverContents> {
+    let mut items = vec![];
+    do_convert_to_hover_content(content, &mut items);
+
+    match items.as_mut_slice() {
+        [] => None,
+        [item] => Some(HoverContents::Scalar(replace(
+            item,
+            MarkedString::String(String::new()),
+        ))),
+        _ => Some(HoverContents::Array(items)),
     }
 }

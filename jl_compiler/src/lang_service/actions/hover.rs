@@ -3,10 +3,58 @@ use crate::{
     cps::*,
     lang_service::{
         doc_analysis::DocSymbolAnalysisMut,
-        lang_service::{hit_test, Content},
+        lang_service::{collect_def_sites, hit_test, Content},
     },
+    source::TPos,
+    token::{tokenize, TokenKind},
 };
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    rc::Rc,
+};
+
+fn do_collect_doc_comments(source_code: Rc<String>, pos: TPos, comments: &mut Vec<String>) {
+    let tokens = tokenize(source_code);
+    for token in tokens
+        .into_iter()
+        .rev()
+        .skip_while(|token| token.range().start().row >= pos.row)
+        .take_while(|token| token.kind().is_leading_trivia())
+        .filter(|token| token.kind() == TokenKind::Comment && token.text().starts_with("///"))
+    {
+        comments.push(token.text().to_string());
+    }
+}
+
+fn collect_doc_comments(
+    doc: Doc,
+    symbol: KModLocalSymbol,
+    ls: &mut LangService,
+) -> Option<Vec<String>> {
+    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+
+    let mut locations = vec![];
+    collect_def_sites(doc, symbol, syntax, symbols, &mut locations);
+
+    let mut comments = vec![];
+    for location in locations {
+        let doc = location.doc();
+        let pos = location.range().start();
+
+        let source_code = match ls.docs.get(&doc).map(|doc| doc.text.clone()) {
+            Some(it) => it,
+            None => continue,
+        };
+
+        do_collect_doc_comments(source_code, pos, &mut comments);
+    }
+
+    if comments.is_empty() {
+        None
+    } else {
+        Some(comments)
+    }
+}
 
 fn write_param_sig(
     out: &mut impl Write,
@@ -48,8 +96,10 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
 
     let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
     let (symbol, _) = hit_test(doc, pos, syntax, symbols)?;
-    let mut contents_opt = None;
 
+    let comments = collect_doc_comments(doc, symbol, ls).unwrap_or_default();
+
+    let mut contents_opt = None;
     match symbol {
         KModLocalSymbol::LocalVar { parent, local_var } => {
             ls.do_with_mods(|ls, mod_outlines, mods| {
@@ -124,5 +174,15 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
         KModLocalSymbol::Alias(_) => {}
     }
 
-    contents_opt
+    let mut contents = vec![];
+    if !comments.is_empty() {
+        contents.push(Content::JaccoCode(comments.join("\n")));
+    }
+    contents.extend(contents_opt);
+
+    if contents.is_empty() {
+        None
+    } else {
+        Some(Content::Concat(contents))
+    }
 }
