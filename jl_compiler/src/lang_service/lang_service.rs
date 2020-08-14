@@ -825,4 +825,12 @@ mod tests {
             Some("```jacco\nfn g() -> never;\n```"),
         );
     }
+
+    #[test]
+    fn test_hover_extern_fn() {
+        do_test_hover(
+            "extern fn <|>abort() -> never;",
+            Some("```jacco\nextern fn abort() -> never;\n```"),
+        );
+    }
 }

@@ -1,12 +1,47 @@
 use super::{Doc, LangService, TPos16};
 use crate::{
-    cps::{KLocalVarParent, KModLocalSymbol, KTyEnv},
+    cps::*,
     lang_service::{
         doc_analysis::DocSymbolAnalysisMut,
         lang_service::{hit_test, Content},
     },
 };
-use std::io::Write;
+use std::io::{self, Write};
+
+fn write_param_sig(
+    out: &mut impl Write,
+    params: &[KSymbol],
+    locals: &KLocalArena,
+    mod_outlines: &KModOutlines,
+) -> io::Result<()> {
+    for (i, symbol) in params.iter().enumerate() {
+        if i != 0 {
+            write!(out, ", ")?;
+        }
+
+        let local_var = symbol.local.of(&locals);
+        write!(
+            out,
+            "{}: {}",
+            &local_var.name,
+            local_var.ty.display(KTyEnv::EMPTY, mod_outlines)
+        )?;
+    }
+    write!(out, ")")
+}
+
+fn write_result_ty(
+    out: &mut impl Write,
+    k_mod: KMod,
+    result_ty: &KTy,
+    mod_outlines: &KModOutlines,
+) -> io::Result<()> {
+    if !result_ty.is_unit() {
+        let ty = result_ty.to_ty2(k_mod).display(KTyEnv::EMPTY, mod_outlines);
+        write!(out, " -> {}", ty)?;
+    }
+    Ok(())
+}
 
 pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Content> {
     ls.request_types();
@@ -50,39 +85,40 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 let fn_outline = k_fn.of(&mod_outline.fns);
                 let fn_data = k_fn.of(&mod_data.fns);
 
-                write!(out, "fn {}(", &fn_outline.name).unwrap();
-
-                for (i, symbol) in fn_data.params.iter().enumerate() {
-                    if i != 0 {
-                        write!(out, ", ").unwrap();
-                    }
-
-                    let local_var = symbol.local.of(&fn_data.locals);
-                    write!(
-                        out,
-                        "{}: {}",
-                        &local_var.name,
-                        local_var.ty.display(KTyEnv::EMPTY, mod_outlines)
-                    )
-                    .unwrap();
-                }
-                write!(out, ")").unwrap();
-
-                if !fn_outline.result_ty.is_unit() {
-                    let ty = fn_outline
-                        .result_ty
-                        .to_ty2(k_mod)
-                        .display(KTyEnv::EMPTY, mod_outlines);
-                    write!(out, " -> {}", ty).unwrap();
-                }
-
-                write!(out, ";").unwrap();
-                let text = unsafe { String::from_utf8_unchecked(out) };
+                let text = {
+                    write!(out, "fn {}(", &fn_outline.name).unwrap();
+                    write_param_sig(&mut out, &fn_data.params, &fn_data.locals, mod_outlines)
+                        .unwrap();
+                    write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
+                    write!(out, ";").unwrap();
+                    unsafe { String::from_utf8_unchecked(out) }
+                };
 
                 contents_opt = Some(Content::JaccoCode(text));
             });
         }
-        KModLocalSymbol::ExternFn(_) => {}
+        KModLocalSymbol::ExternFn(extern_fn) => {
+            let mut out = Vec::new();
+
+            ls.do_with_mods(|ls, mod_outlines, mods| {
+                let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
+                let mod_outline = k_mod.of(mod_outlines);
+                let mod_data = k_mod.of(mods);
+                let fn_outline = extern_fn.of(&mod_outline.extern_fns);
+                let fn_data = extern_fn.of(&mod_data.extern_fns);
+
+                let text = {
+                    write!(out, "extern fn {}(", &fn_outline.name).unwrap();
+                    write_param_sig(&mut out, &fn_data.params, &fn_data.locals, mod_outlines)
+                        .unwrap();
+                    write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
+                    write!(out, ";").unwrap();
+                    unsafe { String::from_utf8_unchecked(out) }
+                };
+
+                contents_opt = Some(Content::JaccoCode(text));
+            });
+        }
         KModLocalSymbol::Enum(_) => {}
         KModLocalSymbol::Struct(_) => {}
         KModLocalSymbol::Alias(_) => {}
