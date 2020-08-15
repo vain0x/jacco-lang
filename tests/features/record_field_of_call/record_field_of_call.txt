@@ -1,0 +1,22 @@
+struct ExitCode {
+    char value;
+};
+
+struct ExitCode new_exit_code_1(char value);
+
+int main();
+
+struct ExitCode new_exit_code_1(char value_1) {
+    struct ExitCode ExitCode_1;
+    ExitCode_1.value = value_1;
+    return ExitCode_1;
+}
+
+int main() {
+    struct ExitCode call_result_1 = new_exit_code_1(42);
+    struct ExitCode const* ref_1 = &call_result_1;
+    char const* value_ptr_1 = &ref_1->value;
+    char value_2 = *value_ptr_1;
+    int cast_1 = (int)value_2;
+    return cast_1;
+}

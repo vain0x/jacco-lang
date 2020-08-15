@@ -1250,8 +1250,21 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
         _ => {
             // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
-            error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
-            new_error_term(loc)
+
+            let symbol = match convert_expr(expr_id, xx) {
+                KTerm::Name(it) => it,
+                term => {
+                    // FIXME: リテラルなら static を導入してそのアドレスを取る。
+
+                    let symbol = fresh_symbol("lval", loc, xx);
+                    xx.nodes.push(new_let_node(term, symbol, new_cont(), loc));
+                    symbol
+                }
+            };
+            let result = fresh_symbol("ref", loc, xx);
+            xx.nodes
+                .push(new_ref_node(KTerm::Name(symbol), result, new_cont(), loc));
+            KTerm::Name(result)
         }
     }
 }

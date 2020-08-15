@@ -1,0 +1,15 @@
+#![test("run", 42)]
+
+struct ExitCode {
+    value: i8,
+}
+
+fn new_exit_code(value: i8) -> ExitCode {
+    ExitCode {
+        value: value,
+    }
+}
+
+pub fn main() -> i32 {
+    new_exit_code(42_i8).value as i32
+}
