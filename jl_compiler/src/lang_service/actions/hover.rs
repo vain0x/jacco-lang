@@ -22,7 +22,7 @@ fn do_collect_doc_comments(source_code: Rc<String>, pos: TPos, comments: &mut Ve
         .take_while(|token| token.kind().is_leading_trivia())
         .filter(|token| token.kind() == TokenKind::Comment && token.text().starts_with("///"))
     {
-        comments.push(token.text().to_string());
+        comments.push(token.text()[3..].trim().to_string());
     }
 }
 
@@ -48,6 +48,7 @@ fn collect_doc_comments(
 
         do_collect_doc_comments(source_code, pos, &mut comments);
     }
+    comments.reverse();
 
     if comments.is_empty() {
         None
@@ -176,7 +177,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
 
     let mut contents = vec![];
     if !comments.is_empty() {
-        contents.push(Content::JaccoCode(comments.join("\n")));
+        contents.push(Content::String(comments.join("\n")));
     }
     contents.extend(contents_opt);
 

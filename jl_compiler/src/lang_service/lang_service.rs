@@ -847,7 +847,7 @@ mod tests {
                 /// a
                 fn g() {}
             "#,
-            Some("```jacco\n/// 終了コードは 0 でない値になります。\n///\n/// 実行を終了します。\n```\n```jacco\nextern fn abort() -> never;\n```"),
+            Some("実行を終了します。\n\n終了コードは 0 でない値になります。\n```jacco\nextern fn abort() -> never;\n```"),
         );
     }
 
