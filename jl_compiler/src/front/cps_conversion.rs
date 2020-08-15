@@ -1221,7 +1221,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
             convert_name_expr(&name.full_name(xx.tokens), ANameKey::Expr(expr_id), xx)
         }
         AExpr::Record(record_expr) => convert_record_expr(expr_id, record_expr, loc, xx),
-        AExpr::Field(dot_field_expr) => convert_field_expr(dot_field_expr, loc, xx),
+        AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
         AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
@@ -1245,7 +1245,7 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
         AExpr::Record(expr) => convert_record_lval(expr_id, expr, loc, xx),
-        AExpr::Field(dot_field_expr) => convert_field_lval(dot_field_expr, k_mut, loc, xx),
+        AExpr::Field(field_expr) => convert_field_lval(field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
         _ => {
