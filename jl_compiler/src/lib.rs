@@ -101,13 +101,10 @@ mod front {
     mod env;
     mod mod_outline_gen;
     mod name_resolution;
-    mod syntax_validation;
 
     pub(crate) use cps_conversion::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;
     pub(crate) use name_resolution::{NameResolutionListener, NullNameResolutionListener};
-    // FIXME: 構文検査？
-    // pub(crate) use syntax_validation::validate_syntax;
 
     use crate::parse::*;
 }

@@ -81,9 +81,6 @@ impl AnalysisCache {
 
             let tree = parse::parse_tokens(tokens, doc_logs.logger());
 
-            // FIXME: 構文検査
-            // validate_syntax(&root, doc_logs.logger());
-
             logs.logger().extend_from_doc_logs(self.doc, doc_logs);
             let errors = logs_into_errors(logs, &tree);
 
