@@ -9,8 +9,8 @@ test: libjacco_syntax
 libjacco_syntax: ${SRCS}
 	gcc ${CFLAGS} ${SRCS} -o libjacco_syntax.out
 
-libjacco_syntax.g.c: libjacco_syntax.jacco
-	RUST_LOG=warn ../target/debug/jacco build libjacco_syntax.jacco >libjacco_syntax.g.c
+libjacco_syntax.g.c: ../target/debug/jacco libjacco_syntax.jacco
+	./build
 
 clean:
 	git clean -dfX .

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -eu
+
+SRC="$(pwd)/libjacco_syntax.jacco"
+OUT="$(pwd)/libjacco_syntax.g.c"
+
+(
+    cd ..
+    RUST_LOG=warn cargo run -p jacco -- build "$SRC" >"$OUT"
+)
