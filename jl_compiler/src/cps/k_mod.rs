@@ -6,8 +6,9 @@ use super::{
     k_static_var::{KStaticVarArena, KStaticVarInits},
     k_struct::KStructArena,
     KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
-    KExternFnArena, KExternFnOutline, KFieldArena, KFn, KFnArena, KFnOutline, KLabelArena, KLocal,
-    KLocalArena, KStaticVar, KStaticVarData, KStruct, KStructOutline, KVariant,
+    KExternFnArena, KExternFnOutline, KField, KFieldArena, KFieldOutline, KFn, KFnArena,
+    KFnOutline, KLabelArena, KLocal, KLocalArena, KStaticVar, KStaticVarData, KStruct,
+    KStructOutline, KVariant,
 };
 use crate::{
     logs::Logger,
@@ -84,6 +85,8 @@ pub(crate) enum KModLocalSymbol {
     ExternFn(KExternFn),
     Enum(KEnum),
     Struct(KStruct),
+    #[allow(unused)]
+    Field(KField),
     Alias(KAlias),
 }
 
@@ -131,6 +134,9 @@ impl KModLocalSymbol {
             KModLocalSymbol::Struct(k_struct) => {
                 KModLocalSymbolOutline::Struct(k_struct, k_struct.of(&mod_outline.structs))
             }
+            KModLocalSymbol::Field(k_field) => {
+                KModLocalSymbolOutline::Field(k_field, k_field.of(&mod_outline.fields))
+            }
         }
     }
 
@@ -143,6 +149,7 @@ impl KModLocalSymbol {
             KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
             KModLocalSymbolOutline::Enum(_, enum_data) => &enum_data.name,
             KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
+            KModLocalSymbolOutline::Field(_, field_outline) => &field_outline.name,
             KModLocalSymbolOutline::Alias(_, alias_data) => alias_data.name(),
         };
         Some(name)
@@ -158,6 +165,7 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
     ExternFn(KExternFn, &'a KExternFnOutline),
     Enum(KEnum, &'a KEnumOutline),
     Struct(KStruct, &'a KStructOutline),
+    Field(KField, &'a KFieldOutline),
     Alias(KAlias, &'a KAliasOutline),
 }
 

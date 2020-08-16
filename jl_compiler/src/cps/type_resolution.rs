@@ -333,6 +333,11 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
                     .unexpected(loc, "エイリアスがローカル変数を指すことはありません");
                 KTy2::Never
             }
+            KModLocalSymbolOutline::Field(..) => {
+                tx.logger
+                    .unexpected(loc, "エイリアスがフィールドを指すことはありません");
+                KTy2::Never
+            }
         },
     }
 }
