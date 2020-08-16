@@ -856,7 +856,7 @@ fn syntax_kind_name(kind: SyntaxKind) -> Str {
         SyntaxKind::Comment => "COMMENT",
         SyntaxKind::Number => "NUMBER",
         SyntaxKind::Char => "CHAR",
-        SyntaxKind::STRING => "STRING",
+        SyntaxKind::String => "STRING",
         SyntaxKind::Ident => "IDENT",
         SyntaxKind::Underscore =>"UNDERSCORE",
         SyntaxKind::As => "AS",
