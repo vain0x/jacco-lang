@@ -305,6 +305,14 @@ impl KTy2 {
         })
     }
 
+    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Struct(k_mod, k_struct) => Some((k_mod, k_struct)),
+            KTy2::Ptr { ref base_ty, .. } => base_ty.as_struct_by_deref(ty_env),
+            _ => None,
+        })
+    }
+
     pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outlines: &KModOutlines) -> String {
         format!("{:?}", DebugWith::new(self, &(ty_env, mod_outlines)))
     }

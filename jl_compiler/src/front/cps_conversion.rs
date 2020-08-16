@@ -824,9 +824,13 @@ fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 
 // `&x.field` ==> `&(&x)->field`
 fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
-    let name = match expr.field_opt {
-        Some(token) => token.text(xx.tokens).to_string(),
-        None => "_".to_string(),
+    let (name, field_loc) = match expr.field_opt {
+        Some(token) => {
+            let name = token.text(xx.tokens).to_string();
+            let loc = Loc::new(xx.doc, PLoc::Token(token));
+            (name, loc)
+        }
+        None => ("_".to_string(), loc),
     };
     let result = fresh_symbol(&format!("{}_ptr", name), loc, xx);
 
@@ -834,7 +838,7 @@ fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> 
     xx.nodes.push(new_field_node(
         left,
         name,
-        loc,
+        field_loc,
         k_mut,
         result,
         new_cont(),

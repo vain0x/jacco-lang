@@ -131,7 +131,7 @@ impl LangService {
 
         // アリーナを解体する。
         for doc_data in self.docs.values_mut() {
-            let k_mod = doc_data.mod_opt.take().unwrap();
+            let k_mod = doc_data.mod_opt.unwrap();
             let symbols = doc_data.request_symbols();
 
             symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
@@ -231,11 +231,11 @@ impl LangService {
     }
 }
 
-fn to_range16(range: TRange) -> TRange16 {
+pub(super) fn to_range16(range: TRange) -> TRange16 {
     TRange16::at(TPos16::from(range.index), TPos16::from(range.len))
 }
 
-fn loc_to_range(loc: Loc, tree: &PTree) -> Option<TRange> {
+pub(super) fn loc_to_range(loc: Loc, tree: &PTree) -> Option<TRange> {
     let opt = (|| {
         let (_, loc) = loc.inner().ok()?;
         let range = loc.range(tree).ok()?;
@@ -468,6 +468,83 @@ mod tests {
         it.did_initialize();
         it.open_doc(DOC, 1, s.to_string().into());
         it
+    }
+
+    fn do_test_highlight(text: &str) {
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+
+        let mut cursors = cursor_text.to_range_assoc();
+        let cursor_pos = match cursors.iter().position(|&(name, _)| name == "cursor") {
+            Some(i) => {
+                let (_, range) = cursors.remove(i);
+                range.start()
+            }
+            None => panic!(
+                "テキストに参照検索の基準となる位置を表すマーカー <$cursor|> が含まれていません。"
+            ),
+        };
+        cursors.sort();
+
+        let (mut def_sites, mut use_sites) = lang_service
+            .document_highlight(DOC, cursor_pos.into())
+            .unwrap_or_default();
+        def_sites.sort();
+        use_sites.sort();
+
+        let actual = def_sites
+            .into_iter()
+            .map(|range| ("def", range))
+            .chain(use_sites.into_iter().map(|range| ("use", range)))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, cursors);
+    }
+
+    #[test]
+    fn test_highlight_fn_decl() {
+        do_test_highlight("fn <$cursor|><$def[f]>() {}");
+    }
+
+    #[test]
+    fn test_highlight_fields() {
+        do_test_highlight(
+            r#"
+                struct TestState {
+                    pass: usize,
+                    fail: usize
+                }
+
+                struct Another {
+                    pass: usize,
+                }
+
+                fn new_test_state() -> TestState {
+                    TestState {
+                        pass: 0_usize,
+                        fail: 0_usize,
+                    }
+                }
+
+                fn pass(state: *mut TestState) {
+                    (*state).<$cursor|><$use[pass]> += 1_usize;
+                }
+
+                fn display(state: *TestState) -> *u8 {
+                    if (*state).fail > 0 {
+                        "FAIL: Assertion violated"
+                    } else if (*state).<$use[pass]> == 0 {
+                        "FAIL: No assertions"
+                    } else {
+                        "OK"
+                    }
+                }
+
+                fn another() {
+                    let a = Another { pass: 0_usize };
+                    a.pass += 1_usize;
+                }
+            "#,
+        );
     }
 
     #[test]
