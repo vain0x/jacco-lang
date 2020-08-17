@@ -29,6 +29,10 @@ impl AName {
         &self.text
     }
 
+    pub(crate) fn is_qualified(&self) -> bool {
+        !self.quals.is_empty()
+    }
+
     /// 修飾子の最初のセグメントのテキスト
     pub(crate) fn root_text<'a>(&self, tokens: &'a PTokens) -> &'a str {
         self.quals

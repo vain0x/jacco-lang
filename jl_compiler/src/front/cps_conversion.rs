@@ -321,7 +321,7 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
             Branch::Case(KTerm::Alias { alias, loc })
         }
         _ => {
-            if name.full_name(xx.tokens).contains("::") {
+            if name.is_qualified() {
                 error_unresolved_value(PLoc::Name(key), &xx.logger);
             }
 
