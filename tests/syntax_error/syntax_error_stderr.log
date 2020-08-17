@@ -1,3 +1,9 @@
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:2.24-2.24 パラメータリストの丸カッコ () が必要です。
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:7.28-7.28 関数の本体が必要です。(本体は波カッコ { } で囲む必要があります。)
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.41-12.41 関数の本体が必要です。(本体は波カッコ { } で囲む必要があります。)
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:8.5-8.6 このトークンを有効な構文として解釈できません。
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.41-12.42 このトークンを有効な構文として解釈できません。
+[ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:13.5-13.6 このトークンを有効な構文として解釈できません。
 [ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:7.29-9.2 これはレコードでなければいけません。
 [ERROR jl_compiler::cli] tests/syntax_error/syntax_error.jacco:12.43-14.2 これはレコードでなければいけません。
 [ERROR jacco] "コンパイルエラーが発生しました"

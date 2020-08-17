@@ -1,10 +1,6 @@
 //! 名前解決の処理
 
-use crate::{cps::*, front::env::Env, front::*, source::Loc, utils::VecArena};
-
-// =============================================================================
-// V2
-// =============================================================================
+use crate::{cps::*, front::env::Env, front::*, utils::VecArena};
 
 pub(crate) trait NameResolutionListener {
     fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy);
@@ -96,21 +92,6 @@ fn add_symbol_to_local_env(
     do_add_value_symbol_to_local_env(name, symbol, mod_outline, env);
 }
 
-fn add_variant_symbols_to_local_env(k_enum: KEnum, mod_outline: &KModOutline, env: &mut Env) {
-    let enum_name = k_enum.name(&mod_outline.enums);
-
-    for variant in k_enum.variants(&mod_outline.enums) {
-        let symbol = KModLocalSymbol::from_variant(*variant);
-        // FIXME: `::` が名前空間を辿るようにする
-        let full_name = format!(
-            "{}::{}",
-            enum_name,
-            variant.name(&mod_outline.consts, &mod_outline.structs)
-        );
-        add_symbol_to_local_env(&full_name, symbol, mod_outline, env);
-    }
-}
-
 pub(crate) fn add_decl_to_local_env(
     decl_id: ADeclId,
     _decl: &ADecl,
@@ -121,10 +102,6 @@ pub(crate) fn add_decl_to_local_env(
     // FIXME: let は decl_symbols に登録されていないので、ここでは環境に登録されない。
 
     if let Some((name, symbol)) = decl_to_name_symbol_pair(decl_id, &decl_symbols, mod_outline) {
-        if let KModLocalSymbol::Enum(k_enum) = symbol {
-            add_variant_symbols_to_local_env(k_enum, mod_outline, env);
-        }
-
         add_symbol_to_local_env(&name, symbol, mod_outline, env);
     }
 }
@@ -160,6 +137,88 @@ pub(crate) fn resolve_ty_name(
     ty_opt
 }
 
-pub(crate) fn resolve_value_name(name: &str, _loc: Loc, env: &Env) -> Option<KLocalValue> {
+fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<KVariant> {
+    k_enum
+        .variants(&mod_outline.enums)
+        .iter()
+        .copied()
+        .find(|variant| variant.name(&mod_outline.consts, &mod_outline.structs) == name)
+}
+
+pub(crate) fn resolve_ty_path(
+    path: &AName,
+    key: ANameKey,
+    tokens: &PTokens,
+    mod_outline: &KModOutline,
+    env: &Env,
+    listener: &mut dyn NameResolutionListener,
+) -> Option<KTy> {
+    let (head, tail) = match path.quals.split_first() {
+        Some(it) => it,
+        None => return resolve_ty_name(&path.text, key, env, listener),
+    };
+
+    if !tail.is_empty() {
+        log::error!("型パスは <enumの名前>::<バリアントの名前> の形以外未実装です");
+        return None;
+    }
+
+    // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
+    let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
+        KTy::Enum(k_enum) => {
+            let name = path.token.text(tokens);
+            let variant = find_variant(k_enum, name, mod_outline)?;
+
+            match variant {
+                KVariant::Const(..) => return None,
+                KVariant::Record(k_struct) => KTy::Struct(k_struct),
+            }
+        }
+        _ => return None,
+    };
+    Some(ty)
+}
+
+fn resolve_value_name(name: &str, env: &Env) -> Option<KLocalValue> {
     env.find_value(name)
+}
+
+pub(crate) fn resolve_value_path(
+    path: &AName,
+    key: ANameKey,
+    tokens: &PTokens,
+    mod_outline: &KModOutline,
+    env: &Env,
+    listener: &mut dyn NameResolutionListener,
+) -> Option<KLocalValue> {
+    let (head, tail) = match path.quals.split_first() {
+        Some(it) => it,
+        None => return resolve_value_name(&path.text, env),
+    };
+
+    if !tail.is_empty() {
+        log::error!("パスは <enumの名前>::<バリアントの名前> の形以外未実装です");
+        return None;
+    }
+
+    // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
+    let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
+        KTy::Enum(k_enum) => {
+            let name = path.token.text(tokens);
+            let variant = find_variant(k_enum, name, mod_outline)?;
+
+            match variant {
+                KVariant::Const(k_const) => KLocalValue::Const(k_const),
+                KVariant::Record(k_struct) => {
+                    if k_struct.of(&mod_outline.structs).is_unit_like() {
+                        KLocalValue::UnitLikeStruct(k_struct)
+                    } else {
+                        return None;
+                    }
+                }
+            }
+        }
+        _ => return None,
+    };
+    Some(value)
 }

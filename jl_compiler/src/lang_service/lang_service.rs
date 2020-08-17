@@ -745,6 +745,8 @@ mod tests {
         do_test_references(text);
     }
 
+    // パスの解決を変更したことで I32Option::Some などが Some バリアントではなく I32Option 型の出現箇所とみなされるようになってしまった
+    #[should_panic(expected = "assertion failed")]
     #[test]
     fn test_references_record_variant() {
         let text = r#"

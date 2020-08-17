@@ -232,6 +232,7 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 
 pub(crate) struct TyResolver<'a> {
     pub(crate) env: &'a Env,
+    pub(crate) tokens: &'a PTokens,
     pub(crate) ast: &'a ATree,
     pub(crate) listener: &'a mut dyn NameResolutionListener,
     pub(crate) logger: &'a DocLogger,
@@ -240,26 +241,29 @@ pub(crate) struct TyResolver<'a> {
 fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     TyResolver {
         env: &xx.env,
+        tokens: xx.tokens,
         ast: xx.ast,
         listener: xx.listener,
         logger: xx.logger,
     }
 }
 
-fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
+fn do_convert_ty(ty_id: ATyId, ty: &ATy, mod_outline: &KModOutline, xx: &mut TyResolver) -> KTy {
     let key = ANameKey::Ty(ty_id);
     let loc = PLoc::Name(key);
 
     match ty {
-        ATy::Name(AName { text, .. }) => match resolve_ty_name(&text, key, xx.env, xx.listener) {
-            Some(ty) => ty,
-            None => {
-                error_unresolved_ty(loc, xx.logger);
-                KTy::Unresolved {
-                    cause: KTyCause::NameUnresolved(ty_id),
+        ATy::Name(name) => {
+            match resolve_ty_path(name, key, xx.tokens, mod_outline, xx.env, xx.listener) {
+                Some(ty) => ty,
+                None => {
+                    error_unresolved_ty(loc, xx.logger);
+                    KTy::Unresolved {
+                        cause: KTyCause::NameUnresolved(ty_id),
+                    }
                 }
             }
-        },
+        }
         ATy::InferTy => {
             // FIXME: メタ変数にする。シグネチャだったらエラーにする。
             error_unresolved_ty(loc, xx.logger);
@@ -271,20 +275,24 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
         ATy::Unit => KTy::Unit,
         ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {
             let k_mut = mut_opt.unwrap_or(KMut::Const);
-            let base_ty = convert_ty_opt(*ty_opt, xx);
+            let base_ty = convert_ty_opt(*ty_opt, mod_outline, xx);
             base_ty.into_ptr(k_mut)
         }
     }
 }
 
-pub(crate) fn convert_ty(ty_id: ATyId, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty(ty_id: ATyId, mod_outline: &KModOutline, xx: &mut TyResolver) -> KTy {
     let ty = ty_id.of(xx.ast.tys());
-    do_convert_ty(ty_id, ty, xx)
+    do_convert_ty(ty_id, ty, mod_outline, xx)
 }
 
-pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty_opt(
+    ty_opt: Option<ATyId>,
+    mod_outline: &KModOutline,
+    xx: &mut TyResolver,
+) -> KTy {
     match ty_opt {
-        Some(ty) => convert_ty(ty, xx),
+        Some(ty) => convert_ty(ty, mod_outline, xx),
         None => KTy::Unresolved {
             cause: KTyCause::Miss,
         },
@@ -311,7 +319,7 @@ fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
 
 fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    match resolve_value_name(&name.full_name(xx.tokens), loc, &mut xx.env) {
+    match resolve_value_path(&name, key, xx.tokens, xx.mod_outline, &xx.env, xx.listener) {
         Some(KLocalValue::Const(k_const)) => Branch::Case(KTerm::Const { k_const, loc }),
         Some(KLocalValue::UnitLikeStruct(k_struct)) => {
             Branch::Case(KTerm::RecordTag { k_struct, loc })
@@ -327,7 +335,7 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
 
             let symbol = {
                 let cause = KSymbolCause::NameDef(xx.doc, key);
-                fresh_symbol(&name.full_name(xx.tokens), cause, xx)
+                fresh_symbol(&name.text, cause, xx)
             };
             Branch::Default(symbol)
         }
@@ -351,8 +359,14 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
 
 fn convert_record_pat_as_cond(pat_id: APatId, pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
     let key = ANameKey::Pat(pat_id);
-    let k_struct = match resolve_ty_name(&pat.left.full_name(xx.tokens), key, &xx.env, xx.listener)
-    {
+    let k_struct = match resolve_ty_path(
+        &pat.left,
+        key,
+        xx.tokens,
+        xx.mod_outline,
+        &xx.env,
+        xx.listener,
+    ) {
         Some(KTy::Struct(it)) => it,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -582,11 +596,12 @@ fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSym
     KSymbol { local, cause }
 }
 
-fn convert_name_expr(name: &str, key: ANameKey, xx: &mut Xx) -> KTerm {
+fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let value = match resolve_value_name(name, loc, &mut xx.env) {
+    let value = match resolve_value_path(name, key, xx.tokens, xx.mod_outline, &xx.env, xx.listener)
+    {
         Some(it) => it,
         None => {
             error_unresolved_value(PLoc::from_loc(loc), xx.logger);
@@ -616,7 +631,8 @@ fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> K
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let value = match resolve_value_name(&name.full_name(xx.tokens), loc, &xx.env) {
+    let value = match resolve_value_path(name, key, xx.tokens, xx.mod_outline, &xx.env, xx.listener)
+    {
         Some(it) => it,
         None => {
             error_unresolved_value(PLoc::Name(key), xx.logger);
@@ -756,8 +772,14 @@ fn do_convert_record_expr(
     xx: &mut Xx,
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
-    let k_struct = match resolve_ty_name(&expr.left.full_name(xx.tokens), key, &xx.env, xx.listener)
-    {
+    let k_struct = match resolve_ty_path(
+        &expr.left,
+        key,
+        xx.tokens,
+        xx.mod_outline,
+        &xx.env,
+        xx.listener,
+    ) {
         Some(KTy::Struct(k_struct)) => k_struct,
         _ => {
             // FIXME: エイリアス
@@ -890,7 +912,7 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 
 fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let arg = convert_expr(expr.left, xx);
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx));
+    let ty = convert_ty_opt(expr.ty_opt, xx.mod_outline, &mut new_ty_resolver(xx));
 
     let result = fresh_symbol("cast", loc, xx);
     xx.nodes
@@ -1225,9 +1247,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
         AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        AExpr::Name(name) => {
-            convert_name_expr(&name.full_name(xx.tokens), ANameKey::Expr(expr_id), xx)
-        }
+        AExpr::Name(name) => convert_name_expr(name, ANameKey::Expr(expr_id), xx),
         AExpr::Record(record_expr) => convert_record_expr(expr_id, record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
@@ -1307,7 +1327,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
+    let ty = convert_ty_opt(decl.ty_opt, xx.mod_outline, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
 
     let local = xx.local_vars.alloc(
         KLocalData::new(

@@ -40,16 +40,6 @@ impl AName {
             .map(|token| token.text(tokens))
             .unwrap_or_else(|| self.token.text(tokens))
     }
-
-    pub(crate) fn full_name(&self, tokens: &PTokens) -> String {
-        let mut name = String::new();
-        for token in self.quals.iter() {
-            name += token.text(tokens);
-            name += "::";
-        }
-        name += self.token.text(tokens);
-        name
-    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
