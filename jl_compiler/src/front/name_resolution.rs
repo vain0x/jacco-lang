@@ -25,6 +25,13 @@ pub(crate) enum KLocalValue {
     Alias(KAlias),
 }
 
+pub(crate) struct PathResolutionContext<'a> {
+    pub(super) tokens: &'a PTokens,
+    pub(super) mod_outline: &'a KModOutline,
+    pub(super) env: &'a Env,
+    pub(super) listener: &'a mut dyn NameResolutionListener,
+}
+
 pub(crate) fn decl_allows_forward_reference(decl: &ADecl) -> bool {
     match decl {
         ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => false,
@@ -148,11 +155,15 @@ fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<
 pub(crate) fn resolve_ty_path(
     path: &AName,
     key: ANameKey,
-    tokens: &PTokens,
-    mod_outline: &KModOutline,
-    env: &Env,
-    listener: &mut dyn NameResolutionListener,
+    context: PathResolutionContext<'_>,
 ) -> Option<KTy> {
+    let PathResolutionContext {
+        tokens,
+        mod_outline,
+        env,
+        listener,
+    } = context;
+
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
         None => return resolve_ty_name(&path.text, key, env, listener),
@@ -186,11 +197,15 @@ fn resolve_value_name(name: &str, env: &Env) -> Option<KLocalValue> {
 pub(crate) fn resolve_value_path(
     path: &AName,
     key: ANameKey,
-    tokens: &PTokens,
-    mod_outline: &KModOutline,
-    env: &Env,
-    listener: &mut dyn NameResolutionListener,
+    context: PathResolutionContext<'_>,
 ) -> Option<KLocalValue> {
+    let PathResolutionContext {
+        tokens,
+        mod_outline,
+        env,
+        listener,
+    } = context;
+
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
         None => return resolve_value_name(&path.text, env),
