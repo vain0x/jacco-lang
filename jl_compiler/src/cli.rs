@@ -164,6 +164,7 @@ impl Project {
                 &syntax.tree,
                 &decl_symbols,
                 k_mod.of(&self.mod_outlines),
+                &self.mod_outlines,
                 &mut listener,
                 &doc_logs.logger(),
             );

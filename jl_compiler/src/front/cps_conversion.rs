@@ -96,6 +96,8 @@ struct Xx<'a> {
     ast: &'a ATree,
     decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
+    #[allow(unused)]
+    mod_outlines: &'a KModOutlines,
     listener: &'a mut dyn NameResolutionListener,
     logger: &'a DocLogger,
 }
@@ -108,6 +110,7 @@ impl<'a> Xx<'a> {
         ast: &'a ATree,
         decl_symbols: &'a DeclSymbols,
         mod_outline: &'a KModOutline,
+        mod_outlines: &'a KModOutlines,
         listener: &'a mut dyn NameResolutionListener,
         logger: &'a DocLogger,
     ) -> Self {
@@ -135,6 +138,7 @@ impl<'a> Xx<'a> {
             ast,
             decl_symbols,
             mod_outline,
+            mod_outlines,
             listener,
             logger,
         }
@@ -1586,6 +1590,7 @@ pub(crate) fn convert_to_cps(
     tree: &PTree,
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
+    mod_outlines: &KModOutlines,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) -> KModData {
@@ -1596,6 +1601,7 @@ pub(crate) fn convert_to_cps(
         &tree.ast,
         decl_symbols,
         mod_outline,
+        mod_outlines,
         listener,
         logger,
     );

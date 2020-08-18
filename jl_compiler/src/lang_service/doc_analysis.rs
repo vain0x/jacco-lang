@@ -144,35 +144,35 @@ impl AnalysisCache {
         }
     }
 
-    pub(super) fn request_cps(&mut self) -> DocContentAnalysisMut<'_> {
+    pub(super) fn doc_content_analysis_mut(&mut self) -> Option<DocContentAnalysisMut<'_>> {
+        Some(DocContentAnalysisMut {
+            syntax: self.syntax_opt.as_ref()?,
+            symbols: self.symbols_opt.as_mut()?,
+            cps: self.cps_opt.as_mut()?,
+        })
+    }
+
+    pub(super) fn request_cps(&mut self, mod_outlines: &KModOutlines) -> DocContentAnalysisMut<'_> {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
-            return DocContentAnalysisMut {
-                syntax: self.syntax_opt.as_ref().unwrap(),
-                symbols: self.symbols_opt.as_mut().unwrap(),
-                cps: self.cps_opt.as_mut().unwrap(),
-            };
+            return self.doc_content_analysis_mut().unwrap();
         }
 
         let doc = self.doc;
+        let k_mod = self.mod_opt.unwrap();
         let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols();
 
         let mut listener = ImplNameResolutionListener::default();
-
         let doc_logs = DocLogs::new();
-
-        // FIXME: k_mod
-        let k_mod = KMod::from_index(0);
-
         let mod_data = front::convert_to_cps(
             doc,
             k_mod,
             &syntax.tree,
             &symbols.decl_symbols,
-            &symbols.mod_outline,
+            &mod_outlines[k_mod],
+            mod_outlines,
             &mut listener,
             &doc_logs.logger(),
         );
-
         let errors = {
             let logs = Logs::new();
             logs.logger().extend_from_doc_logs(doc, doc_logs);
@@ -185,11 +185,7 @@ impl AnalysisCache {
             errors,
         });
 
-        DocContentAnalysisMut {
-            syntax: self.syntax_opt.as_ref().unwrap(),
-            symbols: self.symbols_opt.as_mut().unwrap(),
-            cps: self.cps_opt.as_mut().unwrap(),
-        }
+        self.doc_content_analysis_mut().unwrap()
     }
 }
 

@@ -99,7 +99,22 @@ impl LangService {
     }
 
     pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
-        self.docs.get_mut(&doc).map(|cache| cache.request_cps())
+        // fast path
+        // {
+        //     let opt = self.docs.get_mut(&doc).unwrap().doc_content_analysis_mut();
+        //     if opt.is_some() {
+        //         return opt;
+        //     }
+        // }
+
+        self.request_symbols(doc)?;
+
+        self.do_with_mod_outlines(|ls, mod_outlines| {
+            let doc_data = ls.docs.get_mut(&doc).unwrap();
+            doc_data.request_cps(mod_outlines);
+        });
+
+        self.docs.get_mut(&doc)?.doc_content_analysis_mut()
     }
 
     #[allow(unused)]
@@ -155,18 +170,18 @@ impl LangService {
 
         // 各ドキュメントのデータをアリーナに移動する。
         for (&doc, doc_data) in self.docs.iter_mut() {
-            let DocContentAnalysisMut { symbols, cps, .. } = doc_data.request_cps();
-
             let k_mod = mod_docs.alloc(doc);
-            let mod_outline = take(&mut symbols.mod_outline);
-            let mod_data = take(&mut cps.mod_data);
-
-            let k_mod2 = mod_outlines.alloc(mod_outline);
-            let k_mod3 = mods.alloc(mod_data);
-            assert_eq!(k_mod, k_mod2);
-            assert_eq!(k_mod, k_mod3);
-
             doc_data.mod_opt = Some(k_mod);
+
+            let DocSymbolAnalysisMut { symbols, .. } = doc_data.request_symbols();
+            let mod_outline = take(&mut symbols.mod_outline);
+            let k_mod2 = mod_outlines.alloc(mod_outline);
+            assert_eq!(k_mod, k_mod2);
+
+            let DocContentAnalysisMut { cps, .. } = doc_data.request_cps(&mod_outlines);
+            let mod_data = take(&mut cps.mod_data);
+            let k_mod3 = mods.alloc(mod_data);
+            assert_eq!(k_mod, k_mod3);
         }
 
         f(self, &mut mod_outlines, &mut mods);
@@ -174,7 +189,8 @@ impl LangService {
         // アリーナを解体する。
         for doc_data in self.docs.values_mut() {
             let k_mod = doc_data.mod_opt.unwrap();
-            let DocContentAnalysisMut { symbols, cps, .. } = doc_data.request_cps();
+            let DocContentAnalysisMut { symbols, cps, .. } =
+                doc_data.doc_content_analysis_mut().unwrap();
 
             symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
             cps.mod_data = take(&mut k_mod.of_mut(&mut mods));

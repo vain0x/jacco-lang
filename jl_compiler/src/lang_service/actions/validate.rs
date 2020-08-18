@@ -11,13 +11,17 @@ pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRa
             if errors.is_empty() {
                 errors.extend(analysis.request_symbols().symbols.errors.clone());
             }
-            if errors.is_empty() {
-                errors.extend(analysis.request_cps().cps.errors.clone());
-            }
 
             (version_opt, errors)
         })
         .unwrap_or((None, vec![]));
+
+    // CPS 変換のエラーを報告する。
+    if errors.is_empty() {
+        if let Some(analysis) = ls.request_cps(doc) {
+            errors.extend(analysis.cps.errors.clone());
+        }
+    }
 
     // 型エラーを報告する。
     if errors.is_empty() {
