@@ -2,7 +2,7 @@ use super::{collect_def_sites, collect_use_sites, hit_test, Doc, LangService, TP
 use crate::{
     cps::*,
     lang_service::{
-        doc_analysis::DocSymbolAnalysisMut,
+        doc_analysis::DocContentAnalysisMut,
         lang_service::{loc_to_range, to_range16},
     },
     parse::{AExpr, AFieldExpr, PToken},
@@ -83,9 +83,9 @@ fn collect_field_occurrences(
     };
 
     for (doc, k_mod) in doc_mod_pairs {
-        let DocSymbolAnalysisMut { symbols, .. } = ls.request_symbols(doc).unwrap();
+        let DocContentAnalysisMut { symbols, cps, .. } = ls.request_cps(doc).unwrap();
 
-        for fn_data in symbols.mod_data.fns.iter() {
+        for fn_data in cps.mod_data.fns.iter() {
             let mut collector = FieldOccurrenceInFnCollector {
                 k_mod,
                 mod_outline: &symbols.mod_outline,
@@ -170,18 +170,22 @@ pub(crate) fn document_highlight(
         return document_highlight_of_fields(doc, token, ls);
     }
 
-    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+    let DocContentAnalysisMut {
+        syntax,
+        symbols,
+        cps,
+    } = ls.request_cps(doc)?;
 
-    let (name, _) = hit_test(doc, pos, syntax, symbols)?;
+    let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
     let mut locations = vec![];
 
-    collect_def_sites(doc, name, syntax, symbols, &mut locations);
+    collect_def_sites(doc, name, syntax, symbols, cps, &mut locations);
     let def_sites = locations
         .drain(..)
         .map(|location| location.range())
         .collect();
 
-    collect_use_sites(doc, name, syntax, symbols, &mut locations);
+    collect_use_sites(doc, name, syntax, symbols, cps, &mut locations);
     let use_sites = locations
         .drain(..)
         .map(|location| location.range())

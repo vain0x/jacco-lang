@@ -93,8 +93,50 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
+    #[allow(unused)]
     pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<DocSymbolAnalysisMut<'_>> {
         self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
+    }
+
+    pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
+        self.docs.get_mut(&doc).map(|cache| cache.request_cps())
+    }
+
+    #[allow(unused)]
+    pub(super) fn do_with_mod_outlines(
+        &mut self,
+        f: impl FnOnce(&mut LangService, &mut KModOutlines),
+    ) {
+        let doc_len = self.docs.len();
+
+        let mut mod_docs: VecArena<KModTag, Doc> = VecArena::new();
+        let mut mod_outlines = KModOutlines::new();
+
+        mod_docs.reserve(doc_len);
+        mod_outlines.reserve(doc_len);
+
+        // 各ドキュメントのデータをアリーナに移動する。
+        for (&doc, doc_data) in self.docs.iter_mut() {
+            let symbols = doc_data.request_symbols();
+
+            let k_mod = mod_docs.alloc(doc);
+            let mod_outline = take(&mut symbols.symbols.mod_outline);
+
+            let k_mod2 = mod_outlines.alloc(mod_outline);
+            assert_eq!(k_mod, k_mod2);
+
+            doc_data.mod_opt = Some(k_mod);
+        }
+
+        f(self, &mut mod_outlines);
+
+        // アリーナを解体する。
+        for doc_data in self.docs.values_mut() {
+            let k_mod = doc_data.mod_opt.unwrap();
+            let symbols = doc_data.request_symbols();
+
+            symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
+        }
     }
 
     pub(super) fn do_with_mods(
@@ -113,11 +155,11 @@ impl LangService {
 
         // 各ドキュメントのデータをアリーナに移動する。
         for (&doc, doc_data) in self.docs.iter_mut() {
-            let symbols = doc_data.request_symbols();
+            let DocContentAnalysisMut { symbols, cps, .. } = doc_data.request_cps();
 
             let k_mod = mod_docs.alloc(doc);
-            let mod_outline = take(&mut symbols.symbols.mod_outline);
-            let mod_data = take(&mut symbols.symbols.mod_data);
+            let mod_outline = take(&mut symbols.mod_outline);
+            let mod_data = take(&mut cps.mod_data);
 
             let k_mod2 = mod_outlines.alloc(mod_outline);
             let k_mod3 = mods.alloc(mod_data);
@@ -132,10 +174,10 @@ impl LangService {
         // アリーナを解体する。
         for doc_data in self.docs.values_mut() {
             let k_mod = doc_data.mod_opt.unwrap();
-            let symbols = doc_data.request_symbols();
+            let DocContentAnalysisMut { symbols, cps, .. } = doc_data.request_cps();
 
-            symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
-            symbols.symbols.mod_data = take(&mut k_mod.of_mut(&mut mods));
+            symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
+            cps.mod_data = take(&mut k_mod.of_mut(&mut mods));
         }
     }
 
@@ -166,6 +208,7 @@ impl LangService {
                 source_path: PathBuf::from("main.jacco").into(),
                 syntax_opt: None,
                 symbols_opt: None,
+                cps_opt: None,
                 mod_opt: None,
             },
         );
@@ -257,7 +300,7 @@ enum DefOrUse {
 
 type Sites = Vec<(KModLocalSymbol, DefOrUse, Loc)>;
 
-fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
+fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
     fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
         let kind = match symbol.cause {
             KSymbolCause::NameDef(..) => DefOrUse::Def,
@@ -334,7 +377,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
         .mod_outline
         .fns
         .enumerate()
-        .zip(symbols.mod_data.fns.iter())
+        .zip(cps.mod_data.fns.iter())
     {
         sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, fn_outline.loc));
 
@@ -349,7 +392,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
         .mod_outline
         .extern_fns
         .enumerate()
-        .zip(symbols.mod_data.extern_fns.iter())
+        .zip(cps.mod_data.extern_fns.iter())
     {
         sites.push((
             KModLocalSymbol::ExternFn(extern_fn),
@@ -376,7 +419,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, sites: &mut Sites) {
 
     // FIXME: fields
 
-    for (ty, loc) in &symbols.ty_use_sites {
+    for (ty, loc) in symbols.ty_use_sites.iter().chain(&cps.ty_use_sites) {
         // FIXME: alias, struct, never, etc.
         let symbol = match ty {
             KTy::Enum(k_enum) => KModLocalSymbol::Enum(*k_enum),
@@ -392,9 +435,10 @@ pub(super) fn hit_test(
     pos: TPos16,
     syntax: &Syntax,
     symbols: &Symbols,
+    cps: &Cps,
 ) -> Option<(KModLocalSymbol, Location)> {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, &mut sites);
+    collect_symbols(doc, symbols, cps, &mut sites);
 
     sites.iter().find_map(|&(symbol, _, loc)| {
         let range = loc_to_range(loc, &syntax.tree)?;
@@ -411,10 +455,11 @@ pub(super) fn collect_def_sites(
     symbol: KModLocalSymbol,
     syntax: &Syntax,
     symbols: &Symbols,
+    cps: &Cps,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, &mut sites);
+    collect_symbols(doc, symbols, cps, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
@@ -434,10 +479,11 @@ pub(super) fn collect_use_sites(
     symbol: KModLocalSymbol,
     syntax: &Syntax,
     symbols: &Symbols,
+    cps: &Cps,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, &mut sites);
+    collect_symbols(doc, symbols, cps, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {

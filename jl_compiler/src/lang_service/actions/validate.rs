@@ -11,11 +11,15 @@ pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRa
             if errors.is_empty() {
                 errors.extend(analysis.request_symbols().symbols.errors.clone());
             }
+            if errors.is_empty() {
+                errors.extend(analysis.request_cps().cps.errors.clone());
+            }
 
             (version_opt, errors)
         })
         .unwrap_or((None, vec![]));
 
+    // 型エラーを報告する。
     if errors.is_empty() {
         let logs = ls.request_types().to_owned();
         if let Some(syntax) = ls.request_syntax(doc) {

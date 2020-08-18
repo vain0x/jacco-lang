@@ -7,9 +7,10 @@ use crate::{
     parse::{self, PTree},
     source::{Doc, TRange},
     token,
+    utils::VecArena,
 };
 use front::NameResolutionListener;
-use parse::PLoc;
+use parse::{ADeclTag, PLoc};
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) type TyUseSites = Vec<(KTy, PLoc)>;
@@ -21,8 +22,13 @@ pub(super) struct Syntax {
 
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
+    pub(super) decl_symbols: VecArena<ADeclTag, Option<KModLocalSymbol>>,
+    pub(super) ty_use_sites: TyUseSites,
+    pub(super) errors: Vec<(TRange, String)>,
+}
+
+pub(crate) struct Cps {
     pub(super) mod_data: KModData,
-    #[allow(unused)]
     pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
 }
@@ -32,6 +38,12 @@ pub(super) struct DocSymbolAnalysisMut<'a> {
     pub(crate) symbols: &'a mut Symbols,
 }
 
+pub(super) struct DocContentAnalysisMut<'a> {
+    pub(crate) syntax: &'a Syntax,
+    pub(crate) symbols: &'a mut Symbols,
+    pub(crate) cps: &'a mut Cps,
+}
+
 pub(super) struct AnalysisCache {
     pub(super) doc: Doc,
     pub(super) version: i64,
@@ -39,6 +51,7 @@ pub(super) struct AnalysisCache {
     pub(super) source_path: Arc<PathBuf>,
     pub(super) syntax_opt: Option<Syntax>,
     pub(super) symbols_opt: Option<Symbols>,
+    pub(super) cps_opt: Option<Cps>,
     pub(super) mod_opt: Option<KMod>,
 }
 
@@ -100,8 +113,6 @@ impl AnalysisCache {
         }
 
         let doc = self.doc;
-        let k_mod = KMod::from_index(0);
-
         let mut listener = ImplNameResolutionListener::default();
 
         let symbols = {
@@ -110,15 +121,6 @@ impl AnalysisCache {
             let doc_logs = DocLogs::new();
             let (mod_outline, decl_symbols) =
                 front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
-            let mod_data = front::convert_to_cps(
-                doc,
-                k_mod,
-                &syntax.tree,
-                &decl_symbols,
-                &mod_outline,
-                &mut listener,
-                &doc_logs.logger(),
-            );
 
             let errors = {
                 let logs = Logs::new();
@@ -128,7 +130,7 @@ impl AnalysisCache {
 
             Symbols {
                 mod_outline,
-                mod_data,
+                decl_symbols,
                 ty_use_sites: listener.ty_use_sites,
                 errors,
             }
@@ -139,6 +141,54 @@ impl AnalysisCache {
         DocSymbolAnalysisMut {
             syntax: self.syntax_opt.as_mut().unwrap(),
             symbols: self.symbols_opt.as_mut().unwrap(),
+        }
+    }
+
+    pub(super) fn request_cps(&mut self) -> DocContentAnalysisMut<'_> {
+        if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
+            return DocContentAnalysisMut {
+                syntax: self.syntax_opt.as_ref().unwrap(),
+                symbols: self.symbols_opt.as_mut().unwrap(),
+                cps: self.cps_opt.as_mut().unwrap(),
+            };
+        }
+
+        let doc = self.doc;
+        let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols();
+
+        let mut listener = ImplNameResolutionListener::default();
+
+        let doc_logs = DocLogs::new();
+
+        // FIXME: k_mod
+        let k_mod = KMod::from_index(0);
+
+        let mod_data = front::convert_to_cps(
+            doc,
+            k_mod,
+            &syntax.tree,
+            &symbols.decl_symbols,
+            &symbols.mod_outline,
+            &mut listener,
+            &doc_logs.logger(),
+        );
+
+        let errors = {
+            let logs = Logs::new();
+            logs.logger().extend_from_doc_logs(doc, doc_logs);
+            logs_into_errors(logs, &syntax.tree)
+        };
+
+        self.cps_opt = Some(Cps {
+            mod_data,
+            ty_use_sites: listener.ty_use_sites,
+            errors,
+        });
+
+        DocContentAnalysisMut {
+            syntax: self.syntax_opt.as_ref().unwrap(),
+            symbols: self.symbols_opt.as_mut().unwrap(),
+            cps: self.cps_opt.as_mut().unwrap(),
         }
     }
 }

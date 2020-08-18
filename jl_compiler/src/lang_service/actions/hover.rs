@@ -2,7 +2,7 @@ use super::{Doc, LangService, TPos16};
 use crate::{
     cps::*,
     lang_service::{
-        doc_analysis::DocSymbolAnalysisMut,
+        doc_analysis::DocContentAnalysisMut,
         lang_service::{collect_def_sites, hit_test, Content},
     },
     source::TPos,
@@ -31,10 +31,14 @@ fn collect_doc_comments(
     symbol: KModLocalSymbol,
     ls: &mut LangService,
 ) -> Option<Vec<String>> {
-    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+    let DocContentAnalysisMut {
+        syntax,
+        symbols,
+        cps,
+    } = ls.request_cps(doc)?;
 
     let mut locations = vec![];
-    collect_def_sites(doc, symbol, syntax, symbols, &mut locations);
+    collect_def_sites(doc, symbol, syntax, symbols, cps, &mut locations);
 
     let mut comments = vec![];
     for location in locations {
@@ -95,8 +99,12 @@ fn write_result_ty(
 pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Content> {
     ls.request_types();
 
-    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
-    let (symbol, _) = hit_test(doc, pos, syntax, symbols)?;
+    let DocContentAnalysisMut {
+        syntax,
+        symbols,
+        cps,
+    } = ls.request_cps(doc)?;
+    let (symbol, _) = hit_test(doc, pos, syntax, symbols, cps)?;
 
     let comments = collect_doc_comments(doc, symbol, ls).unwrap_or_default();
 
