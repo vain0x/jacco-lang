@@ -19,21 +19,13 @@ fn resolve_name_opt(name_opt: Option<&AName>) -> String {
     name_opt.map_or(String::new(), |name| name.text.to_string())
 }
 
-fn resolve_ty_opt(
-    ty_opt: Option<ATyId>,
-    mod_outline: &KModOutline,
-    ty_resolver: &mut TyResolver,
-) -> KTy {
-    convert_ty_opt(ty_opt, mod_outline, ty_resolver)
+fn resolve_ty_opt(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KTy {
+    convert_ty_opt(ty_opt, ty_resolver)
 }
 
-fn resolve_ty_or_unit(
-    ty_opt: Option<ATyId>,
-    mod_outline: &KModOutline,
-    ty_resolver: &mut TyResolver,
-) -> KTy {
+fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KTy {
     match ty_opt {
-        Some(ty) => convert_ty(ty, mod_outline, ty_resolver),
+        Some(ty) => convert_ty(ty, ty_resolver),
         None => KTy::Unit,
     }
 }
@@ -62,7 +54,7 @@ fn resolve_const_decl(
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
-    let value_ty = resolve_ty_opt(const_decl.ty_opt, mod_outline, ty_resolver);
+    let value_ty = resolve_ty_opt(const_decl.ty_opt, ty_resolver);
     k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
 }
 
@@ -88,18 +80,14 @@ fn resolve_static_decl(
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
-    let value_ty = resolve_ty_opt(static_decl.ty_opt, mod_outline, ty_resolver);
+    let value_ty = resolve_ty_opt(static_decl.ty_opt, ty_resolver);
     static_var.of_mut(&mut mod_outline.static_vars).ty = value_ty;
 }
 
-fn resolve_param_tys(
-    param_decls: &[AParamDecl],
-    mod_outline: &KModOutline,
-    ty_resolver: &mut TyResolver,
-) -> Vec<KTy> {
+fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -> Vec<KTy> {
     param_decls
         .iter()
-        .map(|param_decl| resolve_ty_opt(param_decl.ty_opt, mod_outline, ty_resolver))
+        .map(|param_decl| resolve_ty_opt(param_decl.ty_opt, ty_resolver))
         .collect()
 }
 
@@ -233,14 +221,14 @@ fn resolve_variant_decl(
     match variant_decl {
         AVariantDecl::Const(decl) => {
             let k_const = variant.as_const().unwrap();
-            let value_ty = resolve_ty_opt(decl.ty_opt, mod_outline, ty_resolver);
+            let value_ty = resolve_ty_opt(decl.ty_opt, ty_resolver);
             k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
         }
         AVariantDecl::Record(decl) => {
             let k_struct = variant.as_record().unwrap();
             let fields = k_struct.fields(&mod_outline.structs).to_owned();
             for (field_decl, field) in decl.fields.iter().zip(fields) {
-                let ty = resolve_ty_opt(field_decl.ty_opt, mod_outline, ty_resolver);
+                let ty = resolve_ty_opt(field_decl.ty_opt, ty_resolver);
                 field.of_mut(&mut mod_outline.fields).ty = ty;
             }
         }
@@ -405,7 +393,6 @@ fn resolve_outline(
     let ast = &tree.ast;
     let ty_resolver = &mut TyResolver {
         env,
-        tokens: &tree.tokens,
         ast,
         listener,
         logger,
@@ -439,8 +426,8 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
-                let param_tys = resolve_param_tys(&fn_decl.params, mod_outline, ty_resolver);
-                let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, mod_outline, ty_resolver);
+                let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);
+                let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, ty_resolver);
 
                 let fn_data = k_fn.of_mut(&mut mod_outline.fns);
                 fn_data.param_tys = param_tys;
@@ -452,9 +439,8 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
-                let param_tys = resolve_param_tys(&extern_fn_decl.params, mod_outline, ty_resolver);
-                let result_ty =
-                    resolve_ty_or_unit(extern_fn_decl.result_ty_opt, mod_outline, ty_resolver);
+                let param_tys = resolve_param_tys(&extern_fn_decl.params, ty_resolver);
+                let result_ty = resolve_ty_or_unit(extern_fn_decl.result_ty_opt, ty_resolver);
 
                 let extern_fn_data = extern_fn.of_mut(&mut mod_outline.extern_fns);
                 extern_fn_data.param_tys = param_tys;

@@ -197,6 +197,10 @@ fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
 }
 
+fn error_unsupported_path_ty(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "パスによる型の指定は未実装");
+}
+
 fn error_expected_record_ty(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "これはレコードでなければいけません。");
 }
@@ -245,7 +249,6 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 
 pub(crate) struct TyResolver<'a> {
     pub(crate) env: &'a Env,
-    pub(crate) tokens: &'a PTokens,
     pub(crate) ast: &'a ATree,
     pub(crate) listener: &'a mut dyn NameResolutionListener,
     pub(crate) logger: &'a DocLogger,
@@ -254,26 +257,23 @@ pub(crate) struct TyResolver<'a> {
 fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     TyResolver {
         env: &xx.env,
-        tokens: xx.tokens,
         ast: xx.ast,
         listener: xx.listener,
         logger: xx.logger,
     }
 }
 
-fn do_convert_ty(ty_id: ATyId, ty: &ATy, mod_outline: &KModOutline, xx: &mut TyResolver) -> KTy {
+fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
     let key = ANameKey::Ty(ty_id);
     let loc = PLoc::Name(key);
 
     match ty {
         ATy::Name(name) => {
-            let context = PathResolutionContext {
-                tokens: xx.tokens,
-                mod_outline,
-                env: &xx.env,
-                listener: xx.listener,
-            };
-            match resolve_ty_path(name, key, context) {
+            if name.is_qualified() {
+                error_unsupported_path_ty(loc, xx.logger);
+            }
+
+            match resolve_ty_name(name.text(), key, &xx.env, xx.listener) {
                 Some(ty) => ty,
                 None => {
                     error_unresolved_ty(loc, xx.logger);
@@ -294,24 +294,20 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, mod_outline: &KModOutline, xx: &mut TyR
         ATy::Unit => KTy::Unit,
         ATy::Ptr(APtrTy { mut_opt, ty_opt }) => {
             let k_mut = mut_opt.unwrap_or(KMut::Const);
-            let base_ty = convert_ty_opt(*ty_opt, mod_outline, xx);
+            let base_ty = convert_ty_opt(*ty_opt, xx);
             base_ty.into_ptr(k_mut)
         }
     }
 }
 
-pub(crate) fn convert_ty(ty_id: ATyId, mod_outline: &KModOutline, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty(ty_id: ATyId, xx: &mut TyResolver) -> KTy {
     let ty = ty_id.of(xx.ast.tys());
-    do_convert_ty(ty_id, ty, mod_outline, xx)
+    do_convert_ty(ty_id, ty, xx)
 }
 
-pub(crate) fn convert_ty_opt(
-    ty_opt: Option<ATyId>,
-    mod_outline: &KModOutline,
-    xx: &mut TyResolver,
-) -> KTy {
+pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy {
     match ty_opt {
-        Some(ty) => convert_ty(ty, mod_outline, xx),
+        Some(ty) => convert_ty(ty, xx),
         None => KTy::Unresolved {
             cause: KTyCause::Miss,
         },
@@ -915,7 +911,7 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 
 fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let arg = convert_expr(expr.left, xx);
-    let ty = convert_ty_opt(expr.ty_opt, xx.mod_outline, &mut new_ty_resolver(xx));
+    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx));
 
     let result = fresh_symbol("cast", loc, xx);
     xx.nodes
@@ -1330,7 +1326,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, xx.mod_outline, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
+    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
 
     let local = xx.local_vars.alloc(
         KLocalData::new(
