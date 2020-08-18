@@ -176,6 +176,7 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         tokens: xx.tokens,
         k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
+        mod_outlines: xx.mod_outlines,
         env: &xx.env,
         listener: &mut *xx.listener,
     }
@@ -347,16 +348,22 @@ fn emit_default_branch(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
 
 fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let KProjectValue { k_mod: _, value } =
+    let KProjectValue { k_mod, value } =
         match resolve_value_path(&name, key, path_resolution_context(xx)) {
             Some(it) => it,
             None => return emit_default_branch(name, key, xx),
         };
 
-    // FIXME: k_mod を使う
     match value {
-        KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
-        KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag { k_struct, loc }),
+        KLocalValue::Const(k_const) => Branch::Case(KTerm::Const {
+            k_mod,
+            k_const,
+            loc,
+        }),
+        KLocalValue::UnitLikeStruct(k_struct) => {
+            // FIXME: k_mod
+            Branch::Case(KTerm::RecordTag { k_struct, loc })
+        }
         KLocalValue::Alias(alias) => {
             // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
             Branch::Case(KTerm::Alias { alias, loc })
@@ -616,7 +623,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let KProjectValue { k_mod: _, value } =
+    let KProjectValue { k_mod, value } =
         match resolve_value_path(name, key, path_resolution_context(xx)) {
             Some(it) => it,
             None => {
@@ -630,11 +637,16 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
             local: local_var,
             cause,
         }),
-        KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
+        KLocalValue::Const(k_const) => KTerm::Const {
+            k_mod,
+            k_const,
+            loc,
+        },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Fn(k_fn) => KTerm::Fn { k_fn, loc },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
+            // FIXME: k_mod
             let name = k_struct.name(&xx.mod_outline.structs);
             let result = fresh_symbol(name, cause, xx);
             emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)

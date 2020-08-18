@@ -351,7 +351,9 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
         KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
-        KTerm::Const { k_const, .. } => k_const.ty(&tx.mod_outline.consts).to_ty2(tx.k_mod),
+        KTerm::Const { k_mod, k_const, .. } => k_const
+            .ty(&k_mod.of(&tx.mod_outlines).consts)
+            .to_ty2(*k_mod),
         KTerm::StaticVar { static_var, .. } => {
             static_var.ty(&tx.mod_outline.static_vars).to_ty2(tx.k_mod)
         }

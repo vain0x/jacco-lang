@@ -57,6 +57,7 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     Const {
+        k_mod: KMod,
         k_const: KConst,
         loc: Loc,
     },
@@ -94,6 +95,7 @@ impl KTerm {
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         locals: &KLocalArena,
+        mod_outlines: &KModOutlines,
     ) -> KTy2 {
         match self {
             KTerm::Unit { .. } => KTy2::Unit,
@@ -109,7 +111,9 @@ impl KTerm {
                     cause: KTyCause::Alias,
                 }
             }
-            KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).to_ty2(k_mod),
+            KTerm::Const { k_mod, k_const, .. } => {
+                k_const.ty(&k_mod.of(mod_outlines).consts).to_ty2(*k_mod)
+            }
             KTerm::StaticVar { static_var, .. } => {
                 static_var.ty(&mod_outline.static_vars).to_ty2(k_mod)
             }
@@ -182,7 +186,9 @@ impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelA
                 None => write!(f, "symbol({:?})", symbol.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
-            KTerm::Const { k_const, .. } => write!(f, "{}", k_const.of(&mod_outline.consts).name),
+            KTerm::Const {
+                k_mod: _, k_const, ..
+            } => write!(f, "const#{:?}", k_const),
             KTerm::StaticVar { static_var, .. } => {
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }

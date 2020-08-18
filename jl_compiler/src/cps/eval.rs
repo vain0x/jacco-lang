@@ -19,7 +19,9 @@ impl From<LitErr> for EvalError {
 }
 
 struct Xx<'a> {
+    #[allow(unused)]
     mod_outline: &'a KModOutline,
+    mod_outlines: &'a KModOutlines,
 }
 
 fn eval_term(term: &KTerm, xx: &Xx) -> Result<Option<KConstValue>, (EvalError, Loc)> {
@@ -35,10 +37,12 @@ fn eval_term(term: &KTerm, xx: &Xx) -> Result<Option<KConstValue>, (EvalError, L
             let pair = eval_number(&text).map_err(|err| (EvalError::Lit(err), *loc))?;
             KConstValue::from(pair)
         }
-        KTerm::Const { k_const, .. } => match &k_const.of(&xx.mod_outline.consts).value_opt {
-            Some(value) => value.clone(),
-            None => return Ok(None),
-        },
+        KTerm::Const { k_mod, k_const, .. } => {
+            match &k_const.of(&k_mod.of(xx.mod_outlines).consts).value_opt {
+                Some(value) => value.clone(),
+                None => return Ok(None),
+            }
+        }
         _ => return Err((EvalError::Unsupported, term.loc())),
     };
     Ok(Some(value))
@@ -53,6 +57,7 @@ fn do_eval(
     let result = {
         let xx = Xx {
             mod_outline: k_mod.of(&mod_outlines),
+            mod_outlines,
         };
         eval_term(term, &xx)
     };

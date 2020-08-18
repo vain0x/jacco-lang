@@ -139,13 +139,15 @@ impl Project {
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let logs = Logs::new();
 
+        let mut listener = NullNameResolutionListener;
+        let mut decl_symbolss = vec![];
+
+        // アウトライン生成
         for (id, syntax) in self.syntaxes.enumerate_mut() {
             let doc = Doc::from(id.to_index());
             let doc_name = self.docs[id].name.to_string();
             let doc_logs = take(&mut syntax.logs);
 
-            // アウトライン生成
-            let mut listener = NullNameResolutionListener;
             let k_mod = self.mod_docs.alloc(doc);
             let (mut mod_outline, decl_symbols) = super::front::generate_outline(
                 doc,
@@ -157,12 +159,33 @@ impl Project {
             let k_mod2 = self.mod_outlines.alloc(mod_outline);
             assert_eq!(k_mod, k_mod2);
 
-            // CPS 変換
+            syntax.logs = doc_logs;
+            decl_symbolss.push(decl_symbols);
+        }
+
+        // エイリアス解決
+        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
+        for &k_mod in &mod_ids {
+            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
+            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
+            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
+        }
+
+        // CPS 変換
+        for ((i, k_mod), syntax) in mod_ids
+            .iter()
+            .copied()
+            .enumerate()
+            .zip(self.syntaxes.iter_mut())
+        {
+            let doc = self.mod_docs[k_mod];
+            let doc_logs = take(&mut syntax.logs);
+
             let mod_data = super::front::convert_to_cps(
                 doc,
                 k_mod,
                 &syntax.tree,
-                &decl_symbols,
+                &decl_symbolss[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,
                 &mut listener,
@@ -178,13 +201,6 @@ impl Project {
             let mut errors = vec![];
             self.logs_into_errors(logs, &mut errors);
             return Err(errors);
-        }
-
-        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
-        for k_mod in mod_ids {
-            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
-            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
-            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
         }
 
         for mod_outline in self.mod_outlines.iter_mut() {

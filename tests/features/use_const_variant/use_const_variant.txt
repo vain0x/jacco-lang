@@ -1,0 +1,42 @@
+/* never */ void abort();
+
+void assert(int cond_1);
+
+int exit_code_as_i32_1(/* never */ void code);
+
+int main();
+
+int exit_code_as_i32_1(/* never */ void code_1) {
+    int match_result_1;
+    switch ((void)0) {
+        case 0: {
+            match_result_1 = 0;
+            goto match_next_1;
+        }
+        case 1: {
+            match_result_1 = 1;
+            goto match_next_1;
+        }
+        case (void)0: {
+            // call_result_1 is killed.
+            abort();
+            match_result_1 = (void)0;
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    return match_result_1;
+}
+
+int main() {
+    int call_result_2 = exit_code_as_i32_1(0);
+    int equal_1 = call_result_2 == 0;
+    // call_result_3 is killed.
+    assert(equal_1);
+    int call_result_4 = exit_code_as_i32_1(1);
+    int equal_2 = call_result_4 == 1;
+    // call_result_5 is killed.
+    assert(equal_2);
+    return 0;
+}

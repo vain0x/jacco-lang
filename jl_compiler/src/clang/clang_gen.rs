@@ -427,7 +427,9 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Other("/* error: unresolved alias */")
             }
         },
-        KTerm::Const { k_const, .. } => gen_const_data((*k_const).of(&cx.mod_outline.consts)),
+        KTerm::Const { k_mod, k_const, .. } => {
+            gen_const_data((*k_const).of(&k_mod.of(cx.mod_outlines).consts))
+        }
         KTerm::StaticVar { static_var, .. } => gen_static_var_term(*static_var, cx),
         KTerm::Fn { k_fn, .. } => gen_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
@@ -655,6 +657,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         &cx.mod_outline,
                         &KLabelSigArena::default(),
                         &cx.locals,
+                        cx.mod_outlines,
                     )
                     .as_enum(ty_env)
                     .map_or(false, |(k_mod, k_enum)| {
@@ -701,7 +704,13 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Not => match args {
             [arg] => {
                 let op = if arg
-                    .ty(cx.k_mod, &cx.mod_outline, &VecArena::default(), &cx.locals)
+                    .ty(
+                        cx.k_mod,
+                        &cx.mod_outline,
+                        &VecArena::default(),
+                        &cx.locals,
+                        cx.mod_outlines,
+                    )
                     .is_bool(ty_env)
                 {
                     CUnaryOp::LogNot

@@ -1,0 +1,4 @@
+pub enum ExitCode {
+    Success = 0_i32,
+    Failure = 1_i32,
+}

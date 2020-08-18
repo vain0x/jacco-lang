@@ -178,7 +178,7 @@ impl LangService {
             let k_mod2 = mod_outlines.alloc(mod_outline);
             assert_eq!(k_mod, k_mod2);
 
-            let DocContentAnalysisMut { cps, .. } = doc_data.request_cps(&mod_outlines);
+            let DocContentAnalysisMut { cps, .. } = doc_data.request_cps(&mut mod_outlines);
             let mod_data = take(&mut cps.mod_data);
             let k_mod3 = mods.alloc(mod_data);
             assert_eq!(k_mod, k_mod3);
@@ -378,7 +378,14 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
                 return;
             }
             KTerm::Alias { alias, loc } => (KModLocalSymbol::Alias(alias), loc),
-            KTerm::Const { k_const, loc } => (KModLocalSymbol::Const(k_const), loc),
+            KTerm::Const {
+                k_mod: _,
+                k_const,
+                loc,
+            } => {
+                // FIXME: 外部のモジュールの定数である可能性もある
+                (KModLocalSymbol::Const(k_const), loc)
+            }
             KTerm::StaticVar { static_var, loc } => (KModLocalSymbol::StaticVar(static_var), loc),
             KTerm::Fn { k_fn, loc } => (KModLocalSymbol::Fn(k_fn), loc),
             KTerm::Label { .. } | KTerm::Return { .. } => return,

@@ -11,7 +11,7 @@ use crate::{
 };
 use front::NameResolutionListener;
 use parse::{ADeclTag, PLoc};
-use std::{path::PathBuf, rc::Rc, sync::Arc};
+use std::{mem::take, path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) type TyUseSites = Vec<(KTy, PLoc)>;
 
@@ -152,7 +152,10 @@ impl AnalysisCache {
         })
     }
 
-    pub(super) fn request_cps(&mut self, mod_outlines: &KModOutlines) -> DocContentAnalysisMut<'_> {
+    pub(super) fn request_cps(
+        &mut self,
+        mod_outlines: &mut KModOutlines,
+    ) -> DocContentAnalysisMut<'_> {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
             return self.doc_content_analysis_mut().unwrap();
         }
@@ -163,6 +166,14 @@ impl AnalysisCache {
 
         let mut listener = ImplNameResolutionListener::default();
         let doc_logs = DocLogs::new();
+        let logs = Logs::new();
+
+        {
+            let mut aliases = take(&mut k_mod.of_mut(mod_outlines).aliases);
+            crate::cps::resolve_aliases(&mut aliases, mod_outlines, logs.logger());
+            k_mod.of_mut(mod_outlines).aliases = aliases;
+        }
+
         let mod_data = front::convert_to_cps(
             doc,
             k_mod,
@@ -174,7 +185,6 @@ impl AnalysisCache {
             &doc_logs.logger(),
         );
         let errors = {
-            let logs = Logs::new();
             logs.logger().extend_from_doc_logs(doc, doc_logs);
             logs_into_errors(logs, &syntax.tree)
         };

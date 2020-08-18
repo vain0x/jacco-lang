@@ -18,6 +18,7 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
     pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
+    pub(super) mod_outlines: &'a KModOutlines,
     pub(super) env: &'a Env,
     pub(super) listener: &'a mut dyn NameResolutionListener,
 }
@@ -151,6 +152,7 @@ pub(crate) fn resolve_ty_path(
         tokens,
         k_mod: _,
         mod_outline,
+        mod_outlines: _,
         env,
         listener,
     } = context;
@@ -194,6 +196,7 @@ pub(crate) fn resolve_value_path(
         tokens,
         k_mod,
         mod_outline,
+        mod_outlines,
         env,
         listener,
     } = context;
@@ -227,6 +230,33 @@ pub(crate) fn resolve_value_path(
                     }
                 }
             }
+        }
+        KTy::Alias(alias) => {
+            let name = path.token.text(tokens);
+            let value = match alias.of(&mod_outline.aliases).referent()? {
+                KProjectSymbol::ModLocal {
+                    k_mod,
+                    symbol: KModLocalSymbol::Enum(k_enum),
+                } => {
+                    let mod_outline = k_mod.of(mod_outlines);
+                    let variant = find_variant(k_enum, name, mod_outline)?;
+
+                    match variant {
+                        KVariant::Const(k_const) => {
+                            KProjectValue::new(k_mod, KLocalValue::Const(k_const))
+                        }
+                        KVariant::Record(k_struct) => {
+                            if k_struct.of(&mod_outline.structs).is_unit_like() {
+                                KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))
+                            } else {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                _ => return None,
+            };
+            return Some(value);
         }
         _ => return None,
     };

@@ -7,11 +7,13 @@ use crate::{
     },
     parse::{AExpr, AFieldExpr, PToken},
     source::Loc,
+    utils::VecArena,
 };
 
 struct FieldOccurrenceInFnCollector<'a> {
     k_mod: KMod,
     mod_outline: &'a KModOutline,
+    mod_outlines: &'a KModOutlines,
     fn_data: &'a KFnData,
     occurrences: &'a mut Vec<(KMod, KField, Loc)>,
 }
@@ -33,6 +35,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             self.mod_outline,
             &self.fn_data.label_sigs,
             &self.fn_data.locals,
+            self.mod_outlines,
         );
 
         let (k_mod, k_struct) = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
@@ -89,6 +92,8 @@ fn collect_field_occurrences(
             let mut collector = FieldOccurrenceInFnCollector {
                 k_mod,
                 mod_outline: &symbols.mod_outline,
+                // FIXME: 正しい mod_outlines を渡す
+                mod_outlines: &VecArena::new(),
                 fn_data,
                 occurrences,
             };
