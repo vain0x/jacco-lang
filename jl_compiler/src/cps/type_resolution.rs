@@ -146,6 +146,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         (KTy2::Meta(..), KTy2::Meta(..))
         | (KTy2::Unit, KTy2::Unit)
         | (KTy2::Number(..), KTy2::Number(..))
+        | (KTy2::Alias(..), KTy2::Alias(..))
         | (KTy2::Enum(..), KTy2::Enum(..))
         | (KTy2::Struct(..), KTy2::Struct(..))
             if left == right => {}
@@ -167,6 +168,35 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
                     meta_ty.bind(right.clone(), &ux.ty_env);
                 }
             }
+        }
+
+        // エイリアスの展開
+        // FIXME: エイリアスの展開を関数にまとめる、左右の処理をまとめる
+        (KTy2::Alias(k_mod, alias), _) => {
+            match alias.of(&k_mod.of(ux.mod_outlines).aliases).referent() {
+                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+                    KModLocalSymbol::Enum(k_enum) => {
+                        do_unify2(&KTy2::Enum(k_mod, k_enum), right, ux);
+                        return;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+            ux.logger.error(ux.loc, "unknown alias");
+        }
+        (_, KTy2::Alias(k_mod, alias)) => {
+            match alias.of(&k_mod.of(ux.mod_outlines).aliases).referent() {
+                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+                    KModLocalSymbol::Enum(k_enum) => {
+                        do_unify2(left, &KTy2::Enum(k_mod, k_enum), ux);
+                        return;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+            ux.logger.error(ux.loc, "unknown alias");
         }
 
         // その他、型ごとのルール

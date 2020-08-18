@@ -2,13 +2,13 @@
 
 void assert(int cond_1);
 
-int exit_code_as_i32_1(/* never */ void code);
+int exit_code_as_i32_1(unsigned long long code);
 
 int main();
 
-int exit_code_as_i32_1(/* never */ void code_1) {
+int exit_code_as_i32_1(unsigned long long code_1) {
     int match_result_1;
-    switch ((void)0) {
+    switch (code_1) {
         case 0: {
             match_result_1 = 0;
             goto match_next_1;
@@ -17,7 +17,7 @@ int exit_code_as_i32_1(/* never */ void code_1) {
             match_result_1 = 1;
             goto match_next_1;
         }
-        case (void)0: {
+        default: {
             // call_result_1 is killed.
             abort();
             match_result_1 = (void)0;

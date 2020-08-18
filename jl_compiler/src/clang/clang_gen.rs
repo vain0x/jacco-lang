@@ -197,6 +197,19 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     }
 }
 
+fn gen_enum_ty(k_mod: KMod, k_enum: KEnum, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
+    match &k_enum.repr(&k_mod.of(&cx.mod_outlines).enum_reprs) {
+        KEnumRepr::Never => CTy::Other("/* never enum */ void"),
+        KEnumRepr::Unit => CTy::Void,
+        KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
+        KEnumRepr::TaggedUnion { .. } => {
+            // FIXME: unique_enum_name を事前に計算しておく
+            let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
+            CTy::Struct(name)
+        }
+    }
+}
+
 fn gen_constant_value(value: &KConstValue) -> CExpr {
     match value {
         KConstValue::Bool(true) => CExpr::BoolLit("1"),
@@ -296,18 +309,19 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 KMut::Mut => base_ty.into_ptr(),
             }
         }
-        &KTy2::Enum(k_mod, k_enum) => {
-            match &k_enum.repr(&k_mod.of(&cx.mod_outlines).enum_reprs) {
-                KEnumRepr::Never => CTy::Other("/* never enum */ void"),
-                KEnumRepr::Unit => CTy::Void,
-                KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
-                KEnumRepr::TaggedUnion { .. } => {
-                    // FIXME: unique_enum_name を事前に計算しておく
-                    let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
-                    CTy::Struct(name)
-                }
+        KTy2::Alias(k_mod, alias) => {
+            // FIXME: エイリアスの展開を関数にまとめる
+            match alias.of(&k_mod.of(cx.mod_outlines).aliases).referent() {
+                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+                    KModLocalSymbol::Enum(k_enum) => return gen_enum_ty(k_mod, k_enum, ty_env, cx),
+                    _ => {}
+                },
+                _ => {}
             }
+
+            CTy::Other("/* unresolved alias */ void")
         }
+        &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, ty_env, cx),
         KTy2::Struct(k_mod, k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
             let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);

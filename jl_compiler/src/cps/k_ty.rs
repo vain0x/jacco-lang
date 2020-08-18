@@ -124,6 +124,7 @@ pub(crate) enum KTy2 {
         param_tys: Vec<KTy2>,
         result_ty: Box<KTy2>,
     },
+    Alias(KMod, KAlias),
     Enum(KMod, KEnum),
     Struct(KMod, KStruct),
 }
@@ -202,9 +203,7 @@ impl KTy2 {
                 param_tys.into_iter().map(|ty| KTy2::from_ty1(ty, k_mod)),
                 KTy2::from_ty1(*result_ty, k_mod),
             ),
-            KTy::Alias(_) => KTy2::Unresolved {
-                cause: KTyCause::Alias,
-            },
+            KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
             KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         }
@@ -362,6 +361,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 }
                 Ok(())
             }
+            KTy2::Alias(..) => write!(f, "{{alias}}"),
             KTy2::Enum(k_mod, k_enum) => write!(
                 f,
                 "enum {}::{}",
@@ -394,6 +394,7 @@ impl Debug for KTy2 {
                 Debug::fmt(base_ty, f)
             }
             // FIXME: 実装
+            KTy2::Alias(..) => Ok(()),
             KTy2::Fn { .. } => Ok(()),
             KTy2::Enum(_, _) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
