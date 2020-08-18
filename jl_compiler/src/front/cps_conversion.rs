@@ -174,6 +174,7 @@ impl<'a> Xx<'a> {
 fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
     PathResolutionContext {
         tokens: xx.tokens,
+        k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         env: &xx.env,
         listener: &mut *xx.listener,
@@ -332,28 +333,35 @@ fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
     Branch::Default(symbol)
 }
 
+fn emit_default_branch(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
+    if name.is_qualified() {
+        error_unresolved_value(PLoc::Name(key), &xx.logger);
+    }
+
+    let symbol = {
+        let cause = KSymbolCause::NameDef(xx.doc, key);
+        fresh_symbol(&name.text, cause, xx)
+    };
+    Branch::Default(symbol)
+}
+
 fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    match resolve_value_path(&name, key, path_resolution_context(xx)) {
-        Some(KLocalValue::Const(k_const)) => Branch::Case(KTerm::Const { k_const, loc }),
-        Some(KLocalValue::UnitLikeStruct(k_struct)) => {
-            Branch::Case(KTerm::RecordTag { k_struct, loc })
-        }
-        Some(KLocalValue::Alias(alias)) => {
+    let KProjectValue { k_mod: _, value } =
+        match resolve_value_path(&name, key, path_resolution_context(xx)) {
+            Some(it) => it,
+            None => return emit_default_branch(name, key, xx),
+        };
+
+    // FIXME: k_mod を使う
+    match value {
+        KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
+        KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag { k_struct, loc }),
+        KLocalValue::Alias(alias) => {
             // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
             Branch::Case(KTerm::Alias { alias, loc })
         }
-        _ => {
-            if name.is_qualified() {
-                error_unresolved_value(PLoc::Name(key), &xx.logger);
-            }
-
-            let symbol = {
-                let cause = KSymbolCause::NameDef(xx.doc, key);
-                fresh_symbol(&name.text, cause, xx)
-            };
-            Branch::Default(symbol)
-        }
+        _ => emit_default_branch(name, key, xx),
     }
 }
 
@@ -608,13 +616,14 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let value = match resolve_value_path(name, key, path_resolution_context(xx)) {
-        Some(it) => it,
-        None => {
-            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
-            return new_error_term(loc);
-        }
-    };
+    let KProjectValue { k_mod: _, value } =
+        match resolve_value_path(name, key, path_resolution_context(xx)) {
+            Some(it) => it,
+            None => {
+                error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+                return new_error_term(loc);
+            }
+        };
 
     match value {
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
@@ -638,13 +647,14 @@ fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> K
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let value = match resolve_value_path(name, key, path_resolution_context(xx)) {
-        Some(it) => it,
-        None => {
-            error_unresolved_value(PLoc::Name(key), xx.logger);
-            return new_error_term(loc);
-        }
-    };
+    let KProjectValue { k_mod: _, value } =
+        match resolve_value_path(name, key, path_resolution_context(xx)) {
+            Some(it) => it,
+            None => {
+                error_unresolved_value(PLoc::Name(key), xx.logger);
+                return new_error_term(loc);
+            }
+        };
 
     let term = match value {
         KLocalValue::LocalVar(local) => KTerm::Name(KSymbol { local, cause }),

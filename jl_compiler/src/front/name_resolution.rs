@@ -25,8 +25,22 @@ pub(crate) enum KLocalValue {
     Alias(KAlias),
 }
 
+#[allow(unused)]
+#[derive(Copy, Clone)]
+pub(crate) struct KProjectValue {
+    pub(crate) k_mod: KMod,
+    pub(crate) value: KLocalValue,
+}
+
+impl KProjectValue {
+    pub(crate) fn new(k_mod: KMod, value: KLocalValue) -> Self {
+        Self { k_mod, value }
+    }
+}
+
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
+    pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) env: &'a Env,
     pub(super) listener: &'a mut dyn NameResolutionListener,
@@ -159,6 +173,7 @@ pub(crate) fn resolve_ty_path(
 ) -> Option<KTy> {
     let PathResolutionContext {
         tokens,
+        k_mod: _,
         mod_outline,
         env,
         listener,
@@ -198,9 +213,10 @@ pub(crate) fn resolve_value_path(
     path: &AName,
     key: ANameKey,
     context: PathResolutionContext<'_>,
-) -> Option<KLocalValue> {
+) -> Option<KProjectValue> {
     let PathResolutionContext {
         tokens,
+        k_mod,
         mod_outline,
         env,
         listener,
@@ -208,7 +224,10 @@ pub(crate) fn resolve_value_path(
 
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
-        None => return resolve_value_name(&path.text, env),
+        None => {
+            let value = resolve_value_name(&path.text, env)?;
+            return Some(KProjectValue::new(k_mod, value));
+        }
     };
 
     if !tail.is_empty() {
@@ -235,5 +254,5 @@ pub(crate) fn resolve_value_path(
         }
         _ => return None,
     };
-    Some(value)
+    Some(KProjectValue::new(k_mod, value))
 }
