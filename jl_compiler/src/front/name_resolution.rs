@@ -14,30 +14,6 @@ impl NameResolutionListener for NullNameResolutionListener {
 
 pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
 
-#[derive(Copy, Clone)]
-pub(crate) enum KLocalValue {
-    LocalVar(KLocal),
-    Const(KConst),
-    StaticVar(KStaticVar),
-    Fn(KFn),
-    ExternFn(KExternFn),
-    UnitLikeStruct(KStruct),
-    Alias(KAlias),
-}
-
-#[allow(unused)]
-#[derive(Copy, Clone)]
-pub(crate) struct KProjectValue {
-    pub(crate) k_mod: KMod,
-    pub(crate) value: KLocalValue,
-}
-
-impl KProjectValue {
-    pub(crate) fn new(k_mod: KMod, value: KLocalValue) -> Self {
-        Self { k_mod, value }
-    }
-}
-
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
     pub(super) k_mod: KMod,

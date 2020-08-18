@@ -59,6 +59,7 @@ mod cps {
     mod k_symbol;
     mod k_term;
     mod k_ty;
+    mod k_value;
     mod k_vis;
     mod type_resolution;
 
@@ -87,6 +88,7 @@ mod cps {
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
     pub(crate) use k_ty::{KNumberTy, KTy, KTy2, KTyCause};
+    pub(crate) use k_value::{KLocalValue, KProjectValue};
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 

@@ -1,6 +1,5 @@
 use self::map_stack::MapStack;
-use super::name_resolution::KLocalValue;
-use crate::cps::KTy;
+use crate::cps::{KLocalValue, KTy};
 
 pub(crate) struct Env {
     ty_env: MapStack<KTy>,
