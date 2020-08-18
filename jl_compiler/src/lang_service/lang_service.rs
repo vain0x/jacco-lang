@@ -181,6 +181,35 @@ impl LangService {
         }
     }
 
+    /// 単一のドキュメントを型検査する。
+    pub(super) fn request_types_for(&mut self, doc: Doc) {
+        let everything_is_unchanged = self.dirty_sources.is_empty();
+        if everything_is_unchanged {
+            return;
+        }
+
+        self.request_cps(doc);
+
+        let logs = Logs::new();
+        self.do_with_mod_outlines(|ls, mod_outlines| {
+            for (k_mod, mod_outline) in mod_outlines.enumerate() {
+                let mod_data = &mut ls
+                    .docs
+                    .get_mut(&doc)
+                    .unwrap()
+                    .cps_opt
+                    .as_mut()
+                    .unwrap()
+                    .mod_data;
+
+                resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
+            }
+        });
+
+        self.project_logs.extend(logs.finish());
+    }
+
+    /// すべてのドキュメントを型検査する。
     pub(super) fn request_types(&mut self) -> &[LogItem] {
         if take(&mut self.dirty_sources).is_empty() {
             return &self.project_logs;

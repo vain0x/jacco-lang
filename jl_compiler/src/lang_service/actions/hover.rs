@@ -97,7 +97,7 @@ fn write_result_ty(
 }
 
 pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Content> {
-    ls.request_types();
+    ls.request_types_for(doc);
 
     let DocContentAnalysisMut {
         syntax,
