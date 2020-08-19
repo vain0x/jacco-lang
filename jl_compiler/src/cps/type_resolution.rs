@@ -121,6 +121,16 @@ impl<'a> UnificationContext<'a> {
             ),
         );
     }
+
+    fn error_unresolved_alias(&self, k_mod: KMod, alias: KAlias) {
+        self.logger.error(
+            self.loc,
+            format!(
+                "解決されないエイリアスです ({})",
+                KTy2::Alias(k_mod, alias).display(self.ty_env, self.mod_outlines),
+            ),
+        );
+    }
 }
 
 fn can_cast_number(
@@ -171,32 +181,23 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         }
 
         // エイリアスの展開
-        // FIXME: エイリアスの展開を関数にまとめる、左右の処理をまとめる
         (KTy2::Alias(k_mod, alias), _) => {
-            match alias.of(&k_mod.of(ux.mod_outlines).aliases).referent() {
-                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                    KModLocalSymbol::Enum(k_enum) => {
-                        do_unify2(&KTy2::Enum(k_mod, k_enum), right, ux);
-                        return;
-                    }
-                    _ => {}
-                },
-                _ => {}
+            match alias
+                .of(&k_mod.of(ux.mod_outlines).aliases)
+                .referent_as_ty()
+            {
+                Some(ty) => do_unify2(&ty, right, ux),
+                None => ux.error_unresolved_alias(*k_mod, *alias),
             }
-            ux.logger.error(ux.loc, "unknown alias");
         }
         (_, KTy2::Alias(k_mod, alias)) => {
-            match alias.of(&k_mod.of(ux.mod_outlines).aliases).referent() {
-                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                    KModLocalSymbol::Enum(k_enum) => {
-                        do_unify2(left, &KTy2::Enum(k_mod, k_enum), ux);
-                        return;
-                    }
-                    _ => {}
-                },
-                _ => {}
+            match alias
+                .of(&k_mod.of(ux.mod_outlines).aliases)
+                .referent_as_ty()
+            {
+                Some(ty) => do_unify2(left, &ty, ux),
+                None => ux.error_unresolved_alias(*k_mod, *alias),
             }
-            ux.logger.error(ux.loc, "unknown alias");
         }
 
         // その他、型ごとのルール

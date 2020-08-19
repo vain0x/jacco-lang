@@ -1,4 +1,4 @@
-use super::{KModLocalSymbol, KProjectSymbol};
+use super::{KModLocalSymbol, KProjectSymbol, KTy2};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -43,6 +43,17 @@ impl KAliasOutline {
 
     pub(crate) fn referent(&self) -> Option<KProjectSymbol> {
         self.referent_opt
+    }
+
+    pub(crate) fn referent_as_ty(&self) -> Option<KTy2> {
+        let ty = match self.referent() {
+            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+                KModLocalSymbol::Enum(k_enum) => KTy2::Enum(k_mod, k_enum),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        Some(ty)
     }
 
     fn verify_bind(&mut self, referent: KProjectSymbol) -> bool {

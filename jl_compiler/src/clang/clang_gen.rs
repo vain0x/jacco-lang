@@ -310,16 +310,13 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
         }
         KTy2::Alias(k_mod, alias) => {
-            // FIXME: エイリアスの展開を関数にまとめる
-            match alias.of(&k_mod.of(cx.mod_outlines).aliases).referent() {
-                Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                    KModLocalSymbol::Enum(k_enum) => return gen_enum_ty(k_mod, k_enum, ty_env, cx),
-                    _ => {}
-                },
-                _ => {}
+            match alias
+                .of(&k_mod.of(cx.mod_outlines).aliases)
+                .referent_as_ty()
+            {
+                Some(ty) => gen_ty2(&ty, ty_env, cx),
+                None => CTy::Other("/* unresolved alias */ void"),
             }
-
-            CTy::Other("/* unresolved alias */ void")
         }
         &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, ty_env, cx),
         KTy2::Struct(k_mod, k_struct) => {
