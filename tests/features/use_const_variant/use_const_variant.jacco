@@ -7,7 +7,6 @@ use exit_code::ExitCode;
 extern fn abort() -> never;
 extern fn assert(cond: bool);
 
-// FIXME: なぜか引数の型が never になる。
 // as によるキャストは未実装
 fn exit_code_as_i32(code: ExitCode) -> i32 {
     match code {
