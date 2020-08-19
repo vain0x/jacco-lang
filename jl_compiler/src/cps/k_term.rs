@@ -82,6 +82,7 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     RecordTag {
+        k_mod: KMod,
         k_struct: KStruct,
         loc: Loc,
     },
@@ -123,9 +124,14 @@ impl KTerm {
             KTerm::ExternFn { extern_fn, .. } => {
                 extern_fn.ty(&mod_outline.extern_fns).to_ty2(k_mod)
             }
-            KTerm::RecordTag { k_struct, .. } => k_struct
-                .tag_ty(&mod_outline.structs, &mod_outline.enum_reprs)
-                .to_ty2(k_mod),
+            KTerm::RecordTag {
+                k_mod, k_struct, ..
+            } => {
+                let mod_outline = k_mod.of(mod_outlines);
+                k_struct
+                    .tag_ty(&mod_outline.structs, &mod_outline.enum_reprs)
+                    .to_ty2(*k_mod)
+            }
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
                 KTy2::Unresolved {
@@ -201,8 +207,9 @@ impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelA
             KTerm::ExternFn { extern_fn, .. } => {
                 write!(f, "{}", extern_fn.name(&mod_outline.extern_fns))
             }
-            KTerm::RecordTag { k_struct, .. } => {
-                write!(f, "record_tag::[{}]", k_struct.name(&mod_outline.structs))
+            KTerm::RecordTag { .. } => {
+                // write!(f, "record_tag::[{}]", k_struct.name(&mod_outline.structs))
+                Ok(())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
         }

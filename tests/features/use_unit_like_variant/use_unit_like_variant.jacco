@@ -1,0 +1,22 @@
+#![test("run", 0)]
+
+// 他のモジュールの enum を use して、unit-like バリアントを参照できる。
+
+use signum::Signum;
+
+extern fn assert(cond: bool);
+extern fn abort() -> never;
+
+fn signum(value: Signum) -> i32 {
+    match value {
+        Signum::Positive => 1,
+        Signum::Zero => 0,
+        Signum::Negative => -1,
+        _ => abort(),
+    }
+}
+
+pub fn main() -> i32 {
+    assert(signum(Signum::Zero) == 0);
+    0
+}

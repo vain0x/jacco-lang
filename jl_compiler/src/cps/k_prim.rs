@@ -1,4 +1,4 @@
-use super::{KFieldTag, KFn, KLabel, KMut, KNode, KSymbol, KTerm, KTy};
+use super::{KFieldTag, KFn, KLabel, KMut, KNode, KSymbol, KTerm, KTy2};
 use crate::source::Loc;
 use std::iter::once;
 
@@ -126,7 +126,7 @@ pub(crate) fn new_return_tail(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
 }
 
 pub(crate) fn new_record_node(
-    ty: KTy,
+    ty: KTy2,
     args: Vec<KTerm>,
     result: KSymbol,
     cont: KNode,
@@ -304,7 +304,7 @@ pub(crate) fn new_add_node(
     new_basic_binary_op_node(KPrim::Add, left, right, result, cont, loc)
 }
 
-pub(crate) fn new_cast_node(ty: KTy, arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_cast_node(ty: KTy2, arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Cast,
         tys: vec![ty],

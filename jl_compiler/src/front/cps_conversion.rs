@@ -360,10 +360,11 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
             k_const,
             loc,
         }),
-        KLocalValue::UnitLikeStruct(k_struct) => {
-            // FIXME: k_mod
-            Branch::Case(KTerm::RecordTag { k_struct, loc })
-        }
+        KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag {
+            k_mod,
+            k_struct,
+            loc,
+        }),
         KLocalValue::Alias(alias) => {
             // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
             Branch::Case(KTerm::Alias { alias, loc })
@@ -396,7 +397,11 @@ fn convert_record_pat_as_cond(pat_id: APatId, pat: &ARecordPat, loc: Loc, xx: &m
             return new_error_term(loc);
         }
     };
-    KTerm::RecordTag { k_struct, loc }
+    KTerm::RecordTag {
+        k_mod: xx.k_mod,
+        k_struct,
+        loc,
+    }
 }
 
 fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
@@ -601,12 +606,13 @@ fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
 }
 
 fn emit_unit_like_struct(
+    k_mod: KMod,
     k_struct: KStruct,
     result: KSymbol,
     loc: Loc,
     nodes: &mut Vec<KNode>,
 ) -> KTerm {
-    let ty = KTy::Struct(k_struct);
+    let ty = KTy2::Struct(k_mod, k_struct);
 
     nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
     KTerm::Name(result)
@@ -646,10 +652,9 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
         KLocalValue::Fn(k_fn) => KTerm::Fn { k_fn, loc },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
-            // FIXME: k_mod
-            let name = k_struct.name(&xx.mod_outline.structs);
+            let name = k_struct.name(&k_mod.of(&xx.mod_outlines).structs);
             let result = fresh_symbol(name, cause, xx);
-            emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)
+            emit_unit_like_struct(k_mod, k_struct, result, loc, &mut xx.nodes)
         }
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
     }
@@ -808,7 +813,7 @@ fn do_convert_record_expr(
             return None;
         }
     };
-    let ty = KTy::Struct(k_struct);
+    let ty = KTy2::Struct(xx.k_mod, k_struct);
 
     let fields = k_struct.fields(&xx.mod_outline.structs);
     let perm =
@@ -933,7 +938,7 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 
 fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let arg = convert_expr(expr.left, xx);
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx));
+    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
 
     let result = fresh_symbol("cast", loc, xx);
     xx.nodes

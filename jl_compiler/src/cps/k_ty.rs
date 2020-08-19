@@ -547,13 +547,6 @@ impl KTy {
             _ => false,
         }
     }
-
-    pub(crate) fn as_struct(&self) -> Option<KStruct> {
-        match self {
-            KTy::Struct(k_struct) => Some(*k_struct),
-            _ => None,
-        }
-    }
 }
 
 impl Default for KTy {

@@ -395,9 +395,14 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             extern_fn.ty(&tx.mod_outline.extern_fns).to_ty2(tx.k_mod)
         }
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::RecordTag { k_struct, .. } => k_struct
-            .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.enum_reprs)
-            .to_ty2(tx.k_mod),
+        KTerm::RecordTag {
+            k_mod, k_struct, ..
+        } => {
+            let mod_outline = k_mod.of(&tx.mod_outlines);
+            k_struct
+                .tag_ty(&mod_outline.structs, &mod_outline.enum_reprs)
+                .to_ty2(tx.k_mod)
+        }
         KTerm::FieldTag(_) => unreachable!(),
     }
 }
@@ -455,23 +460,24 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let k_struct = ty.as_struct().unwrap();
+                let (k_mod, k_struct) = ty.as_struct(&tx.ty_env).unwrap();
+                let mod_outline = k_mod.of(&tx.mod_outlines);
 
                 for (arg, field) in node
                     .args
                     .iter_mut()
-                    .zip(k_struct.fields(&tx.mod_outline.structs))
+                    .zip(k_struct.fields(&mod_outline.structs))
                 {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
-                        &field.ty(&tx.mod_outline.fields).to_ty2(tx.k_mod),
+                        &field.ty(&mod_outline.fields).to_ty2(k_mod),
                         &arg_ty,
                         node.loc,
                         tx,
                     );
                 }
 
-                let ty = k_struct.ty(&tx.mod_outline.structs).to_ty2(tx.k_mod);
+                let ty = k_struct.ty(&mod_outline.structs).to_ty2(k_mod);
                 resolve_symbol_def2(result, Some(&ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
@@ -619,7 +625,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         ) {
             ([ty], [arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                let target_ty = ty.to_ty2(tx.k_mod);
+                let target_ty = take(ty);
                 resolve_symbol_def2(result, Some(&target_ty), tx);
 
                 // FIXME: 同じ型へのキャストは警告?

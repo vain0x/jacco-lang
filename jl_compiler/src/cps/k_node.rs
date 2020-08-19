@@ -1,4 +1,4 @@
-use super::{KLabelArena, KLocalArena, KModOutline, KPrim, KSymbol, KTerm, KTy};
+use super::{KLabelArena, KLocalArena, KModOutline, KPrim, KSymbol, KTerm, KTy2};
 use crate::{
     source::{HaveLoc, Loc},
     utils::{DebugWith, DebugWithContext},
@@ -8,7 +8,7 @@ use std::fmt::{self, Debug, Formatter};
 #[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
-    pub(crate) tys: Vec<KTy>,
+    pub(crate) tys: Vec<KTy2>,
     pub(crate) args: Vec<KTerm>,
     pub(crate) results: Vec<KSymbol>,
     pub(crate) conts: Vec<KNode>,
