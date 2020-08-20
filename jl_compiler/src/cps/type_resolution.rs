@@ -354,7 +354,9 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => {
                 extern_fn_outline.ty().to_ty2(k_mod)
             }
-            KModLocalSymbolOutline::Enum(_, _) | KModLocalSymbolOutline::Struct(_, _) => {
+            KModLocalSymbolOutline::Enum(_, _)
+            | KModLocalSymbolOutline::ConstEnum(..)
+            | KModLocalSymbolOutline::Struct(_, _) => {
                 tx.logger
                     .unimpl(loc, "インポートされた型の型検査は未実装です");
                 KTy2::Never

@@ -1,15 +1,4 @@
-use super::{
-    k_const::{KConstArena, KConstInits},
-    k_enum::{KEnumArena, KEnumReprs},
-    k_extern_fn::KExternFnOutlineArena,
-    k_fn::KFnOutlineArena,
-    k_static_var::{KStaticVarArena, KStaticVarInits},
-    k_struct::KStructArena,
-    KAlias, KAliasArena, KAliasOutline, KConst, KConstData, KEnum, KEnumOutline, KExternFn,
-    KExternFnArena, KExternFnOutline, KField, KFieldArena, KFieldOutline, KFn, KFnArena,
-    KFnOutline, KLabelArena, KLocal, KLocalArena, KStaticVar, KStaticVarData, KStruct,
-    KStructOutline, KVariant,
-};
+use super::*;
 use crate::{
     logs::Logger,
     utils::{VecArena, VecArenaId},
@@ -34,6 +23,7 @@ pub(crate) struct KModOutline {
     pub(crate) extern_fns: KExternFnOutlineArena,
     pub(crate) enums: KEnumArena,
     pub(crate) enum_reprs: KEnumReprs,
+    pub(crate) const_enums: KConstEnumOutlines,
     pub(crate) structs: KStructArena,
     pub(crate) fields: KFieldArena,
 }
@@ -84,6 +74,8 @@ pub(crate) enum KModLocalSymbol {
     Fn(KFn),
     ExternFn(KExternFn),
     Enum(KEnum),
+    #[allow(unused)]
+    ConstEnum(KConstEnum),
     Struct(KStruct),
     #[allow(unused)]
     Field(KField),
@@ -131,6 +123,10 @@ impl KModLocalSymbol {
             KModLocalSymbol::Enum(k_enum) => {
                 KModLocalSymbolOutline::Enum(k_enum, k_enum.of(&mod_outline.enums))
             }
+            KModLocalSymbol::ConstEnum(const_enum) => KModLocalSymbolOutline::ConstEnum(
+                const_enum,
+                const_enum.of(&mod_outline.const_enums),
+            ),
             KModLocalSymbol::Struct(k_struct) => {
                 KModLocalSymbolOutline::Struct(k_struct, k_struct.of(&mod_outline.structs))
             }
@@ -148,6 +144,7 @@ impl KModLocalSymbol {
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
             KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
             KModLocalSymbolOutline::Enum(_, enum_data) => &enum_data.name,
+            KModLocalSymbolOutline::ConstEnum(_, const_enum_data) => &const_enum_data.name,
             KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
             KModLocalSymbolOutline::Field(_, field_outline) => &field_outline.name,
             KModLocalSymbolOutline::Alias(_, alias_data) => alias_data.name(),
@@ -164,6 +161,7 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
     Fn(KFn, &'a KFnOutline),
     ExternFn(KExternFn, &'a KExternFnOutline),
     Enum(KEnum, &'a KEnumOutline),
+    ConstEnum(KConstEnum, &'a KConstEnumOutline),
     Struct(KStruct, &'a KStructOutline),
     Field(KField, &'a KFieldOutline),
     Alias(KAlias, &'a KAliasOutline),

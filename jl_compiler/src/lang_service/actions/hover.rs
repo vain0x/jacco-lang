@@ -179,6 +179,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
             });
         }
         KModLocalSymbol::Enum(_) => {}
+        KModLocalSymbol::ConstEnum(..) => {}
         KModLocalSymbol::Struct(_) => {}
         KModLocalSymbol::Field(_) => {}
         KModLocalSymbol::Alias(_) => {}

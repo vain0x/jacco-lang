@@ -67,12 +67,16 @@ mod cps {
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
-    pub(crate) use k_const::{KConst, KConstData, KConstInit, KConstValue, KNumber};
-    // pub(crate) use k_const_enum::*;
-    pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KVariant};
-    pub(crate) use k_extern_fn::{KExternFn, KExternFnArena, KExternFnData, KExternFnOutline};
+    pub(crate) use k_const::{
+        KConst, KConstArena, KConstData, KConstInit, KConstInits, KConstValue, KNumber,
+    };
+    pub(crate) use k_const_enum::*;
+    pub(crate) use k_enum::{KEnum, KEnumArena, KEnumOutline, KEnumRepr, KEnumReprs, KVariant};
+    pub(crate) use k_extern_fn::{
+        KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnOutlineArena,
+    };
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
-    pub(crate) use k_fn::{KFn, KFnArena, KFnData, KFnOutline};
+    pub(crate) use k_fn::{KFn, KFnArena, KFnData, KFnOutline, KFnOutlineArena};
     pub(crate) use k_label::{
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };
@@ -85,7 +89,9 @@ mod cps {
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_prim::*;
-    pub(crate) use k_static_var::{KStaticVar, KStaticVarData, KStaticVarInit};
+    pub(crate) use k_static_var::{
+        KStaticVar, KStaticVarArena, KStaticVarData, KStaticVarInit, KStaticVarInits,
+    };
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent};
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};

@@ -50,8 +50,9 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol,
         | KModLocalSymbol::Fn(_)
         | KModLocalSymbol::ExternFn(_)
         | KModLocalSymbol::Field(_) => return,
-        KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
         KModLocalSymbol::Enum(k_enum) => KTy::Enum(k_enum),
+        KModLocalSymbol::ConstEnum(..) => todo!(),
+        KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
         KModLocalSymbol::Alias(alias) => KTy::Alias(alias),
     };
 
@@ -73,7 +74,10 @@ fn do_add_value_symbol_to_local_env(
         KModLocalSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
             KLocalValue::UnitLikeStruct(k_struct)
         }
-        KModLocalSymbol::Struct(_) | KModLocalSymbol::Enum(_) | KModLocalSymbol::Field(_) => return,
+        KModLocalSymbol::Enum(_)
+        | KModLocalSymbol::ConstEnum(_)
+        | KModLocalSymbol::Struct(_)
+        | KModLocalSymbol::Field(_) => return,
         KModLocalSymbol::Alias(alias) => KLocalValue::Alias(alias),
     };
 

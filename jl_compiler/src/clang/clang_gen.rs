@@ -425,6 +425,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 KModLocalSymbol::LocalVar { .. }
                 | KModLocalSymbol::Alias(_)
                 | KModLocalSymbol::Enum(_)
+                | KModLocalSymbol::ConstEnum(_)
                 | KModLocalSymbol::Struct(_)
                 | KModLocalSymbol::Field(_) => {
                     error!("別名の参照先が不正です {:?}", (symbol, loc));
