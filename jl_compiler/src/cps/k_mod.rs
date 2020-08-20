@@ -24,7 +24,7 @@ pub(crate) type KModOutlines = VecArena<KModTag, KModOutline>;
 
 pub(crate) type KModArena = VecArena<KModTag, KModData>;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) struct KModOutline {
     pub(crate) name: String,
     pub(crate) aliases: KAliasArena,
@@ -156,7 +156,7 @@ impl KModLocalSymbol {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub(crate) enum KModLocalSymbolOutline<'a> {
     LocalVar(KLocalVarParent, KLocal),
     Const(KConst, &'a KConstData),
@@ -199,11 +199,12 @@ impl KProjectSymbol {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub(crate) enum KProjectSymbolOutline<'a> {
     Mod(KMod, &'a KModOutline),
     ModLocal {
         k_mod: KMod,
+        #[allow(unused)]
         mod_outline: &'a KModOutline,
         symbol_outline: KModLocalSymbolOutline<'a>,
     },

@@ -132,7 +132,7 @@ impl KEnumRepr {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KVariant>,
