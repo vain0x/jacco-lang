@@ -43,6 +43,7 @@ mod cps {
     mod eval;
     mod k_alias;
     mod k_const;
+    mod k_const_enum;
     mod k_enum;
     mod k_extern_fn;
     mod k_field;
@@ -67,6 +68,7 @@ mod cps {
     pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_const::{KConst, KConstData, KConstInit, KConstValue, KNumber};
+    // pub(crate) use k_const_enum::*;
     pub(crate) use k_enum::{KEnum, KEnumOutline, KEnumRepr, KEnumReprs, KVariant};
     pub(crate) use k_extern_fn::{KExternFn, KExternFnArena, KExternFnData, KExternFnOutline};
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};

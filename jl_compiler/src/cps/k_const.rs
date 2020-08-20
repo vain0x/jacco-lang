@@ -1,13 +1,15 @@
 use super::{KEnum, KNode, KNumberTy, KTerm, KTy};
 use crate::{
     source::Loc,
-    utils::{VecArena, VecArenaId},
+    utils::{VecArena, VecArenaId, VecArenaSlice},
 };
 use std::fmt::{self, Debug, Formatter};
 
 pub(crate) struct KConstTag;
 
 pub(crate) type KConst = VecArenaId<KConstTag>;
+
+pub(crate) type KConsts = VecArenaSlice<KConstTag>;
 
 pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
