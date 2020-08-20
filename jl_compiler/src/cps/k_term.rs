@@ -98,7 +98,7 @@ impl KTerm {
         locals: &KLocalArena,
         mod_outlines: &KModOutlines,
     ) -> KTy2 {
-        match self {
+        let ty = match self {
             KTerm::Unit { .. } => KTy2::Unit,
             KTerm::Int { ty, .. } => ty.clone(),
             KTerm::Float { ty, .. } => ty.clone(),
@@ -138,6 +138,14 @@ impl KTerm {
                     cause: KTyCause::FieldTag,
                 }
             }
+        };
+
+        match ty {
+            KTy2::Alias(k_mod, alias) => alias
+                .of(&k_mod.of(mod_outlines).aliases)
+                .referent_as_ty()
+                .unwrap_or(ty),
+            _ => ty,
         }
     }
 

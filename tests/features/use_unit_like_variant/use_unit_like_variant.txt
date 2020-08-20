@@ -27,7 +27,7 @@ struct Signum {
 
 int signum_1(struct Signum value_1) {
     int match_result_1;
-    switch (value_1) {
+    switch (value_1.tag_) {
         case 0ULL: {
             match_result_1 = 1;
             goto match_next_1;
