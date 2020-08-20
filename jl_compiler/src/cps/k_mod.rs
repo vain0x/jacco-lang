@@ -272,6 +272,9 @@ pub(crate) fn resolve_aliases(
                             (outline.name.as_str(), KModLocalSymbol::Enum(id))
                         }),
                     )
+                    .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
+                        (outline.name.as_str(), KModLocalSymbol::ConstEnum(id))
+                    }))
                     .chain(
                         mod_outline.structs.enumerate().map(|(id, outline)| {
                             (outline.name.as_str(), KModLocalSymbol::Struct(id))

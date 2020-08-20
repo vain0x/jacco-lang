@@ -49,10 +49,13 @@ impl KAliasOutline {
         let ty = match self.referent() {
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
                 KModLocalSymbol::Enum(k_enum) => KTy2::Enum(k_mod, k_enum),
+                KModLocalSymbol::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
                 _ => return None,
             },
             _ => return None,
         };
+
+        log::trace!("alias referent {} ty={:?}", &self.name, ty);
         Some(ty)
     }
 

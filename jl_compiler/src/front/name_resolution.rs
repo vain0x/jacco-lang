@@ -51,7 +51,7 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol,
         | KModLocalSymbol::ExternFn(_)
         | KModLocalSymbol::Field(_) => return,
         KModLocalSymbol::Enum(k_enum) => KTy::Enum(k_enum),
-        KModLocalSymbol::ConstEnum(..) => todo!(),
+        KModLocalSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
         KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
         KModLocalSymbol::Alias(alias) => KTy::Alias(alias),
     };
@@ -147,6 +147,17 @@ fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<
         .find(|variant| variant.name(&mod_outline.consts, &mod_outline.structs) == name)
 }
 
+fn find_const_variant(
+    const_enum: KConstEnum,
+    name: &str,
+    mod_outline: &KModOutline,
+) -> Option<KConst> {
+    const_enum
+        .variants(&mod_outline.const_enums)
+        .iter()
+        .find(|variant| variant.of(&mod_outline.consts).name == name)
+}
+
 pub(crate) fn resolve_ty_path(
     path: &AName,
     key: ANameKey,
@@ -235,6 +246,11 @@ pub(crate) fn resolve_value_path(
                 }
             }
         }
+        KTy::ConstEnum(const_enum) => {
+            let name = path.token.text(tokens);
+            let k_const = find_const_variant(const_enum, name, mod_outline)?;
+            KLocalValue::Const(k_const)
+        }
         KTy::Alias(alias) => {
             let name = path.token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
@@ -257,6 +273,14 @@ pub(crate) fn resolve_value_path(
                             }
                         }
                     }
+                }
+                KProjectSymbol::ModLocal {
+                    k_mod,
+                    symbol: KModLocalSymbol::ConstEnum(const_enum),
+                } => {
+                    let mod_outline = k_mod.of(mod_outlines);
+                    let k_const = find_const_variant(const_enum, name, mod_outline)?;
+                    KProjectValue::new(k_mod, KLocalValue::Const(k_const))
                 }
                 _ => return None,
             };

@@ -38,8 +38,8 @@ pub(crate) struct KConstEnumOutline {
 }
 
 impl KConstEnumOutline {
-    pub(crate) fn determine_tags(consts: &mut KConstArena, const_enums: &mut KConstEnumOutlines) {
-        for data in const_enums.iter_mut() {
+    pub(crate) fn determine_tags(consts: &mut KConstArena, const_enums: &KConstEnumOutlines) {
+        for data in const_enums.iter() {
             let mut tag = 0;
             for k_const in data.variants.iter() {
                 if let Some(value) = &k_const.of(consts).value_opt {

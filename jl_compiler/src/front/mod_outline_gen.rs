@@ -123,6 +123,24 @@ fn alloc_extern_fn(
     })
 }
 
+fn new_const_data_from_variant(
+    decl: &AFieldLikeDecl,
+    parent_opt: Option<KConstParent>,
+    doc: Doc,
+    key: AVariantDeclKey,
+) -> KConstData {
+    let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
+    let name = resolve_name_opt(decl.name_opt.as_ref());
+
+    KConstData {
+        name,
+        value_ty: KTy::init_later(loc),
+        value_opt: None,
+        parent_opt,
+        loc,
+    }
+}
+
 fn alloc_const_variant(
     decl: &AFieldLikeDecl,
     parent_opt: Option<KConstParent>,
@@ -130,16 +148,9 @@ fn alloc_const_variant(
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
 ) -> KConst {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
-    let name = resolve_name_opt(decl.name_opt.as_ref());
-
-    mod_outline.consts.alloc(KConstData {
-        name,
-        value_ty: KTy::init_later(loc),
-        value_opt: None,
-        parent_opt,
-        loc,
-    })
+    mod_outline
+        .consts
+        .alloc(new_const_data_from_variant(decl, parent_opt, doc, key))
 }
 
 fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
@@ -236,15 +247,44 @@ fn resolve_variant_decl(
     }
 }
 
+enum KEnumLike {
+    Enum(KEnum),
+    ConstEnum(KConstEnum),
+}
+
 fn alloc_enum(
     decl_id: ADeclId,
     decl: &AEnumDecl,
     doc: Doc,
     mod_outline: &mut KModOutline,
-) -> KEnum {
+) -> KEnumLike {
     let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-
     let name = resolve_name_opt(decl.name_opt.as_ref());
+
+    if let Some(variants) = decl.as_const_enum() {
+        let const_enum = mod_outline.const_enums.alloc(KConstEnumOutline {
+            name,
+            loc,
+
+            // FIXME: どう決定する?
+            repr_ty: KTy::USIZE,
+
+            // 後で設定する。
+            variants: Default::default(),
+        });
+
+        let variants = mod_outline
+            .consts
+            .alloc_slice(variants.iter().enumerate().map(|(index, variant_decl)| {
+                let key = AVariantDeclKey::Enum(decl_id, index);
+                let parent_opt = Some(KConstParent::ConstEnum(const_enum));
+                new_const_data_from_variant(variant_decl, parent_opt, doc, key)
+            }));
+
+        const_enum.of_mut(&mut mod_outline.const_enums).variants = variants;
+        return KEnumLike::ConstEnum(const_enum);
+    }
+
     let k_enum = mod_outline.enums.alloc(KEnumOutline {
         name,
         variants: vec![],
@@ -262,7 +302,7 @@ fn alloc_enum(
         .collect();
 
     k_enum.of_mut(&mut mod_outline.enums).variants = variants;
-    k_enum
+    KEnumLike::Enum(k_enum)
 }
 
 fn resolve_enum_decl(
@@ -274,6 +314,20 @@ fn resolve_enum_decl(
     let variants = k_enum.variants(&mod_outline.enums).to_owned();
     for (variant_decl, variant) in decl.variants.iter().zip(variants) {
         resolve_variant_decl(variant_decl, variant, ty_resolver, mod_outline);
+    }
+}
+
+fn resolve_const_enum_decl(
+    decl: &AEnumDecl,
+    const_enum: KConstEnum,
+    ty_resolver: &mut TyResolver,
+    mod_outline: &mut KModOutline,
+) {
+    let variants = const_enum.variants(&mod_outline.const_enums).to_owned();
+    for (decl, k_const) in decl.variants.iter().zip(variants.iter()) {
+        let decl = decl.as_const().unwrap();
+        let value_ty = resolve_ty_opt(decl.ty_opt, ty_resolver);
+        k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
     }
 }
 
@@ -357,10 +411,10 @@ fn alloc_outline(
                 let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, mod_outline);
                 KModLocalSymbol::ExternFn(extern_fn)
             }
-            ADecl::Enum(enum_decl) => {
-                let k_enum = alloc_enum(decl_id, enum_decl, doc, mod_outline);
-                KModLocalSymbol::Enum(k_enum)
-            }
+            ADecl::Enum(enum_decl) => match alloc_enum(decl_id, enum_decl, doc, mod_outline) {
+                KEnumLike::Enum(k_enum) => KModLocalSymbol::Enum(k_enum),
+                KEnumLike::ConstEnum(const_enum) => KModLocalSymbol::ConstEnum(const_enum),
+            },
             ADecl::Struct(struct_decl) => {
                 let variant = match alloc_struct(decl_id, struct_decl, doc, mod_outline) {
                     Some(it) => it,
@@ -447,13 +501,15 @@ fn resolve_outline(
                 extern_fn_data.param_tys = param_tys;
                 extern_fn_data.result_ty = result_ty;
             }
-            ADecl::Enum(decl) => {
-                let k_enum = match symbol {
-                    KModLocalSymbol::Enum(it) => it,
-                    _ => unreachable!(),
-                };
-                resolve_enum_decl(decl, *k_enum, ty_resolver, mod_outline);
-            }
+            ADecl::Enum(decl) => match symbol {
+                KModLocalSymbol::Enum(k_enum) => {
+                    resolve_enum_decl(decl, *k_enum, ty_resolver, mod_outline)
+                }
+                KModLocalSymbol::ConstEnum(const_enum) => {
+                    resolve_const_enum_decl(decl, *const_enum, ty_resolver, mod_outline)
+                }
+                _ => unreachable!(),
+            },
             ADecl::Struct(decl) => {
                 let variant_decl = match &decl.variant_opt {
                     Some(it) => it,

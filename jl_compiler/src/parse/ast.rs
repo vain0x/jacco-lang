@@ -323,6 +323,15 @@ pub(crate) enum AVariantDecl {
     Record(ARecordVariantDecl),
 }
 
+impl AVariantDecl {
+    pub(crate) fn as_const(&self) -> Option<&AFieldLikeDecl> {
+        match self {
+            AVariantDecl::Const(it) => Some(it),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum AVariantDeclKey {
     Enum(ADeclId, usize),
@@ -348,6 +357,12 @@ pub(crate) struct AEnumDecl {
     pub(crate) modifiers: ADeclModifiers,
     pub(crate) name_opt: Option<AName>,
     pub(crate) variants: Vec<AVariantDecl>,
+}
+
+impl AEnumDecl {
+    pub(crate) fn as_const_enum(&self) -> Option<Vec<&AFieldLikeDecl>> {
+        self.variants.iter().map(AVariantDecl::as_const).collect()
+    }
 }
 
 pub(crate) struct AStructDecl {

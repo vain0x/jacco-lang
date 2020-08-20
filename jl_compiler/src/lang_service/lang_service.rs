@@ -461,6 +461,16 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         // バリアントの定義位置は consts や structs の定義時に収集される。
     }
 
+    for (const_enum, outline) in symbols.mod_outline.const_enums.enumerate() {
+        sites.push((
+            KModLocalSymbol::ConstEnum(const_enum),
+            DefOrUse::Def,
+            outline.loc,
+        ));
+
+        // バリアントの定義位置は consts の定義時に収集される。
+    }
+
     for (k_struct, outline) in symbols.mod_outline.structs.enumerate() {
         sites.push((
             KModLocalSymbol::Struct(k_struct),
@@ -475,6 +485,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         // FIXME: alias, struct, never, etc.
         let symbol = match ty {
             KTy::Enum(k_enum) => KModLocalSymbol::Enum(*k_enum),
+            KTy::ConstEnum(const_enum) => KModLocalSymbol::ConstEnum(*const_enum),
             KTy::Struct(k_struct) => KModLocalSymbol::Struct(*k_struct),
             _ => continue,
         };

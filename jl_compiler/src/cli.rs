@@ -1,9 +1,6 @@
 use crate::{
     clang::clang_dump,
-    cps::{
-        eliminate_unit, resolve_aliases, resolve_types, KEnumOutline, KEnumRepr, KEnumReprs,
-        KModData, KModOutline, KModTag,
-    },
+    cps::*,
     front::NullNameResolutionListener,
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PTree},
@@ -241,6 +238,7 @@ impl Project {
                 &mut mod_outline.enum_reprs,
                 &mut mod_outline.structs,
             );
+            KConstEnumOutline::determine_tags(&mut mod_outline.consts, &mod_outline.const_enums);
 
             eliminate_unit(mod_outline, mod_data);
         }
