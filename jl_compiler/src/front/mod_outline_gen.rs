@@ -125,7 +125,7 @@ fn alloc_extern_fn(
 
 fn alloc_const_variant(
     decl: &AFieldLikeDecl,
-    parent_opt: Option<KEnum>,
+    parent_opt: Option<KConstParent>,
     doc: Doc,
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
@@ -197,6 +197,7 @@ fn alloc_variant(
 ) -> KVariant {
     match variant_decl {
         AVariantDecl::Const(decl) => {
+            let parent_opt = parent_opt.map(KConstParent::Enum);
             KVariant::Const(alloc_const_variant(decl, parent_opt, doc, key, mod_outline))
         }
         AVariantDecl::Record(decl) => {
