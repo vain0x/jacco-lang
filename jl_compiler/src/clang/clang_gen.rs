@@ -279,6 +279,9 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             KEnumRepr::Const { value_ty } => gen_ty(value_ty, ty_env, cx),
             KEnumRepr::TaggedUnion { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
         },
+        KTy::ConstEnum(const_enum) => {
+            gen_ty(const_enum.repr_ty(&cx.mod_outline.const_enums), ty_env, cx)
+        }
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(cx.k_mod, *k_struct, cx)),
     }
 }
@@ -321,6 +324,11 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
         }
         &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, ty_env, cx),
+        KTy2::ConstEnum(k_mod, const_enum) => gen_ty(
+            const_enum.repr_ty(&k_mod.of(cx.mod_outlines).const_enums),
+            ty_env,
+            cx,
+        ),
         KTy2::Struct(k_mod, k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
             let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);

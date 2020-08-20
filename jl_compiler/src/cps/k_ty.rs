@@ -1,4 +1,4 @@
-use super::{KAlias, KEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KTyEnv};
+use super::{KAlias, KConstEnum, KEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KTyEnv};
 use crate::{
     parse::ATyId,
     source::Loc,
@@ -126,6 +126,7 @@ pub(crate) enum KTy2 {
     },
     Alias(KMod, KAlias),
     Enum(KMod, KEnum),
+    ConstEnum(KMod, KConstEnum),
     Struct(KMod, KStruct),
 }
 
@@ -205,6 +206,7 @@ impl KTy2 {
             ),
             KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
             KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
+            KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         }
     }
@@ -368,6 +370,12 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 k_mod.of(mod_outlines).name,
                 k_enum.of(&k_mod.of(mod_outlines).enums).name
             ),
+            KTy2::ConstEnum(k_mod, const_enum) => write!(
+                f,
+                "enum(const) {}::{}",
+                k_mod.of(mod_outlines).name,
+                const_enum.name(&k_mod.of(mod_outlines).const_enums)
+            ),
             KTy2::Struct(k_mod, k_struct) => write!(
                 f,
                 "struct {}::{}",
@@ -397,6 +405,7 @@ impl Debug for KTy2 {
             KTy2::Alias(..) => Ok(()),
             KTy2::Fn { .. } => Ok(()),
             KTy2::Enum(_, _) => Ok(()),
+            KTy2::ConstEnum(..) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
         }
     }
@@ -458,6 +467,8 @@ pub(crate) enum KTy {
     },
     Alias(KAlias),
     Enum(KEnum),
+    #[allow(unused)]
+    ConstEnum(KConstEnum),
     Struct(KStruct),
 }
 
@@ -592,6 +603,7 @@ impl Debug for KTy {
                 // FIXME: print name
                 write!(f, "enum#{}", k_enum.to_index())
             }
+            KTy::ConstEnum(const_enum) => write!(f, "enum(const)#{}", const_enum.to_index()),
             KTy::Struct(k_struct) => {
                 // FIXME: print name
                 write!(f, "struct {}", k_struct.to_index())

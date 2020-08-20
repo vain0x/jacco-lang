@@ -158,6 +158,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         | (KTy2::Number(..), KTy2::Number(..))
         | (KTy2::Alias(..), KTy2::Alias(..))
         | (KTy2::Enum(..), KTy2::Enum(..))
+        | (KTy2::ConstEnum(..), KTy2::ConstEnum(..))
         | (KTy2::Struct(..), KTy2::Struct(..))
             if left == right => {}
 
@@ -258,6 +259,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         | (KTy2::Ptr { .. }, _)
         | (KTy2::Fn { .. }, _)
         | (KTy2::Enum(..), _)
+        | (KTy2::ConstEnum(..), _)
         | (KTy2::Struct(..), _) => {
             ux.error_ununifiable(left, right);
         }
