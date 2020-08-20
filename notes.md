@@ -77,6 +77,85 @@ cargo build && RUST_LOG=error $J build ./tests/while/while.jacco
                 | EOF
 ```
 
+## 構文解析
+
+ソースコードを字句解析してトークン列を得られたとする。これを構文解析して構文木を得たい。
+
+トリビア (空白やコメントなど) は構文規則的に意味がないのでトークン列から取り除く。
+
+構文解析の目的はトークン列を木構造に変形し、それぞれのノードの種類を特定すること。
+
+### 構文木の組み立て
+
+式文の例:
+
+```
+入力:
+    2 + 3 * 5 + 7;
+
+トークン列:
+    2, '+', 3, '*' 5, '+' 7, ';', EOF
+
+構文木:
+    [root
+        [expr_decl
+            [binary
+                [binary
+                    [lit 2]
+                    +
+                    [binary
+                        [lit 3]
+                        *
+                        [lit 5]
+                    ]]
+                +
+                [lit 7]]
+            ;]]
+
+工程:
+
+    parse_root
+        start_element
+        parse_decl
+            start_element
+            parse_expr
+                parse_add
+                    parse_mul
+                        parse_atom
+                            start_element
+                            bump 2
+                            finish(lit)
+
+                    start_parent
+                    bump +
+
+                    parse_mul
+                        parse_atom
+                            bump 3
+                            finish(lit)
+                        start_parent
+                        bump *
+                        parse_atom
+                            start_element
+                            bump 5
+                            finish(lit)
+                        finish(binary)
+
+                    start_parent
+                    bump +
+
+                    parse_mul
+                        parse_atom
+                            start_element
+                            bump 7
+                            finish(lit)
+                    finish(binary)
+                finish(binary)
+            bump ;
+            finish(expr_decl)
+        finish(root)
+```
+
 ## CPS 変換
 
 CPS 変換の方法。
