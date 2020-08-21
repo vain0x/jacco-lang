@@ -455,16 +455,6 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         on_params(&data.params, KLocalVarParent::ExternFn(extern_fn), sites);
     }
 
-    for (struct_enum, outline) in symbols.mod_outline.struct_enums.enumerate() {
-        sites.push((
-            KModLocalSymbol::StructEnum(struct_enum),
-            DefOrUse::Def,
-            outline.loc,
-        ));
-
-        // バリアントの定義位置は structs の定義時に収集される。
-    }
-
     for (const_enum, outline) in symbols.mod_outline.const_enums.enumerate() {
         sites.push((
             KModLocalSymbol::ConstEnum(const_enum),
@@ -473,6 +463,16 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         ));
 
         // バリアントの定義位置は consts の定義時に収集される。
+    }
+
+    for (struct_enum, outline) in symbols.mod_outline.struct_enums.enumerate() {
+        sites.push((
+            KModLocalSymbol::StructEnum(struct_enum),
+            DefOrUse::Def,
+            outline.loc,
+        ));
+
+        // バリアントの定義位置は structs の定義時に収集される。
     }
 
     for (k_struct, outline) in symbols.mod_outline.structs.enumerate() {
@@ -488,8 +488,8 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
     for (ty, loc) in symbols.ty_use_sites.iter().chain(&cps.ty_use_sites) {
         // FIXME: alias, struct, never, etc.
         let symbol = match ty {
-            KTy::StructEnum(struct_enum) => KModLocalSymbol::StructEnum(*struct_enum),
             KTy::ConstEnum(const_enum) => KModLocalSymbol::ConstEnum(*const_enum),
+            KTy::StructEnum(struct_enum) => KModLocalSymbol::StructEnum(*struct_enum),
             KTy::Struct(k_struct) => KModLocalSymbol::Struct(*k_struct),
             _ => continue,
         };

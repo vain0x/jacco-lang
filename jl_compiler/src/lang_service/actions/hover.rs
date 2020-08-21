@@ -178,8 +178,8 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 contents_opt = Some(Content::JaccoCode(text));
             });
         }
-        KModLocalSymbol::StructEnum(_) => {}
         KModLocalSymbol::ConstEnum(..) => {}
+        KModLocalSymbol::StructEnum(_) => {}
         KModLocalSymbol::Struct(_) => {}
         KModLocalSymbol::Field(_) => {}
         KModLocalSymbol::Alias(_) => {}

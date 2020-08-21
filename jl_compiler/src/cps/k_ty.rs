@@ -125,8 +125,8 @@ pub(crate) enum KTy2 {
         result_ty: Box<KTy2>,
     },
     Alias(KMod, KAlias),
-    StructEnum(KMod, KStructEnum),
     ConstEnum(KMod, KConstEnum),
+    StructEnum(KMod, KStructEnum),
     Struct(KMod, KStruct),
 }
 
@@ -182,10 +182,6 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn new_enum(k_mod: KMod, struct_enum: KStructEnum) -> KTy2 {
-        KTy2::StructEnum(k_mod, struct_enum)
-    }
-
     pub(crate) fn new_struct(k_mod: KMod, k_struct: KStruct) -> KTy2 {
         KTy2::Struct(k_mod, k_struct)
     }
@@ -205,8 +201,8 @@ impl KTy2 {
                 KTy2::from_ty1(*result_ty, k_mod),
             ),
             KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
-            KTy::StructEnum(struct_enum) => KTy2::new_enum(k_mod, struct_enum),
             KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
+            KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         }
     }
@@ -364,17 +360,17 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 Ok(())
             }
             KTy2::Alias(..) => write!(f, "{{alias}}"),
-            KTy2::StructEnum(k_mod, struct_enum) => write!(
-                f,
-                "enum {}::{}",
-                k_mod.of(mod_outlines).name,
-                struct_enum.of(&k_mod.of(mod_outlines).struct_enums).name
-            ),
             KTy2::ConstEnum(k_mod, const_enum) => write!(
                 f,
                 "enum(const) {}::{}",
                 k_mod.of(mod_outlines).name,
                 const_enum.name(&k_mod.of(mod_outlines).const_enums)
+            ),
+            KTy2::StructEnum(k_mod, struct_enum) => write!(
+                f,
+                "enum {}::{}",
+                k_mod.of(mod_outlines).name,
+                struct_enum.of(&k_mod.of(mod_outlines).struct_enums).name
             ),
             KTy2::Struct(k_mod, k_struct) => write!(
                 f,
@@ -404,8 +400,8 @@ impl Debug for KTy2 {
             // FIXME: 実装
             KTy2::Alias(..) => Ok(()),
             KTy2::Fn { .. } => Ok(()),
-            KTy2::StructEnum(_, _) => Ok(()),
             KTy2::ConstEnum(..) => Ok(()),
+            KTy2::StructEnum(_, _) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
         }
     }
@@ -466,9 +462,8 @@ pub(crate) enum KTy {
         result_ty: Box<KTy>,
     },
     Alias(KAlias),
-    StructEnum(KStructEnum),
-    #[allow(unused)]
     ConstEnum(KConstEnum),
+    StructEnum(KStructEnum),
     Struct(KStruct),
 }
 
@@ -599,11 +594,11 @@ impl Debug for KTy {
                 Debug::fmt(result_ty, f)
             }
             KTy::Alias(alias) => write!(f, "alias#{}", alias.to_index()),
+            KTy::ConstEnum(const_enum) => write!(f, "enum(const)#{}", const_enum.to_index()),
             KTy::StructEnum(struct_enum) => {
                 // FIXME: print name
                 write!(f, "enum#{}", struct_enum.to_index())
             }
-            KTy::ConstEnum(const_enum) => write!(f, "enum(const)#{}", const_enum.to_index()),
             KTy::Struct(k_struct) => {
                 // FIXME: print name
                 write!(f, "struct {}", k_struct.to_index())

@@ -255,7 +255,7 @@ fn resolve_variant_decl(
 }
 
 enum KEnumLike {
-    Enum(KStructEnum),
+    StructEnum(KStructEnum),
     ConstEnum(KConstEnum),
 }
 
@@ -317,19 +317,7 @@ fn alloc_enum(
         .collect();
 
     struct_enum.of_mut(&mut mod_outline.struct_enums).variants = variants;
-    KEnumLike::Enum(struct_enum)
-}
-
-fn resolve_enum_decl(
-    decl: &AEnumDecl,
-    struct_enum: KStructEnum,
-    ty_resolver: &mut TyResolver,
-    mod_outline: &mut KModOutline,
-) {
-    let variants = struct_enum.variants(&mod_outline.struct_enums).to_owned();
-    for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
-        resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
-    }
+    KEnumLike::StructEnum(struct_enum)
 }
 
 fn resolve_const_enum_decl(
@@ -343,6 +331,18 @@ fn resolve_const_enum_decl(
         let decl = decl.as_const().unwrap();
         let value_ty = resolve_ty_opt(decl.ty_opt, ty_resolver);
         k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
+    }
+}
+
+fn resolve_struct_enum_decl(
+    decl: &AEnumDecl,
+    struct_enum: KStructEnum,
+    ty_resolver: &mut TyResolver,
+    mod_outline: &mut KModOutline,
+) {
+    let variants = struct_enum.variants(&mod_outline.struct_enums).to_owned();
+    for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
+        resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
 }
 
@@ -425,8 +425,8 @@ fn alloc_outline(
             }
             ADecl::Enum(enum_decl) => {
                 match alloc_enum(decl_id, enum_decl, doc, mod_outline, logger) {
-                    KEnumLike::Enum(struct_enum) => KModLocalSymbol::StructEnum(struct_enum),
                     KEnumLike::ConstEnum(const_enum) => KModLocalSymbol::ConstEnum(const_enum),
+                    KEnumLike::StructEnum(struct_enum) => KModLocalSymbol::StructEnum(struct_enum),
                 }
             }
             ADecl::Struct(struct_decl) => {
@@ -516,11 +516,11 @@ fn resolve_outline(
                 extern_fn_data.result_ty = result_ty;
             }
             ADecl::Enum(decl) => match symbol {
-                KModLocalSymbol::StructEnum(struct_enum) => {
-                    resolve_enum_decl(decl, *struct_enum, ty_resolver, mod_outline)
-                }
                 KModLocalSymbol::ConstEnum(const_enum) => {
                     resolve_const_enum_decl(decl, *const_enum, ty_resolver, mod_outline)
+                }
+                KModLocalSymbol::StructEnum(struct_enum) => {
+                    resolve_struct_enum_decl(decl, *struct_enum, ty_resolver, mod_outline)
                 }
                 _ => unreachable!(),
             },

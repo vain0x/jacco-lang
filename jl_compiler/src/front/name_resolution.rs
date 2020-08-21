@@ -50,8 +50,8 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol,
         | KModLocalSymbol::Fn(_)
         | KModLocalSymbol::ExternFn(_)
         | KModLocalSymbol::Field(_) => return,
-        KModLocalSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
         KModLocalSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
+        KModLocalSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
         KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
         KModLocalSymbol::Alias(alias) => KTy::Alias(alias),
     };
@@ -74,8 +74,8 @@ fn do_add_value_symbol_to_local_env(
         KModLocalSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
             KLocalValue::UnitLikeStruct(k_struct)
         }
-        KModLocalSymbol::StructEnum(_)
-        | KModLocalSymbol::ConstEnum(_)
+        KModLocalSymbol::ConstEnum(_)
+        | KModLocalSymbol::StructEnum(_)
         | KModLocalSymbol::Struct(_)
         | KModLocalSymbol::Field(_) => return,
         KModLocalSymbol::Alias(alias) => KLocalValue::Alias(alias),
@@ -139,6 +139,17 @@ pub(crate) fn resolve_ty_name(
     ty_opt
 }
 
+fn find_const_variant(
+    const_enum: KConstEnum,
+    name: &str,
+    mod_outline: &KModOutline,
+) -> Option<KConst> {
+    const_enum
+        .variants(&mod_outline.const_enums)
+        .iter()
+        .find(|variant| variant.of(&mod_outline.consts).name == name)
+}
+
 fn find_struct_variant(
     struct_enum: KStructEnum,
     name: &str,
@@ -149,17 +160,6 @@ fn find_struct_variant(
         .iter()
         .copied()
         .find(|k_struct| k_struct.name(&mod_outline.structs) == name)
-}
-
-fn find_const_variant(
-    const_enum: KConstEnum,
-    name: &str,
-    mod_outline: &KModOutline,
-) -> Option<KConst> {
-    const_enum
-        .variants(&mod_outline.const_enums)
-        .iter()
-        .find(|variant| variant.of(&mod_outline.consts).name == name)
 }
 
 pub(crate) fn resolve_ty_path(
@@ -232,6 +232,11 @@ pub(crate) fn resolve_value_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
+        KTy::ConstEnum(const_enum) => {
+            let name = path.token.text(tokens);
+            let k_const = find_const_variant(const_enum, name, mod_outline)?;
+            KLocalValue::Const(k_const)
+        }
         KTy::StructEnum(struct_enum) => {
             let name = path.token.text(tokens);
             let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
@@ -242,14 +247,17 @@ pub(crate) fn resolve_value_path(
                 return None;
             }
         }
-        KTy::ConstEnum(const_enum) => {
-            let name = path.token.text(tokens);
-            let k_const = find_const_variant(const_enum, name, mod_outline)?;
-            KLocalValue::Const(k_const)
-        }
         KTy::Alias(alias) => {
             let name = path.token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
+                KProjectSymbol::ModLocal {
+                    k_mod,
+                    symbol: KModLocalSymbol::ConstEnum(const_enum),
+                } => {
+                    let mod_outline = k_mod.of(mod_outlines);
+                    let k_const = find_const_variant(const_enum, name, mod_outline)?;
+                    KProjectValue::new(k_mod, KLocalValue::Const(k_const))
+                }
                 KProjectSymbol::ModLocal {
                     k_mod,
                     symbol: KModLocalSymbol::StructEnum(struct_enum),
@@ -262,14 +270,6 @@ pub(crate) fn resolve_value_path(
                     } else {
                         return None;
                     }
-                }
-                KProjectSymbol::ModLocal {
-                    k_mod,
-                    symbol: KModLocalSymbol::ConstEnum(const_enum),
-                } => {
-                    let mod_outline = k_mod.of(mod_outlines);
-                    let k_const = find_const_variant(const_enum, name, mod_outline)?;
-                    KProjectValue::new(k_mod, KLocalValue::Const(k_const))
                 }
                 _ => return None,
             };

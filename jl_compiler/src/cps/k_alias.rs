@@ -48,8 +48,8 @@ impl KAliasOutline {
     pub(crate) fn referent_as_ty(&self) -> Option<KTy2> {
         let ty = match self.referent() {
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                KModLocalSymbol::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
                 KModLocalSymbol::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
+                KModLocalSymbol::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
                 _ => return None,
             },
             _ => return None,

@@ -1517,10 +1517,6 @@ fn convert_extern_fn_decl(
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
 
-fn convert_struct_enum_decl(_enum: KStructEnum, _decl: &AEnumDecl, _loc: Loc, _xx: &mut Xx) {
-    // pass
-}
-
 fn convert_const_enum_decl(const_enum: KConstEnum, decl: &AEnumDecl, loc: Loc, xx: &mut Xx) {
     for (decl, k_const) in decl
         .variants
@@ -1530,6 +1526,10 @@ fn convert_const_enum_decl(const_enum: KConstEnum, decl: &AEnumDecl, loc: Loc, x
         let decl = decl.as_const().unwrap();
         convert_const_decl(k_const, decl, loc, xx);
     }
+}
+
+fn convert_struct_enum_decl(_enum: KStructEnum, _decl: &AEnumDecl, _loc: Loc, _xx: &mut Xx) {
+    // pass
 }
 
 fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>, xx: &mut Xx) {
@@ -1574,11 +1574,11 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
             convert_extern_fn_decl(decl_id, extern_fn, extern_fn_decl, xx);
         }
         ADecl::Enum(enum_decl) => match symbol_opt {
-            Some(KModLocalSymbol::StructEnum(struct_enum)) => {
-                convert_struct_enum_decl(struct_enum, enum_decl, loc, xx)
-            }
             Some(KModLocalSymbol::ConstEnum(const_enum)) => {
                 convert_const_enum_decl(const_enum, enum_decl, loc, xx)
+            }
+            Some(KModLocalSymbol::StructEnum(struct_enum)) => {
+                convert_struct_enum_decl(struct_enum, enum_decl, loc, xx)
             }
             _ => return,
         },

@@ -262,10 +262,10 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             // FIXME: 実装
             CTy::Other("/* error: alias ty */")
         }
-        KTy::StructEnum(struct_enum) => CTy::Enum(unique_struct_enum_name(*struct_enum, cx)),
         KTy::ConstEnum(const_enum) => {
             gen_ty(const_enum.repr_ty(&cx.mod_outline.const_enums), ty_env, cx)
         }
+        KTy::StructEnum(struct_enum) => CTy::Enum(unique_struct_enum_name(*struct_enum, cx)),
         KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(cx.k_mod, *k_struct, cx)),
     }
 }
@@ -307,12 +307,12 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 None => CTy::Other("/* unresolved alias */ void"),
             }
         }
-        &KTy2::StructEnum(k_mod, struct_enum) => gen_struct_enum_ty(k_mod, struct_enum, cx),
         KTy2::ConstEnum(k_mod, const_enum) => gen_ty(
             const_enum.repr_ty(&k_mod.of(cx.mod_outlines).const_enums),
             ty_env,
             cx,
         ),
+        &KTy2::StructEnum(k_mod, struct_enum) => gen_struct_enum_ty(k_mod, struct_enum, cx),
         KTy2::Struct(k_mod, k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
             let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);
@@ -416,8 +416,8 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 }
                 KModLocalSymbol::LocalVar { .. }
                 | KModLocalSymbol::Alias(_)
-                | KModLocalSymbol::StructEnum(_)
                 | KModLocalSymbol::ConstEnum(_)
+                | KModLocalSymbol::StructEnum(_)
                 | KModLocalSymbol::Struct(_)
                 | KModLocalSymbol::Field(_) => {
                     error!("別名の参照先が不正です {:?}", (symbol, loc));
