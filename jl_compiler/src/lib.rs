@@ -68,8 +68,7 @@ mod cps {
     pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_const::{
-        KConst, KConstArena, KConstData, KConstInit, KConstInits, KConstParent, KConstValue,
-        KNumber,
+        KConst, KConstArena, KConstData, KConstInit, KConstInits, KConstValue, KNumber,
     };
     pub(crate) use k_const_enum::*;
     pub(crate) use k_extern_fn::{

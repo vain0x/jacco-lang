@@ -125,7 +125,7 @@ fn alloc_extern_fn(
 
 fn new_const_data_from_variant(
     decl: &AFieldLikeDecl,
-    parent_opt: Option<KConstParent>,
+    parent_opt: Option<KConstEnum>,
     doc: Doc,
     key: AVariantDeclKey,
 ) -> KConstData {
@@ -292,8 +292,7 @@ fn alloc_enum(
             .consts
             .alloc_slice(variants.iter().enumerate().map(|(index, variant_decl)| {
                 let key = AVariantDeclKey::Enum(decl_id, index);
-                let parent_opt = Some(KConstParent::ConstEnum(const_enum));
-                new_const_data_from_variant(variant_decl, parent_opt, doc, key)
+                new_const_data_from_variant(variant_decl, Some(const_enum), doc, key)
             }));
 
         const_enum.of_mut(&mut mod_outline.const_enums).variants = variants;

@@ -1,4 +1,4 @@
-use super::{KConstEnum, KNode, KNumberTy, KStructEnum, KTerm, KTy};
+use super::{KConstEnum, KNode, KNumberTy, KTerm, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId, VecArenaSlice},
@@ -13,19 +13,11 @@ pub(crate) type KConsts = VecArenaSlice<KConstTag>;
 
 pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum KConstParent {
-    #[allow(unused)]
-    Enum(KStructEnum),
-    ConstEnum(KConstEnum),
-}
-
 impl KConst {
     /// 値の型、またはこの定数が属する enum の型
     pub(crate) fn ty(self, consts: &KConstArena) -> KTy {
         match consts[self].parent_opt {
-            Some(KConstParent::Enum(struct_enum)) => KTy::StructEnum(struct_enum),
-            Some(KConstParent::ConstEnum(const_enum)) => KTy::ConstEnum(const_enum),
+            Some(const_enum) => KTy::ConstEnum(const_enum),
             None => consts[self].value_ty.clone(),
         }
     }
@@ -36,7 +28,7 @@ pub(crate) struct KConstData {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,
-    pub(crate) parent_opt: Option<KConstParent>,
+    pub(crate) parent_opt: Option<KConstEnum>,
     pub(crate) loc: Loc,
 }
 
