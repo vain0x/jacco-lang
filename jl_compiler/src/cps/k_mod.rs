@@ -84,7 +84,6 @@ pub(crate) enum KModLocalSymbol {
 impl KModLocalSymbol {
     pub(crate) fn from_variant(variant: KVariant) -> Self {
         match variant {
-            KVariant::Const(k_const) => KModLocalSymbol::Const(k_const),
             KVariant::Record(k_struct) => KModLocalSymbol::Struct(k_struct),
         }
     }

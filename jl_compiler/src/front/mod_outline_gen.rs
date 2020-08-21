@@ -333,7 +333,7 @@ fn resolve_enum_decl(
 ) {
     let variants = k_enum.variants(&mod_outline.enums).to_owned();
     for (variant_decl, variant) in decl.variants.iter().zip(variants) {
-        let k_struct = variant.as_record().unwrap();
+        let k_struct = variant.as_record();
         resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
 }

@@ -853,7 +853,6 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .variants
             .iter()
             .filter_map(|variant| match variant {
-                KVariant::Const(_) => None,
                 KVariant::Record(k_struct) => {
                     let name = unique_struct_name(cx.k_mod, *k_struct, cx);
                     let ty = CTy::Struct(name.to_string());

@@ -223,11 +223,7 @@ impl Project {
         }
 
         for (mod_outline, mod_data) in self.mod_outlines.iter_mut().zip(self.mods.iter_mut()) {
-            KEnumOutline::determine_tags(
-                &mut mod_outline.consts,
-                &mut mod_outline.enums,
-                &mut mod_outline.structs,
-            );
+            KEnumOutline::determine_tags(&mut mod_outline.enums, &mut mod_outline.structs);
             KConstEnumOutline::determine_tags(&mut mod_outline.consts, &mod_outline.const_enums);
 
             eliminate_unit(mod_outline, mod_data);

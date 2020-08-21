@@ -144,7 +144,7 @@ fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<
         .variants(&mod_outline.enums)
         .iter()
         .copied()
-        .find(|variant| variant.name(&mod_outline.consts, &mod_outline.structs) == name)
+        .find(|variant| variant.name(&mod_outline.structs) == name)
 }
 
 fn find_const_variant(
@@ -189,7 +189,6 @@ pub(crate) fn resolve_ty_path(
             let variant = find_variant(k_enum, name, mod_outline)?;
 
             match variant {
-                KVariant::Const(..) => return None,
                 KVariant::Record(k_struct) => KTy::Struct(k_struct),
             }
         }
@@ -236,7 +235,6 @@ pub(crate) fn resolve_value_path(
             let variant = find_variant(k_enum, name, mod_outline)?;
 
             match variant {
-                KVariant::Const(k_const) => KLocalValue::Const(k_const),
                 KVariant::Record(k_struct) => {
                     if k_struct.of(&mod_outline.structs).is_unit_like() {
                         KLocalValue::UnitLikeStruct(k_struct)
@@ -262,9 +260,6 @@ pub(crate) fn resolve_value_path(
                     let variant = find_variant(k_enum, name, mod_outline)?;
 
                     match variant {
-                        KVariant::Const(k_const) => {
-                            KProjectValue::new(k_mod, KLocalValue::Const(k_const))
-                        }
                         KVariant::Record(k_struct) => {
                             if k_struct.of(&mod_outline.structs).is_unit_like() {
                                 KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))
