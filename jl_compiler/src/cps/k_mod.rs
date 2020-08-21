@@ -90,15 +90,6 @@ impl KModLocalSymbol {
         }
     }
 
-    pub(crate) fn as_variant(self) -> Option<KVariant> {
-        let variant = match self {
-            KModLocalSymbol::Const(it) => KVariant::Const(it),
-            KModLocalSymbol::Struct(it) => KVariant::Record(it),
-            _ => return None,
-        };
-        Some(variant)
-    }
-
     pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModLocalSymbolOutline<'_> {
         match self {
             KModLocalSymbol::Alias(alias) => {

@@ -246,14 +246,13 @@ fn alloc_variant(
 
 fn resolve_variant_decl(
     variant_decl: &AVariantDecl,
-    variant: KVariant,
+    k_struct: KStruct,
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     match variant_decl {
         AVariantDecl::Const(_) => {}
         AVariantDecl::Record(decl) => {
-            let k_struct = variant.as_record().unwrap();
             resolve_record_variant_decl(decl, k_struct, ty_resolver, mod_outline);
         }
     }
@@ -327,7 +326,8 @@ fn resolve_enum_decl(
 ) {
     let variants = k_enum.variants(&mod_outline.enums).to_owned();
     for (variant_decl, variant) in decl.variants.iter().zip(variants) {
-        resolve_variant_decl(variant_decl, variant, ty_resolver, mod_outline);
+        let k_struct = variant.as_record().unwrap();
+        resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
 }
 
@@ -366,18 +366,6 @@ fn alloc_struct(
         logger,
     );
     Some(KVariant::Record(k_struct))
-}
-
-#[allow(unused)]
-fn resolve_struct_decl(
-    decl: &AStructDecl,
-    variant: KVariant,
-    ty_resolver: &mut TyResolver,
-    mod_outline: &mut KModOutline,
-) {
-    if let Some(variant_decl) = &decl.variant_opt {
-        resolve_variant_decl(variant_decl, variant, ty_resolver, mod_outline);
-    }
 }
 
 fn alloc_alias(
@@ -540,8 +528,11 @@ fn resolve_outline(
                     Some(it) => it,
                     None => continue,
                 };
-                let variant = symbol.as_variant().unwrap();
-                resolve_variant_decl(variant_decl, variant, ty_resolver, mod_outline);
+                let k_struct = match *symbol {
+                    KModLocalSymbol::Struct(it) => it,
+                    _ => continue,
+                };
+                resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
             }
             ADecl::Use(_) => {}
         }

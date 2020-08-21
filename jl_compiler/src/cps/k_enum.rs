@@ -7,6 +7,7 @@ use std::fmt::{self, Debug, Formatter};
 
 #[derive(Copy, Clone)]
 pub(crate) enum KVariant {
+    #[allow(unused)]
     Const(KConst),
     Record(KStruct),
 }
