@@ -263,7 +263,6 @@ impl<Tag, T> VecArena<Tag, T> {
         VecArenaSlice(Range { start, end })
     }
 
-    #[allow(unused)]
     pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {
         self.inner.get(id.to_index())
     }
@@ -374,7 +373,6 @@ impl<Tag> VecArenaSlice<Tag> {
         id_iter(start..end).map(VecArenaId::from_inner)
     }
 
-    #[allow(unused)]
     pub(crate) fn enumerate<'a, T>(
         &self,
         arena: &'a VecArena<Tag, T>,

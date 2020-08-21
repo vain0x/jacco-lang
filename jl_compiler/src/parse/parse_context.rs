@@ -29,7 +29,6 @@ impl Px {
         &self.tokens
     }
 
-    #[allow(unused)]
     pub(crate) fn logger(&self) -> &DocLogger {
         &self.logger
     }

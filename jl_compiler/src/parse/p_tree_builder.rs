@@ -206,7 +206,7 @@ impl PTreeBuilder {
     pub(crate) fn end_element<Tag>(
         &mut self,
         kind: PElementKind,
-        #[allow(unused)] start: ParseStart<Tag>,
+        start: ParseStart<Tag>,
         current: usize,
     ) -> ParseEvent<(EndEventTag, Tag)> {
         let children = self.split_off(start.depth + 1);

@@ -28,7 +28,6 @@ impl KAliasOutline {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn name(&self) -> &str {
         &self.name
     }

@@ -106,12 +106,10 @@ impl PElementData {
         PElementData { kind, children }
     }
 
-    #[allow(unused)]
     pub(crate) fn kind(&self) -> PElementKind {
         self.kind
     }
 
-    #[allow(unused)]
     pub(crate) fn children(&self) -> &[PNode] {
         &self.children
     }
@@ -138,7 +136,7 @@ impl PElementData {
         Ok(range)
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn nth_child_token_of(
         &self,
         kind: TokenKind,

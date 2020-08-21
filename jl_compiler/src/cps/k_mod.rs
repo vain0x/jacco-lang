@@ -39,12 +39,11 @@ pub(crate) struct KModData {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KLocalVarParent {
     Fn(KFn),
-    #[allow(unused)]
     ExternFn(KExternFn),
 }
 
 impl KLocalVarParent {
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn locals(self, mod_data: &KModData) -> &KLocalArena {
         match self {
             KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
@@ -52,7 +51,7 @@ impl KLocalVarParent {
         }
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn labels(self, mod_data: &KModData) -> &KLabelArena {
         match self {
             KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).labels,

@@ -15,7 +15,6 @@ use std::{
 
 #[derive(Ord, PartialOrd, Eq, PartialEq)]
 pub struct Location {
-    #[allow(unused)]
     doc: Doc,
     range: TRange,
 }
@@ -117,7 +116,6 @@ impl LangService {
         self.docs.get_mut(&doc)?.doc_content_analysis_mut()
     }
 
-    #[allow(unused)]
     pub(super) fn do_with_mod_outlines(
         &mut self,
         f: impl FnOnce(&mut LangService, &mut KModOutlines),

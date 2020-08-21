@@ -127,7 +127,7 @@ fn eval_decimal_with_ty(s: &str, ty: KNumberTy) -> Option<(KNumber, KNumberTy)> 
     Some((value, ty))
 }
 
-#[allow(unused)]
+#[cfg(test)]
 pub(crate) mod factory {
     use crate::cps::{KNumber, KNumberTy};
 
@@ -135,6 +135,7 @@ pub(crate) mod factory {
         (KNumber::UNN(value), KNumberTy::UNN)
     }
 
+    #[cfg(unused)]
     pub(crate) fn inn(value: i64) -> (KNumber, KNumberTy) {
         (KNumber::INN(value), KNumberTy::INN)
     }

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::*;
 use crate::{
     cps::k_const::KConstArena,

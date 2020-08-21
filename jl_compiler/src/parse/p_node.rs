@@ -33,7 +33,7 @@ pub(crate) enum PNode {
 }
 
 impl PNode {
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn as_token(self) -> Option<PToken> {
         match self {
             PNode::Token(token) => Some(token),
@@ -48,7 +48,7 @@ impl PNode {
         }
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn of(self, tree: &PTree) -> PNodeRef<'_> {
         match self {
             PNode::Token(token) => PNodeRef::Token(token.of(&tree.tokens)),
@@ -111,7 +111,7 @@ pub(crate) enum PNodeRef<'a> {
 }
 
 impl PNodeRef<'_> {
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn kind(&self) -> PNodeKind {
         match self {
             PNodeRef::Token(token) => PNodeKind::Token(token.kind()),

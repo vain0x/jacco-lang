@@ -7,7 +7,6 @@ use std::fmt::{self, Debug, Formatter};
 /// 構文木上の位置
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum PLoc {
-    #[allow(unused)]
     Unknown(&'static str),
     Range(TRange),
     Token(PToken),
@@ -21,7 +20,6 @@ pub(crate) enum PLoc {
     Element(PElement),
     ElementBehind(PElement),
     // KTy に位置情報が含まれないので未使用
-    #[allow(unused)]
     Ty(ATyId),
     Pat(APatId),
     Expr(AExprId),
@@ -29,7 +27,6 @@ pub(crate) enum PLoc {
     Name(ANameKey),
     #[allow(unused)]
     ParamDecl(AParamDeclKey),
-    #[allow(unused)]
     FieldDecl(AFieldDeclKey),
     #[allow(unused)]
     VariantDecl(AVariantDeclKey),

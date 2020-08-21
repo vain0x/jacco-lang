@@ -96,7 +96,6 @@ struct Xx<'a> {
     ast: &'a ATree,
     decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
-    #[allow(unused)]
     mod_outlines: &'a KModOutlines,
     listener: &'a mut dyn NameResolutionListener,
     logger: &'a DocLogger,

@@ -216,14 +216,6 @@ fn resolve_record_variant_decl(
     }
 }
 
-#[allow(unused)]
-fn new_variant_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
-    Loc::new(
-        doc,
-        PLoc::VariantDecl(AVariantDeclKey::Enum(decl_id, index)),
-    )
-}
-
 fn alloc_variant(
     variant_decl: &AVariantDecl,
     parent_opt: Option<KStructParent>,
