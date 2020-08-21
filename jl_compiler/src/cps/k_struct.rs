@@ -1,4 +1,4 @@
-use super::{KConstValue, KField, KStructEnum, KTy};
+use super::{KField, KStructEnum, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -7,21 +7,14 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) struct KStructParent {
     struct_enum: KStructEnum,
-    tag_opt: Option<KConstValue>,
+
+    /// これが何番目のバリアントか？
+    index: usize,
 }
 
 impl KStructParent {
-    pub(crate) fn new(struct_enum: KStructEnum) -> Self {
-        Self {
-            struct_enum,
-            tag_opt: None,
-        }
-    }
-
-    pub(crate) fn set_tag(&mut self, tag: KConstValue) {
-        let old_value = self.tag_opt.replace(tag);
-
-        assert_eq!(old_value, None);
+    pub(crate) fn new(struct_enum: KStructEnum, index: usize) -> Self {
+        Self { struct_enum, index }
     }
 }
 
@@ -50,8 +43,8 @@ impl KStruct {
         }
     }
 
-    pub(crate) fn tag_value_opt<'a>(self, structs: &KStructArena) -> Option<KConstValue> {
-        structs[self].parent_opt.as_ref()?.tag_opt.clone()
+    pub(crate) fn tag_value_opt(self, structs: &KStructArena) -> Option<usize> {
+        Some(structs[self].parent_opt.as_ref()?.index)
     }
 
     pub(crate) fn fields(self, structs: &KStructArena) -> &[KField] {

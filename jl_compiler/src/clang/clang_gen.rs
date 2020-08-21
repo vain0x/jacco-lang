@@ -230,7 +230,7 @@ fn gen_invalid_constant_value() -> CExpr {
 fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
     // OK: タグ値は決定済みのはず
     let tag = k_struct.tag_value_opt(structs).unwrap();
-    gen_constant_value(&tag)
+    CExpr::UnsignedLongLongLit(tag.to_string())
 }
 
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {

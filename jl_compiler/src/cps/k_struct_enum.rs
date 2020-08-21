@@ -1,4 +1,4 @@
-use super::{k_struct::KStructArena, KConstValue, KStruct, KTy};
+use super::{KStruct, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -29,15 +29,4 @@ pub(crate) struct KStructEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KStruct>,
     pub(crate) loc: Loc,
-}
-
-impl KStructEnumOutline {
-    pub(crate) fn determine_tags(struct_enums: &mut KStructEnumArena, structs: &mut KStructArena) {
-        for data in struct_enums.iter_mut() {
-            for (i, &k_struct) in data.variants.iter().enumerate() {
-                let tag = KConstValue::Usize(i);
-                structs[k_struct].parent_opt.as_mut().unwrap().set_tag(tag);
-            }
-        }
-    }
 }

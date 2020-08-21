@@ -226,7 +226,7 @@ fn new_variant_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
 
 fn alloc_variant(
     variant_decl: &AVariantDecl,
-    parent_opt: Option<KStructEnum>,
+    parent_opt: Option<KStructParent>,
     doc: Doc,
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
@@ -234,13 +234,9 @@ fn alloc_variant(
 ) -> KStruct {
     match variant_decl {
         AVariantDecl::Const(decl) => {
-            let parent_opt = parent_opt.map(KStructParent::new);
             alloc_unit_like_variant(decl, parent_opt, doc, key, mod_outline, logger)
         }
-        AVariantDecl::Record(decl) => {
-            let parent_opt = parent_opt.map(KStructParent::new);
-            alloc_record_variant(decl, parent_opt, doc, key, mod_outline)
-        }
+        AVariantDecl::Record(decl) => alloc_record_variant(decl, parent_opt, doc, key, mod_outline),
     }
 }
 
@@ -316,7 +312,8 @@ fn alloc_enum(
         .enumerate()
         .map(|(index, variant)| {
             let key = AVariantDeclKey::Enum(decl_id, index);
-            alloc_variant(variant, Some(struct_enum), doc, key, mod_outline, logger)
+            let parent_opt = Some(KStructParent::new(struct_enum, index));
+            alloc_variant(variant, parent_opt, doc, key, mod_outline, logger)
         })
         .collect();
 
