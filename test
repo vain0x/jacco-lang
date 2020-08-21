@@ -128,6 +128,8 @@ else
     # その他のテスト
     expect_compile_err syntax_error
     expect_compile_err undefined_local_var name_resolution
+
+    cargo test
 fi
 
 # 差分の量を表示する。
