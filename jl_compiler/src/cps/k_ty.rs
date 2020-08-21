@@ -1,4 +1,4 @@
-use super::{KAlias, KConstEnum, KEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KTyEnv};
+use super::{KAlias, KConstEnum, KMetaTy, KMod, KModOutlines, KMut, KStruct, KStructEnum, KTyEnv};
 use crate::{
     parse::ATyId,
     source::Loc,
@@ -11,7 +11,7 @@ use std::{
 };
 
 pub(crate) enum KEnumOrStruct {
-    Enum(KMod, KEnum),
+    Enum(KMod, KStructEnum),
     Struct(KMod, KStruct),
 }
 
@@ -125,7 +125,7 @@ pub(crate) enum KTy2 {
         result_ty: Box<KTy2>,
     },
     Alias(KMod, KAlias),
-    Enum(KMod, KEnum),
+    StructEnum(KMod, KStructEnum),
     ConstEnum(KMod, KConstEnum),
     Struct(KMod, KStruct),
 }
@@ -182,8 +182,8 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn new_enum(k_mod: KMod, k_enum: KEnum) -> KTy2 {
-        KTy2::Enum(k_mod, k_enum)
+    pub(crate) fn new_enum(k_mod: KMod, struct_enum: KStructEnum) -> KTy2 {
+        KTy2::StructEnum(k_mod, struct_enum)
     }
 
     pub(crate) fn new_struct(k_mod: KMod, k_struct: KStruct) -> KTy2 {
@@ -205,7 +205,7 @@ impl KTy2 {
                 KTy2::from_ty1(*result_ty, k_mod),
             ),
             KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
-            KTy::Enum(k_enum) => KTy2::new_enum(k_mod, k_enum),
+            KTy::StructEnum(struct_enum) => KTy2::new_enum(k_mod, struct_enum),
             KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
             KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         }
@@ -285,15 +285,15 @@ impl KTy2 {
 
     pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Enum(k_mod, k_enum) => Some(KEnumOrStruct::Enum(k_mod, k_enum)),
+            KTy2::StructEnum(k_mod, struct_enum) => Some(KEnumOrStruct::Enum(k_mod, struct_enum)),
             KTy2::Struct(k_mod, k_struct) => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
             _ => None,
         })
     }
 
-    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<(KMod, KEnum)> {
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<(KMod, KStructEnum)> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Enum(k_mod, k_enum) => Some((k_mod, k_enum)),
+            KTy2::StructEnum(k_mod, struct_enum) => Some((k_mod, struct_enum)),
             _ => None,
         })
     }
@@ -364,11 +364,11 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 Ok(())
             }
             KTy2::Alias(..) => write!(f, "{{alias}}"),
-            KTy2::Enum(k_mod, k_enum) => write!(
+            KTy2::StructEnum(k_mod, struct_enum) => write!(
                 f,
                 "enum {}::{}",
                 k_mod.of(mod_outlines).name,
-                k_enum.of(&k_mod.of(mod_outlines).enums).name
+                struct_enum.of(&k_mod.of(mod_outlines).struct_enums).name
             ),
             KTy2::ConstEnum(k_mod, const_enum) => write!(
                 f,
@@ -404,7 +404,7 @@ impl Debug for KTy2 {
             // FIXME: 実装
             KTy2::Alias(..) => Ok(()),
             KTy2::Fn { .. } => Ok(()),
-            KTy2::Enum(_, _) => Ok(()),
+            KTy2::StructEnum(_, _) => Ok(()),
             KTy2::ConstEnum(..) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
         }
@@ -466,7 +466,7 @@ pub(crate) enum KTy {
         result_ty: Box<KTy>,
     },
     Alias(KAlias),
-    Enum(KEnum),
+    StructEnum(KStructEnum),
     #[allow(unused)]
     ConstEnum(KConstEnum),
     Struct(KStruct),
@@ -599,9 +599,9 @@ impl Debug for KTy {
                 Debug::fmt(result_ty, f)
             }
             KTy::Alias(alias) => write!(f, "alias#{}", alias.to_index()),
-            KTy::Enum(k_enum) => {
+            KTy::StructEnum(struct_enum) => {
                 // FIXME: print name
-                write!(f, "enum#{}", k_enum.to_index())
+                write!(f, "enum#{}", struct_enum.to_index())
             }
             KTy::ConstEnum(const_enum) => write!(f, "enum(const)#{}", const_enum.to_index()),
             KTy::Struct(k_struct) => {

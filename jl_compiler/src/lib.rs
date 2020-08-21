@@ -44,7 +44,6 @@ mod cps {
     mod k_alias;
     mod k_const;
     mod k_const_enum;
-    mod k_enum;
     mod k_extern_fn;
     mod k_field;
     mod k_fn;
@@ -57,6 +56,7 @@ mod cps {
     mod k_prim;
     mod k_static_var;
     mod k_struct;
+    mod k_struct_enum;
     mod k_symbol;
     mod k_term;
     mod k_ty;
@@ -72,7 +72,6 @@ mod cps {
         KNumber,
     };
     pub(crate) use k_const_enum::*;
-    pub(crate) use k_enum::{KEnum, KEnumArena, KEnumOutline};
     pub(crate) use k_extern_fn::{
         KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnOutlineArena,
     };
@@ -94,6 +93,7 @@ mod cps {
         KStaticVar, KStaticVarArena, KStaticVarData, KStaticVarInit, KStaticVarInits,
     };
     pub(crate) use k_struct::{KStruct, KStructArena, KStructOutline, KStructParent};
+    pub(crate) use k_struct_enum::{KStructEnum, KStructEnumArena, KStructEnumOutline};
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
     pub(crate) use k_ty::{KNumberTy, KTy, KTy2, KTyCause};

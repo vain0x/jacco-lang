@@ -1,4 +1,4 @@
-use super::{KConstValue, KEnum, KField, KTy};
+use super::{KConstValue, KField, KStructEnum, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -6,14 +6,14 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub(crate) struct KStructParent {
-    k_enum: KEnum,
+    struct_enum: KStructEnum,
     tag_opt: Option<KConstValue>,
 }
 
 impl KStructParent {
-    pub(crate) fn new(k_enum: KEnum) -> Self {
+    pub(crate) fn new(struct_enum: KStructEnum) -> Self {
         Self {
-            k_enum,
+            struct_enum,
             tag_opt: None,
         }
     }
@@ -38,14 +38,14 @@ impl KStruct {
 
     pub(crate) fn ty(self, structs: &KStructArena) -> KTy {
         match &structs[self].parent_opt {
-            Some(parent) => KTy::Enum(parent.k_enum),
+            Some(parent) => KTy::StructEnum(parent.struct_enum),
             None => KTy::Struct(self),
         }
     }
 
     pub(crate) fn tag_ty<'a>(self, structs: &KStructArena) -> &'a KTy {
         match &structs[self].parent_opt {
-            Some(parent) => parent.k_enum.tag_ty(),
+            Some(parent) => parent.struct_enum.tag_ty(),
             None => &KTy::Unit,
         }
     }

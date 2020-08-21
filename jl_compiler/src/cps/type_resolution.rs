@@ -157,7 +157,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         | (KTy2::Unit, KTy2::Unit)
         | (KTy2::Number(..), KTy2::Number(..))
         | (KTy2::Alias(..), KTy2::Alias(..))
-        | (KTy2::Enum(..), KTy2::Enum(..))
+        | (KTy2::StructEnum(..), KTy2::StructEnum(..))
         | (KTy2::ConstEnum(..), KTy2::ConstEnum(..))
         | (KTy2::Struct(..), KTy2::Struct(..))
             if left == right => {}
@@ -258,7 +258,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         | (KTy2::Number(_), _)
         | (KTy2::Ptr { .. }, _)
         | (KTy2::Fn { .. }, _)
-        | (KTy2::Enum(..), _)
+        | (KTy2::StructEnum(..), _)
         | (KTy2::ConstEnum(..), _)
         | (KTy2::Struct(..), _) => {
             ux.error_ununifiable(left, right);
@@ -356,7 +356,7 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => {
                 extern_fn_outline.ty().to_ty2(k_mod)
             }
-            KModLocalSymbolOutline::Enum(_, _)
+            KModLocalSymbolOutline::StructEnum(_, _)
             | KModLocalSymbolOutline::ConstEnum(..)
             | KModLocalSymbolOutline::Struct(_, _) => {
                 tx.logger
@@ -502,8 +502,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let result_ty = (|| {
                     let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
-                            .variants(&tx.mod_outline.enums)
+                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
                                 if k_struct.name(&tx.mod_outline.structs) == field_name {
@@ -546,8 +546,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
-                            .variants(&tx.mod_outline.enums)
+                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
                                 if k_struct.name(&tx.mod_outline.structs) == field_name {

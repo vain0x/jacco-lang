@@ -21,7 +21,7 @@ pub(crate) struct KModOutline {
     pub(crate) static_vars: KStaticVarArena,
     pub(crate) fns: KFnOutlineArena,
     pub(crate) extern_fns: KExternFnOutlineArena,
-    pub(crate) enums: KEnumArena,
+    pub(crate) struct_enums: KStructEnumArena,
     pub(crate) const_enums: KConstEnumOutlines,
     pub(crate) structs: KStructArena,
     pub(crate) fields: KFieldArena,
@@ -72,7 +72,7 @@ pub(crate) enum KModLocalSymbol {
     StaticVar(KStaticVar),
     Fn(KFn),
     ExternFn(KExternFn),
-    Enum(KEnum),
+    StructEnum(KStructEnum),
     #[allow(unused)]
     ConstEnum(KConstEnum),
     Struct(KStruct),
@@ -103,9 +103,10 @@ impl KModLocalSymbol {
             KModLocalSymbol::ExternFn(extern_fn) => {
                 KModLocalSymbolOutline::ExternFn(extern_fn, extern_fn.of(&mod_outline.extern_fns))
             }
-            KModLocalSymbol::Enum(k_enum) => {
-                KModLocalSymbolOutline::Enum(k_enum, k_enum.of(&mod_outline.enums))
-            }
+            KModLocalSymbol::StructEnum(struct_enum) => KModLocalSymbolOutline::StructEnum(
+                struct_enum,
+                struct_enum.of(&mod_outline.struct_enums),
+            ),
             KModLocalSymbol::ConstEnum(const_enum) => KModLocalSymbolOutline::ConstEnum(
                 const_enum,
                 const_enum.of(&mod_outline.const_enums),
@@ -126,7 +127,7 @@ impl KModLocalSymbol {
             KModLocalSymbolOutline::StaticVar(_, static_var_data) => &static_var_data.name,
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
             KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
-            KModLocalSymbolOutline::Enum(_, enum_data) => &enum_data.name,
+            KModLocalSymbolOutline::StructEnum(_, enum_data) => &enum_data.name,
             KModLocalSymbolOutline::ConstEnum(_, const_enum_data) => &const_enum_data.name,
             KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
             KModLocalSymbolOutline::Field(_, field_outline) => &field_outline.name,
@@ -143,7 +144,7 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
     StaticVar(KStaticVar, &'a KStaticVarData),
     Fn(KFn, &'a KFnOutline),
     ExternFn(KExternFn, &'a KExternFnOutline),
-    Enum(KEnum, &'a KEnumOutline),
+    StructEnum(KStructEnum, &'a KStructEnumOutline),
     ConstEnum(KConstEnum, &'a KConstEnumOutline),
     Struct(KStruct, &'a KStructOutline),
     Field(KField, &'a KFieldOutline),
@@ -250,11 +251,9 @@ pub(crate) fn resolve_aliases(
                     .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KModLocalSymbol::ExternFn(id))
                     }))
-                    .chain(
-                        mod_outline.enums.enumerate().map(|(id, outline)| {
-                            (outline.name.as_str(), KModLocalSymbol::Enum(id))
-                        }),
-                    )
+                    .chain(mod_outline.struct_enums.enumerate().map(|(id, outline)| {
+                        (outline.name.as_str(), KModLocalSymbol::StructEnum(id))
+                    }))
                     .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KModLocalSymbol::ConstEnum(id))
                     }))

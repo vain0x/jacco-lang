@@ -50,7 +50,7 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol,
         | KModLocalSymbol::Fn(_)
         | KModLocalSymbol::ExternFn(_)
         | KModLocalSymbol::Field(_) => return,
-        KModLocalSymbol::Enum(k_enum) => KTy::Enum(k_enum),
+        KModLocalSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
         KModLocalSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
         KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
         KModLocalSymbol::Alias(alias) => KTy::Alias(alias),
@@ -74,7 +74,7 @@ fn do_add_value_symbol_to_local_env(
         KModLocalSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
             KLocalValue::UnitLikeStruct(k_struct)
         }
-        KModLocalSymbol::Enum(_)
+        KModLocalSymbol::StructEnum(_)
         | KModLocalSymbol::ConstEnum(_)
         | KModLocalSymbol::Struct(_)
         | KModLocalSymbol::Field(_) => return,
@@ -139,9 +139,13 @@ pub(crate) fn resolve_ty_name(
     ty_opt
 }
 
-fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<KStruct> {
-    k_enum
-        .variants(&mod_outline.enums)
+fn find_struct_variant(
+    struct_enum: KStructEnum,
+    name: &str,
+    mod_outline: &KModOutline,
+) -> Option<KStruct> {
+    struct_enum
+        .variants(&mod_outline.struct_enums)
         .iter()
         .copied()
         .find(|k_struct| k_struct.name(&mod_outline.structs) == name)
@@ -184,9 +188,9 @@ pub(crate) fn resolve_ty_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
-        KTy::Enum(k_enum) => {
+        KTy::StructEnum(struct_enum) => {
             let name = path.token.text(tokens);
-            let k_struct = find_variant(k_enum, name, mod_outline)?;
+            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
             KTy::Struct(k_struct)
         }
@@ -228,9 +232,9 @@ pub(crate) fn resolve_value_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
-        KTy::Enum(k_enum) => {
+        KTy::StructEnum(struct_enum) => {
             let name = path.token.text(tokens);
-            let k_struct = find_variant(k_enum, name, mod_outline)?;
+            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
             if k_struct.of(&mod_outline.structs).is_unit_like() {
                 KLocalValue::UnitLikeStruct(k_struct)
@@ -248,10 +252,10 @@ pub(crate) fn resolve_value_path(
             let value = match alias.of(&mod_outline.aliases).referent()? {
                 KProjectSymbol::ModLocal {
                     k_mod,
-                    symbol: KModLocalSymbol::Enum(k_enum),
+                    symbol: KModLocalSymbol::StructEnum(struct_enum),
                 } => {
                     let mod_outline = k_mod.of(mod_outlines);
-                    let k_struct = find_variant(k_enum, name, mod_outline)?;
+                    let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
                     if k_struct.of(&mod_outline.structs).is_unit_like() {
                         KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))

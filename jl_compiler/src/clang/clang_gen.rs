@@ -121,14 +121,8 @@ fn unique_extern_fn_name(extern_fn: KExternFn, cx: &mut Cx) -> String {
     extern_fn.name(&cx.mod_outline.extern_fns).to_string()
 }
 
-fn unique_enum_name(k_enum: KEnum, cx: &mut Cx) -> String {
-    k_enum.name(&cx.mod_outline.enums).to_string()
-    // do_unique_name(
-    //     k_enum.to_index(),
-    //     &cx.mod_outline.enums[k_enum].name,
-    //     &mut cx.enum_ident_ids,
-    //     &mut cx.ident_map,
-    // )
+fn unique_struct_enum_name(struct_enum: KStructEnum, cx: &mut Cx) -> String {
+    struct_enum.name(&cx.mod_outline.struct_enums).to_string()
 }
 
 fn unique_struct_name(k_mod: KMod, k_struct: KStruct, cx: &mut Cx) -> String {
@@ -199,9 +193,11 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     }
 }
 
-fn gen_enum_ty(k_mod: KMod, k_enum: KEnum, cx: &mut Cx) -> CTy {
+fn gen_struct_enum_ty(k_mod: KMod, struct_enum: KStructEnum, cx: &mut Cx) -> CTy {
     // FIXME: unique_enum_name を事前に計算しておく
-    let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
+    let name = struct_enum
+        .name(&k_mod.of(&cx.mod_outlines).struct_enums)
+        .to_string();
     CTy::Struct(name)
 }
 
@@ -266,7 +262,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             // FIXME: 実装
             CTy::Other("/* error: alias ty */")
         }
-        KTy::Enum(k_enum) => CTy::Enum(unique_enum_name(*k_enum, cx)),
+        KTy::StructEnum(struct_enum) => CTy::Enum(unique_struct_enum_name(*struct_enum, cx)),
         KTy::ConstEnum(const_enum) => {
             gen_ty(const_enum.repr_ty(&cx.mod_outline.const_enums), ty_env, cx)
         }
@@ -311,7 +307,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 None => CTy::Other("/* unresolved alias */ void"),
             }
         }
-        &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, cx),
+        &KTy2::StructEnum(k_mod, struct_enum) => gen_struct_enum_ty(k_mod, struct_enum, cx),
         KTy2::ConstEnum(k_mod, const_enum) => gen_ty(
             const_enum.repr_ty(&k_mod.of(cx.mod_outlines).const_enums),
             ty_env,
@@ -420,7 +416,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 }
                 KModLocalSymbol::LocalVar { .. }
                 | KModLocalSymbol::Alias(_)
-                | KModLocalSymbol::Enum(_)
+                | KModLocalSymbol::StructEnum(_)
                 | KModLocalSymbol::ConstEnum(_)
                 | KModLocalSymbol::Struct(_)
                 | KModLocalSymbol::Field(_) => {
@@ -608,7 +604,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
 
                 let self_name = match k_struct.ty(&k_mod.of(cx.mod_outlines).structs) {
                     KTy::Struct(_) => CExpr::Name(name.clone()),
-                    KTy::Enum(_) => {
+                    KTy::StructEnum(_) => {
                         // タグを設定する。
                         let left = CExpr::Name(name.clone()).into_dot("tag_");
                         let right = gen_record_tag(k_struct, &k_mod.of(cx.mod_outlines).structs);
@@ -819,7 +815,8 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
     cx.static_var_ident_ids
         .resize(cx.mod_outline.static_vars.len(), None);
     cx.fn_ident_ids.resize(cx.mod_outline.fns.len(), None);
-    cx.enum_ident_ids.resize(cx.mod_outline.enums.len(), None);
+    cx.enum_ident_ids
+        .resize(cx.mod_outline.struct_enums.len(), None);
     cx.struct_ident_ids
         .resize(cx.mod_outline.structs.len(), None);
 
@@ -842,9 +839,9 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         });
     }
 
-    for (k_enum, enum_data) in cx.mod_outline.enums.enumerate() {
+    for (struct_enum, enum_data) in cx.mod_outline.struct_enums.enumerate() {
         let tag_ty = KTy::USIZE;
-        let name = unique_enum_name(k_enum, cx);
+        let name = unique_struct_enum_name(struct_enum, cx);
         let fields = {
             let tag_ty = gen_ty(&tag_ty, &empty_ty_env, cx);
             vec![("tag_".to_string(), tag_ty)]
