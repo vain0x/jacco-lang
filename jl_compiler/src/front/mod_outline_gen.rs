@@ -231,28 +231,15 @@ fn alloc_variant(
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
     logger: &DocLogger,
-) -> KVariant {
+) -> KStruct {
     match variant_decl {
         AVariantDecl::Const(decl) => {
             let parent_opt = parent_opt.map(KStructParent::new);
-            KVariant::Record(alloc_unit_like_variant(
-                decl,
-                parent_opt,
-                doc,
-                key,
-                mod_outline,
-                logger,
-            ))
+            alloc_unit_like_variant(decl, parent_opt, doc, key, mod_outline, logger)
         }
         AVariantDecl::Record(decl) => {
             let parent_opt = parent_opt.map(KStructParent::new);
-            KVariant::Record(alloc_record_variant(
-                decl,
-                parent_opt,
-                doc,
-                key,
-                mod_outline,
-            ))
+            alloc_record_variant(decl, parent_opt, doc, key, mod_outline)
         }
     }
 }
@@ -323,7 +310,8 @@ fn alloc_enum(
         .enumerate()
         .map(|(index, variant)| {
             let key = AVariantDeclKey::Enum(decl_id, index);
-            alloc_variant(variant, Some(k_enum), doc, key, mod_outline, logger)
+            let k_struct = alloc_variant(variant, Some(k_enum), doc, key, mod_outline, logger);
+            KVariant::Record(k_struct)
         })
         .collect();
 
@@ -369,7 +357,7 @@ fn alloc_struct(
     logger: &DocLogger,
 ) -> Option<KVariant> {
     let key = AVariantDeclKey::Struct(decl_id);
-    let variant = alloc_variant(
+    let k_struct = alloc_variant(
         decl.variant_opt.as_ref()?,
         None,
         doc,
@@ -377,7 +365,7 @@ fn alloc_struct(
         mod_outline,
         logger,
     );
-    Some(variant)
+    Some(KVariant::Record(k_struct))
 }
 
 #[allow(unused)]
