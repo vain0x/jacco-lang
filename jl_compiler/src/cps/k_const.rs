@@ -15,8 +15,8 @@ pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum KConstParent {
-    Enum(KEnum),
     #[allow(unused)]
+    Enum(KEnum),
     ConstEnum(KConstEnum),
 }
 

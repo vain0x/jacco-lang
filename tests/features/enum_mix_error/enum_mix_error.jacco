@@ -1,0 +1,9 @@
+#[test("compile_error")]
+
+// 定数バリアントと構造体バリアントを混ぜることはできない。
+
+enum EnumWithConstVariantAndStructVariant {
+    ConstVariantWithInit = 0,
+    ConstVariantWithTyAscription: i32,
+    RecordVariant {},
+}

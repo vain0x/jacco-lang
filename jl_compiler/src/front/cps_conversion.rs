@@ -1517,17 +1517,15 @@ fn convert_extern_fn_decl(
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
 }
 
-fn convert_enum_decl(k_enum: KEnum, decl: &AEnumDecl, loc: Loc, xx: &mut Xx) {
+fn convert_enum_decl(_enum: KEnum, _decl: &AEnumDecl, _loc: Loc, _xx: &mut Xx) {
+    #[cfg(__pass)]
     for (variant_decl, variant) in decl
         .variants
         .iter()
         .zip(k_enum.variants(&xx.mod_outline.enums).iter())
     {
         match variant_decl {
-            AVariantDecl::Const(const_variant_decl) => {
-                let k_const = variant.as_const().unwrap();
-                convert_const_decl(k_const, const_variant_decl, loc, xx);
-            }
+            AVariantDecl::Const(_) => {}
             AVariantDecl::Record(_) => {}
         }
     }
