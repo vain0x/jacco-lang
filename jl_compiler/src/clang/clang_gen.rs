@@ -201,7 +201,6 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
 
 fn gen_enum_ty(k_mod: KMod, k_enum: KEnum, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     match &k_enum.repr(&k_mod.of(&cx.mod_outlines).enum_reprs) {
-        KEnumRepr::Never => CTy::Other("/* never enum */ void"),
         KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
         KEnumRepr::TaggedUnion { .. } => {
             // FIXME: unique_enum_name を事前に計算しておく
@@ -273,7 +272,6 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             CTy::Other("/* error: alias ty */")
         }
         KTy::Enum(k_enum) => match k_enum.repr(&cx.mod_outline.enum_reprs) {
-            KEnumRepr::Never => CTy::Other("/* never enum */ void"),
             KEnumRepr::Const { value_ty } => gen_ty(value_ty, ty_env, cx),
             KEnumRepr::TaggedUnion { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
         },
@@ -862,7 +860,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         .zip(cx.mod_outline.enum_reprs.iter())
     {
         match repr {
-            KEnumRepr::Never | KEnumRepr::Const { .. } => continue,
+            KEnumRepr::Const { .. } => continue,
             KEnumRepr::TaggedUnion { tag_ty } => {
                 let name = unique_enum_name(k_enum, cx);
                 let fields = {

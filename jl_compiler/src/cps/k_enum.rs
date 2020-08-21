@@ -82,7 +82,6 @@ impl KEnum {
 
     pub(crate) fn tag_ty(self, enums: &KEnumReprs) -> &KTy {
         match &self.repr(enums) {
-            KEnumRepr::Never => &KTy::Never,
             KEnumRepr::Const { value_ty } => value_ty,
             KEnumRepr::TaggedUnion { tag_ty } => tag_ty,
         }
@@ -92,7 +91,6 @@ impl KEnum {
 /// enum 型のコンパイル後の表現
 #[derive(Clone, Debug)]
 pub(crate) enum KEnumRepr {
-    Never,
     Const { value_ty: KTy },
     TaggedUnion { tag_ty: KTy },
 }
@@ -100,7 +98,6 @@ pub(crate) enum KEnumRepr {
 impl KEnumRepr {
     pub(crate) fn determine(variants: &[KVariant]) -> KEnumRepr {
         match variants {
-            [] => KEnumRepr::Never,
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
                 // FIXME: 値を見て決定する
                 value_ty: KTy::USIZE,
@@ -136,7 +133,6 @@ impl KEnumOutline {
     ) {
         for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
             match repr {
-                KEnumRepr::Never => continue,
                 KEnumRepr::Const { .. } => {
                     let mut tag = 0;
                     for &variant in enum_data.variants.iter() {

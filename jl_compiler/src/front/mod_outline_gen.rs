@@ -273,6 +273,13 @@ fn alloc_enum(
     let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
+    if decl.variants.is_empty() {
+        logger.error(
+            PLoc::Decl(decl_id),
+            "enum には少なくとも1つのバリアントが必要です。",
+        );
+    }
+
     if let Some(variants) = decl.as_const_enum() {
         let const_enum = mod_outline.const_enums.alloc(KConstEnumOutline {
             name,

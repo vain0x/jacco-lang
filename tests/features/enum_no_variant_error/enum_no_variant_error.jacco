@@ -1,0 +1,7 @@
+#![test("compile_error")]
+
+// バリアントのない enum 型は定義できない。
+// 余談: バリアントのない enum 型はインスタンス化できないので never と同等であり、
+//      uninhabited type とか呼ばれる。
+
+enum Void {}
