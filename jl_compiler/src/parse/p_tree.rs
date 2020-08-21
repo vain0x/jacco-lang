@@ -5,10 +5,10 @@ use crate::{
 use std::fmt::{self, Debug, Formatter};
 
 /// 構文木
-#[derive(Clone)]
 pub(crate) struct PTree {
     /// EOF トークン
     /// パースが末尾に到達したことを保証するためのもの。
+    #[allow(unused)]
     pub(crate) eof: PToken,
     /// 型なし具象構文木のルート要素
     pub(crate) root: PElement,

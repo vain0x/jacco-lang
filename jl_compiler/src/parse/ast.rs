@@ -550,18 +550,6 @@ impl ATree {
     }
 }
 
-impl Clone for ATree {
-    fn clone(&self) -> Self {
-        todo!()
-    }
-}
-
-impl Debug for ATree {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
 // -----------------------------------------------
 // ダンプ
 // -----------------------------------------------
