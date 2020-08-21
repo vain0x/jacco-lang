@@ -36,16 +36,6 @@ impl KVariant {
             .filter(|&k_struct| k_struct.name(structs) == name)
     }
 
-    pub(crate) fn is_unit_like(self, consts: &KConstArena) -> bool {
-        match self {
-            KVariant::Const(k_const) => !k_const.has_value(consts),
-            KVariant::Record(_) => {
-                // FIXME: unit-like record なら true
-                false
-            }
-        }
-    }
-
     #[allow(unused)]
     pub(crate) fn name<'a>(self, consts: &'a KConstArena, structs: &'a KStructArena) -> &'a str {
         match self {
@@ -93,7 +83,6 @@ impl KEnum {
     pub(crate) fn tag_ty(self, enums: &KEnumReprs) -> &KTy {
         match &self.repr(enums) {
             KEnumRepr::Never => &KTy::Never,
-            KEnumRepr::Unit => &KTy::Unit,
             KEnumRepr::Const { value_ty } => value_ty,
             KEnumRepr::TaggedUnion { tag_ty } => tag_ty,
         }
@@ -104,16 +93,14 @@ impl KEnum {
 #[derive(Clone, Debug)]
 pub(crate) enum KEnumRepr {
     Never,
-    Unit,
     Const { value_ty: KTy },
     TaggedUnion { tag_ty: KTy },
 }
 
 impl KEnumRepr {
-    pub(crate) fn determine(variants: &[KVariant], consts: &KConstArena) -> KEnumRepr {
+    pub(crate) fn determine(variants: &[KVariant]) -> KEnumRepr {
         match variants {
             [] => KEnumRepr::Never,
-            [variant] if variant.is_unit_like(consts) => KEnumRepr::Unit,
             _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
                 // FIXME: 値を見て決定する
                 value_ty: KTy::USIZE,
@@ -150,23 +137,6 @@ impl KEnumOutline {
         for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
             match repr {
                 KEnumRepr::Never => continue,
-                KEnumRepr::Unit => {
-                    for &variant in enum_data.variants.iter() {
-                        let tag = KConstValue::Usize(0);
-                        match variant {
-                            KVariant::Const(k_const) => {
-                                k_const.of_mut(consts).value_opt = Some(tag)
-                            }
-                            KVariant::Record(k_struct) => k_struct
-                                .of_mut(structs)
-                                .parent_opt
-                                .as_mut()
-                                .unwrap()
-                                .set_tag(tag),
-                        }
-                    }
-                    continue;
-                }
                 KEnumRepr::Const { .. } => {
                     let mut tag = 0;
                     for &variant in enum_data.variants.iter() {

@@ -202,10 +202,12 @@ impl Project {
 
         for mod_outline in self.mod_outlines.iter_mut() {
             assert!(mod_outline.enum_reprs.is_empty());
-            let enum_reprs =
-                KEnumReprs::from_iter(mod_outline.enums.iter().map(|enum_data| {
-                    KEnumRepr::determine(&enum_data.variants, &mod_outline.consts)
-                }));
+            let enum_reprs = KEnumReprs::from_iter(
+                mod_outline
+                    .enums
+                    .iter()
+                    .map(|enum_data| KEnumRepr::determine(&enum_data.variants)),
+            );
             mod_outline.enum_reprs = enum_reprs;
         }
 

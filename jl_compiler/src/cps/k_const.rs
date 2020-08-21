@@ -29,10 +29,6 @@ impl KConst {
             None => consts[self].value_ty.clone(),
         }
     }
-
-    pub(crate) fn has_value(self, consts: &KConstArena) -> bool {
-        consts[self].value_opt.is_some()
-    }
 }
 
 #[derive(Clone, Debug)]
