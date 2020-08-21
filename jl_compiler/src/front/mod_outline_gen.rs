@@ -203,6 +203,19 @@ fn alloc_record_variant(
     })
 }
 
+fn resolve_record_variant_decl(
+    decl: &ARecordVariantDecl,
+    k_struct: KStruct,
+    ty_resolver: &mut TyResolver,
+    mod_outline: &mut KModOutline,
+) {
+    let fields = k_struct.fields(&mod_outline.structs).to_owned();
+    for (field_decl, field) in decl.fields.iter().zip(fields) {
+        let ty = resolve_ty_opt(field_decl.ty_opt, ty_resolver);
+        field.of_mut(&mut mod_outline.fields).ty = ty;
+    }
+}
+
 #[allow(unused)]
 fn new_variant_loc(doc: Doc, decl_id: ADeclId, index: usize) -> Loc {
     Loc::new(
@@ -254,11 +267,7 @@ fn resolve_variant_decl(
         AVariantDecl::Const(_) => {}
         AVariantDecl::Record(decl) => {
             let k_struct = variant.as_record().unwrap();
-            let fields = k_struct.fields(&mod_outline.structs).to_owned();
-            for (field_decl, field) in decl.fields.iter().zip(fields) {
-                let ty = resolve_ty_opt(field_decl.ty_opt, ty_resolver);
-                field.of_mut(&mut mod_outline.fields).ty = ty;
-            }
+            resolve_record_variant_decl(decl, k_struct, ty_resolver, mod_outline);
         }
     }
 }
