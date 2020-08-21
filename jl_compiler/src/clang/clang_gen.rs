@@ -852,12 +852,10 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         let variants = enum_data
             .variants
             .iter()
-            .filter_map(|variant| match variant {
-                KVariant::Record(k_struct) => {
-                    let name = unique_struct_name(cx.k_mod, *k_struct, cx);
-                    let ty = CTy::Struct(name.to_string());
-                    Some((name, ty))
-                }
+            .filter_map(|&k_struct| {
+                let name = unique_struct_name(cx.k_mod, k_struct, cx);
+                let ty = CTy::Struct(name.to_string());
+                Some((name, ty))
             })
             .collect();
         cx.decls.push(CStmt::StructDecl {

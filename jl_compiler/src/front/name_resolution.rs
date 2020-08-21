@@ -139,12 +139,12 @@ pub(crate) fn resolve_ty_name(
     ty_opt
 }
 
-fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<KVariant> {
+fn find_variant(k_enum: KEnum, name: &str, mod_outline: &KModOutline) -> Option<KStruct> {
     k_enum
         .variants(&mod_outline.enums)
         .iter()
         .copied()
-        .find(|variant| variant.name(&mod_outline.structs) == name)
+        .find(|k_struct| k_struct.name(&mod_outline.structs) == name)
 }
 
 fn find_const_variant(
@@ -186,11 +186,9 @@ pub(crate) fn resolve_ty_path(
     let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
         KTy::Enum(k_enum) => {
             let name = path.token.text(tokens);
-            let variant = find_variant(k_enum, name, mod_outline)?;
+            let k_struct = find_variant(k_enum, name, mod_outline)?;
 
-            match variant {
-                KVariant::Record(k_struct) => KTy::Struct(k_struct),
-            }
+            KTy::Struct(k_struct)
         }
         _ => return None,
     };
@@ -232,16 +230,12 @@ pub(crate) fn resolve_value_path(
     let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
         KTy::Enum(k_enum) => {
             let name = path.token.text(tokens);
-            let variant = find_variant(k_enum, name, mod_outline)?;
+            let k_struct = find_variant(k_enum, name, mod_outline)?;
 
-            match variant {
-                KVariant::Record(k_struct) => {
-                    if k_struct.of(&mod_outline.structs).is_unit_like() {
-                        KLocalValue::UnitLikeStruct(k_struct)
-                    } else {
-                        return None;
-                    }
-                }
+            if k_struct.of(&mod_outline.structs).is_unit_like() {
+                KLocalValue::UnitLikeStruct(k_struct)
+            } else {
+                return None;
             }
         }
         KTy::ConstEnum(const_enum) => {
@@ -257,16 +251,12 @@ pub(crate) fn resolve_value_path(
                     symbol: KModLocalSymbol::Enum(k_enum),
                 } => {
                     let mod_outline = k_mod.of(mod_outlines);
-                    let variant = find_variant(k_enum, name, mod_outline)?;
+                    let k_struct = find_variant(k_enum, name, mod_outline)?;
 
-                    match variant {
-                        KVariant::Record(k_struct) => {
-                            if k_struct.of(&mod_outline.structs).is_unit_like() {
-                                KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))
-                            } else {
-                                return None;
-                            }
-                        }
+                    if k_struct.of(&mod_outline.structs).is_unit_like() {
+                        KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))
+                    } else {
+                        return None;
                     }
                 }
                 KProjectSymbol::ModLocal {

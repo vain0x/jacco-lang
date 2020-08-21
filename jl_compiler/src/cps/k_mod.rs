@@ -82,12 +82,6 @@ pub(crate) enum KModLocalSymbol {
 }
 
 impl KModLocalSymbol {
-    pub(crate) fn from_variant(variant: KVariant) -> Self {
-        match variant {
-            KVariant::Record(k_struct) => KModLocalSymbol::Struct(k_struct),
-        }
-    }
-
     pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModLocalSymbolOutline<'_> {
         match self {
             KModLocalSymbol::Alias(alias) => {

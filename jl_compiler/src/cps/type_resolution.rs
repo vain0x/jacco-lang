@@ -505,9 +505,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
                             .variants(&tx.mod_outline.enums)
                             .iter()
-                            .find_map(|k_variant| {
-                                if k_variant.name(&tx.mod_outline.structs) == field_name {
-                                    Some(KTy2::Struct(k_mod, k_variant.as_record()))
+                            .find_map(|&k_struct| {
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_mod, k_struct))
                                 } else {
                                     None
                                 }
@@ -549,9 +549,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         KEnumOrStruct::Enum(k_mod, k_enum) => k_enum
                             .variants(&tx.mod_outline.enums)
                             .iter()
-                            .find_map(|k_variant| {
-                                if k_variant.name(&tx.mod_outline.structs) == field_name {
-                                    Some(KTy2::Struct(k_mod, k_variant.as_record()))
+                            .find_map(|&k_struct| {
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_mod, k_struct))
                                 } else {
                                     None
                                 }

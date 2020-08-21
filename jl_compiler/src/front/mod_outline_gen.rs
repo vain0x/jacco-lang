@@ -316,8 +316,7 @@ fn alloc_enum(
         .enumerate()
         .map(|(index, variant)| {
             let key = AVariantDeclKey::Enum(decl_id, index);
-            let k_struct = alloc_variant(variant, Some(k_enum), doc, key, mod_outline, logger);
-            KVariant::Record(k_struct)
+            alloc_variant(variant, Some(k_enum), doc, key, mod_outline, logger)
         })
         .collect();
 
@@ -332,8 +331,7 @@ fn resolve_enum_decl(
     mod_outline: &mut KModOutline,
 ) {
     let variants = k_enum.variants(&mod_outline.enums).to_owned();
-    for (variant_decl, variant) in decl.variants.iter().zip(variants) {
-        let k_struct = variant.as_record();
+    for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
         resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
 }
@@ -362,7 +360,7 @@ fn alloc_struct(
     doc: Doc,
     mod_outline: &mut KModOutline,
     logger: &DocLogger,
-) -> Option<KVariant> {
+) -> Option<KStruct> {
     let key = AVariantDeclKey::Struct(decl_id);
     let k_struct = alloc_variant(
         decl.variant_opt.as_ref()?,
@@ -372,7 +370,7 @@ fn alloc_struct(
         mod_outline,
         logger,
     );
-    Some(KVariant::Record(k_struct))
+    Some(k_struct)
 }
 
 fn alloc_alias(
@@ -436,11 +434,11 @@ fn alloc_outline(
                 }
             }
             ADecl::Struct(struct_decl) => {
-                let variant = match alloc_struct(decl_id, struct_decl, doc, mod_outline, logger) {
+                let k_struct = match alloc_struct(decl_id, struct_decl, doc, mod_outline, logger) {
                     Some(it) => it,
                     None => continue,
                 };
-                KModLocalSymbol::from_variant(variant)
+                KModLocalSymbol::Struct(k_struct)
             }
             ADecl::Use(use_decl) => {
                 let alias = alloc_alias(use_decl, loc, &tree.tokens, mod_outline);
