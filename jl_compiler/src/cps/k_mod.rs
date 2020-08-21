@@ -22,7 +22,6 @@ pub(crate) struct KModOutline {
     pub(crate) fns: KFnOutlineArena,
     pub(crate) extern_fns: KExternFnOutlineArena,
     pub(crate) enums: KEnumArena,
-    pub(crate) enum_reprs: KEnumReprs,
     pub(crate) const_enums: KConstEnumOutlines,
     pub(crate) structs: KStructArena,
     pub(crate) fields: KFieldArena,

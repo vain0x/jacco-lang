@@ -403,9 +403,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             k_mod, k_struct, ..
         } => {
             let mod_outline = k_mod.of(&tx.mod_outlines);
-            k_struct
-                .tag_ty(&mod_outline.structs, &mod_outline.enum_reprs)
-                .to_ty2(tx.k_mod)
+            k_struct.tag_ty(&mod_outline.structs).to_ty2(tx.k_mod)
         }
         KTerm::FieldTag(_) => unreachable!(),
     }

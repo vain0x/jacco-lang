@@ -13,17 +13,6 @@ pub(crate) enum KVariant {
 }
 
 impl KVariant {
-    pub(crate) fn as_const(self) -> Option<KConst> {
-        match self {
-            KVariant::Const(k_const) => Some(k_const),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn is_const(self) -> bool {
-        self.as_const().is_some()
-    }
-
     pub(crate) fn as_record(self) -> Option<KStruct> {
         match self {
             KVariant::Record(k_struct) => Some(k_struct),
@@ -60,8 +49,6 @@ pub(crate) type KEnum = VecArenaId<KEnumTag>;
 
 pub(crate) type KEnumArena = VecArena<KEnumTag, KEnumOutline>;
 
-pub(crate) type KEnumReprs = VecArena<KEnumTag, KEnumRepr>;
-
 impl KEnum {
     pub(crate) fn name(self, enums: &KEnumArena) -> &str {
         &enums[self].name
@@ -72,48 +59,8 @@ impl KEnum {
         &enums[self].variants
     }
 
-    pub(crate) fn repr(self, enums: &KEnumReprs) -> &KEnumRepr {
-        &enums[self]
-    }
-
-    pub(crate) fn is_tagged_union(self, enums: &KEnumReprs) -> bool {
-        self.repr(enums).is_tagged_union()
-    }
-
-    pub(crate) fn tag_ty(self, enums: &KEnumReprs) -> &KTy {
-        match &self.repr(enums) {
-            KEnumRepr::Const { value_ty } => value_ty,
-            KEnumRepr::TaggedUnion { tag_ty } => tag_ty,
-        }
-    }
-}
-
-/// enum 型のコンパイル後の表現
-#[derive(Clone, Debug)]
-pub(crate) enum KEnumRepr {
-    Const { value_ty: KTy },
-    TaggedUnion { tag_ty: KTy },
-}
-
-impl KEnumRepr {
-    pub(crate) fn determine(variants: &[KVariant]) -> KEnumRepr {
-        match variants {
-            _ if variants.iter().all(|variant| variant.is_const()) => KEnumRepr::Const {
-                // FIXME: 値を見て決定する
-                value_ty: KTy::USIZE,
-            },
-            _ => {
-                // FIXME: たいていの場合は u8 で十分
-                KEnumRepr::TaggedUnion { tag_ty: KTy::USIZE }
-            }
-        }
-    }
-
-    pub(crate) fn is_tagged_union(&self) -> bool {
-        match self {
-            KEnumRepr::TaggedUnion { .. } => true,
-            _ => false,
-        }
+    pub(crate) fn tag_ty(self) -> &'static KTy {
+        &KTy::USIZE
     }
 }
 
@@ -128,28 +75,9 @@ impl KEnumOutline {
     pub(crate) fn determine_tags(
         consts: &mut KConstArena,
         enums: &mut KEnumArena,
-        enum_reprs: &KEnumReprs,
         structs: &mut KStructArena,
     ) {
-        for (enum_data, repr) in enums.iter_mut().zip(enum_reprs.iter()) {
-            match repr {
-                KEnumRepr::Const { .. } => {
-                    let mut tag = 0;
-                    for &variant in enum_data.variants.iter() {
-                        let k_const = variant.as_const().unwrap();
-                        if let Some(value) = &k_const.of(consts).value_opt {
-                            tag = value.cast_as_usize() + 1;
-                            continue;
-                        }
-
-                        k_const.of_mut(consts).value_opt = Some(KConstValue::Usize(tag));
-                        tag += 1;
-                    }
-                    continue;
-                }
-                KEnumRepr::TaggedUnion { .. } => {}
-            }
-
+        for enum_data in enums.iter_mut() {
             for (i, &variant) in enum_data.variants.iter().enumerate() {
                 let tag = KConstValue::Usize(i);
 

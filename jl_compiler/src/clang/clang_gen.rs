@@ -199,15 +199,10 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     }
 }
 
-fn gen_enum_ty(k_mod: KMod, k_enum: KEnum, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
-    match &k_enum.repr(&k_mod.of(&cx.mod_outlines).enum_reprs) {
-        KEnumRepr::Const { value_ty } => gen_ty(&value_ty, ty_env, cx),
-        KEnumRepr::TaggedUnion { .. } => {
-            // FIXME: unique_enum_name を事前に計算しておく
-            let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
-            CTy::Struct(name)
-        }
-    }
+fn gen_enum_ty(k_mod: KMod, k_enum: KEnum, cx: &mut Cx) -> CTy {
+    // FIXME: unique_enum_name を事前に計算しておく
+    let name = k_enum.name(&k_mod.of(&cx.mod_outlines).enums).to_string();
+    CTy::Struct(name)
 }
 
 fn gen_constant_value(value: &KConstValue) -> CExpr {
@@ -271,10 +266,7 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             // FIXME: 実装
             CTy::Other("/* error: alias ty */")
         }
-        KTy::Enum(k_enum) => match k_enum.repr(&cx.mod_outline.enum_reprs) {
-            KEnumRepr::Const { value_ty } => gen_ty(value_ty, ty_env, cx),
-            KEnumRepr::TaggedUnion { .. } => CTy::Enum(unique_enum_name(*k_enum, cx)),
-        },
+        KTy::Enum(k_enum) => CTy::Enum(unique_enum_name(*k_enum, cx)),
         KTy::ConstEnum(const_enum) => {
             gen_ty(const_enum.repr_ty(&cx.mod_outline.const_enums), ty_env, cx)
         }
@@ -319,7 +311,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 None => CTy::Other("/* unresolved alias */ void"),
             }
         }
-        &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, ty_env, cx),
+        &KTy2::Enum(k_mod, k_enum) => gen_enum_ty(k_mod, k_enum, cx),
         KTy2::ConstEnum(k_mod, const_enum) => gen_ty(
             const_enum.repr_ty(&k_mod.of(cx.mod_outlines).const_enums),
             ty_env,
@@ -673,9 +665,8 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Switch => match args {
             [cond, pats @ ..] => {
-                // FIXME: enum のエイリアスの型になっているとき as_enum が None になって壊れる
                 // FIXME: label_sigs
-                let is_tagged_union = cond
+                let is_enum = cond
                     .ty(
                         cx.k_mod,
                         &cx.mod_outline,
@@ -684,12 +675,10 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         cx.mod_outlines,
                     )
                     .as_enum(ty_env)
-                    .map_or(false, |(k_mod, k_enum)| {
-                        k_enum.is_tagged_union(&k_mod.of(cx.mod_outlines).enum_reprs)
-                    });
+                    .is_some();
 
                 let mut cond = gen_term(cond, cx);
-                if is_tagged_union {
+                if is_enum {
                     cond = cond.into_dot("tag_");
                 }
 
@@ -853,39 +842,30 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         });
     }
 
-    for ((k_enum, enum_data), repr) in cx
-        .mod_outline
-        .enums
-        .enumerate()
-        .zip(cx.mod_outline.enum_reprs.iter())
-    {
-        match repr {
-            KEnumRepr::Const { .. } => continue,
-            KEnumRepr::TaggedUnion { tag_ty } => {
-                let name = unique_enum_name(k_enum, cx);
-                let fields = {
-                    let tag_ty = gen_ty(tag_ty, &empty_ty_env, cx);
-                    vec![("tag_".to_string(), tag_ty)]
-                };
-                let variants = enum_data
-                    .variants
-                    .iter()
-                    .filter_map(|variant| match variant {
-                        KVariant::Const(_) => None,
-                        KVariant::Record(k_struct) => {
-                            let name = unique_struct_name(cx.k_mod, *k_struct, cx);
-                            let ty = CTy::Struct(name.to_string());
-                            Some((name, ty))
-                        }
-                    })
-                    .collect();
-                cx.decls.push(CStmt::StructDecl {
-                    name,
-                    fields,
-                    union_opt: Some(variants),
-                });
-            }
-        }
+    for (k_enum, enum_data) in cx.mod_outline.enums.enumerate() {
+        let tag_ty = KTy::USIZE;
+        let name = unique_enum_name(k_enum, cx);
+        let fields = {
+            let tag_ty = gen_ty(&tag_ty, &empty_ty_env, cx);
+            vec![("tag_".to_string(), tag_ty)]
+        };
+        let variants = enum_data
+            .variants
+            .iter()
+            .filter_map(|variant| match variant {
+                KVariant::Const(_) => None,
+                KVariant::Record(k_struct) => {
+                    let name = unique_struct_name(cx.k_mod, *k_struct, cx);
+                    let ty = CTy::Struct(name.to_string());
+                    Some((name, ty))
+                }
+            })
+            .collect();
+        cx.decls.push(CStmt::StructDecl {
+            name,
+            fields,
+            union_opt: Some(variants),
+        });
     }
 
     for (static_var, static_var_data) in cx.mod_outline.static_vars.enumerate() {

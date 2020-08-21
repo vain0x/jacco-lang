@@ -72,7 +72,7 @@ mod cps {
         KNumber,
     };
     pub(crate) use k_const_enum::*;
-    pub(crate) use k_enum::{KEnum, KEnumArena, KEnumOutline, KEnumRepr, KEnumReprs, KVariant};
+    pub(crate) use k_enum::{KEnum, KEnumArena, KEnumOutline, KVariant};
     pub(crate) use k_extern_fn::{
         KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnOutlineArena,
     };
