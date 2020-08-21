@@ -1,4 +1,4 @@
-use super::{KField, KStructEnum, KTy};
+use super::{KField, KStructEnum, KStructEnumArena, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -36,10 +36,10 @@ impl KStruct {
         }
     }
 
-    pub(crate) fn tag_ty<'a>(self, structs: &KStructArena) -> &'a KTy {
+    pub(crate) fn tag_ty(self, structs: &KStructArena, struct_enums: &KStructEnumArena) -> KTy {
         match &structs[self].parent_opt {
-            Some(parent) => parent.struct_enum.tag_ty(),
-            None => &KTy::Unit,
+            Some(parent) => parent.struct_enum.tag_ty(struct_enums),
+            None => KTy::Unit,
         }
     }
 

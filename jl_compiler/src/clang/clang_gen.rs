@@ -230,7 +230,7 @@ fn gen_invalid_constant_value() -> CExpr {
 fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
     // OK: タグ値は決定済みのはず
     let tag = k_struct.tag_value_opt(structs).unwrap();
-    CExpr::UnsignedLongLongLit(tag.to_string())
+    CExpr::IntLit(tag.to_string())
 }
 
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
@@ -840,7 +840,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
     }
 
     for (struct_enum, enum_data) in cx.mod_outline.struct_enums.enumerate() {
-        let tag_ty = KTy::USIZE;
+        let tag_ty = enum_data.tag_ty();
         let name = unique_struct_enum_name(struct_enum, cx);
         let fields = {
             let tag_ty = gen_ty(&tag_ty, &empty_ty_env, cx);
