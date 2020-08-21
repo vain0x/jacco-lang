@@ -17,12 +17,7 @@ impl KVariant {
         }
     }
 
-    pub(crate) fn as_record_with_name(self, name: &str, structs: &KStructArena) -> Option<KStruct> {
-        Some(self.as_record()).filter(|&k_struct| k_struct.name(structs) == name)
-    }
-
-    #[allow(unused)]
-    pub(crate) fn name<'a>(self, structs: &'a KStructArena) -> &'a str {
+    pub(crate) fn name(self, structs: &KStructArena) -> &str {
         match self {
             KVariant::Record(k_struct) => &k_struct.of(structs).name,
         }
