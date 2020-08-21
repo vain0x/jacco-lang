@@ -6,8 +6,8 @@ use crate::parse::syntax_error::*;
 pub(crate) type AfterQualifiableName = (AName, ParseEnd);
 pub(crate) type AfterUnderscore = (AName, ParseEnd);
 pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
-pub(crate) type AfterParam = (AParamDecl, ParseEnd);
-pub(crate) type AfterParamList = Vec<(AParamDecl, ParseEnd)>;
+pub(crate) type AfterParam = (AParamDecl, Option<PToken>, ParseEnd);
+pub(crate) type AfterParamList = Vec<AfterParam>;
 pub(crate) type AfterArg = (AExpr, ExprEnd);
 pub(crate) type AfterArgList = Vec<(AExpr, ExprEnd)>;
 pub(crate) type AfterTy = (ATy, TyEnd);
@@ -110,6 +110,7 @@ pub(crate) fn alloc_param(
             name: a_name,
             ty_opt: a_ty_opt,
         },
+        comma_opt,
         event.end(PElementKind::ParamDecl, px),
     )
 }
@@ -836,7 +837,7 @@ pub(crate) fn alloc_fn_decl(
     let params = param_list_opt
         .into_iter()
         .flatten()
-        .map(|(param, _)| param)
+        .map(|(param, _, _)| param)
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
     let body_opt = block_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
@@ -882,7 +883,7 @@ pub(crate) fn alloc_extern_fn_decl(
     let params = param_list_opt
         .into_iter()
         .flatten()
-        .map(|(param, _)| param)
+        .map(|(param, _, _)| param)
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
 

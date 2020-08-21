@@ -12,3 +12,6 @@ fn missed_result_arrow_fn() i32 {
 fn confused_result_arrow_with_colon_fn(): i32 {
     0
 }
+
+// パラメータリストの途中のカンマが抜けている
+fn param_list_with_comma_missing(a: i32 b: i64) {}

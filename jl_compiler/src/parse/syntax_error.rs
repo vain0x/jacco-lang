@@ -301,11 +301,16 @@ pub(crate) fn validate_param(
 
 pub(crate) fn validate_param_list(
     left_paren: PToken,
-    _params: &[AfterParam],
+    params: &[AfterParam],
     right_paren_opt: Option<PToken>,
-    px: &Px,
+    px: &mut Px,
 ) {
-    // FIXME: カンマの抜けを報告する
+    for (index, (_, comma_opt, param_event)) in params.iter().enumerate() {
+        if index + 1 < params.len() && comma_opt.is_none() {
+            px.builder
+                .error_behind(param_event.id(), "ここにカンマ , が必要です");
+        }
+    }
 
     validate_paren_matching(left_paren, right_paren_opt, px);
 }
