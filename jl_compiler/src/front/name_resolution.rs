@@ -250,10 +250,7 @@ pub(crate) fn resolve_value_path(
         KTy::Alias(alias) => {
             let name = path.token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
-                KProjectSymbol::ModLocal {
-                    k_mod,
-                    symbol: KModLocalSymbol::ConstEnum(const_enum),
-                } => {
+                KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, const_enum)) => {
                     let mod_outline = k_mod.of(mod_outlines);
                     let k_const = find_const_variant(const_enum, name, mod_outline)?;
                     KProjectValue::new(k_mod, KLocalValue::Const(k_const))
