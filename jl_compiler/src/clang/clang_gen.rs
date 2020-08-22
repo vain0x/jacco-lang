@@ -334,7 +334,12 @@ fn gen_const_data(const_data: &KConstData) -> CExpr {
     }
 }
 
-fn gen_static_var_term(static_var: KStaticVar, cx: &mut Cx) -> CExpr {
+fn gen_static_var_term(static_var: KProjectStaticVar, cx: &mut Cx) -> CExpr {
+    let KProjectStaticVar(k_mod, static_var) = static_var;
+    if k_mod != cx.k_mod {
+        // 宣言側のモジュールでどのような名前にマングリングされたか分からないので参照できない
+        unimplemented!("use された static 変数の使用は未実装です")
+    }
     CExpr::Name(unique_static_var_name(static_var, cx))
 }
 
@@ -402,10 +407,11 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
             Some(KProjectSymbol::Const(k_const)) => gen_const_data(k_const.of(&cx.mod_outlines)),
+            Some(KProjectSymbol::StaticVar(static_var)) => gen_static_var_term(static_var, cx),
             Some(KProjectSymbol::Struct(..)) => todo!(),
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
                 KModLocalSymbol::Const(..) => unreachable!(),
-                KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
+                KModLocalSymbol::StaticVar(..) => unreachable!(),
                 KModLocalSymbol::Fn(k_fn) => {
                     let fn_name = k_fn.of(&k_mod.of(&cx.mod_outlines).fns).name.to_string();
                     CExpr::Name(fn_name)
@@ -436,7 +442,9 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::Const { k_mod, k_const, .. } => {
             gen_const_data((*k_const).of(&k_mod.of(cx.mod_outlines).consts))
         }
-        KTerm::StaticVar { static_var, .. } => gen_static_var_term(*static_var, cx),
+        KTerm::StaticVar { static_var, .. } => {
+            gen_static_var_term(KProjectStaticVar(cx.k_mod, *static_var), cx)
+        }
         KTerm::Fn { k_fn, .. } => gen_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
         KTerm::Return { k_fn, .. } => {

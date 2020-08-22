@@ -158,6 +158,7 @@ pub(crate) enum KProjectSymbol {
         k_mod: KMod,
         symbol: KModLocalSymbol,
     },
+    StaticVar(KProjectStaticVar),
     Const(KProjectConst),
     Struct(KProjectStruct),
 }
@@ -171,6 +172,12 @@ impl KProjectSymbol {
             }
             KProjectSymbol::Const(k_const) => {
                 return KProjectSymbolOutline::Const(k_const.k_mod(), k_const.of(mod_outlines));
+            }
+            KProjectSymbol::StaticVar(static_var) => {
+                return KProjectSymbolOutline::StaticVar(
+                    static_var.k_mod(),
+                    static_var.of(mod_outlines),
+                );
             }
             KProjectSymbol::Struct(k_struct) => {
                 return KProjectSymbolOutline::Struct(k_struct.of(mod_outlines));
@@ -197,6 +204,7 @@ pub(crate) enum KProjectSymbolOutline<'a> {
         symbol_outline: KModLocalSymbolOutline<'a>,
     },
     Const(KMod, &'a KConstData),
+    StaticVar(KMod, &'a KStaticVarData),
     Struct(&'a KStructOutline),
 }
 
@@ -244,15 +252,9 @@ pub(crate) fn resolve_aliases(
         let lookup =
             |name: &str| -> Option<KProjectSymbol> {
                 mod_outline
-                    .static_vars
+                    .fns
                     .enumerate()
-                    .map(|(id, outline)| (outline.name.as_str(), KModLocalSymbol::StaticVar(id)))
-                    .chain(
-                        mod_outline
-                            .fns
-                            .enumerate()
-                            .map(|(id, outline)| (outline.name.as_str(), KModLocalSymbol::Fn(id))),
-                    )
+                    .map(|(id, outline)| (outline.name.as_str(), KModLocalSymbol::Fn(id)))
                     .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KModLocalSymbol::ExternFn(id))
                     }))
@@ -279,6 +281,12 @@ pub(crate) fn resolve_aliases(
                                     KProjectSymbol::Const(KProjectConst(k_mod, id)),
                                 )
                             })
+                            .chain(mod_outline.static_vars.enumerate().map(|(id, outline)| {
+                                (
+                                    outline.name.as_str(),
+                                    KProjectSymbol::StaticVar(KProjectStaticVar(k_mod, id)),
+                                )
+                            }))
                             .chain(mod_outline.structs.enumerate().map(|(id, outline)| {
                                 (
                                     outline.name.as_str(),

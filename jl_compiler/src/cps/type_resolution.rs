@@ -341,6 +341,9 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             KTy2::Never
         }
         KProjectSymbolOutline::Const(k_mod, const_data) => const_data.value_ty.to_ty2(k_mod),
+        KProjectSymbolOutline::StaticVar(k_mod, static_var_data) => {
+            static_var_data.ty.to_ty2(k_mod)
+        }
         KProjectSymbolOutline::Struct(_) => todo!(),
         KProjectSymbolOutline::ModLocal {
             k_mod,
@@ -351,9 +354,7 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
                 resolve_alias_term(alias, alias_data.loc(), tx)
             }
             KModLocalSymbolOutline::Const(..) => unreachable!(),
-            KModLocalSymbolOutline::StaticVar(_, static_var_outline) => {
-                static_var_outline.ty.to_ty2(k_mod)
-            }
+            KModLocalSymbolOutline::StaticVar(..) => unreachable!(),
             KModLocalSymbolOutline::Fn(_, fn_outline) => fn_outline.ty().to_ty2(k_mod),
             KModLocalSymbolOutline::ExternFn(_, extern_fn_outline) => {
                 extern_fn_outline.ty().to_ty2(k_mod)

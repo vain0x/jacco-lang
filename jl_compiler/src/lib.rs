@@ -90,9 +90,7 @@ mod cps {
     pub(crate) use k_number::KNumber;
     pub(crate) use k_number_ty::KNumberTy;
     pub(crate) use k_prim::*;
-    pub(crate) use k_static_var::{
-        KStaticVar, KStaticVarArena, KStaticVarData, KStaticVarInit, KStaticVarInits,
-    };
+    pub(crate) use k_static_var::*;
     pub(crate) use k_struct::*;
     pub(crate) use k_struct_enum::{KStructEnum, KStructEnumArena, KStructEnumOutline};
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
