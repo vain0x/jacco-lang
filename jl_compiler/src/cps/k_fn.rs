@@ -84,13 +84,18 @@ pub(crate) struct KFnData {
 }
 
 impl KFnData {
-    pub(crate) fn new(params: Vec<KSymbol>, locals: KLocalArena, labels: KLabelArena) -> Self {
+    pub(crate) fn new(
+        params: Vec<KSymbol>,
+        locals: KLocalArena,
+        labels: KLabelArena,
+        ty_env: KTyEnv,
+    ) -> Self {
         KFnData {
             params,
             labels,
             label_sigs: Default::default(),
             locals,
-            ty_env: Default::default(),
+            ty_env,
         }
     }
 }
