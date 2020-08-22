@@ -401,11 +401,10 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
+            Some(KProjectSymbol::Const(k_const)) => gen_const_data(k_const.of(&cx.mod_outlines)),
             Some(KProjectSymbol::Struct(..)) => todo!(),
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                KModLocalSymbol::Const(k_const) => {
-                    gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))
-                }
+                KModLocalSymbol::Const(..) => unreachable!(),
                 KModLocalSymbol::StaticVar(static_var) => gen_static_var_term(static_var, cx),
                 KModLocalSymbol::Fn(k_fn) => {
                     let fn_name = k_fn.of(&k_mod.of(&cx.mod_outlines).fns).name.to_string();
