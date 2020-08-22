@@ -406,16 +406,17 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
-            Some(KProjectSymbol::Const(k_const)) => gen_const_data(k_const.of(&cx.mod_outlines)),
+            Some(KProjectSymbol::Const(k_const)) => gen_const_data(k_const.of(cx.mod_outlines)),
             Some(KProjectSymbol::StaticVar(static_var)) => gen_static_var_term(static_var, cx),
+            Some(KProjectSymbol::Fn(k_fn)) => {
+                let fn_name = k_fn.of(cx.mod_outlines).name.to_string();
+                CExpr::Name(fn_name)
+            }
             Some(KProjectSymbol::Struct(..)) => todo!(),
-            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
+            Some(KProjectSymbol::ModLocal { k_mod: _, symbol }) => match symbol {
                 KModLocalSymbol::Const(..) => unreachable!(),
                 KModLocalSymbol::StaticVar(..) => unreachable!(),
-                KModLocalSymbol::Fn(k_fn) => {
-                    let fn_name = k_fn.of(&k_mod.of(&cx.mod_outlines).fns).name.to_string();
-                    CExpr::Name(fn_name)
-                }
+                KModLocalSymbol::Fn(..) => unreachable!(),
                 KModLocalSymbol::ExternFn(extern_fn) => {
                     // FIXME: fn と同様に k_mod の値を見るように修正
                     gen_extern_fn_term(extern_fn, cx)

@@ -1,4 +1,4 @@
-use super::{k_local::KLocalArena, KLabelArena, KLabelSigArena, KSymbol, KTy, KTyEnv, KVis};
+use super::*;
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -39,6 +39,20 @@ impl KFn {
 
     pub(crate) fn is_pub(self, fns: &KFnOutlineArena) -> bool {
         fns[self].vis_opt.is_some()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) struct KProjectFn(pub(crate) KMod, pub(crate) KFn);
+
+impl KProjectFn {
+    pub(crate) fn k_mod(self) -> KMod {
+        self.0
+    }
+
+    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KFnOutline {
+        let KProjectFn(k_mod, k_fn) = self;
+        k_fn.of(&k_mod.of(mod_outlines).fns)
     }
 }
 
