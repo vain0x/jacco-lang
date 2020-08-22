@@ -412,15 +412,16 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 let fn_name = k_fn.of(cx.mod_outlines).name.to_string();
                 CExpr::Name(fn_name)
             }
+            Some(KProjectSymbol::ExternFn(extern_fn)) => {
+                // FIXME: fn と同様に k_mod の値を見るように修正
+                gen_extern_fn_term(extern_fn.1, cx)
+            }
             Some(KProjectSymbol::Struct(..)) => todo!(),
             Some(KProjectSymbol::ModLocal { k_mod: _, symbol }) => match symbol {
                 KModLocalSymbol::Const(..) => unreachable!(),
                 KModLocalSymbol::StaticVar(..) => unreachable!(),
                 KModLocalSymbol::Fn(..) => unreachable!(),
-                KModLocalSymbol::ExternFn(extern_fn) => {
-                    // FIXME: fn と同様に k_mod の値を見るように修正
-                    gen_extern_fn_term(extern_fn, cx)
-                }
+                KModLocalSymbol::ExternFn(..) => unreachable!(),
                 KModLocalSymbol::LocalVar { .. }
                 | KModLocalSymbol::Alias(_)
                 | KModLocalSymbol::ConstEnum(_)

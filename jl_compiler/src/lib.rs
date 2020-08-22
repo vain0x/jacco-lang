@@ -71,9 +71,7 @@ mod cps {
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_const::*;
     pub(crate) use k_const_enum::*;
-    pub(crate) use k_extern_fn::{
-        KExternFn, KExternFnArena, KExternFnData, KExternFnOutline, KExternFnOutlineArena,
-    };
+    pub(crate) use k_extern_fn::*;
     pub(crate) use k_field::{KField, KFieldArena, KFieldOutline, KFieldTag};
     pub(crate) use k_fn::*;
     pub(crate) use k_label::{
