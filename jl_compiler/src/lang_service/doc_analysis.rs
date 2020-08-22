@@ -52,6 +52,7 @@ pub(super) struct AnalysisCache {
     pub(super) syntax_opt: Option<Syntax>,
     pub(super) symbols_opt: Option<Symbols>,
     pub(super) cps_opt: Option<Cps>,
+    pub(super) type_resolution_is_done: bool,
     pub(super) mod_opt: Option<KMod>,
 }
 
@@ -67,6 +68,20 @@ impl NameResolutionListener for ImplNameResolutionListener {
 }
 
 impl AnalysisCache {
+    pub(super) fn new(doc: Doc, version: i64, text: Rc<String>, source_path: Arc<PathBuf>) -> Self {
+        Self {
+            doc,
+            version,
+            text,
+            source_path,
+            syntax_opt: Default::default(),
+            symbols_opt: Default::default(),
+            cps_opt: Default::default(),
+            type_resolution_is_done: Default::default(),
+            mod_opt: Default::default(),
+        }
+    }
+
     pub(crate) fn version(&self) -> i64 {
         self.version
     }
@@ -76,6 +91,8 @@ impl AnalysisCache {
         self.text = text;
         self.syntax_opt = None;
         self.symbols_opt = None;
+        self.cps_opt = None;
+        self.type_resolution_is_done = false;
     }
 
     pub(super) fn request_syntax(&mut self) -> &mut Syntax {
@@ -196,6 +213,27 @@ impl AnalysisCache {
         });
 
         self.doc_content_analysis_mut().unwrap()
+    }
+
+    pub(super) fn resolve_types(&mut self, mod_outlines: &mut KModOutlines) {
+        if self.type_resolution_is_done {
+            return;
+        }
+
+        let k_mod = self.mod_opt.unwrap();
+        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outlines);
+
+        let logs = Logs::new();
+
+        resolve_types(
+            k_mod,
+            k_mod.of(mod_outlines),
+            &mut cps.mod_data,
+            mod_outlines,
+            logs.logger(),
+        );
+        cps.errors.extend(logs_into_errors(logs, &syntax.tree));
+        self.type_resolution_is_done = true;
     }
 }
 

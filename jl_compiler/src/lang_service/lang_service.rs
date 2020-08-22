@@ -1,7 +1,6 @@
 use super::{actions, doc_analysis::*};
 use crate::{
     cps::*,
-    logs::{LogItem, Logs},
     parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
     utils::VecArena,
@@ -71,7 +70,6 @@ impl Content {
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
     dirty_sources: HashSet<Doc>,
-    project_logs: Vec<LogItem>,
 }
 
 impl LangService {
@@ -196,64 +194,38 @@ impl LangService {
     }
 
     /// 単一のドキュメントを型検査する。
-    pub(super) fn request_types_for(&mut self, doc: Doc) {
+    pub(super) fn request_types_for(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
         let everything_is_unchanged = self.dirty_sources.is_empty();
         if everything_is_unchanged {
-            return;
+            return self.request_cps(doc);
         }
 
-        self.request_cps(doc);
-
-        let logs = Logs::new();
         self.do_with_mod_outlines(|ls, mod_outlines| {
-            for (k_mod, mod_outline) in mod_outlines.enumerate() {
-                let mod_data = &mut ls
-                    .docs
-                    .get_mut(&doc)
-                    .unwrap()
-                    .cps_opt
-                    .as_mut()
-                    .unwrap()
-                    .mod_data;
-
-                resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
-            }
+            ls.docs.get_mut(&doc).unwrap().resolve_types(mod_outlines);
         });
-
-        self.project_logs.extend(logs.finish());
+        self.request_cps(doc)
     }
 
     /// すべてのドキュメントを型検査する。
-    pub(super) fn request_types(&mut self) -> &[LogItem] {
-        if take(&mut self.dirty_sources).is_empty() {
-            return &self.project_logs;
-        }
-
-        let logs = Logs::new();
-        self.do_with_mods(|_, mod_outlines, mods| {
-            for ((k_mod, mod_outline), mod_data) in mod_outlines.enumerate().zip(mods.iter_mut()) {
-                resolve_types(k_mod, mod_outline, mod_data, &mod_outlines, logs.logger());
+    pub(super) fn request_types(&mut self) {
+        let docs = self.docs.keys().copied().collect::<Vec<_>>();
+        self.do_with_mod_outlines(|ls, mod_outlines| {
+            for &doc in &docs {
+                ls.docs.get_mut(&doc).unwrap().resolve_types(mod_outlines);
             }
         });
-
-        self.project_logs = logs.finish();
-        &self.project_logs
     }
 
     pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
         self.docs.insert(
             doc,
-            AnalysisCache {
+            AnalysisCache::new(
                 doc,
                 version,
                 text,
                 // FIXME: 引数でもらう
-                source_path: PathBuf::from("main.jacco").into(),
-                syntax_opt: None,
-                symbols_opt: None,
-                cps_opt: None,
-                mod_opt: None,
-            },
+                PathBuf::from("main.jacco").into(),
+            ),
         );
         self.dirty_sources.insert(doc);
     }
@@ -1047,5 +1019,40 @@ mod tests {
             "extern fn <|>abort() -> never;",
             Some("```jacco\nextern fn abort() -> never;\n```"),
         );
+    }
+
+    // should not panic
+    #[test]
+    fn test_multiple_requests() {
+        let text = r#"<|>
+            /// 🐍<|>🐧
+            struct <|>A {
+                p: *A,
+            }
+
+            fn <|>f() -> <|>A {
+                if true {
+                    loop { loop <|>{} }
+                }
+                A<|> {
+                    p: &loop {},
+                }
+            }
+
+            fn <|>m<|>ain<|>() <|>-> <|>i32 {
+                loop {}
+            }
+        <|>"#;
+
+        let cursor_text = parse_cursor_text(text).unwrap();
+        let mut lang_service = new_service_from_str(cursor_text.as_str());
+
+        lang_service.validate(DOC);
+        for pos in cursor_text.to_pos_vec() {
+            lang_service.document_highlight(DOC, pos.into());
+            lang_service.hover(DOC, pos.into());
+            lang_service.definitions(DOC, pos.into());
+            lang_service.references(DOC, pos.into(), true);
+        }
     }
 }

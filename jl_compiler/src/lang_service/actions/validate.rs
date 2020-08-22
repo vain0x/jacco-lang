@@ -25,23 +25,8 @@ pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRa
 
     // 型エラーを報告する。
     if errors.is_empty() {
-        let logs = ls.request_types().to_owned();
-        if let Some(syntax) = ls.request_syntax(doc) {
-            for item in logs {
-                let loc = match item.loc().inner() {
-                    Ok((the_doc, _)) if the_doc != doc => continue,
-                    Ok((_, loc)) => loc,
-                    Err(_) => continue,
-                };
-
-                let range = match loc.range(&syntax.tree) {
-                    Ok(it) => it,
-                    Err(_) => continue,
-                };
-                let message = item.message().to_string();
-
-                errors.push((range, message));
-            }
+        if let Some(analysis) = ls.request_types_for(doc) {
+            errors.extend_from_slice(&analysis.cps.errors);
         }
     }
 
