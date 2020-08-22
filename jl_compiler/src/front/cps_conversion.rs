@@ -84,6 +84,7 @@ struct Xx<'a> {
     nodes: Vec<KNode>,
     local_vars: KLocalArena,
     labels: VecArena<KLabelTag, KLabelConstruction>,
+    ty_env: KTyEnv,
     /// return のターゲットとなる関数
     fn_opt: Option<KFn>,
     /// break/continue のターゲットとなるループ
@@ -124,8 +125,9 @@ impl<'a> Xx<'a> {
         Self {
             label: toplevel,
             nodes: vec![],
-            labels,
             local_vars: KLocalArena::new(),
+            labels,
+            ty_env: KTyEnv::new(),
             fn_opt: None,
             loop_opt: None,
             env: Env::new(),
@@ -146,6 +148,7 @@ impl<'a> Xx<'a> {
     fn do_out_fn<A>(&mut self, f: impl FnOnce(&mut Xx) -> A) -> A {
         let label = self.label;
         let nodes = take(&mut self.nodes);
+        let ty_env = take(&mut self.ty_env);
         let labels = take(&mut self.labels);
         let local_vars = take(&mut self.local_vars);
         let fn_opt = self.fn_opt.take();
@@ -155,6 +158,7 @@ impl<'a> Xx<'a> {
 
         self.label = label;
         self.nodes = nodes;
+        self.ty_env = ty_env;
         self.labels = labels;
         self.local_vars = local_vars;
         self.fn_opt = fn_opt;
@@ -1484,8 +1488,9 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
                 let body = fold_nodes(label.body);
                 KLabelData { name, params, body }
             }));
+        let ty_env = take(&mut xx.ty_env);
 
-        KFnData::new(params, locals, labels)
+        KFnData::new(params, locals, labels, ty_env)
     });
 
     *k_fn.of_mut(&mut xx.mod_data.fns) = fn_data;

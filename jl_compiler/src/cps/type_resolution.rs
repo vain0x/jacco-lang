@@ -777,7 +777,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
 fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     assert!(tx.ty_env.is_empty());
-    assert!(fn_data.ty_env.is_empty());
+    swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
@@ -807,7 +807,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     assert_eq!(fn_data.label_sigs.len(), fn_data.labels.len());
 
-    fn_data.ty_env = take(&mut tx.ty_env);
+    swap(&mut tx.ty_env, &mut fn_data.ty_env);
 }
 
 fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
