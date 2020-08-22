@@ -12,9 +12,6 @@ pub(crate) type KConsts = VecArenaSlice<KConstTag>;
 
 pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectConst(pub(crate) KMod, pub(crate) KConst);
-
 impl KConst {
     /// 値の型、またはこの定数が属する enum の型
     pub(crate) fn ty(self, consts: &KConstArena) -> KTy {
@@ -24,6 +21,9 @@ impl KConst {
         }
     }
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) struct KProjectConst(pub(crate) KMod, pub(crate) KConst);
 
 impl KProjectConst {
     pub(crate) fn k_mod(self) -> KMod {
