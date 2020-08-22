@@ -75,6 +75,7 @@ impl KAliasOutline {
                 }
                 _ => true,
             },
+            _ => true,
         }
     }
 

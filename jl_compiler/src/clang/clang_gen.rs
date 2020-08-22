@@ -401,6 +401,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
+            Some(KProjectSymbol::Struct(..)) => todo!(),
             Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
                 KModLocalSymbol::Const(k_const) => {
                     gen_const_data(k_const.of(&k_mod.of(&cx.mod_outlines).consts))

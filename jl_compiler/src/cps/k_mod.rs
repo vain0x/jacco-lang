@@ -158,6 +158,7 @@ pub(crate) enum KProjectSymbol {
         k_mod: KMod,
         symbol: KModLocalSymbol,
     },
+    Struct(KProjectStruct),
 }
 
 impl KProjectSymbol {
@@ -166,6 +167,9 @@ impl KProjectSymbol {
             KProjectSymbol::ModLocal { k_mod, symbol } => (k_mod, symbol),
             KProjectSymbol::Mod(k_mod) => {
                 return KProjectSymbolOutline::Mod(k_mod, k_mod.of(mod_outlines));
+            }
+            KProjectSymbol::Struct(k_struct) => {
+                return KProjectSymbolOutline::Struct(k_struct.of(mod_outlines));
             }
         };
 
@@ -188,6 +192,7 @@ pub(crate) enum KProjectSymbolOutline<'a> {
         mod_outline: &'a KModOutline,
         symbol_outline: KModLocalSymbolOutline<'a>,
     },
+    Struct(&'a KStructOutline),
 }
 
 impl KAliasOutline {
@@ -232,7 +237,7 @@ pub(crate) fn resolve_aliases(
         let mod_outline = k_mod.of(mod_outlines);
 
         let lookup =
-            |name: &str| -> Option<KModLocalSymbol> {
+            |name: &str| -> Option<KProjectSymbol> {
                 mod_outline
                     .consts
                     .enumerate()
@@ -255,18 +260,37 @@ pub(crate) fn resolve_aliases(
                     .chain(mod_outline.struct_enums.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KModLocalSymbol::StructEnum(id))
                     }))
-                    .chain(
-                        mod_outline.structs.enumerate().map(|(id, outline)| {
-                            (outline.name.as_str(), KModLocalSymbol::Struct(id))
-                        }),
-                    )
-                    .find_map(
-                        |(the_name, symbol)| if the_name == name { Some(symbol) } else { None },
-                    )
+                    .find_map(|(the_name, symbol)| {
+                        if the_name == name {
+                            Some(KProjectSymbol::ModLocal { k_mod, symbol })
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(|| {
+                        mod_outline
+                            .structs
+                            .enumerate()
+                            .map(|(id, outline)| {
+                                (
+                                    outline.name.as_str(),
+                                    KProjectSymbol::Struct(KProjectStruct(k_mod, id)),
+                                )
+                            })
+                            .find_map(
+                                |(the_name, symbol)| {
+                                    if the_name == name {
+                                        Some(symbol)
+                                    } else {
+                                        None
+                                    }
+                                },
+                            )
+                    })
             };
 
         let referent = match lookup(entity_name.as_str()) {
-            Some(symbol) => KProjectSymbol::ModLocal { k_mod, symbol },
+            Some(it) => it,
             None => {
                 logger.error(alias_data.loc(), "名前が見つかりません");
                 continue;

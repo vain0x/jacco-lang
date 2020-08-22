@@ -340,6 +340,7 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             );
             KTy2::Never
         }
+        KProjectSymbolOutline::Struct(_) => todo!(),
         KProjectSymbolOutline::ModLocal {
             k_mod,
             symbol_outline,
