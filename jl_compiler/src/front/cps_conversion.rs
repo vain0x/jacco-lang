@@ -20,16 +20,20 @@ struct KLoopData {
     continue_label: KLabel,
 }
 
-fn new_unit_term(loc: Loc) -> KTerm {
+type AfterLval = KTerm;
+type AfterRval = KTerm;
+type AfterJump = KTerm;
+
+fn new_unit_term(loc: Loc) -> AfterRval {
     KTerm::Unit { loc }
 }
 
-fn new_never_term(loc: Loc) -> KTerm {
+fn new_never_term(loc: Loc) -> AfterRval {
     // FIXME: the type is ! (never)
     KTerm::Unit { loc }
 }
 
-fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLogger) -> KTerm {
+fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLogger) -> AfterRval {
     let text = token.text(tokens).to_string();
     let cause = KTermCause::Token(doc, token);
     let loc = cause.loc();
@@ -391,7 +395,12 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
         .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
 }
 
-fn convert_record_pat_as_cond(pat_id: APatId, pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_record_pat_as_cond(
+    pat_id: APatId,
+    pat: &ARecordPat,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     let key = ANameKey::Pat(pat_id);
     let k_struct = match resolve_ty_path(&pat.left, key, path_resolution_context(xx)) {
         Some(KTy::Struct(it)) => it,
@@ -445,7 +454,7 @@ fn convert_pat_as_assign(pat_id: APatId, cond: &KTerm, term: KTerm, xx: &mut Xx)
 // 式 (項とノード)
 // -----------------------------------------------
 
-fn new_error_term(loc: Loc) -> KTerm {
+fn new_error_term(loc: Loc) -> AfterRval {
     KTerm::Unit { loc }
 }
 
@@ -526,7 +535,11 @@ fn commit_label(xx: &mut Xx) {
 ///
 /// loop からの break だけでなく、if/match から下に抜けるときのジャンプにも使える。
 /// 変換の評価値は `result` に束縛すること。
-fn do_with_break(break_label: BreakLabel, xx: &mut Xx, f: impl FnOnce(&mut Xx, KLabel)) -> KTerm {
+fn do_with_break(
+    break_label: BreakLabel,
+    xx: &mut Xx,
+    f: impl FnOnce(&mut Xx, KLabel),
+) -> AfterRval {
     f(xx, break_label.label);
     commit_label(xx);
 
@@ -572,7 +585,7 @@ fn do_in_loop(
     loc: Loc,
     xx: &mut Xx,
     f: impl FnOnce(&mut Xx, KSymbol, KLabel, KLabel),
-) -> KTerm {
+) -> AfterRval {
     let result = fresh_symbol(hint, loc, xx);
 
     // continue → break の順で生成しないと型検査の順番がおかしくなる。
@@ -593,7 +606,7 @@ fn do_in_loop(
     })
 }
 
-fn convert_char_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
+fn convert_char_expr(token: PToken, doc: Doc, tokens: &PTokens) -> AfterRval {
     KTerm::Char {
         text: token.text(tokens).to_string(),
         ty: KTy2::C8,
@@ -601,7 +614,7 @@ fn convert_char_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
     }
 }
 
-fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> KTerm {
+fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> AfterRval {
     KTerm::Str {
         text: token.text(tokens).to_string(),
         loc: KTermCause::Token(doc, token).loc(),
@@ -614,7 +627,7 @@ fn emit_unit_like_struct(
     result: KSymbol,
     loc: Loc,
     nodes: &mut Vec<KNode>,
-) -> KTerm {
+) -> AfterRval {
     let ty = KTy2::Struct(k_mod, k_struct);
 
     nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
@@ -628,7 +641,7 @@ fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSym
     KSymbol { local, cause }
 }
 
-fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
+fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
@@ -663,7 +676,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> KTerm {
+fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> AfterLval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
@@ -841,7 +854,7 @@ fn do_convert_record_expr(
     Some(result)
 }
 
-fn convert_record_expr(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_record_expr(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     match do_convert_record_expr(expr_id, expr, loc, xx) {
         Some(result) => KTerm::Name(result),
         None => new_error_term(loc),
@@ -849,7 +862,7 @@ fn convert_record_expr(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut 
 }
 
 // `&A { .. }`
-fn convert_record_lval(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_record_lval(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
     let arg = match do_convert_record_expr(expr_id, expr, loc, xx) {
         Some(it) => it,
         None => return new_error_term(loc),
@@ -862,7 +875,7 @@ fn convert_record_lval(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut 
 }
 
 // `x.field` ==> `*(&x)->field`
-fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let result = {
         let name = match expr.field_opt {
             Some(token) => token.text(xx.tokens),
@@ -878,7 +891,7 @@ fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 // `&x.field` ==> `&(&x)->field`
-fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> AfterLval {
     let (name, field_loc) = match expr.field_opt {
         Some(token) => {
             let name = token.text(xx.tokens).to_string();
@@ -902,7 +915,7 @@ fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> 
     KTerm::Name(result)
 }
 
-fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let result = fresh_symbol("call_result", loc, xx);
     let left = convert_expr(call_expr.left, xx);
 
@@ -915,7 +928,7 @@ fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm 
 }
 
 // `a[i]` ==> `*(a + i)`
-fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let ptr = convert_index_lval(expr, loc, xx);
 
     let result = fresh_symbol("index_result", loc, xx);
@@ -924,7 +937,7 @@ fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 // `&a[i]` ==> `a + i`
-fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
     let left = convert_expr(expr.left, xx);
     let right = if expr.args.len() == 1 {
         let right = expr.args.iter().next().unwrap();
@@ -939,7 +952,7 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
-fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let arg = convert_expr(expr.left, xx);
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
 
@@ -949,7 +962,7 @@ fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     KTerm::Name(result)
 }
 
-fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     match expr.op {
         PUnaryOp::Deref => {
             let arg = convert_expr_opt(expr.arg_opt, loc, xx);
@@ -976,7 +989,7 @@ fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
     match expr.op {
         PUnaryOp::Deref => {
             // `&*p` ==> `p`
@@ -989,7 +1002,12 @@ fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     }
 }
 
-fn do_convert_assignment_expr(prim: KPrim, expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn do_convert_assignment_expr(
+    prim: KPrim,
+    expr: &ABinaryOpExpr,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     let left = convert_lval(expr.left, KMut::Mut, xx);
     let right = convert_expr_opt(expr.right_opt, loc, xx);
 
@@ -1003,7 +1021,7 @@ fn do_convert_basic_binary_op_expr(
     expr: &ABinaryOpExpr,
     loc: Loc,
     xx: &mut Xx,
-) -> KTerm {
+) -> AfterRval {
     let left = convert_expr(expr.left, xx);
     let right = convert_expr_opt(expr.right_opt, loc, xx);
 
@@ -1020,7 +1038,7 @@ fn do_convert_basic_binary_op_expr(
 }
 
 // `p && q` ==> `if p { q } else { false }`
-fn do_convert_log_and_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn do_convert_log_and_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_convert_if_expr(
         |xx| convert_expr(expr.left, xx),
         |xx| convert_expr_opt(expr.right_opt, loc, xx),
@@ -1031,7 +1049,7 @@ fn do_convert_log_and_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm
 }
 
 // `p || q` ==> `if p { true } else { q }`
-fn do_convert_log_or_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn do_convert_log_or_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_convert_if_expr(
         |xx| convert_expr(expr.left, xx),
         |_| KTerm::True { loc },
@@ -1041,7 +1059,7 @@ fn do_convert_log_or_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm 
     )
 }
 
-fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let on_assign = |prim: KPrim, xx: &mut Xx| do_convert_assignment_expr(prim, expr, loc, xx);
     let on_basic = |prim: KPrim, xx: &mut Xx| do_convert_basic_binary_op_expr(prim, expr, loc, xx);
     let on_bit = on_basic;
@@ -1080,7 +1098,7 @@ fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> KTerm 
     }
 }
 
-fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> AfterRval {
     let mut last_opt = None;
 
     xx.do_in_scope(|xx| {
@@ -1090,7 +1108,7 @@ fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> KTerm {
     last_opt.unwrap_or(KTerm::Unit { loc })
 }
 
-fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> AfterJump {
     let label_opt = xx.loop_opt.as_ref().map(|data| data.break_label);
     let label = match label_opt {
         Some(it) => it,
@@ -1106,7 +1124,7 @@ fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     new_never_term(loc)
 }
 
-fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> AfterJump {
     let label_opt = xx.loop_opt.as_ref().map(|data| data.continue_label);
     let label = match label_opt {
         Some(it) => it,
@@ -1125,7 +1143,7 @@ fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> KTerm {
     new_never_term(loc)
 }
 
-fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> AfterJump {
     let arg = convert_expr_opt(expr.arg_opt, loc, xx);
 
     let node = match xx.fn_opt {
@@ -1141,12 +1159,12 @@ fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 fn do_convert_if_expr(
-    cond_fn: impl FnOnce(&mut Xx) -> KTerm,
-    body_fn: impl FnOnce(&mut Xx) -> KTerm,
-    alt_fn: impl FnOnce(&mut Xx) -> KTerm,
+    cond_fn: impl FnOnce(&mut Xx) -> AfterRval,
+    body_fn: impl FnOnce(&mut Xx) -> AfterRval,
+    alt_fn: impl FnOnce(&mut Xx) -> AfterRval,
     loc: Loc,
     xx: &mut Xx,
-) -> KTerm {
+) -> AfterRval {
     let result = fresh_symbol("if_result", loc, xx);
     // FIXME: next → if_next
     let next = new_break_label("next", result, xx);
@@ -1168,7 +1186,7 @@ fn do_convert_if_expr(
     })
 }
 
-fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_convert_if_expr(
         |xx| convert_expr_opt(expr.cond_opt, loc, xx),
         |xx| convert_expr_opt(expr.body_opt, loc, xx),
@@ -1178,7 +1196,7 @@ fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     )
 }
 
-fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let cond = convert_expr_opt(expr.cond_opt, loc, xx);
     if expr.arms.is_empty() {
         error_empty_match(PLoc::from_loc(loc), xx.logger);
@@ -1224,7 +1242,7 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 }
 
 // `while cond { body }` ==> `loop { if cond { body } else { break } }`
-fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     let unit_term = new_unit_term(loc);
 
     do_in_loop(
@@ -1254,7 +1272,7 @@ fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     )
 }
 
-fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_in_loop("loop_result", loc, xx, |xx, _, _, continue_label| {
         do_in_branch(xx, |xx| {
             let node = {
@@ -1266,7 +1284,7 @@ fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     })
 }
 
-fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
+fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
@@ -1296,7 +1314,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> KTerm {
 }
 
 /// `&expr` を生成する。
-fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> KTerm {
+fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> AfterLval {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
@@ -1326,24 +1344,24 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
     }
 }
 
-fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> KTerm {
+fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> AfterRval {
     let expr = expr_id.of(xx.ast.exprs());
     do_convert_expr(expr_id, expr, xx)
 }
 
-fn convert_lval(expr_id: AExprId, k_mut: KMut, xx: &mut Xx) -> KTerm {
+fn convert_lval(expr_id: AExprId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
     let expr = expr_id.of(xx.ast.exprs());
     do_convert_lval(expr_id, expr, k_mut, xx)
 }
 
-fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> AfterRval {
     match expr_id_opt {
         Some(expr_id) => convert_expr(expr_id, xx),
         None => new_error_term(loc),
     }
 }
 
-fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mut Xx) -> KTerm {
+fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mut Xx) -> AfterLval {
     match expr_id_opt {
         Some(expr_id) => convert_lval(expr_id, k_mut, xx),
         None => new_error_term(loc),
