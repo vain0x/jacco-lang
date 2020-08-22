@@ -1,4 +1,4 @@
-use super::{KStruct, KTy};
+use super::*;
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -21,6 +21,16 @@ impl KStructEnum {
 
     pub(crate) fn tag_ty(self, struct_enums: &KStructEnumArena) -> KTy {
         struct_enums[self].tag_ty()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) struct KProjectStructEnum(pub(crate) KMod, pub(crate) KStructEnum);
+
+impl KProjectStructEnum {
+    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KStructEnumOutline {
+        let KProjectStructEnum(k_mod, struct_enum) = self;
+        struct_enum.of(&k_mod.of(mod_outlines).struct_enums)
     }
 }
 

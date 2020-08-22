@@ -1,4 +1,4 @@
-use super::{KModLocalSymbol, KProjectConstEnum, KProjectSymbol, KTy2};
+use super::{KModLocalSymbol, KProjectConstEnum, KProjectStructEnum, KProjectSymbol, KTy2};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -49,10 +49,9 @@ impl KAliasOutline {
             Some(KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, const_enum))) => {
                 KTy2::ConstEnum(k_mod, const_enum)
             }
-            Some(KProjectSymbol::ModLocal { k_mod, symbol }) => match symbol {
-                KModLocalSymbol::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
-                _ => return None,
-            },
+            Some(KProjectSymbol::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
+                KTy2::StructEnum(k_mod, struct_enum)
+            }
             _ => return None,
         };
 

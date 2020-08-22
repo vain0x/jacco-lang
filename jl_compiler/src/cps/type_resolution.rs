@@ -349,6 +349,7 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             extern_fn_outline.ty().to_ty2(k_mod)
         }
         KProjectSymbolOutline::ConstEnum(..) => todo!(),
+        KProjectSymbolOutline::StructEnum(..) => todo!(),
         KProjectSymbolOutline::Struct(_) => todo!(),
         KProjectSymbolOutline::ModLocal {
             k_mod: _,

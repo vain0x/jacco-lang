@@ -154,6 +154,7 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
 pub(crate) enum KProjectSymbol {
     #[allow(unused)]
     Mod(KMod),
+    #[allow(unused)]
     ModLocal {
         k_mod: KMod,
         symbol: KModLocalSymbol,
@@ -163,6 +164,7 @@ pub(crate) enum KProjectSymbol {
     Fn(KProjectFn),
     ExternFn(KProjectExternFn),
     ConstEnum(KProjectConstEnum),
+    StructEnum(KProjectStructEnum),
     Struct(KProjectStruct),
 }
 
@@ -194,6 +196,9 @@ impl KProjectSymbol {
             KProjectSymbol::ConstEnum(const_enum) => {
                 return KProjectSymbolOutline::ConstEnum(const_enum.of(mod_outlines));
             }
+            KProjectSymbol::StructEnum(struct_enum) => {
+                return KProjectSymbolOutline::StructEnum(struct_enum.of(mod_outlines));
+            }
             KProjectSymbol::Struct(k_struct) => {
                 return KProjectSymbolOutline::Struct(k_struct.of(mod_outlines));
             }
@@ -224,6 +229,7 @@ pub(crate) enum KProjectSymbolOutline<'a> {
     Fn(KMod, &'a KFnOutline),
     ExternFn(KMod, &'a KExternFnOutline),
     ConstEnum(&'a KConstEnumOutline),
+    StructEnum(&'a KStructEnumOutline),
     Struct(&'a KStructOutline),
 }
 
@@ -270,66 +276,59 @@ pub(crate) fn resolve_aliases(
 
         let lookup = |name: &str| -> Option<KProjectSymbol> {
             mod_outline
-                .struct_enums
+                .consts
                 .enumerate()
-                .map(|(id, outline)| (outline.name.as_str(), KModLocalSymbol::StructEnum(id)))
-                .find_map(|(the_name, symbol)| {
-                    if the_name == name {
-                        Some(KProjectSymbol::ModLocal { k_mod, symbol })
-                    } else {
-                        None
-                    }
+                .map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::Const(KProjectConst(k_mod, id)),
+                    )
                 })
-                .or_else(|| {
-                    mod_outline
-                        .consts
-                        .enumerate()
-                        .map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::Const(KProjectConst(k_mod, id)),
-                            )
-                        })
-                        .chain(mod_outline.static_vars.enumerate().map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::StaticVar(KProjectStaticVar(k_mod, id)),
-                            )
-                        }))
-                        .chain(mod_outline.fns.enumerate().map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::Fn(KProjectFn(k_mod, id)),
-                            )
-                        }))
-                        .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::ExternFn(KProjectExternFn(k_mod, id)),
-                            )
-                        }))
-                        .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, id)),
-                            )
-                        }))
-                        .chain(mod_outline.structs.enumerate().map(|(id, outline)| {
-                            (
-                                outline.name.as_str(),
-                                KProjectSymbol::Struct(KProjectStruct(k_mod, id)),
-                            )
-                        }))
-                        .find_map(
-                            |(the_name, symbol)| {
-                                if the_name == name {
-                                    Some(symbol)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                })
+                .chain(mod_outline.static_vars.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::StaticVar(KProjectStaticVar(k_mod, id)),
+                    )
+                }))
+                .chain(mod_outline.fns.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::Fn(KProjectFn(k_mod, id)),
+                    )
+                }))
+                .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::ExternFn(KProjectExternFn(k_mod, id)),
+                    )
+                }))
+                .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, id)),
+                    )
+                }))
+                .chain(mod_outline.struct_enums.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::StructEnum(KProjectStructEnum(k_mod, id)),
+                    )
+                }))
+                .chain(mod_outline.structs.enumerate().map(|(id, outline)| {
+                    (
+                        outline.name.as_str(),
+                        KProjectSymbol::Struct(KProjectStruct(k_mod, id)),
+                    )
+                }))
+                .find_map(
+                    |(the_name, symbol)| {
+                        if the_name == name {
+                            Some(symbol)
+                        } else {
+                            None
+                        }
+                    },
+                )
         };
 
         let referent = match lookup(entity_name.as_str()) {

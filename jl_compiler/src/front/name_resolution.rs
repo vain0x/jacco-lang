@@ -255,10 +255,7 @@ pub(crate) fn resolve_value_path(
                     let k_const = find_const_variant(const_enum, name, mod_outline)?;
                     KProjectValue::new(k_mod, KLocalValue::Const(k_const))
                 }
-                KProjectSymbol::ModLocal {
-                    k_mod,
-                    symbol: KModLocalSymbol::StructEnum(struct_enum),
-                } => {
+                KProjectSymbol::StructEnum(KProjectStructEnum(k_mod, struct_enum)) => {
                     let mod_outline = k_mod.of(mod_outlines);
                     let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 

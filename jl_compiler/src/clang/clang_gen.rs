@@ -417,6 +417,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 gen_extern_fn_term(extern_fn.1, cx)
             }
             Some(KProjectSymbol::ConstEnum(..)) => todo!(),
+            Some(KProjectSymbol::StructEnum(..)) => todo!(),
             Some(KProjectSymbol::Struct(..)) => todo!(),
             Some(KProjectSymbol::ModLocal { k_mod: _, symbol }) => match symbol {
                 KModLocalSymbol::Const(..) => unreachable!(),
