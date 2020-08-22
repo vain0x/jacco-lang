@@ -24,6 +24,14 @@ type AfterLval = KTerm;
 type AfterRval = KTerm;
 type AfterJump = KTerm;
 
+/// 式の型に与えられる制約。
+#[allow(unused)]
+#[derive(Copy, Clone)]
+enum TyExpect {
+    /// 未実装部分
+    Todo,
+}
+
 fn new_unit_term(loc: Loc) -> AfterRval {
     KTerm::Unit { loc }
 }
@@ -896,7 +904,7 @@ fn do_convert_record_expr(
 
     let mut args = vec![KTerm::Unit { loc }; fields.len()];
     for (i, field_expr) in expr.fields.iter().enumerate() {
-        args[perm[i]] = convert_expr_opt(field_expr.value_opt, loc, xx);
+        args[perm[i]] = convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc, xx);
     }
 
     let result = fresh_symbol(&k_struct.of(xx.mod_outlines).name, loc, xx);
@@ -953,7 +961,7 @@ fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> 
     };
     let result = fresh_symbol(&format!("{}_ptr", name), loc, xx);
 
-    let left = convert_lval(expr.left, k_mut, xx);
+    let left = convert_lval(expr.left, k_mut, TyExpect::Todo, xx);
     xx.nodes.push(new_field_node(
         left,
         name,
@@ -966,21 +974,36 @@ fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> 
     KTerm::Name(result)
 }
 
-fn convert_call_expr(call_expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_call_expr(
+    call_expr: &ACallLikeExpr,
+    _ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     let result = fresh_symbol("call_result", loc, xx);
-    let left = convert_expr(call_expr.left, xx);
+    let left = convert_expr(call_expr.left, TyExpect::Todo, xx);
 
     let mut args = Vec::with_capacity(call_expr.args.len() + 1);
     args.push(left);
-    args.extend(call_expr.args.iter().map(|arg| convert_expr(arg, xx)));
+    args.extend(
+        call_expr
+            .args
+            .iter()
+            .map(|arg| convert_expr(arg, TyExpect::Todo, xx)),
+    );
 
     xx.nodes.push(new_call_node(args, result, new_cont(), loc));
     KTerm::Name(result)
 }
 
 // `a[i]` ==> `*(a + i)`
-fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let ptr = convert_index_lval(expr, loc, xx);
+fn convert_index_expr(
+    expr: &ACallLikeExpr,
+    _ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
+    let ptr = convert_index_lval(expr, TyExpect::Todo, loc, xx);
 
     let result = fresh_symbol("index_result", loc, xx);
     xx.nodes.push(new_deref_node(ptr, result, new_cont(), loc));
@@ -988,11 +1011,16 @@ fn convert_index_expr(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterRval 
 }
 
 // `&a[i]` ==> `a + i`
-fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
-    let left = convert_expr(expr.left, xx);
+fn convert_index_lval(
+    expr: &ACallLikeExpr,
+    _ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterLval {
+    let left = convert_expr(expr.left, TyExpect::Todo, xx);
     let right = if expr.args.len() == 1 {
         let right = expr.args.iter().next().unwrap();
-        convert_expr(right, xx)
+        convert_expr(right, TyExpect::Todo, xx)
     } else {
         new_error_term(loc)
     };
@@ -1003,8 +1031,8 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> AfterLval 
     KTerm::Name(result)
 }
 
-fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let arg = convert_expr(expr.left, xx);
+fn convert_as_expr(expr: &AAsExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
+    let arg = convert_expr(expr.left, TyExpect::Todo, xx);
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
 
     let result = fresh_symbol("cast", loc, xx);
@@ -1013,26 +1041,31 @@ fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     KTerm::Name(result)
 }
 
-fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_unary_op_expr(
+    expr: &AUnaryOpExpr,
+    _ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     match expr.op {
         PUnaryOp::Deref => {
-            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
             let result = fresh_symbol("deref", loc, xx);
             xx.nodes.push(new_deref_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
         PUnaryOp::Ref => {
             let k_mut = expr.mut_opt.unwrap_or(KMut::Const);
-            convert_lval_opt(expr.arg_opt, k_mut, loc, xx)
+            convert_lval_opt(expr.arg_opt, k_mut, TyExpect::Todo, loc, xx)
         }
         PUnaryOp::Minus => {
-            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
             let result = fresh_symbol("minus", loc, xx);
             xx.nodes.push(new_minus_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
         PUnaryOp::Not => {
-            let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+            let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
             let result = fresh_symbol("not", loc, xx);
             xx.nodes.push(new_not_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
@@ -1040,11 +1073,16 @@ fn convert_unary_op_expr(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRva
     }
 }
 
-fn convert_unary_op_lval(expr: &AUnaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
+fn convert_unary_op_lval(
+    expr: &AUnaryOpExpr,
+    _ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterLval {
     match expr.op {
         PUnaryOp::Deref => {
             // `&*p` ==> `p`
-            convert_expr_opt(expr.arg_opt, loc, xx)
+            convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx)
         }
         PUnaryOp::Ref | PUnaryOp::Minus | PUnaryOp::Not => {
             error_rval_used_as_lval(PLoc::from_loc(loc), xx.logger);
@@ -1059,8 +1097,8 @@ fn do_convert_assignment_expr(
     loc: Loc,
     xx: &mut Xx,
 ) -> AfterRval {
-    let left = convert_lval(expr.left, KMut::Mut, xx);
-    let right = convert_expr_opt(expr.right_opt, loc, xx);
+    let left = convert_lval(expr.left, KMut::Mut, TyExpect::Todo, xx);
+    let right = convert_expr_opt(expr.right_opt, TyExpect::Todo, loc, xx);
 
     xx.nodes
         .push(new_assignment_node(prim, left, right, new_cont(), loc));
@@ -1073,8 +1111,8 @@ fn do_convert_basic_binary_op_expr(
     loc: Loc,
     xx: &mut Xx,
 ) -> AfterRval {
-    let left = convert_expr(expr.left, xx);
-    let right = convert_expr_opt(expr.right_opt, loc, xx);
+    let left = convert_expr(expr.left, TyExpect::Todo, xx);
+    let right = convert_expr_opt(expr.right_opt, TyExpect::Todo, loc, xx);
 
     let result = fresh_symbol(&prim.hint_str(), loc, xx);
     xx.nodes.push(new_basic_binary_op_node(
@@ -1089,28 +1127,45 @@ fn do_convert_basic_binary_op_expr(
 }
 
 // `p && q` ==> `if p { q } else { false }`
-fn do_convert_log_and_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn do_convert_log_and_expr(
+    expr: &ABinaryOpExpr,
+    ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     do_convert_if_expr(
-        |xx| convert_expr(expr.left, xx),
-        |xx| convert_expr_opt(expr.right_opt, loc, xx),
+        |xx| convert_expr(expr.left, TyExpect::Todo, xx),
+        |xx| convert_expr_opt(expr.right_opt, TyExpect::Todo, loc, xx),
         |_| KTerm::False { loc },
+        ty_expect,
         loc,
         xx,
     )
 }
 
 // `p || q` ==> `if p { true } else { q }`
-fn do_convert_log_or_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn do_convert_log_or_expr(
+    expr: &ABinaryOpExpr,
+    ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     do_convert_if_expr(
-        |xx| convert_expr(expr.left, xx),
+        |xx| convert_expr(expr.left, TyExpect::Todo, xx),
         |_| KTerm::True { loc },
-        |xx| convert_expr_opt(expr.right_opt, loc, xx),
+        |xx| convert_expr_opt(expr.right_opt, TyExpect::Todo, loc, xx),
+        ty_expect,
         loc,
         xx,
     )
 }
 
-fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_binary_op_expr(
+    expr: &ABinaryOpExpr,
+    ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     let on_assign = |prim: KPrim, xx: &mut Xx| do_convert_assignment_expr(prim, expr, loc, xx);
     let on_basic = |prim: KPrim, xx: &mut Xx| do_convert_basic_binary_op_expr(prim, expr, loc, xx);
     let on_bit = on_basic;
@@ -1144,12 +1199,12 @@ fn convert_binary_op_expr(expr: &ABinaryOpExpr, loc: Loc, xx: &mut Xx) -> AfterR
         PBinaryOp::LessEqual => on_comparison(KPrim::LessEqual, xx),
         PBinaryOp::GreaterThan => on_comparison(KPrim::GreaterThan, xx),
         PBinaryOp::GreaterEqual => on_comparison(KPrim::GreaterEqual, xx),
-        PBinaryOp::LogAnd => do_convert_log_and_expr(expr, loc, xx),
-        PBinaryOp::LogOr => do_convert_log_or_expr(expr, loc, xx),
+        PBinaryOp::LogAnd => do_convert_log_and_expr(expr, ty_expect, loc, xx),
+        PBinaryOp::LogOr => do_convert_log_or_expr(expr, ty_expect, loc, xx),
     }
 }
 
-fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_block_expr(decls: ADeclIds, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     let mut last_opt = None;
 
     xx.do_in_scope(|xx| {
@@ -1159,7 +1214,7 @@ fn convert_block_expr(decls: ADeclIds, loc: Loc, xx: &mut Xx) -> AfterRval {
     last_opt.unwrap_or(KTerm::Unit { loc })
 }
 
-fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> AfterJump {
+fn convert_break_expr(expr: &AJumpExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterJump {
     let label_opt = xx.loop_opt.as_ref().map(|data| data.break_label);
     let label = match label_opt {
         Some(it) => it,
@@ -1169,13 +1224,13 @@ fn convert_break_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> AfterJump {
         }
     };
 
-    let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+    let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
     xx.nodes
         .push(new_jump_node(label, vec![arg], new_cont(), loc));
     new_never_term(loc)
 }
 
-fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> AfterJump {
+fn convert_continue_expr(_ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterJump {
     let label_opt = xx.loop_opt.as_ref().map(|data| data.continue_label);
     let label = match label_opt {
         Some(it) => it,
@@ -1194,8 +1249,8 @@ fn convert_continue_expr(loc: Loc, xx: &mut Xx) -> AfterJump {
     new_never_term(loc)
 }
 
-fn convert_return_expr(expr: &AJumpExpr, loc: Loc, xx: &mut Xx) -> AfterJump {
-    let arg = convert_expr_opt(expr.arg_opt, loc, xx);
+fn convert_return_expr(expr: &AJumpExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterJump {
+    let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
 
     let node = match xx.fn_opt {
         Some(k_fn) => new_return_node(k_fn, arg, loc),
@@ -1213,6 +1268,7 @@ fn do_convert_if_expr(
     cond_fn: impl FnOnce(&mut Xx) -> AfterRval,
     body_fn: impl FnOnce(&mut Xx) -> AfterRval,
     alt_fn: impl FnOnce(&mut Xx) -> AfterRval,
+    _ty_expect: TyExpect,
     loc: Loc,
     xx: &mut Xx,
 ) -> AfterRval {
@@ -1237,18 +1293,19 @@ fn do_convert_if_expr(
     })
 }
 
-fn convert_if_expr(expr: &AIfExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_if_expr(expr: &AIfExpr, ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_convert_if_expr(
-        |xx| convert_expr_opt(expr.cond_opt, loc, xx),
-        |xx| convert_expr_opt(expr.body_opt, loc, xx),
-        |xx| convert_expr_opt(expr.alt_opt, loc, xx),
+        |xx| convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc, xx),
+        |xx| convert_expr_opt(expr.body_opt, TyExpect::Todo, loc, xx),
+        |xx| convert_expr_opt(expr.alt_opt, TyExpect::Todo, loc, xx),
+        ty_expect,
         loc,
         xx,
     )
 }
 
-fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
+    let cond = convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc, xx);
     if expr.arms.is_empty() {
         error_empty_match(PLoc::from_loc(loc), xx.logger);
         return new_error_term(loc);
@@ -1283,7 +1340,7 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
             do_in_branch(xx, |xx| {
                 xx.do_in_scope(|xx| {
                     convert_pat_as_assign(arm.pat, &cond, term, xx);
-                    let body = convert_expr_opt(arm.body_opt, loc, xx);
+                    let body = convert_expr_opt(arm.body_opt, TyExpect::Todo, loc, xx);
                     let node = new_jump_tail(break_label, vec![body], loc);
                     xx.nodes.push(node);
                 });
@@ -1293,7 +1350,7 @@ fn convert_match_expr(expr: &AMatchExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
 }
 
 // `while cond { body }` ==> `loop { if cond { body } else { break } }`
-fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_while_expr(expr: &AWhileExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     let unit_term = new_unit_term(loc);
 
     do_in_loop(
@@ -1301,14 +1358,14 @@ fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
         loc,
         xx,
         |xx, _, break_label, continue_label| {
-            let cond = convert_expr_opt(expr.cond_opt, loc, xx);
+            let cond = convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc, xx);
             xx.nodes
                 .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
             // body
             do_in_branch(xx, |xx| {
                 let node = {
-                    let _term = convert_expr_opt(expr.body_opt, loc, xx);
+                    let _term = convert_expr_opt(expr.body_opt, TyExpect::Todo, loc, xx);
                     new_jump_tail(continue_label, vec![], loc)
                 };
                 xx.nodes.push(node);
@@ -1323,11 +1380,11 @@ fn convert_while_expr(expr: &AWhileExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     )
 }
 
-fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_loop_expr(expr: &ALoopExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     do_in_loop("loop_result", loc, xx, |xx, _, _, continue_label| {
         do_in_branch(xx, |xx| {
             let node = {
-                let _term = convert_expr_opt(expr.body_opt, loc, xx);
+                let _term = convert_expr_opt(expr.body_opt, TyExpect::Todo, loc, xx);
                 new_jump_tail(continue_label, vec![], loc)
             };
             xx.nodes.push(node);
@@ -1335,7 +1392,7 @@ fn convert_loop_expr(expr: &ALoopExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
     })
 }
 
-fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> AfterRval {
+fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
@@ -1348,36 +1405,44 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, xx: &mut Xx) -> AfterRval {
         AExpr::Name(name) => convert_name_expr(name, ANameKey::Expr(expr_id), xx),
         AExpr::Record(record_expr) => convert_record_expr(expr_id, record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
-        AExpr::Call(call_expr) => convert_call_expr(call_expr, loc, xx),
-        AExpr::Index(index_expr) => convert_index_expr(index_expr, loc, xx),
-        AExpr::As(as_expr) => convert_as_expr(as_expr, loc, xx),
-        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, loc, xx),
-        AExpr::BinaryOp(binary_op_expr) => convert_binary_op_expr(binary_op_expr, loc, xx),
-        AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), loc, xx),
-        AExpr::Break(break_expr) => convert_break_expr(break_expr, loc, xx),
-        AExpr::Continue => convert_continue_expr(loc, xx),
-        AExpr::Return(return_expr) => convert_return_expr(return_expr, loc, xx),
-        AExpr::If(if_expr) => convert_if_expr(if_expr, loc, xx),
-        AExpr::Match(match_expr) => convert_match_expr(match_expr, loc, xx),
-        AExpr::While(while_expr) => convert_while_expr(while_expr, loc, xx),
-        AExpr::Loop(loop_expr) => convert_loop_expr(loop_expr, loc, xx),
+        AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),
+        AExpr::Index(index_expr) => convert_index_expr(index_expr, ty_expect, loc, xx),
+        AExpr::As(as_expr) => convert_as_expr(as_expr, ty_expect, loc, xx),
+        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, ty_expect, loc, xx),
+        AExpr::BinaryOp(binary_op_expr) => {
+            convert_binary_op_expr(binary_op_expr, ty_expect, loc, xx)
+        }
+        AExpr::Block(ABlockExpr { decls }) => convert_block_expr(decls.clone(), ty_expect, loc, xx),
+        AExpr::Break(break_expr) => convert_break_expr(break_expr, ty_expect, loc, xx),
+        AExpr::Continue => convert_continue_expr(ty_expect, loc, xx),
+        AExpr::Return(return_expr) => convert_return_expr(return_expr, ty_expect, loc, xx),
+        AExpr::If(if_expr) => convert_if_expr(if_expr, ty_expect, loc, xx),
+        AExpr::Match(match_expr) => convert_match_expr(match_expr, ty_expect, loc, xx),
+        AExpr::While(while_expr) => convert_while_expr(while_expr, ty_expect, loc, xx),
+        AExpr::Loop(loop_expr) => convert_loop_expr(loop_expr, ty_expect, loc, xx),
     }
 }
 
 /// `&expr` を生成する。
-fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> AfterLval {
+fn do_convert_lval(
+    expr_id: AExprId,
+    expr: &AExpr,
+    k_mut: KMut,
+    ty_expect: TyExpect,
+    xx: &mut Xx,
+) -> AfterLval {
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
         AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
         AExpr::Record(expr) => convert_record_lval(expr_id, expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_lval(field_expr, k_mut, loc, xx),
-        AExpr::Index(index_expr) => convert_index_lval(index_expr, loc, xx),
-        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, loc, xx),
+        AExpr::Index(index_expr) => convert_index_lval(index_expr, ty_expect, loc, xx),
+        AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, ty_expect, loc, xx),
         _ => {
             // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
 
-            let symbol = match convert_expr(expr_id, xx) {
+            let symbol = match convert_expr(expr_id, ty_expect, xx) {
                 KTerm::Name(it) => it,
                 term => {
                     // FIXME: リテラルなら static を導入してそのアドレスを取る。
@@ -1395,26 +1460,37 @@ fn do_convert_lval(expr_id: AExprId, expr: &AExpr, k_mut: KMut, xx: &mut Xx) -> 
     }
 }
 
-fn convert_expr(expr_id: AExprId, xx: &mut Xx) -> AfterRval {
+fn convert_expr(expr_id: AExprId, ty_expect: TyExpect, xx: &mut Xx) -> AfterRval {
     let expr = expr_id.of(xx.ast.exprs());
-    do_convert_expr(expr_id, expr, xx)
+    do_convert_expr(expr_id, expr, ty_expect, xx)
 }
 
-fn convert_lval(expr_id: AExprId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
+fn convert_lval(expr_id: AExprId, k_mut: KMut, ty_expect: TyExpect, xx: &mut Xx) -> AfterLval {
     let expr = expr_id.of(xx.ast.exprs());
-    do_convert_lval(expr_id, expr, k_mut, xx)
+    do_convert_lval(expr_id, expr, k_mut, ty_expect, xx)
 }
 
-fn convert_expr_opt(expr_id_opt: Option<AExprId>, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_expr_opt(
+    expr_id_opt: Option<AExprId>,
+    ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterRval {
     match expr_id_opt {
-        Some(expr_id) => convert_expr(expr_id, xx),
+        Some(expr_id) => convert_expr(expr_id, ty_expect, xx),
         None => new_error_term(loc),
     }
 }
 
-fn convert_lval_opt(expr_id_opt: Option<AExprId>, k_mut: KMut, loc: Loc, xx: &mut Xx) -> AfterLval {
+fn convert_lval_opt(
+    expr_id_opt: Option<AExprId>,
+    k_mut: KMut,
+    ty_expect: TyExpect,
+    loc: Loc,
+    xx: &mut Xx,
+) -> AfterLval {
     match expr_id_opt {
-        Some(expr_id) => convert_lval(expr_id, k_mut, xx),
+        Some(expr_id) => convert_lval(expr_id, k_mut, ty_expect, xx),
         None => new_error_term(loc),
     }
 }
@@ -1424,7 +1500,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
 
     let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
-    let value = convert_expr_opt(decl.value_opt, loc, xx);
+    let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
     let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
 
     let local = xx.local_vars.alloc(
@@ -1448,7 +1524,7 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
         let mut nodes = take(&mut xx.nodes);
         let mut term_opt = None;
         xx.do_out_fn(|xx| {
-            term_opt = Some(convert_expr_opt(decl.value_opt, loc, xx));
+            term_opt = Some(convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
         });
         swap(&mut xx.nodes, &mut nodes);
 
@@ -1471,7 +1547,7 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
         let mut nodes = take(&mut xx.nodes);
         let mut term_opt = None;
         xx.do_out_fn(|xx| {
-            term_opt = Some(convert_expr_opt(decl.value_opt, loc, xx));
+            term_opt = Some(convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
         });
         swap(&mut xx.nodes, &mut nodes);
 
@@ -1541,7 +1617,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         // 関数の本体を格納しておくラベル
         xx.label = xx.labels.alloc(KLabelConstruction::default());
 
-        let term = convert_expr_opt(fn_decl.body_opt, loc, xx);
+        let term = convert_expr_opt(fn_decl.body_opt, TyExpect::Todo, loc, xx);
         emit_return(term, loc, xx);
         commit_label(xx);
 
@@ -1619,7 +1695,7 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
     match decl {
         ADecl::Attr => {}
         ADecl::Expr(expr) => {
-            *term_opt = Some(convert_expr(*expr, xx));
+            *term_opt = Some(convert_expr(*expr, TyExpect::Todo, xx));
         }
         ADecl::Let(decl) => {
             assert_eq!(symbol_opt, None);
