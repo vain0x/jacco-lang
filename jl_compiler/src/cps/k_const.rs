@@ -1,9 +1,8 @@
-use super::{KConstEnum, KNode, KNumberTy, KTerm, KTy};
+use super::{KConstEnum, KNode, KNumber, KNumberTy, KTerm, KTy};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId, VecArenaSlice},
 };
-use std::fmt::{self, Debug, Formatter};
 
 pub(crate) struct KConstTag;
 
@@ -174,25 +173,6 @@ impl From<(KNumber, KNumberTy)> for KConstValue {
             (KNumber::CNN(value), KNumberTy::C16) => KConstValue::C16(value as u16),
             (KNumber::CNN(value), KNumberTy::C32) => KConstValue::C32(value as u32),
             (KNumber::CNN(value), KNumberTy::CNN) => KConstValue::C32(value as u32),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub(crate) enum KNumber {
-    INN(i64),
-    UNN(u64),
-    FNN(f64),
-    CNN(u32),
-}
-
-impl Debug for KNumber {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            KNumber::INN(value) => Debug::fmt(value, f),
-            KNumber::UNN(value) => Debug::fmt(value, f),
-            KNumber::FNN(value) => Debug::fmt(value, f),
-            KNumber::CNN(value) => Debug::fmt(value, f),
         }
     }
 }

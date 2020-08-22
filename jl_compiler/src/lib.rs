@@ -53,6 +53,8 @@ mod cps {
     mod k_mod;
     mod k_mut;
     mod k_node;
+    mod k_number;
+    mod k_number_ty;
     mod k_prim;
     mod k_static_var;
     mod k_struct;
@@ -68,7 +70,7 @@ mod cps {
     pub(crate) use eval::eval_cps;
     pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
     pub(crate) use k_const::{
-        KConst, KConstArena, KConstData, KConstInit, KConstInits, KConstValue, KNumber,
+        KConst, KConstArena, KConstData, KConstInit, KConstInits, KConstValue,
     };
     pub(crate) use k_const_enum::*;
     pub(crate) use k_extern_fn::{
@@ -87,6 +89,8 @@ mod cps {
     };
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
+    pub(crate) use k_number::KNumber;
+    pub(crate) use k_number_ty::KNumberTy;
     pub(crate) use k_prim::*;
     pub(crate) use k_static_var::{
         KStaticVar, KStaticVarArena, KStaticVarData, KStaticVarInit, KStaticVarInits,
@@ -95,7 +99,7 @@ mod cps {
     pub(crate) use k_struct_enum::{KStructEnum, KStructEnumArena, KStructEnumOutline};
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
-    pub(crate) use k_ty::{KNumberTy, KTy, KTy2, KTyCause};
+    pub(crate) use k_ty::{KTy, KTy2, KTyCause};
     pub(crate) use k_value::{KLocalValue, KProjectValue};
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
