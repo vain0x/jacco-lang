@@ -340,10 +340,20 @@ fn gen_number(s: &str, ty: &KTy2) -> CExpr {
         (KNumber::INN(value), &KTy2::I8)
         | (KNumber::INN(value), &KTy2::I16)
         | (KNumber::INN(value), &KTy2::I32) => CExpr::IntLit(value.to_string()),
-        (KNumber::UNN(value), &KTy2::U8)
+        (KNumber::UNN(value), &KTy2::I8)
+        | (KNumber::UNN(value), &KTy2::I16)
+        | (KNumber::UNN(value), &KTy2::I32)
+        | (KNumber::UNN(value), &KTy2::U8)
         | (KNumber::UNN(value), &KTy2::U16)
-        | (KNumber::UNN(value), &KTy2::U32) => CExpr::IntLit(value.to_string()),
-        (KNumber::FNN(value), &KTy2::C16)
+        | (KNumber::UNN(value), &KTy2::U32)
+        | (KNumber::UNN(value), &KTy2::C8)
+        | (KNumber::UNN(value), &KTy2::C16)
+        | (KNumber::UNN(value), &KTy2::C32) => CExpr::IntLit(value.to_string()),
+        (KNumber::UNN(value), &KTy2::I64) | (KNumber::UNN(value), &KTy2::ISIZE) => {
+            CExpr::LongLongLit(value.to_string())
+        }
+        (KNumber::FNN(value), &KTy2::C8)
+        | (KNumber::FNN(value), &KTy2::C16)
         | (KNumber::FNN(value), &KTy2::C32)
         | (KNumber::FNN(value), &KTy2::CNN) => CExpr::IntLit(value.to_string()),
         (KNumber::INN(value), &KTy2::I64)
@@ -355,13 +365,6 @@ fn gen_number(s: &str, ty: &KTy2) -> CExpr {
         (KNumber::FNN(value), &KTy2::F32)
         | (KNumber::FNN(value), &KTy2::F64)
         | (KNumber::FNN(value), &KTy2::FNN) => CExpr::DoubleLit(value.to_string()),
-        (KNumber::FNN(value), &KTy2::C8) => {
-            CExpr::IntLit(value.to_string()).into_cast(CTy::UnsignedChar)
-        }
-        (KNumber::UNN(value), &KTy2::I32) => {
-            // FIXME: CPS 変換のパッチワークをハンドル
-            CExpr::IntLit(value.to_string())
-        }
         _ => {
             log::error!("[BUG] invalid number literal {:?}", s);
             CExpr::Other("/* invalid number */ (void)0")

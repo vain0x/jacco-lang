@@ -27,9 +27,20 @@ type AfterJump = KTerm;
 /// 式の型に与えられる制約。
 #[allow(unused)]
 #[derive(Copy, Clone)]
-enum TyExpect {
+enum TyExpect<'a> {
     /// 未実装部分
     Todo,
+    Exact(&'a KTy2),
+}
+
+impl<'a> TyExpect<'a> {
+    pub(crate) fn from(ty: &'a KTy2) -> Self {
+        if ty.is_unresolved() {
+            Self::Todo
+        } else {
+            TyExpect::Exact(ty)
+        }
+    }
 }
 
 fn new_unit_term(loc: Loc) -> AfterRval {
@@ -41,7 +52,20 @@ fn new_never_term(loc: Loc) -> AfterRval {
     KTerm::Unit { loc }
 }
 
-fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLogger) -> AfterRval {
+fn ty_expect_as_number(ty_expect: TyExpect) -> Option<KNumberTy> {
+    match ty_expect {
+        TyExpect::Exact(KTy2::Number(it)) => Some(*it),
+        _ => None,
+    }
+}
+
+fn convert_number_lit(
+    token: PToken,
+    ty_expect: TyExpect,
+    tokens: &PTokens,
+    doc: Doc,
+    logger: &DocLogger,
+) -> AfterRval {
     let text = token.text(tokens).to_string();
     let cause = KTermCause::Token(doc, token);
     let loc = cause.loc();
@@ -55,6 +79,14 @@ fn convert_number_lit(token: PToken, tokens: &PTokens, doc: Doc, logger: &DocLog
                     KTerm::Char { text, ty, loc }
                 }
                 KNumberTy::UNN => {
+                    if let Some(ty) = ty_expect_as_number(ty_expect) {
+                        return KTerm::Int {
+                            text,
+                            ty: KTy2::Number(ty),
+                            cause,
+                        };
+                    }
+
                     // FIXME: 後続のパスが UNN をうまく処理できなくて、unsigned long long になってしまう。いまのところ、ここで i32 にしておく
                     KTerm::Int {
                         text,
@@ -450,7 +482,9 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         APat::True(_) => KTerm::True { loc },
         APat::False(_) => KTerm::False { loc },
         APat::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
-        APat::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
+        APat::Number(token) => {
+            convert_number_lit(*token, TyExpect::Todo, xx.tokens, xx.doc, xx.logger)
+        }
         APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         APat::Wildcard(token) => return convert_wildcard_pat_as_cond(*token, xx),
         APat::Name(name) => return convert_name_pat_as_cond(name, ANameKey::Pat(pat_id), xx),
@@ -1032,8 +1066,8 @@ fn convert_index_lval(
 }
 
 fn convert_as_expr(expr: &AAsExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let arg = convert_expr(expr.left, TyExpect::Todo, xx);
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
+    let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
     let result = fresh_symbol("cast", loc, xx);
     xx.nodes
@@ -1399,7 +1433,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Unit => KTerm::Unit { loc },
         AExpr::True => KTerm::True { loc },
         AExpr::False => KTerm::False { loc },
-        AExpr::Number(token) => convert_number_lit(*token, xx.tokens, xx.doc, xx.logger),
+        AExpr::Number(token) => convert_number_lit(*token, ty_expect, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         AExpr::Name(name) => convert_name_expr(name, ANameKey::Expr(expr_id), xx),

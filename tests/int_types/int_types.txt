@@ -4,7 +4,7 @@ int main() {
     int n32_1 = 1000000007;
     long long n64_1 = 1000000007LL;
     unsigned long long n_usize_1 = 1000000007ULL;
-    long long cast_1 = (long long)1000;
+    long long cast_1 = (long long)1000LL;
     long long cast_64_1 = cast_1;
     long long mul_1 = n64_1 * cast_64_1;
     long long mul_64_1 = mul_1;
@@ -14,7 +14,7 @@ int main() {
     short cast_3 = (short)3000;
     short minus_2 = -cast_3;
     short signed_16bit_1 = minus_2;
-    long long cast_4 = (long long)1;
+    long long cast_4 = (long long)1LL;
     long long minus_3 = -cast_4;
     long long signed_ptr_size_1 = minus_3;
     unsigned char cast_5 = (unsigned char)255;
