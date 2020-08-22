@@ -1,4 +1,4 @@
-use super::{KModLocalSymbol, KProjectConstEnum, KProjectStructEnum, KProjectSymbol, KTy2};
+use super::{KProjectConstEnum, KProjectStructEnum, KProjectSymbol, KTy2};
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -54,37 +54,10 @@ impl KAliasOutline {
             }
             _ => return None,
         };
-
-        log::trace!("alias referent {} ty={:?}", &self.name, ty);
         Some(ty)
     }
 
-    fn verify_bind(&mut self, referent: KProjectSymbol) -> bool {
-        match referent {
-            KProjectSymbol::Mod(_) => true,
-            KProjectSymbol::ModLocal { symbol, .. } => match symbol {
-                KModLocalSymbol::LocalVar { .. } => {
-                    log::error!(
-                        "エイリアスにはローカル変数をバインドできません {:?}",
-                        referent
-                    );
-                    false
-                }
-                KModLocalSymbol::Alias(_) => {
-                    log::error!("エイリアスにエイリアスをバインドしようとしていますが、無視されます。再エクスポート (pub use) は未実装です {:?}", referent);
-                    false
-                }
-                _ => true,
-            },
-            _ => true,
-        }
-    }
-
     pub(crate) fn bind(&mut self, referent: KProjectSymbol) {
-        if !self.verify_bind(referent) {
-            return;
-        }
-
         let old_referent = self.referent_opt.replace(referent);
         assert_eq!(old_referent, None);
     }

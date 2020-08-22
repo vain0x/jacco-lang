@@ -137,10 +137,6 @@ impl Logger {
         inner.push(LogItem::OnLoc { message, loc });
     }
 
-    pub(crate) fn unexpected(&self, node: impl HaveLoc, message: impl Into<String>) {
-        self.error(node, format!("[バグ?] {}", message.into()))
-    }
-
     pub(crate) fn unimpl(&self, node: impl HaveLoc, message: impl Into<String>) {
         self.error(node, format!("[未実装?] {}", message.into()))
     }

@@ -154,11 +154,6 @@ pub(crate) enum KModLocalSymbolOutline<'a> {
 pub(crate) enum KProjectSymbol {
     #[allow(unused)]
     Mod(KMod),
-    #[allow(unused)]
-    ModLocal {
-        k_mod: KMod,
-        symbol: KModLocalSymbol,
-    },
     StaticVar(KProjectStaticVar),
     Const(KProjectConst),
     Fn(KProjectFn),
@@ -170,46 +165,29 @@ pub(crate) enum KProjectSymbol {
 
 impl KProjectSymbol {
     pub(crate) fn outline<'a>(self, mod_outlines: &'a KModOutlines) -> KProjectSymbolOutline<'a> {
-        let (k_mod, symbol) = match self {
-            KProjectSymbol::ModLocal { k_mod, symbol } => (k_mod, symbol),
-            KProjectSymbol::Mod(k_mod) => {
-                return KProjectSymbolOutline::Mod(k_mod, k_mod.of(mod_outlines));
-            }
+        match self {
+            KProjectSymbol::Mod(k_mod) => KProjectSymbolOutline::Mod(k_mod, k_mod.of(mod_outlines)),
             KProjectSymbol::Const(k_const) => {
-                return KProjectSymbolOutline::Const(k_const.k_mod(), k_const.of(mod_outlines));
+                KProjectSymbolOutline::Const(k_const.k_mod(), k_const.of(mod_outlines))
             }
             KProjectSymbol::StaticVar(static_var) => {
-                return KProjectSymbolOutline::StaticVar(
-                    static_var.k_mod(),
-                    static_var.of(mod_outlines),
-                );
+                KProjectSymbolOutline::StaticVar(static_var.k_mod(), static_var.of(mod_outlines))
             }
             KProjectSymbol::Fn(k_fn) => {
-                return KProjectSymbolOutline::Fn(k_fn.k_mod(), k_fn.of(mod_outlines));
+                KProjectSymbolOutline::Fn(k_fn.k_mod(), k_fn.of(mod_outlines))
             }
             KProjectSymbol::ExternFn(extern_fn) => {
-                return KProjectSymbolOutline::ExternFn(
-                    extern_fn.k_mod(),
-                    extern_fn.of(mod_outlines),
-                );
+                KProjectSymbolOutline::ExternFn(extern_fn.k_mod(), extern_fn.of(mod_outlines))
             }
             KProjectSymbol::ConstEnum(const_enum) => {
-                return KProjectSymbolOutline::ConstEnum(const_enum.of(mod_outlines));
+                KProjectSymbolOutline::ConstEnum(const_enum.of(mod_outlines))
             }
             KProjectSymbol::StructEnum(struct_enum) => {
-                return KProjectSymbolOutline::StructEnum(struct_enum.of(mod_outlines));
+                KProjectSymbolOutline::StructEnum(struct_enum.of(mod_outlines))
             }
             KProjectSymbol::Struct(k_struct) => {
-                return KProjectSymbolOutline::Struct(k_struct.of(mod_outlines));
+                KProjectSymbolOutline::Struct(k_struct.of(mod_outlines))
             }
-        };
-
-        let mod_outline = k_mod.of(mod_outlines);
-        let symbol_outline = symbol.outline(mod_outline);
-        KProjectSymbolOutline::ModLocal {
-            k_mod,
-            mod_outline,
-            symbol_outline,
         }
     }
 }
@@ -217,13 +195,6 @@ impl KProjectSymbol {
 #[derive(Copy, Clone)]
 pub(crate) enum KProjectSymbolOutline<'a> {
     Mod(KMod, &'a KModOutline),
-    ModLocal {
-        #[allow(unused)]
-        k_mod: KMod,
-        #[allow(unused)]
-        mod_outline: &'a KModOutline,
-        symbol_outline: KModLocalSymbolOutline<'a>,
-    },
     Const(KMod, &'a KConstData),
     StaticVar(KMod, &'a KStaticVarData),
     Fn(KMod, &'a KFnOutline),

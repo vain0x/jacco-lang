@@ -3,7 +3,7 @@
 use super::*;
 use crate::{source::HaveLoc, source::Loc};
 use k_meta_ty::KMetaTyData;
-use k_mod::{KModLocalSymbolOutline, KProjectSymbolOutline};
+use k_mod::KProjectSymbolOutline;
 use k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance};
 use std::{
     cell::RefCell,
@@ -348,39 +348,13 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
         KProjectSymbolOutline::ExternFn(k_mod, extern_fn_outline) => {
             extern_fn_outline.ty().to_ty2(k_mod)
         }
-        KProjectSymbolOutline::ConstEnum(..) => todo!(),
-        KProjectSymbolOutline::StructEnum(..) => todo!(),
-        KProjectSymbolOutline::Struct(_) => todo!(),
-        KProjectSymbolOutline::ModLocal {
-            k_mod: _,
-            symbol_outline,
-            ..
-        } => match symbol_outline {
-            KModLocalSymbolOutline::Alias(alias, alias_data) => {
-                resolve_alias_term(alias, alias_data.loc(), tx)
-            }
-            KModLocalSymbolOutline::Const(..) => unreachable!(),
-            KModLocalSymbolOutline::StaticVar(..) => unreachable!(),
-            KModLocalSymbolOutline::Fn(..) => unreachable!(),
-            KModLocalSymbolOutline::ExternFn(..) => unreachable!(),
-            KModLocalSymbolOutline::ConstEnum(..)
-            | KModLocalSymbolOutline::StructEnum(_, _)
-            | KModLocalSymbolOutline::Struct(_, _) => {
-                tx.logger
-                    .unimpl(loc, "インポートされた型の型検査は未実装です");
-                KTy2::Never
-            }
-            KModLocalSymbolOutline::LocalVar(..) => {
-                tx.logger
-                    .unexpected(loc, "エイリアスがローカル変数を指すことはありません");
-                KTy2::Never
-            }
-            KModLocalSymbolOutline::Field(..) => {
-                tx.logger
-                    .unexpected(loc, "エイリアスがフィールドを指すことはありません");
-                KTy2::Never
-            }
-        },
+        KProjectSymbolOutline::ConstEnum(..)
+        | KProjectSymbolOutline::StructEnum(..)
+        | KProjectSymbolOutline::Struct(_) => {
+            tx.logger
+                .unimpl(loc, "インポートされた型の型検査は未実装です");
+            KTy2::Never
+        }
     }
 }
 

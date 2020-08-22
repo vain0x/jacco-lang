@@ -416,24 +416,12 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 // FIXME: fn と同様に k_mod の値を見るように修正
                 gen_extern_fn_term(extern_fn.1, cx)
             }
-            Some(KProjectSymbol::ConstEnum(..)) => todo!(),
-            Some(KProjectSymbol::StructEnum(..)) => todo!(),
-            Some(KProjectSymbol::Struct(..)) => todo!(),
-            Some(KProjectSymbol::ModLocal { k_mod: _, symbol }) => match symbol {
-                KModLocalSymbol::Const(..) => unreachable!(),
-                KModLocalSymbol::StaticVar(..) => unreachable!(),
-                KModLocalSymbol::Fn(..) => unreachable!(),
-                KModLocalSymbol::ExternFn(..) => unreachable!(),
-                KModLocalSymbol::LocalVar { .. }
-                | KModLocalSymbol::Alias(_)
-                | KModLocalSymbol::ConstEnum(_)
-                | KModLocalSymbol::StructEnum(_)
-                | KModLocalSymbol::Struct(_)
-                | KModLocalSymbol::Field(_) => {
-                    error!("別名の参照先が不正です {:?}", (symbol, loc));
-                    CExpr::Other("/* error: invalid alias term ")
-                }
-            },
+            Some(KProjectSymbol::ConstEnum(..))
+            | Some(KProjectSymbol::StructEnum(..))
+            | Some(KProjectSymbol::Struct(..)) => {
+                error!("別名の参照先が不正です {:?}", (term, loc));
+                CExpr::Other("/* error: invalid alias term ")
+            }
             Some(KProjectSymbol::Mod(_)) => {
                 error!("モジュールを指す別名はCの式になりません {:?}", loc);
                 CExpr::Other("/* error: mod alias */")
