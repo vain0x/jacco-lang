@@ -1,0 +1,24 @@
+#![test("run", 0)]
+
+// 他のモジュールのレコードバリアントを use で参照し、構築やパターンマッチに使用できる。
+
+use response::Response;
+
+extern fn assert(cond: bool);
+extern fn strcmp(first: *c8, second: *c8) -> i32;
+
+pub fn main() -> i32 {
+    let err = Response::Err {
+        code: 1234,
+        message: "Something wrong.",
+    };
+
+    match err {
+        Response::Err { .. } => {
+            assert(err.Err.code == 1234);
+            assert(strcmp(err.Err.message, "Something wrong.") == 0);
+            0
+        }
+        _ => 1,
+    }
+}

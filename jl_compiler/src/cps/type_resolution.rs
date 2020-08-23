@@ -486,20 +486,25 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&tx.mod_outline.struct_enums)
+                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
+                                {
                                     Some(KTy2::Struct(k_mod, k_struct))
                                 } else {
                                     None
                                 }
                             })?,
                         KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&tx.mod_outline.structs)
+                            .fields(&k_mod.of(&tx.mod_outlines).structs)
                             .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|field| field.ty(&tx.mod_outline.fields).to_ty2(k_mod))?,
+                            .find(|field| {
+                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
+                            })
+                            .map(|field| {
+                                field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(k_mod)
+                            })?,
                     };
                     Some(ty.into_ptr(KMut::Const))
                 })()
@@ -530,20 +535,25 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&tx.mod_outline.struct_enums)
+                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
+                                {
                                     Some(KTy2::Struct(k_mod, k_struct))
                                 } else {
                                     None
                                 }
                             })?,
                         KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&tx.mod_outline.structs)
+                            .fields(&k_mod.of(&tx.mod_outlines).structs)
                             .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|field| field.ty(&tx.mod_outline.fields).to_ty2(k_mod))?,
+                            .find(|field| {
+                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
+                            })
+                            .map(|field| {
+                                field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(k_mod)
+                            })?,
                     };
                     Some(ty.into_ptr(k_mut))
                 })()

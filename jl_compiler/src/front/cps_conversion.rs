@@ -807,23 +807,25 @@ fn do_convert_record_expr(
     let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
         Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
         _ => {
-            // FIXME: エイリアス
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return None;
         }
     };
 
+    let KProjectStruct(k_mod, _) = k_struct;
     let fields = &k_struct.of(xx.mod_outlines).fields;
-    let perm =
-        match calculate_field_ordering(&expr.fields, fields, &xx.mod_outline.fields, |field_expr| {
-            &field_expr.field_name.text
-        }) {
-            Ok(it) => it,
-            Err(errors) => {
-                report_record_expr_errors(fields, &errors, loc, xx.mod_outline, xx.logger);
-                return None;
-            }
-        };
+    let perm = match calculate_field_ordering(
+        &expr.fields,
+        fields,
+        &k_mod.of(&xx.mod_outlines).fields,
+        |field_expr| &field_expr.field_name.text,
+    ) {
+        Ok(it) => it,
+        Err(errors) => {
+            report_record_expr_errors(fields, &errors, loc, k_mod.of(xx.mod_outlines), xx.logger);
+            return None;
+        }
+    };
 
     let mut args = vec![KTerm::Unit { loc }; fields.len()];
     for (i, field_expr) in expr.fields.iter().enumerate() {
