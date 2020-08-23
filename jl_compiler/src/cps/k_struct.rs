@@ -60,6 +60,11 @@ impl KProjectStruct {
         let KProjectStruct(k_mod, k_struct) = self;
         k_struct.of(&k_mod.of(mod_outlines).structs)
     }
+
+    pub(crate) fn to_ty2(self) -> KTy2 {
+        let KProjectStruct(k_mod, k_struct) = self;
+        KTy2::Struct(k_mod, k_struct)
+    }
 }
 
 #[derive(Clone, Debug)]

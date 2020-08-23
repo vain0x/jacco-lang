@@ -389,15 +389,15 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
 
 fn convert_record_pat_as_cond(pat_id: APatId, pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> KTerm {
     let key = ANameKey::Pat(pat_id);
-    let k_struct = match resolve_ty_path(&pat.left, key, path_resolution_context(xx)) {
-        Some(KTy::Struct(it)) => it,
+    let (k_mod, k_struct) = match resolve_ty_path(&pat.left, key, path_resolution_context(xx)) {
+        Some(KTy2::Struct(k_mod, k_struct)) => (k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return new_error_term(loc);
         }
     };
     KTerm::RecordTag {
-        k_mod: xx.k_mod,
+        k_mod,
         k_struct,
         loc,
     }
@@ -805,16 +805,15 @@ fn do_convert_record_expr(
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
     let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
-        Some(KTy::Struct(k_struct)) => k_struct,
+        Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
         _ => {
             // FIXME: エイリアス
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return None;
         }
     };
-    let ty = KTy2::Struct(xx.k_mod, k_struct);
 
-    let fields = k_struct.fields(&xx.mod_outline.structs);
+    let fields = &k_struct.of(xx.mod_outlines).fields;
     let perm =
         match calculate_field_ordering(&expr.fields, fields, &xx.mod_outline.fields, |field_expr| {
             &field_expr.field_name.text
@@ -831,9 +830,14 @@ fn do_convert_record_expr(
         args[perm[i]] = convert_expr_opt(field_expr.value_opt, loc, xx);
     }
 
-    let result = fresh_symbol(k_struct.name(&xx.mod_outline.structs), loc, xx);
-    xx.nodes
-        .push(new_record_node(ty, args, result, new_cont(), loc));
+    let result = fresh_symbol(&k_struct.of(xx.mod_outlines).name, loc, xx);
+    xx.nodes.push(new_record_node(
+        k_struct.to_ty2(),
+        args,
+        result,
+        new_cont(),
+        loc,
+    ));
     Some(result)
 }
 

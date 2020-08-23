@@ -166,10 +166,10 @@ pub(crate) fn resolve_ty_path(
     path: &AName,
     key: ANameKey,
     context: PathResolutionContext<'_>,
-) -> Option<KTy> {
+) -> Option<KTy2> {
     let PathResolutionContext {
         tokens,
-        k_mod: _,
+        k_mod,
         mod_outline,
         mod_outlines: _,
         env,
@@ -178,7 +178,9 @@ pub(crate) fn resolve_ty_path(
 
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
-        None => return resolve_ty_name(&path.text, key, env, listener),
+        None => {
+            return resolve_ty_name(&path.text, key, env, listener).map(|ty| ty.to_ty2(k_mod));
+        }
     };
 
     if !tail.is_empty() {
@@ -192,7 +194,7 @@ pub(crate) fn resolve_ty_path(
             let name = path.token.text(tokens);
             let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
-            KTy::Struct(k_struct)
+            KTy2::Struct(k_mod, k_struct)
         }
         _ => return None,
     };
