@@ -805,6 +805,16 @@ fn do_convert_record_expr(
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
     let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
+        Some(KTy2::Alias(k_mod, alias)) => match alias
+            .of(&k_mod.of(&xx.mod_outlines).aliases)
+            .referent_as_ty()
+        {
+            Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
+            _ => {
+                error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
+                return None;
+            }
+        },
         Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);

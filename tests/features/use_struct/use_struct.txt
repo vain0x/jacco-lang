@@ -1,0 +1,31 @@
+void assert(int cond_1);
+
+int strcmp(unsigned char const* first_1, unsigned char const* second_1);
+
+int main();
+
+struct Err {
+    int code;
+    unsigned char const* message;
+};
+
+int main() {
+    struct Err Err_1;
+    Err_1.code = 1234;
+    Err_1.message = (unsigned char const*)"Something wrong.";
+    struct Err err_1 = Err_1;
+    struct Err const* ref_1 = &err_1;
+    int const* code_ptr_1 = &ref_1->code;
+    int code_1 = *code_ptr_1;
+    int equal_1 = code_1 == 1234;
+    // call_result_1 is killed.
+    assert(equal_1);
+    struct Err const* ref_2 = &err_1;
+    unsigned char const* const* message_ptr_1 = &ref_2->message;
+    unsigned char const* message_1 = *message_ptr_1;
+    int call_result_2 = strcmp(message_1, (unsigned char const*)"Something wrong.");
+    int equal_2 = call_result_2 == 0;
+    // call_result_3 is killed.
+    assert(equal_2);
+    return 0;
+}

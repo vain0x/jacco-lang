@@ -1,0 +1,4 @@
+pub struct Err {
+    code: i32,
+    message: *c8,
+}
