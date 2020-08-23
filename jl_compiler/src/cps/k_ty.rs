@@ -99,19 +99,21 @@ impl KTy2 {
         KTy2::Struct(k_mod, k_struct)
     }
 
-    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod) -> Self {
+    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &KTyEnv) -> Self {
         match ty {
             KTy::Unresolved { cause } => KTy2::Unresolved { cause },
             KTy::Never => KTy2::Never,
             KTy::Unit => KTy2::Unit,
             KTy::Number(number_ty) => KTy2::Number(number_ty),
-            KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod).into_ptr(k_mut),
+            KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod, ty_env).into_ptr(k_mut),
             KTy::Fn {
                 param_tys,
                 result_ty,
             } => KTy2::new_fn(
-                param_tys.into_iter().map(|ty| KTy2::from_ty1(ty, k_mod)),
-                KTy2::from_ty1(*result_ty, k_mod),
+                param_tys
+                    .into_iter()
+                    .map(|ty| KTy2::from_ty1(ty, k_mod, ty_env)),
+                KTy2::from_ty1(*result_ty, k_mod, ty_env),
             ),
             KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
             KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
@@ -442,8 +444,8 @@ impl KTy {
         }
     }
 
-    pub(crate) fn to_ty2(&self, k_mod: KMod) -> KTy2 {
-        KTy2::from_ty1(self.clone(), k_mod)
+    pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &KTyEnv) -> KTy2 {
+        KTy2::from_ty1(self.clone(), k_mod, ty_env)
     }
 
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy {

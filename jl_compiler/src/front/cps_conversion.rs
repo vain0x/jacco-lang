@@ -181,6 +181,7 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
         env: &xx.env,
+        ty_env: &xx.ty_env,
         listener: &mut *xx.listener,
     }
 }
@@ -957,7 +958,7 @@ fn convert_index_lval(expr: &ACallLikeExpr, loc: Loc, xx: &mut Xx) -> KTerm {
 
 fn convert_as_expr(expr: &AAsExpr, loc: Loc, xx: &mut Xx) -> KTerm {
     let arg = convert_expr(expr.left, xx);
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
+    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod, &xx.ty_env);
 
     let result = fresh_symbol("cast", loc, xx);
     xx.nodes
@@ -1372,7 +1373,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
+    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod, &xx.ty_env);
 
     let local = xx.local_vars.alloc(
         KLocalData::new(

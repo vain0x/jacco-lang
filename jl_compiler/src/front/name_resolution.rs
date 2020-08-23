@@ -20,6 +20,7 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
     pub(super) env: &'a Env,
+    pub(crate) ty_env: &'a KTyEnv,
     pub(super) listener: &'a mut dyn NameResolutionListener,
 }
 
@@ -173,13 +174,15 @@ pub(crate) fn resolve_ty_path(
         mod_outline,
         mod_outlines,
         env,
+        ty_env,
         listener,
     } = context;
 
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(&path.text, key, env, listener).map(|ty| ty.to_ty2(k_mod));
+            return resolve_ty_name(&path.text, key, env, listener)
+                .map(|ty| ty.to_ty2(k_mod, ty_env));
         }
     };
 
@@ -225,6 +228,7 @@ pub(crate) fn resolve_value_path(
         mod_outline,
         mod_outlines,
         env,
+        ty_env: _,
         listener,
     } = context;
 

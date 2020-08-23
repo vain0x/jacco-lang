@@ -96,6 +96,7 @@ impl KTerm {
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         locals: &KLocalArena,
+        ty_env: &KTyEnv,
         mod_outlines: &KModOutlines,
     ) -> KTy2 {
         let ty = match self {
@@ -112,17 +113,17 @@ impl KTerm {
                     cause: KTyCause::Alias,
                 }
             }
-            KTerm::Const { k_mod, k_const, .. } => {
-                k_const.ty(&k_mod.of(mod_outlines).consts).to_ty2(*k_mod)
-            }
-            KTerm::StaticVar { static_var, .. } => {
-                static_var.ty(&mod_outline.static_vars).to_ty2(k_mod)
-            }
-            KTerm::Fn { k_fn, .. } => k_fn.ty(&mod_outline.fns).to_ty2(k_mod),
+            KTerm::Const { k_mod, k_const, .. } => k_const
+                .ty(&k_mod.of(mod_outlines).consts)
+                .to_ty2(*k_mod, ty_env),
+            KTerm::StaticVar { static_var, .. } => static_var
+                .ty(&mod_outline.static_vars)
+                .to_ty2(k_mod, ty_env),
+            KTerm::Fn { k_fn, .. } => k_fn.ty(&mod_outline.fns).to_ty2(k_mod, ty_env),
             KTerm::Label { label, .. } => label.ty(labels),
-            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).to_ty2(k_mod),
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).to_ty2(k_mod, ty_env),
             KTerm::ExternFn { extern_fn, .. } => {
-                extern_fn.ty(&mod_outline.extern_fns).to_ty2(k_mod)
+                extern_fn.ty(&mod_outline.extern_fns).to_ty2(k_mod, ty_env)
             }
             KTerm::RecordTag {
                 k_mod, k_struct, ..
@@ -130,7 +131,7 @@ impl KTerm {
                 let mod_outline = k_mod.of(mod_outlines);
                 k_struct
                     .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                    .to_ty2(*k_mod)
+                    .to_ty2(*k_mod, ty_env)
             }
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);

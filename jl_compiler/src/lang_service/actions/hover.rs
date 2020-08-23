@@ -90,7 +90,9 @@ fn write_result_ty(
     mod_outlines: &KModOutlines,
 ) -> io::Result<()> {
     if !result_ty.is_unit() {
-        let ty = result_ty.to_ty2(k_mod).display(KTyEnv::EMPTY, mod_outlines);
+        let ty = result_ty
+            .to_ty2(k_mod, KTyEnv::EMPTY)
+            .display(KTyEnv::EMPTY, mod_outlines);
         write!(out, " -> {}", ty)?;
     }
     Ok(())

@@ -668,6 +668,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         &cx.mod_outline,
                         &KLabelSigArena::default(),
                         &cx.locals,
+                        ty_env,
                         cx.mod_outlines,
                     )
                     .as_enum(ty_env)
@@ -718,6 +719,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         &cx.mod_outline,
                         &VecArena::default(),
                         &cx.locals,
+                        ty_env,
                         cx.mod_outlines,
                     )
                     .is_bool(ty_env)
