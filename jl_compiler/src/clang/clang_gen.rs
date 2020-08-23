@@ -413,8 +413,8 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Name(fn_name)
             }
             Some(KProjectSymbol::ExternFn(extern_fn)) => {
-                // FIXME: fn と同様に k_mod の値を見るように修正
-                gen_extern_fn_term(extern_fn.1, cx)
+                let extern_fn_name = extern_fn.of(cx.mod_outlines).name.to_string();
+                CExpr::Name(extern_fn_name)
             }
             Some(KProjectSymbol::ConstEnum(..))
             | Some(KProjectSymbol::StructEnum(..))
