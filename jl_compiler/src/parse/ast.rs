@@ -49,6 +49,7 @@ pub(crate) enum ANameKey {
     Expr(AExprId),
     /// static や fn などの名前。
     Decl(ADeclId),
+    TyParam(ADeclId),
     Param(AParamDeclKey),
     Field(AFieldDeclKey),
     Variant(AVariantDeclKey),
@@ -61,6 +62,7 @@ impl ANameKey {
             ANameKey::Pat(pat_id) => pat_id.element(tree),
             ANameKey::Expr(expr_id) => expr_id.element(tree),
             ANameKey::Decl(decl_id) => decl_id.element(tree),
+            ANameKey::TyParam(key) => key.element(tree),
             ANameKey::Param(key) => key.element(tree),
             ANameKey::Field(key) => key.element(tree),
             ANameKey::Variant(key) => key.element(tree),

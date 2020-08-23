@@ -55,6 +55,7 @@ pub(crate) struct KExternFnOutline {
 impl KExternFnOutline {
     pub(crate) fn ty(&self) -> KTy {
         KTy::Fn {
+            ty_params: vec![],
             param_tys: self.param_tys.clone(),
             result_ty: Box::new(self.result_ty.clone()),
         }

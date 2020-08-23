@@ -96,10 +96,19 @@ fn alloc_fn(decl_id: ADeclId, decl: &AFnLikeDecl, doc: Doc, mod_outline: &mut KM
 
     let vis_opt = resolve_modifiers(&decl.modifiers);
     let name = resolve_name_opt(decl.name_opt.as_ref());
+    let ty_params = decl
+        .ty_params
+        .iter()
+        .map(|ty_param| {
+            let name = resolve_name_opt(Some(&ty_param.name));
+            KTyParam { name, loc }
+        })
+        .collect();
 
     mod_outline.fns.alloc(KFnOutline {
         name,
         vis_opt,
+        ty_params,
         param_tys: vec![],
         result_ty: KTy::init_later(loc),
         loc,

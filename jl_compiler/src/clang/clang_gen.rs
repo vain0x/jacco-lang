@@ -240,6 +240,10 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
             CTy::Other("/* unresolved */ void")
         }
+        KTy::Var(ty_var) => {
+            error!("[BUG] 型変数は除去されるはず {}", ty_var.name);
+            CTy::Other("/* ty var */ void")
+        }
         KTy::Never => {
             // FIXME: error!
             CTy::Other("/* never */ void")

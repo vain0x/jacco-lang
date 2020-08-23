@@ -28,6 +28,7 @@ impl KFn {
     pub(crate) fn return_ty(self, fns: &KFnOutlineArena) -> KTy {
         let result_ty = self.result_ty(fns).clone();
         KTy::Fn {
+            ty_params: fns[self].ty_params.clone(),
             param_tys: vec![result_ty],
             result_ty: Box::new(KTy::Never),
         }
@@ -60,6 +61,7 @@ impl KProjectFn {
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
     pub(crate) vis_opt: Option<KVis>,
+    pub(crate) ty_params: Vec<KTyParam>,
     pub(crate) param_tys: Vec<KTy>,
     pub(crate) result_ty: KTy,
     pub(crate) loc: Loc,
@@ -68,6 +70,7 @@ pub(crate) struct KFnOutline {
 impl KFnOutline {
     pub(crate) fn ty(&self) -> KTy {
         KTy::Fn {
+            ty_params: self.ty_params.clone(),
             param_tys: self.param_tys.clone(),
             result_ty: Box::new(self.result_ty.clone()),
         }

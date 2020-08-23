@@ -7,6 +7,7 @@ use crate::{
     utils::{DebugWith, DebugWithContext},
 };
 use std::{
+    collections::HashMap,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
     ops::Deref,
@@ -100,26 +101,7 @@ impl KTy2 {
     }
 
     pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &KTyEnv) -> Self {
-        match ty {
-            KTy::Unresolved { cause } => KTy2::Unresolved { cause },
-            KTy::Never => KTy2::Never,
-            KTy::Unit => KTy2::Unit,
-            KTy::Number(number_ty) => KTy2::Number(number_ty),
-            KTy::Ptr { k_mut, ty } => KTy2::from_ty1(*ty, k_mod, ty_env).into_ptr(k_mut),
-            KTy::Fn {
-                param_tys,
-                result_ty,
-            } => KTy2::new_fn(
-                param_tys
-                    .into_iter()
-                    .map(|ty| KTy2::from_ty1(ty, k_mod, ty_env)),
-                KTy2::from_ty1(*result_ty, k_mod, ty_env),
-            ),
-            KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
-            KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
-            KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
-            KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
-        }
+        do_instantiate(&ty, &mut TySchemeInstantiationFn::new(k_mod, ty_env))
     }
 
     pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
@@ -360,11 +342,25 @@ impl Hash for KTyCause {
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct KTyParam {
+    pub(crate) name: String,
+    pub(crate) loc: Loc,
+}
+
+#[derive(Clone, PartialEq)]
+pub(crate) struct KTyVar {
+    pub(crate) name: String,
+    pub(crate) loc: Loc,
+}
+
 #[derive(Clone, PartialEq)]
 pub(crate) enum KTy {
     Unresolved {
         cause: KTyCause,
     },
+    #[allow(unused)]
+    Var(KTyVar),
     Never,
     Unit,
     Number(KNumberTy),
@@ -373,6 +369,7 @@ pub(crate) enum KTy {
         ty: Box<KTy>,
     },
     Fn {
+        ty_params: Vec<KTyParam>,
         param_tys: Vec<KTy>,
         result_ty: Box<KTy>,
     },
@@ -482,6 +479,7 @@ impl Debug for KTy {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             KTy::Unresolved { .. } => write!(f, "???"),
+            KTy::Var(ty_var) => write!(f, "{}", ty_var.name),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -493,10 +491,19 @@ impl Debug for KTy {
                 Debug::fmt(&ty, f)
             }
             KTy::Fn {
+                ty_params,
                 param_tys,
                 result_ty,
             } => {
-                write!(f, "fn(")?;
+                write!(f, "fn")?;
+
+                if !ty_params.is_empty() {
+                    f.debug_list()
+                        .entries(ty_params.iter().map(|ty_param| &ty_param.name))
+                        .finish()?;
+                }
+
+                write!(f, "(")?;
                 for (i, _ty) in param_tys.iter().enumerate() {
                     if i != 0 {
                         write!(f, ", ")?;
@@ -519,6 +526,52 @@ impl Debug for KTy {
                 write!(f, "struct {}", k_struct.to_index())
             }
         }
+    }
+}
+
+struct TySchemeInstantiationFn<'a> {
+    k_mod: KMod,
+    #[allow(unused)]
+    ty_env: &'a KTyEnv,
+    #[allow(unused)]
+    env: HashMap<String, KMetaTy>,
+}
+
+impl<'a> TySchemeInstantiationFn<'a> {
+    fn new(k_mod: KMod, ty_env: &'a KTyEnv) -> Self {
+        Self {
+            k_mod,
+            ty_env,
+            env: HashMap::new(),
+        }
+    }
+}
+
+fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
+    let k_mod = context.k_mod;
+
+    match *ty {
+        KTy::Unresolved { cause } => KTy2::Unresolved { cause },
+        KTy::Var(_) => todo!(),
+        KTy::Never => KTy2::Never,
+        KTy::Unit => KTy2::Unit,
+        KTy::Number(number_ty) => KTy2::Number(number_ty),
+        KTy::Ptr { k_mut, ref ty } => do_instantiate(&*ty, context).into_ptr(k_mut),
+        KTy::Fn {
+            ty_params: _,
+            ref param_tys,
+            ref result_ty,
+        } => KTy2::new_fn(
+            param_tys
+                .into_iter()
+                .map(|ty| do_instantiate(&ty, context))
+                .collect::<Vec<_>>(),
+            do_instantiate(&result_ty, context),
+        ),
+        KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
+        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
+        KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
+        KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
     }
 }
 
