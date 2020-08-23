@@ -101,7 +101,7 @@ impl KTy2 {
     }
 
     pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &KTyEnv) -> Self {
-        do_instantiate(&ty, &mut TySchemeInstantiationFn::new(k_mod, ty_env))
+        do_instantiate(&ty, &mut TySchemeInstantiationFn::new(k_mod, Some(ty_env)))
     }
 
     pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
@@ -441,8 +441,14 @@ impl KTy {
         }
     }
 
+    /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
     pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &KTyEnv) -> KTy2 {
         KTy2::from_ty1(self.clone(), k_mod, ty_env)
+    }
+
+    /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
+    pub(crate) fn erasure(&self, k_mod: KMod) -> KTy2 {
+        do_instantiate(self, &mut TySchemeInstantiationFn::new(k_mod, None))
     }
 
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy {
@@ -531,14 +537,16 @@ impl Debug for KTy {
 
 struct TySchemeInstantiationFn<'a> {
     k_mod: KMod,
+    /// Some なら型変数をインスタンス化する。
+    /// None なら型変数は消去して unit に落とす。
     #[allow(unused)]
-    ty_env: &'a KTyEnv,
+    ty_env: Option<&'a KTyEnv>,
     #[allow(unused)]
     env: HashMap<String, KMetaTy>,
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, ty_env: &'a KTyEnv) -> Self {
+    fn new(k_mod: KMod, ty_env: Option<&'a KTyEnv>) -> Self {
         Self {
             k_mod,
             ty_env,
@@ -547,12 +555,19 @@ impl<'a> TySchemeInstantiationFn<'a> {
     }
 }
 
+/// シンボルのための型スキームを式のための型に変換する処理
 fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
     let k_mod = context.k_mod;
 
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
-        KTy::Var(_) => todo!(),
+        KTy::Var(_) => match context.ty_env {
+            Some(_) => todo!(),
+            None => {
+                // DESIGN: unknown の方がいい？
+                KTy2::Unit
+            }
+        },
         KTy::Never => KTy2::Never,
         KTy::Unit => KTy2::Unit,
         KTy::Number(number_ty) => KTy2::Number(number_ty),

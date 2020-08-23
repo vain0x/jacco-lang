@@ -234,44 +234,7 @@ fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
 }
 
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
-    // FIXME: 整数型は std::int32_t とかの方がよいかも
-    match ty {
-        KTy::Unresolved { cause } => {
-            error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
-            CTy::Other("/* unresolved */ void")
-        }
-        KTy::Var(ty_var) => {
-            error!("[BUG] 型変数は除去されるはず {}", ty_var.name);
-            CTy::Other("/* ty var */ void")
-        }
-        KTy::Never => {
-            // FIXME: error!
-            CTy::Other("/* never */ void")
-        }
-        KTy::Unit => CTy::Void,
-        KTy::Fn { .. } => {
-            // FIXME: この時点で fn 型は除去されているべき
-            error!("Unexpected fn type {:?}", ty);
-            CTy::Other("/* fn */ void")
-        }
-        KTy::Number(basic_ty) => gen_basic_ty(*basic_ty),
-        KTy::Ptr { k_mut, ty } => {
-            let mut ty = gen_ty(&ty, ty_env, cx);
-            if let KMut::Const = k_mut {
-                ty = ty.into_const();
-            }
-            ty.into_ptr()
-        }
-        KTy::Alias(_) => {
-            // FIXME: 実装
-            CTy::Other("/* error: alias ty */")
-        }
-        KTy::ConstEnum(const_enum) => {
-            gen_ty(const_enum.repr_ty(&cx.mod_outline.const_enums), ty_env, cx)
-        }
-        KTy::StructEnum(struct_enum) => CTy::Enum(unique_struct_enum_name(*struct_enum, cx)),
-        KTy::Struct(k_struct) => CTy::Struct(unique_struct_name(cx.k_mod, *k_struct, cx)),
-    }
+    gen_ty2(&ty.erasure(cx.k_mod), ty_env, cx)
 }
 
 fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
