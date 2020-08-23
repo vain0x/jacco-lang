@@ -1,11 +1,31 @@
 #![cfg(test)]
 
 use super::cli::compile_v2;
+use crate::cli::parse_v2;
 use std::{fs, panic, path::PathBuf};
 
+enum Action {
+    Pass,
+    Parse,
+    Compile,
+}
+
 enum Expect {
+    Missing,
+    Parse,
     Run,
     CompileError,
+}
+
+impl Expect {
+    pub(crate) fn action(&self) -> Action {
+        match self {
+            Expect::Missing => Action::Pass,
+            Expect::Parse => Action::Parse,
+            // 実行するところは未実装
+            Expect::Run | Expect::CompileError => Action::Compile,
+        }
+    }
 }
 
 enum Actual {
@@ -39,12 +59,25 @@ fn test_features() {
             // TODO: 構文解析して属性を取り出すようにしたい。どこでエラーが起こるべきかも記述できたほうがよい
             if source_code.contains("test(\"compile_error\")") {
                 Expect::CompileError
-            } else {
+            } else if source_code.contains(r#"#![test("run","#) {
                 Expect::Run
+            } else if source_code.contains(r#"test("parse")"#) {
+                Expect::Parse
+            } else {
+                Expect::Missing
             }
         };
 
-        let result = panic::catch_unwind(|| compile_v2(input_file.as_path(), &source_code));
+        let result = match expect.action() {
+            Action::Pass => Ok(Some(String::new())),
+            Action::Parse => {
+                panic::catch_unwind(|| Some(parse_v2(input_file.as_path(), &source_code)))
+            }
+            Action::Compile => {
+                panic::catch_unwind(|| compile_v2(input_file.as_path(), &source_code))
+            }
+        };
+
         let actual = match result {
             Ok(Some(output)) => Actual::CompileOk { output },
             Ok(None) => Actual::CompileErr,
@@ -56,10 +89,14 @@ fn test_features() {
 
         let (old_pass, fail_len) = (pass, fail.len());
         match (actual, expect) {
+            (_, Expect::Missing) => {
+                fail.push((input_file, "ファイルの test 属性が見つかりません run, compile_error, parse のどれかが必要です。".to_string()));
+            }
             (Actual::CompilePanic { err }, _) => {
                 fail.push((input_file, err));
             }
-            (Actual::CompileOk { output: actual }, Expect::Run) => {
+            (Actual::CompileOk { output: actual }, Expect::Parse)
+            | (Actual::CompileOk { output: actual }, Expect::Run) => {
                 let expected = fs::read_to_string(&output_file).unwrap_or_default();
                 if actual != expected {
                     fs::write(&output_file, actual).unwrap();
@@ -82,6 +119,7 @@ fn test_features() {
             (Actual::CompileErr, Expect::Run) => {
                 fail.push((input_file, "コンパイルエラー".to_string()));
             }
+            (_, Expect::Parse) => unreachable!(),
         }
         assert!(
             pass == old_pass + 1 && (fail_len == fail.len())

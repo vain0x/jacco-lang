@@ -4,6 +4,33 @@ use super::*;
 use crate::{cps::KVis, logs::DocLogger};
 use parse_expr::parse_unqualifiable_name;
 
+fn parse_ty_param_list(px: &mut Px) -> Option<AfterTyParamList> {
+    let left_paren = px.eat(TokenKind::LeftBracket)?;
+    let mut ty_params = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
+            TokenKind::Ident | TokenKind::Underscore => {
+                let param_event = px.start_element();
+                let name = parse_unqualifiable_name(px).unwrap();
+                let comma_opt = px.eat(TokenKind::Comma);
+
+                ty_params.push(alloc_ty_param(param_event, name, comma_opt, px));
+            }
+            _ => px.skip(),
+        }
+    }
+
+    let right_paren_opt = px.eat(TokenKind::RightBracket);
+    Some(alloc_ty_param_list(
+        left_paren,
+        ty_params,
+        right_paren_opt,
+        px,
+    ))
+}
+
 fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
     let left_paren = px.eat(TokenKind::LeftParen)?;
     let mut params = vec![];
@@ -105,6 +132,7 @@ fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px
 
 fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
     let name_opt = parse_unqualifiable_name(px);
+    let ty_param_list_opt = parse_ty_param_list(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let block_opt = parse_block(px);
@@ -112,6 +140,7 @@ fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) ->
         modifiers,
         keyword,
         name_opt,
+        ty_param_list_opt,
         param_list_opt,
         arrow_opt,
         result_ty_opt,

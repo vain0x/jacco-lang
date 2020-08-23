@@ -75,6 +75,11 @@ impl ANameKey {
     }
 }
 
+/// 型パラメータ
+pub(crate) struct ATyParamDecl {
+    pub(crate) name: AName,
+}
+
 // -----------------------------------------------
 // 型
 // -----------------------------------------------
@@ -308,6 +313,7 @@ impl AParamDeclKey {
 pub(crate) struct AFnLikeDecl {
     pub(crate) modifiers: ADeclModifiers,
     pub(crate) name_opt: Option<AName>,
+    pub(crate) ty_params: Vec<ATyParamDecl>,
     pub(crate) params: Vec<AParamDecl>,
     pub(crate) result_ty_opt: Option<ATyId>,
     pub(crate) body_opt: Option<AExprId>,

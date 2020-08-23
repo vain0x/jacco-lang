@@ -1,0 +1,110 @@
+RootDecl [
+    AttrDecl [
+        HashBang,
+        LeftBracket,
+        "test",
+        LeftParen,
+        "\"parse\"",
+        RightParen,
+        RightBracket,
+    ],
+    FnDecl [
+        Fn,
+        Name [
+            "transmute",
+        ],
+        LeftBracket,
+        TyParam [
+            Name [
+                "T",
+            ],
+            Comma,
+        ],
+        TyParam [
+            Name [
+                "U",
+            ],
+        ],
+        RightBracket,
+        LeftParen,
+        ParamDecl [
+            Name [
+                "p",
+            ],
+            Colon,
+            PtrTy [
+                Star,
+                NameTy [
+                    Name [
+                        "T",
+                    ],
+                ],
+            ],
+        ],
+        RightParen,
+        RightSlimArrow,
+        PtrTy [
+            Star,
+            NameTy [
+                Name [
+                    "U",
+                ],
+            ],
+        ],
+        BlockExpr [
+            LeftBrace,
+            ExprDecl [
+                AsExpr [
+                    AsExpr [
+                        NameExpr [
+                            Name [
+                                "p",
+                            ],
+                        ],
+                        As,
+                        NameTy [
+                            Name [
+                                "usize",
+                            ],
+                        ],
+                    ],
+                    As,
+                    PtrTy [
+                        Star,
+                        NameTy [
+                            Name [
+                                "U",
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            RightBrace,
+        ],
+    ],
+    FnDecl [
+        Pub,
+        Fn,
+        Name [
+            "main",
+        ],
+        LeftParen,
+        RightParen,
+        RightSlimArrow,
+        NameTy [
+            Name [
+                "i32",
+            ],
+        ],
+        BlockExpr [
+            LeftBrace,
+            ExprDecl [
+                NumberExpr [
+                    "0",
+                ],
+            ],
+            RightBrace,
+        ],
+    ],
+    Eof,
+]

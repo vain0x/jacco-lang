@@ -1,0 +1,9 @@
+#![test("parse")]
+
+fn transmute[T, U](p: *T) -> *U {
+    p as usize as *U
+}
+
+pub fn main() -> i32 {
+    0
+}

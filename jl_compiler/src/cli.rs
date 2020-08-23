@@ -232,6 +232,51 @@ impl Project {
     }
 }
 
+/// ファイルをパースして構文木とエラーを得る。(コード生成は行わない。)
+#[allow(unused)]
+pub(crate) fn parse_v2(source_path: &Path, source_code: &str) -> String {
+    let mut project = Project::new();
+
+    let name = source_path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("<main>")
+        .to_string();
+    let source_path = make_path_relative_to_manifest_dir(source_path);
+    let text = source_code.to_string();
+    project.insert(name, source_path, text).ok().unwrap();
+
+    let mut unresolved_doc_names = vec![];
+    project.parse(&mut unresolved_doc_names);
+    assert_eq!(
+        unresolved_doc_names.len(),
+        0,
+        "use を含むコードの構文木の取り出しは未実装",
+    );
+
+    let mut output = String::new();
+    let mut errors = vec![];
+    let logs = Logs::new();
+    for (doc, syntax) in project.syntaxes.enumerate_mut() {
+        let doc_logs = take(&mut syntax.logs);
+        logs.logger()
+            .extend_from_doc_logs(Doc::from(doc.to_index()), doc_logs);
+
+        output = format!("{:#?}", syntax.tree);
+    }
+    project.logs_into_errors(logs, &mut errors);
+
+    if !errors.is_empty() {
+        let error = errors
+            .into_iter()
+            .map(|(_, _, range, message)| format!("ERROR {:?} {}\n", range, message))
+            .collect::<String>();
+        output.insert_str(0, &error);
+    }
+
+    output
+}
+
 /// 一連のコンパイル処理を行う。
 pub fn compile_v2(source_path: &Path, source_code: &str) -> Option<String> {
     let project_dir = source_path.parent();

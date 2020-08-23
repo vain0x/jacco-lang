@@ -8,7 +8,11 @@ use std::fmt::Debug;
 /// 構文要素の種類
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum PElementKind {
+    // 名前
     Name,
+
+    // パラメータ
+    TyParam,
 
     // 型
     NeverTy,

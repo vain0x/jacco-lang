@@ -6,6 +6,8 @@ use crate::parse::syntax_error::*;
 pub(crate) type AfterQualifiableName = (AName, ParseEnd);
 pub(crate) type AfterUnderscore = (AName, ParseEnd);
 pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
+pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
+pub(crate) type AfterTyParamList = Vec<ATyParamDecl>;
 pub(crate) type AfterParam = (AParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterParamList = Vec<AfterParam>;
 pub(crate) type AfterArg = (AExpr, ExprEnd);
@@ -91,6 +93,37 @@ pub(crate) fn alloc_name_from_underscore(
 // -----------------------------------------------
 // パラメータ
 // -----------------------------------------------
+
+pub(crate) fn alloc_ty_param(
+    event: ParseStart,
+    name: AfterUnqualifiableName,
+    comma_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterTyParam {
+    // FIXME: 構文エラーを報告する
+
+    let (name, _) = name;
+
+    (
+        ATyParamDecl { name },
+        comma_opt,
+        event.end(PElementKind::TyParam, px),
+    )
+}
+
+pub(crate) fn alloc_ty_param_list(
+    left_bracket: PToken,
+    ty_params: Vec<AfterTyParam>,
+    right_bracket_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterTyParamList {
+    // FIXME: 構文エラーを報告する
+
+    ty_params
+        .into_iter()
+        .map(|(ty_param, _, _)| ty_param)
+        .collect()
+}
 
 pub(crate) fn alloc_param(
     event: ParseStart,
@@ -813,6 +846,7 @@ pub(crate) fn alloc_fn_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
+    ty_param_list_opt: Option<AfterTyParamList>,
     param_list_opt: Option<AfterParamList>,
     arrow_opt: Option<PToken>,
     result_ty_opt: Option<AfterTy>,
@@ -834,6 +868,7 @@ pub(crate) fn alloc_fn_decl(
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|(name, _)| name);
+    let ty_params = ty_param_list_opt.unwrap_or_default();
     let params = param_list_opt
         .into_iter()
         .flatten()
@@ -846,6 +881,7 @@ pub(crate) fn alloc_fn_decl(
         ADecl::Fn(AFnLikeDecl {
             modifiers,
             name_opt,
+            ty_params,
             params,
             result_ty_opt: a_ty_opt,
             body_opt,
@@ -891,6 +927,8 @@ pub(crate) fn alloc_extern_fn_decl(
         ADecl::ExternFn(AFnLikeDecl {
             modifiers,
             name_opt: a_name_opt,
+            // FIXME: 実装
+            ty_params: vec![],
             params,
             result_ty_opt: a_ty_opt,
             body_opt: None,
