@@ -293,6 +293,178 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 }
 
 // -----------------------------------------------
+// 型検査
+// -----------------------------------------------
+
+enum UnificationError<'a> {
+    Unresolved { other: &'a KTy2, cause: KTyCause },
+    UnresolvedAlias(KMod, KAlias),
+    NotUnifiable(&'a KTy2, &'a KTy2),
+}
+
+struct UnificationContext<'a> {
+    mod_outlines: &'a KModOutlines,
+    ty_env: &'a mut KTyEnv,
+    loc: PLoc,
+}
+
+fn do_unify<'a>(
+    left: &'a KTy2,
+    right: &'a KTy2,
+    ux: &'a mut UnificationContext,
+) -> Result<(), UnificationError<'a>> {
+    match (left, right) {
+        (KTy2::Unresolved { cause }, other) | (other, KTy2::Unresolved { cause }) => {
+            return Err(UnificationError::Unresolved {
+                other,
+                cause: *cause,
+            });
+        }
+
+        // 左右の型が完全に一致するケース:
+        (KTy2::Meta(..), KTy2::Meta(..))
+        | (KTy2::Never, KTy2::Never)
+        | (KTy2::Unit, KTy2::Unit)
+        | (KTy2::Number(..), KTy2::Number(..))
+        | (KTy2::Alias(..), KTy2::Alias(..))
+        | (KTy2::ConstEnum(..), KTy2::ConstEnum(..))
+        | (KTy2::StructEnum(..), KTy2::StructEnum(..))
+        | (KTy2::Struct(..), KTy2::Struct(..))
+            if left == right => {}
+
+        // メタ型変数の展開および束縛:
+        (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(&ux.ty_env) {
+            Some(ty_cell) => return do_unify(left, &ty_cell.borrow(), ux),
+            None => {
+                // fn main() -> i32 { loop {} } などで発生する。
+                // この時点で unbound な型変数は never とみなしてよいはず?
+                return do_unify(left, &KTy2::Never, ux);
+            }
+        },
+        (KTy2::Meta(meta_ty), _) => {
+            match meta_ty.try_unwrap(&ux.ty_env) {
+                Some(ty_cell) => return do_unify(&ty_cell.borrow(), right, ux),
+                None => {
+                    // FIXME: occurrence check
+                    meta_ty.bind(right.clone(), &ux.ty_env);
+                }
+            }
+        }
+
+        // エイリアスの展開
+        (KTy2::Alias(k_mod, alias), _) => {
+            return match alias
+                .of(&k_mod.of(ux.mod_outlines).aliases)
+                .referent_as_ty()
+            {
+                Some(ty) => do_unify(&ty, right, ux),
+                None => Err(UnificationError::UnresolvedAlias(*k_mod, *alias)),
+            }
+        }
+        (_, KTy2::Alias(k_mod, alias)) => {
+            return match alias
+                .of(&k_mod.of(ux.mod_outlines).aliases)
+                .referent_as_ty()
+            {
+                Some(ty) => do_unify(left, &ty, ux),
+                None => Err(UnificationError::UnresolvedAlias(*k_mod, *alias)),
+            }
+        }
+
+        // その他
+        (
+            KTy2::Ptr {
+                k_mut,
+                base_ty: left,
+            },
+            KTy2::Ptr {
+                k_mut: right_mut,
+                base_ty: right,
+            },
+        ) => {
+            let ok = match ux.variance {
+                Variance::In => k_mut == right_mut,
+                Variance::Co => k_mut <= right_mut,
+                Variance::Contra => k_mut >= right_mut,
+            };
+            if !ok {
+                ux.error_ptr_mut();
+                return;
+            }
+
+            match k_mut {
+                KMut::Const => do_unify2(left, right, ux),
+                KMut::Mut => ux.do_with_invariant(|ux| do_unify2(left, right, ux)),
+            }
+        }
+        (
+            KTy2::Fn {
+                param_tys,
+                result_ty,
+            },
+            KTy2::Fn {
+                param_tys: right_param_tys,
+                result_ty: right_result_ty,
+            },
+        ) => {
+            if param_tys.len() != right_param_tys.len() {
+                return Err(UnificationError::NotUnifiable(left, right));
+            }
+
+            ux.do_with_contra_variant(|ux| {
+                for (left, right) in param_tys.iter().zip(right_param_tys) {
+                    do_unify2(left, right, ux);
+                }
+            });
+
+            do_unify2(result_ty, right_result_ty, ux);
+        }
+
+        // 不一致
+        (KTy2::Never, _)
+        | (KTy2::Unit, _)
+        | (KTy2::Number(_), _)
+        | (KTy2::Ptr { .. }, _)
+        | (KTy2::Fn { .. }, _)
+        | (KTy2::ConstEnum(..), _)
+        | (KTy2::StructEnum(..), _)
+        | (KTy2::Struct(..), _) => {
+            return Err(UnificationError::NotUnifiable(left, right));
+        }
+    }
+
+    Ok(())
+}
+
+/// src から dest へキャスト可能でなければエラーにする。
+fn validate_ty_cast(src: &KTy2, dest: &KTy2, loc: PLoc, xx: &Xx) {
+    // FIXME: ポインタの相互変換など
+    let ok = match (dest, src) {
+        (_, KTy2::Never) => true,
+        (KTy2::Number(_), KTy2::Number(_)) => true,
+        (KTy2::Ptr { .. }, &KTy2::ISIZE)
+        | (KTy2::Ptr { .. }, &KTy2::USIZE)
+        | (&KTy2::ISIZE, KTy2::Ptr { .. })
+        | (&KTy2::USIZE, KTy2::Ptr { .. }) => true,
+        _ => false,
+    };
+    if !ok {
+        xx.logger.error(loc, "キャストできません。");
+    }
+}
+
+fn validate_ty_expect(ty: &KTy2, ty_expect: TyExpect, loc: PLoc, xx: &Xx) {
+    match ty_expect {
+        TyExpect::Todo => {
+            // pass
+        }
+        TyExpect::Exact(expected_ty) => {
+            // FIXME: unify
+        }
+    }
+}
+
+// -----------------------------------------------
 // 型
 // -----------------------------------------------
 
@@ -1014,13 +1186,28 @@ fn convert_index_lval(
     KTerm::Name(result)
 }
 
-fn convert_as_expr(expr: &AAsExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn create_cast_node(
+    ty: KTy2,
+    arg: AfterRval,
+    result: KSymbol,
+    ty_expect: TyExpect,
+    cont: KNode,
+    loc: Loc,
+    xx: &mut Xx,
+) -> KNode {
+    let arg_ty = KTy2::DEFAULT; // arg.ty(..)
+    validate_ty_cast(&arg_ty, &ty, PLoc::from_loc(loc), xx);
+    validate_ty_expect(&ty, ty_expect, PLoc::from_loc(loc), xx);
+    new_cast_node(ty, arg, result, cont, loc)
+}
+
+fn convert_as_expr(expr: &AAsExpr, ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2(xx.k_mod);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
     let result = fresh_symbol("cast", loc, xx);
-    xx.nodes
-        .push(new_cast_node(ty, arg, result, new_cont(), loc));
+    let node = create_cast_node(ty, arg, result, ty_expect, new_cont(), loc, xx);
+    xx.nodes.push(node);
     KTerm::Name(result)
 }
 
