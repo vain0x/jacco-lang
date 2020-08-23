@@ -1,0 +1,196 @@
+// まだ動かない
+// ジェネリクスのサンプルコード
+// ジェネリックなベクタの実装
+// 参考: [Implementing Vec - The Rustonomicon](https://doc.rust-lang.org/nomicon/vec.html)
+
+struct unknown {}
+
+// -----------------------------------------------
+// ライブラリなど
+// -----------------------------------------------
+
+extern fn memcpy(dest: *mut unknown, src: *unknown, bytes: usize);
+
+extern fn assert(cond: bool);
+extern fn assert_with_message(cond: bool, message: *c8);
+
+extern fn is_null(ptr: *unknown) -> bool;
+extern fn out_of_memory() -> never;
+
+// -----------------------------------------------
+// 動的確保 API
+// -----------------------------------------------
+
+extern fn malloc(size: usize) -> *mut unknown;
+extern fn realloc(ptr: *mut unknown, size: usize) -> *mut unknown;
+extern fn free(ptr: *mut unknown);
+
+fn GlobalHeap_alloc(size: usize) -> *mut unknown {
+    // malloc とか
+}
+
+fn GlobalHeap_grow(ptr: *mut unknown, size: usize) -> *mut unknown {
+    // realloc とか
+}
+
+fn GlobalHeap_free(ptr: *unknown) {
+    // free とか
+}
+
+// -----------------------------------------------
+// ValueLayout
+// -----------------------------------------------
+
+struct ValueLayout[T] {
+    size: usize,
+    // いまのところ未使用の型変数を禁止する仕様はない
+    // _phantom: PhantomData[T],
+}
+
+fn ValueLayout_new[T](size: usize) -> ValueLayout[T] {
+    ValueLayout[T] {
+        size: size,
+    }
+}
+
+/// アラインされた無効なポインタを取得する。
+/// 長さゼロの配列を表すのに使う。
+fn dangling_ptr[T](align: usize) -> *mut T {
+    align as *mut T
+}
+
+// -----------------------------------------------
+// RawVec
+// -----------------------------------------------
+
+/// 動的配列用のメモリバッファ
+struct RawVec[T] {
+    ptr: *mut T,
+    cap: usize,
+
+    // T のアラインメントやサイズを取る API (イントリンシック) がないので値として持つ必要がある。
+    // (辞書渡しのようなもの)
+    layout: ValueLayout[T],
+}
+
+/// 空の配列を取得する。
+fn RawVec_new[T](layout: ValueLayout[T]) -> RawVec[T] {
+    if layout.size == 0 {
+        RawVec {
+            ptr: 1 as *mut T,
+            // ゼロサイズの要素は 0 バイトでも無限個確保されているとみなせる。
+            cap: !0_usize,
+            layout: layout,
+        }
+    } else {
+        RawVec {
+            ptr: layout.size as *mut T,
+            cap: 0_usize,
+            layout: layout,
+        }
+    }
+}
+
+/// 領域を拡張する。
+fn RawVec_grow[T](vec: *mut RawVec[T]) {
+    let elem_size = vec.layout.size;
+    assert_with_message(elem_size != 0, "capacity overflow");
+
+    let new_cap = 0_usize;
+    let ptr = 0 as *mut T;
+    if vec.cap == 0 {
+        new_cap = 1;
+        ptr = GlobalHeap_alloc(1_usize);
+    } else {
+        new_cap = vec.cap * 2;
+        ptr = GlobalHeap_grow(vec.ptr, new_cap);
+    }
+
+    if is_null(ptr) {
+        return out_of_memory();
+    }
+
+    vec.ptr = ptr as *mut T;
+    vec.cap = new_cap;
+}
+
+fn RawVec_drop[T](vec: *mut RawVec[T]) {
+    let elem_size = vec.layout.size;
+    if vec.cap != 0 && elem_size != 0 {
+        GlobalHeap_free(vec.ptr as *unknown);
+    }
+}
+
+// -----------------------------------------------
+// Vec
+// -----------------------------------------------
+
+/// 動的配列
+struct Vec[T] {
+    buf: RawVec[T],
+    len: usize,
+}
+
+fn Vec_new[T](layout: ValueLayout[T]) -> Vec[T] {
+    Vec {
+        buf: RawVec_new(layout),
+        len: 0_usize,
+    }
+}
+
+fn Vec_ptr[T](vec: *mut Vec[T]) -> *mut T {
+    (*vec).buf.ptr
+}
+
+fn Vec_end[T](vec: *mut Vec[T]) -> *mut T {
+    (*vec).buf.ptr + (*vec).len
+}
+
+fn Vec_len[T](vec: *Vec[T]) -> usize {
+    (*vec).len
+}
+
+fn Vec_cap[T](vec: *Vec[T]) -> usize {
+    (*vec).buf.cap
+}
+
+/// ベクタの末尾に要素を追加する。
+// 単相化がされないため、型 T のオブジェクトを値で受け取ることはできないので、
+// ポインタ経由でもらって memcpy で move する。
+fn Vec_push[T](vec: *mut Vec[T], elem: *T) {
+    if Vec_len(vec) == Vec_cap(vec) {
+        RawVec_grow(&mut (*vec).buf);
+    }
+
+    let elem_size = (*vec).buf.layout.size;
+    memcpy(Vec_end(vec), elem as *unknown, elem_size);
+
+    (*vec).len += 1_usize;
+}
+
+/// ベクタの末尾の要素を削除する。
+///
+/// ベクタが空なら false を返す。
+/// そうでなければ true を返す。
+/// out_elem にポインタを指定していたら、その要素が書き込まれる。
+// Option[T] もオブジェクトを値で持てないので、結果はポインタ経由で返す。
+fn Vec_pop[T](vec: *mut Vec[T], out_elem: *mut T) -> bool {
+    if Vec_len(vec) == 0 {
+        return false;
+    }
+
+    (*vec).len -= 1_usize;
+
+    if !is_null(out_elem) {
+        let elem_size = (*vec).buf.layout.size;
+        memcpy(out_elem, Vec_end(vec), elem_size);
+    }
+    true
+}
+
+// enum BoxedOption[T] {
+//     Some {
+//         value: *mut T,
+//     },
+//     None,
+// }
