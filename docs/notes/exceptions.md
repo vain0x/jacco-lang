@@ -3,7 +3,7 @@
 当面の目標:
 
 - 例外の送出・再送は明示的な構文を持つ
-- 例外はキャッチして Result に変換できる
+- 例外をキャッチして値に変換できる
 - エラーは出力引数を介して受け渡される
 - エラートレースを自動で構築する
 - 関数が例外を投げうるか否かはシグネチャに規定される
@@ -21,10 +21,10 @@
 
 ## 例外を投げる関数の宣言
 
-throws キーワードのついた fn 宣言は例外を投げる関数を宣言する。
+throws キーワードのついた関数宣言は例外を投げる関数を宣言する。
 
 ```rust
-/// ファイルの中身を読み込む。ファイルが開けなかったら例外を投げる
+/// ファイルの中身を読み込む。読み込めなかったら例外を投げる
 fn read_file(path: *c8, buf: *mut u8) throws {
     // ...
 }
@@ -50,7 +50,7 @@ fn read_file(path: *c8, buf: *mut u8) throws {
 
 ## 例外の再送
 
-例外を投げる関数の呼び出しには `.try` をつける必要がある。これは例外を投げる関数の内側か try ブロックの中にしか書けない。
+例外を投げる関数の呼び出しには `.try` をつける。また、try ブロックか例外を投げる関数の中にしか書けない。
 
 ```rust
 fn cat(path1: *c8, path2: *c8, buf: *mut u8) throws {
@@ -102,9 +102,9 @@ type ErrorTrace = Vec[SourceLocation];
 
 main 関数は例外を再送しないので、例外は必ずどこかで try ブロックにキャッチされる。そのため例外を投げる関数の一連の呼び出しは1個の Try オブジェクトを生成する。
 
-例外が投げられずに return したときは、その値を使って Ok(x) を構築すればいい。例外が投げられる場合、投げられたオブジェクトを Err バリアントに持たせる必要がある。当面は、例外を投げる関数に暗黙の出力引数として Try オブジェクトへのポインタを渡すことにして、throw に際して Err オブジェクトを初期化することにする。
+関数が例外が投げずに return したときは、その値で Ok(x) を構築すればいい。例外が投げられる場合、投げられた値を Err バリアントに持たせる必要がある。当面は、例外を投げる関数に暗黙の出力引数として Try オブジェクトへのポインタを渡すことにして、throw に際して Err オブジェクトを初期化することにする。
 
-throw とその後の再送の際にエラートレースに位置情報を書き込んでいく。その書き込み先のメモリ領域は、try {} 側が事前に確保しておくことにする。throw の際に確保すると、それを解放する責任がコンパイル時に決定しないため、動的確保を行うしかなくなる。try {} ならスタック上にメモリを確保できて効率がいいはず。
+throw とその後の再送の際にエラートレースに位置情報を書き込んでいく。その書き込み先のメモリ領域は、try ブロック側が事前に確保しておくことにする。throw の際に確保すると、それを解放する責任をコンパイル時に決定できないため、動的確保を行うしかなくなる。try ブロックならスタック上にメモリを確保できて効率がいいはず。
 
 例:
 
@@ -127,25 +127,22 @@ let result = try { read_file("foo.txt", &mut buf) };
 これはおおよそ次のような挙動になる (あまり厳密には決まっていない):
 
 ```rust
-fn read_file(path: *c8, buf: *mut u8, err: *mut TryErr[ /* TBD */ ]) throws {
+fn read_file(path: *c8, buf: *mut u8, err: *mut TryErr[/* TBD */]) throws {
     let file = fopen(...);
     if is_null(file) {
         // throw ...;
         (*err).tag = Try::Err::tag;
         (*err).trace.push(TraceItem { ... }); // throw の位置情報
         (*err).data = ReadFileError;
-        return uninit;
+        return uninit; // 結果は使用されない
     }
 
     fread(...);
 }
 
 // let result = try { ... };
-let result = Try::[u32, ReadFileError]::Err {
-    trace: ErrorTrace {
-        ptr: &mut [uninit; MAX_TRACE_LEN], // エラートレースの領域は事前に確保する。
-        len: 0,
-    },
+let result = Try::[u32, /* TBD */]::Err {
+    trace: ErrorTrace::stack_alloc(MAX_TRACE_LEN), // エラートレースの領域は事前に確保する。
     data: uninit,
 };
 let value = read_file("foo.txt", &mut buf, &mut result);
@@ -186,7 +183,7 @@ TBD
 
 ```rust
 enum IoError {
-    FileNotFound,
+    NotFound,
     PermissionDenied,
     // ...
 }
@@ -196,11 +193,11 @@ match result {
     Try::Ok { .. } => {}
     Try::Err {
         trace: _,
-        *data, // data: *unknown
+        data: *data, // data: *unknown
     } => {
-        // TODO: throws にエラーの型を指定しないならダウンキャストが必須
+        // TODO: throws にエラーの型を指定しないなら安全なダウンキャスト機構が必須
         match *(data as *IoError) {
-            IoError::FileNotFound => {}
+            IoError::NotFound => {}
             // ...
         }
     }

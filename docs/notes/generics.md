@@ -84,14 +84,14 @@ char const* p = as_const((char*)1);
 当面、型変数に何らかの性質を要求するコードを書くことはできない。
 
 - 型変数が表す型のサイズやアラインメントはとれない。(`sizeof T` に相当する操作はない。)
-- サイズやアラインメントが型変数に依存する式は、コピーしたりムーブしたりできない。
-- 加算などが式の型に一定の条件を課すとき、型変数はその条件を満たさないものとする。
+- サイズやアラインメントが型変数に依存する式はコピーできない。
+- 加算などにより式の型に一定の条件が課されるとき、型変数はその条件を満たさないものとする。
 
 ```rust
 // ✔ OK
 
 fn as_const[T](x: *mut T) -> *T {
-//              ^ OK: ポインタ型の受け渡しは T に依存しない
+//             ^ OK: ポインタ型の受け渡しは T に依存しない
     x as *T
 //    ^^ OK: *mut T → *T のキャストは T によらず可能
 }
@@ -101,7 +101,7 @@ fn as_const[T](x: *mut T) -> *T {
 // ✗ NG
 
 fn id[T](x: T) -> T {
-//       ^ 型変数 T に依存している値を引数にとることはできない
+//       ^ NG: 型変数 T に依存している値を引数にとることはできない
     x
 //  ^ NG: 型変数 T に依存している値を関数から返すことはできない
 }
@@ -115,7 +115,7 @@ fn id[T](x: T) -> T {
 fn bubble_sort[T](
     ptr: *mut T,
     len: usize,
-    // T のサイズ (不正な値を渡すと UB)
+    // T のサイズ (不正な値を渡すと undefined behavior)
     value_size: usize,
     // T の比較関数へのポインタ (型安全)
     compare_fn: fn(*T, *T) -> i32
@@ -128,7 +128,7 @@ fn bubble_sort[T](
     while p + value_size < r {
         let q = p + value_size;
         while q < r {
-            if compare_fn(p as *T, q as *T) < 0 {
+            if compare_fn(p as *T, q as *T) > 0 {
                 swap(p as *mut T, q as *mut T, value_size);
             }
             q += value_size;
