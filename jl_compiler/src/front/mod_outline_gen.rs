@@ -502,9 +502,14 @@ fn resolve_outline(
                 for ty_param in &fn_decl.ty_params {
                     let name = ty_param.name.text().to_string();
                     let loc = Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id)));
-                    ty_resolver
-                        .env
-                        .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
+                    ty_resolver.env.insert_ty(
+                        name.to_string(),
+                        KTy::Var(KTyVar {
+                            name,
+                            meta_opt: None,
+                            loc,
+                        }),
+                    );
                 }
 
                 let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);

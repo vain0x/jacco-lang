@@ -351,6 +351,7 @@ pub(crate) struct KTyParam {
 #[derive(Clone, PartialEq)]
 pub(crate) struct KTyVar {
     pub(crate) name: String,
+    pub(crate) meta_opt: Option<KMetaTy>,
     pub(crate) loc: Loc,
 }
 

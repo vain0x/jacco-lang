@@ -51,6 +51,13 @@ impl KMetaTyData {
         Self { ty, loc }
     }
 
+    pub(crate) fn new_fresh(loc: Loc) -> Self {
+        Self {
+            ty: RefCell::default(),
+            loc,
+        }
+    }
+
     pub(crate) fn ty(&self) -> &RefCell<KTy2> {
         &self.ty
     }

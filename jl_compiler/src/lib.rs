@@ -78,7 +78,7 @@ mod cps {
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };
     pub(crate) use k_local::{KLocal, KLocalArena, KLocalData};
-    pub(crate) use k_meta_ty::{KMetaTy, KTyEnv};
+    pub(crate) use k_meta_ty::*;
     pub(crate) use k_mod::{
         resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,
         KModOutlines, KModTag, KProjectSymbol,
