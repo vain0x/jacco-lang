@@ -1,0 +1,50 @@
+// ジェネリックな swap 関数を書ける。
+
+extern fn print_sss(s1: *c8, s2: *c8, s3: *c8);
+extern fn print_sds(s1: *c8, d2: i32, s3: *c8);
+
+extern fn assert(cond: bool);
+extern fn memcpy(dest: *mut unit, src: *unit, size: usize) -> *unit;
+
+fn swap[T](left: *mut T, right: *mut T, temp: *mut T, size: usize) {
+    memcpy(temp as *mut unit, left as *unit, size);
+    memcpy(left as *mut unit, right as *unit, size);
+    memcpy(right as *mut unit, temp as *unit, size);
+    unit
+}
+
+fn test_swap_i32() {
+    let x = 2_i32;
+    let y = 3_i32;
+    let t = 0_i32;
+
+    swap(&mut x, &mut y, &mut t, 4);
+
+    // print_sds("x = ", x, "\n");
+    // print_sds("y = ", y, "\n");
+    // print_sds("t = ", t, "\n");
+
+    assert(x == 3);
+    assert(y == 2);
+}
+
+fn test_swap_f64() {
+    let x = 2.718_281_f64;
+    let y = 3.141_592_f64;
+    let t = 0_i64;
+
+    swap(&mut x, &mut y, &mut t, 8);
+
+    assert(x == 3.141_592_f64);
+    assert(y == 2.718_281_f64);
+}
+
+pub fn main() -> i32 {
+    // print_sss("[TRACE] generic_fn_swap - BEGIN", "", "\n");
+
+    test_swap_i32();
+    test_swap_f64();
+
+    // print_sss("[TRACE] generic_fn_swap - END", "", "\n");
+    0
+}

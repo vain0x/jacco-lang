@@ -76,6 +76,27 @@ expect_compile_err() {
     echo '```' | tee -a test_stderr.md >>test_stdout.md
 }
 
+expect_run() {
+    NAME="$1"
+    CATEGORY="${2:-''}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        CLANG="tests/$NAME/$NAME.g.c"
+        OUT="tests/$NAME/$NAME.out"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        CLANG="tests/$CATEGORY/$NAME/$NAME.g.c"
+        OUT="tests/$CATEGORY/$NAME/$NAME.out"
+    fi
+
+    RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin jacco build "$SRC">"$CLANG" \
+        && gcc -std=c11 -g -Wall -Wno-unused-variable "$PWD/libtest/test.c" "$CLANG" -o "$OUT" \
+        && "$OUT" \
+        || echo "$NAME failed"
+}
+
 f_all() {
     expect_compile_ok empty
     expect_compile_ok exit_with_42
@@ -128,6 +149,8 @@ else
     # その他のテスト
     expect_compile_err syntax_error
     expect_compile_err undefined_local_var name_resolution
+
+    expect_run generic_swap_fn integration
 
     cargo test
 fi
