@@ -456,6 +456,13 @@ impl KTy {
         )
     }
 
+    pub(crate) fn to_ty2_poly(&self, k_mod: KMod) -> KTy2 {
+        do_instantiate(
+            self,
+            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Preserve),
+        )
+    }
+
     /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
     pub(crate) fn erasure(&self, k_mod: KMod) -> KTy2 {
         do_instantiate(
@@ -552,6 +559,8 @@ impl Debug for KTy {
 enum TySchemeConversionMode<'a> {
     /// インスタンス化: 型引数にフレッシュなメタ型を割り当てる。
     Instantiate(&'a mut KTyEnv),
+    /// 型変数のままにする。
+    Preserve,
     /// unknown にする。
     Erasure,
 }
@@ -580,9 +589,13 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
 
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
-        KTy::Var(ref ty_var) => match context.env.get(&ty_var.name).copied() {
-            Some(meta_ty) => KTy2::Meta(meta_ty),
-            None => {
+        KTy::Var(ref ty_var) => match context.mode {
+            TySchemeConversionMode::Instantiate(_) => {
+                let meta_ty = context.env.get(&ty_var.name).copied().unwrap();
+                KTy2::Meta(meta_ty)
+            }
+            TySchemeConversionMode::Preserve => KTy2::Var(ty_var.clone()),
+            TySchemeConversionMode::Erasure => {
                 // FIXME: この段階では型変数のままにしておく方がよい (例えば `x as T` の式の型は型変数 T のままになるはず。型を消去するのはコード生成の工程でいい)
                 // DESIGN: unknown の方がいい？
                 KTy2::Unit

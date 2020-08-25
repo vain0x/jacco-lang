@@ -822,8 +822,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        // FIXME: 型変数にはCPS変換の際に生成したメタ型変数を割り当てる
-        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2(tx.k_mod, &mut tx.ty_env);
+        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2_poly(tx.k_mod);
         resolve_symbol_def2(param, Some(param_ty), tx);
     }
 
@@ -855,8 +854,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
-        let param_ty =
-            &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2(tx.k_mod, &mut tx.ty_env);
+        let param_ty = &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2_poly(tx.k_mod);
         resolve_symbol_def2(param, Some(&param_ty), tx);
     }
 }
