@@ -541,20 +541,9 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ([result], [cont]) => {
                 let call_expr = {
                     let mut args = args.iter();
-                    let (left, left_is_generic) = {
-                        let term = args.next().unwrap();
-                        let expr = gen_term(term, cx);
-                        (expr, term.is_generic(ty_env, &cx.mod_outline))
-                    };
+                    let left = gen_term(args.next().unwrap(), cx);
                     let args = args.map(|arg| gen_term(arg, cx));
-                    let mut call = left.into_call(args);
-
-                    // FIXME: 多相関数の結果型は型変数が消えている一方、この項の型変数は適当な型が代入されているので、そのままではC言語として型が合わない。とりあえずキャストする。
-                    if left_is_generic {
-                        call = call.into_cast(gen_ty2(&result.ty(&cx.locals), ty_env, cx));
-                    }
-
-                    call
+                    left.into_call(args)
                 };
                 emit_var_decl(result, Some(call_expr), ty_env, cx);
                 gen_node(cont, ty_env, cx);
