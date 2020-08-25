@@ -250,6 +250,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 CTy::Other("/* free */ void")
             }
         },
+        KTy2::Var(_) => CTy::Other("/* ty var */ void"),
         KTy2::Never => CTy::Other("/* never */ void"),
         KTy2::Unit => CTy::Void,
         KTy2::Number(basic_ty) => gen_basic_ty(*basic_ty),

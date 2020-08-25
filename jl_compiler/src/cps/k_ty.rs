@@ -19,12 +19,16 @@ pub(crate) enum KEnumOrStruct {
 /// 型 (その2)
 ///
 /// 目的: 単一化の実装を簡略化すること、メタ型変数を含むこと、他のモジュールの enum/struct の型を表現すること
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq)]
 pub(crate) enum KTy2 {
     Unresolved {
         cause: KTyCause,
     },
+    /// メタ型は型変数とは異なり、型検査で一時的に発生して、単一化により他の型に束縛される。
     Meta(KMetaTy),
+    #[allow(unused)]
+    /// 型変数はメタ型とは異なり、多相関数の型引数などの構文で明示的に宣言される。
+    Var(KTyVar),
     Never,
     Unit,
     Number(KNumberTy),
@@ -235,6 +239,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 Some(ty) => DebugWithContext::fmt(ty.borrow().deref(), context, f),
                 None => write!(f, "?{}", meta_ty.to_index()),
             },
+            KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
             KTy2::Never => write!(f, "never"),
             KTy2::Unit => write!(f, "unit"),
             KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -289,6 +294,7 @@ impl Debug for KTy2 {
         match self {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
+            KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
             KTy2::Never => write!(f, "!"),
             KTy2::Unit => write!(f, "()"),
             KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -353,7 +359,7 @@ pub(crate) struct KTyParam {
     pub(crate) loc: Loc,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub(crate) struct KTyVar {
     pub(crate) name: String,
     pub(crate) loc: Loc,
