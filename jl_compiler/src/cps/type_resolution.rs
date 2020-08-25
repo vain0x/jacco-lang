@@ -341,14 +341,16 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
             KTy2::Never
         }
         KProjectSymbolOutline::Const(k_mod, const_data) => {
-            const_data.value_ty.to_ty2(k_mod, &tx.ty_env)
+            const_data.value_ty.to_ty2(k_mod, &mut tx.ty_env)
         }
         KProjectSymbolOutline::StaticVar(k_mod, static_var_data) => {
-            static_var_data.ty.to_ty2(k_mod, &tx.ty_env)
+            static_var_data.ty.to_ty2(k_mod, &mut tx.ty_env)
         }
-        KProjectSymbolOutline::Fn(k_mod, fn_outline) => fn_outline.ty().to_ty2(k_mod, &tx.ty_env),
+        KProjectSymbolOutline::Fn(k_mod, fn_outline) => {
+            fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env)
+        }
         KProjectSymbolOutline::ExternFn(k_mod, extern_fn_outline) => {
-            extern_fn_outline.ty().to_ty2(k_mod, &tx.ty_env)
+            extern_fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env)
         }
         KProjectSymbolOutline::ConstEnum(..)
         | KProjectSymbolOutline::StructEnum(..)
@@ -371,20 +373,20 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
         KTerm::Const { k_mod, k_const, .. } => k_const
             .ty(&k_mod.of(&tx.mod_outlines).consts)
-            .to_ty2(*k_mod, &tx.ty_env),
+            .to_ty2(*k_mod, &mut tx.ty_env),
         KTerm::StaticVar { static_var, .. } => static_var
             .ty(&tx.mod_outline.static_vars)
-            .to_ty2(tx.k_mod, &tx.ty_env),
+            .to_ty2(tx.k_mod, &mut tx.ty_env),
         KTerm::Fn { ty, .. } => ty.clone(),
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx
             .return_ty_opt
             .clone()
             .unwrap()
-            .to_ty2(tx.k_mod, &tx.ty_env),
+            .to_ty2(tx.k_mod, &mut tx.ty_env),
         KTerm::ExternFn { extern_fn, .. } => extern_fn
             .ty(&tx.mod_outline.extern_fns)
-            .to_ty2(tx.k_mod, &tx.ty_env),
+            .to_ty2(tx.k_mod, &mut tx.ty_env),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
         KTerm::RecordTag {
             k_mod, k_struct, ..
@@ -392,7 +394,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             let mod_outline = k_mod.of(&tx.mod_outlines);
             k_struct
                 .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                .to_ty2(tx.k_mod, &tx.ty_env)
+                .to_ty2(tx.k_mod, &mut tx.ty_env)
         }
         KTerm::FieldTag(_) => unreachable!(),
     }
@@ -461,14 +463,16 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
-                        &field.ty(&mod_outline.fields).to_ty2(k_mod, &tx.ty_env),
+                        &field.ty(&mod_outline.fields).to_ty2(k_mod, &mut tx.ty_env),
                         &arg_ty,
                         node.loc,
                         tx,
                     );
                 }
 
-                let ty = k_struct.ty(&mod_outline.structs).to_ty2(k_mod, &tx.ty_env);
+                let ty = k_struct
+                    .ty(&mod_outline.structs)
+                    .to_ty2(k_mod, &mut tx.ty_env);
                 resolve_symbol_def2(result, Some(&ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
@@ -511,7 +515,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                             .map(|field| {
                                 field
                                     .ty(&k_mod.of(&tx.mod_outlines).fields)
-                                    .to_ty2(k_mod, &tx.ty_env)
+                                    .to_ty2(k_mod, &mut tx.ty_env)
                             })?,
                     };
                     Some(ty.into_ptr(KMut::Const))
@@ -562,7 +566,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                             .map(|field| {
                                 field
                                     .ty(&k_mod.of(&tx.mod_outlines).fields)
-                                    .to_ty2(k_mod, &tx.ty_env)
+                                    .to_ty2(k_mod, &mut tx.ty_env)
                             })?,
                     };
                     Some(ty.into_ptr(k_mut))
@@ -801,7 +805,8 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2(tx.k_mod, &tx.ty_env);
+        // FIXME: 型変数にはCPS変換の際に生成したメタ型変数を割り当てる
+        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2(tx.k_mod, &mut tx.ty_env);
         resolve_symbol_def2(param, Some(param_ty), tx);
     }
 
@@ -834,7 +839,7 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
         let param_ty =
-            &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2(tx.k_mod, &tx.ty_env);
+            &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2(tx.k_mod, &mut tx.ty_env);
         resolve_symbol_def2(param, Some(&param_ty), tx);
     }
 }

@@ -20,7 +20,7 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
     pub(super) env: &'a Env,
-    pub(crate) ty_env: &'a KTyEnv,
+    pub(crate) ty_env: &'a mut KTyEnv,
     pub(super) listener: &'a mut dyn NameResolutionListener,
 }
 

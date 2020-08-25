@@ -100,7 +100,7 @@ impl KTy2 {
         KTy2::Struct(k_mod, k_struct)
     }
 
-    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &KTyEnv) -> Self {
+    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &mut KTyEnv) -> Self {
         do_instantiate(&ty, &mut TySchemeInstantiationFn::new(k_mod, Some(ty_env)))
     }
 
@@ -443,7 +443,7 @@ impl KTy {
     }
 
     /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
-    pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &KTyEnv) -> KTy2 {
+    pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &mut KTyEnv) -> KTy2 {
         KTy2::from_ty1(self.clone(), k_mod, ty_env)
     }
 
@@ -541,13 +541,13 @@ struct TySchemeInstantiationFn<'a> {
     /// Some なら型変数をインスタンス化する。
     /// None なら型変数は消去して unit に落とす。
     #[allow(unused)]
-    ty_env: Option<&'a KTyEnv>,
+    ty_env: Option<&'a mut KTyEnv>,
     #[allow(unused)]
     env: HashMap<String, KMetaTy>,
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, ty_env: Option<&'a KTyEnv>) -> Self {
+    fn new(k_mod: KMod, ty_env: Option<&'a mut KTyEnv>) -> Self {
         Self {
             k_mod,
             ty_env,
