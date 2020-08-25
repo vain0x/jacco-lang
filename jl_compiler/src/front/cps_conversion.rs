@@ -653,7 +653,13 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> KTerm {
             loc,
         },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
-        KLocalValue::Fn(k_fn) => KTerm::Fn { k_fn, loc },
+        KLocalValue::Fn(k_fn) => KTerm::Fn {
+            k_fn,
+            ty: k_fn
+                .ty(&k_mod.of(&xx.mod_outlines).fns)
+                .to_ty2(k_mod, &mut xx.ty_env),
+            loc,
+        },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
             let name = k_struct.name(&k_mod.of(&xx.mod_outlines).structs);

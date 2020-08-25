@@ -357,7 +357,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
                 (KModLocalSymbol::Const(k_const), loc)
             }
             KTerm::StaticVar { static_var, loc } => (KModLocalSymbol::StaticVar(static_var), loc),
-            KTerm::Fn { k_fn, loc } => (KModLocalSymbol::Fn(k_fn), loc),
+            KTerm::Fn { k_fn, loc, .. } => (KModLocalSymbol::Fn(k_fn), loc),
             KTerm::Label { .. } | KTerm::Return { .. } => return,
             KTerm::ExternFn { extern_fn, loc } => (KModLocalSymbol::ExternFn(extern_fn), loc),
             KTerm::RecordTag { .. } | KTerm::FieldTag(_) => return,

@@ -67,6 +67,7 @@ pub(crate) enum KTerm {
     },
     Fn {
         k_fn: KFn,
+        ty: KTy2,
         loc: Loc,
     },
     Label {
@@ -119,7 +120,7 @@ impl KTerm {
             KTerm::StaticVar { static_var, .. } => static_var
                 .ty(&mod_outline.static_vars)
                 .to_ty2(k_mod, ty_env),
-            KTerm::Fn { k_fn, .. } => k_fn.ty(&mod_outline.fns).to_ty2(k_mod, ty_env),
+            KTerm::Fn { ty, .. } => ty.clone(),
             KTerm::Label { label, .. } => label.ty(labels),
             KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).to_ty2(k_mod, ty_env),
             KTerm::ExternFn { extern_fn, .. } => {

@@ -375,7 +375,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::StaticVar { static_var, .. } => static_var
             .ty(&tx.mod_outline.static_vars)
             .to_ty2(tx.k_mod, &tx.ty_env),
-        KTerm::Fn { k_fn, .. } => k_fn.ty(&tx.mod_outline.fns).to_ty2(tx.k_mod, &tx.ty_env),
+        KTerm::Fn { ty, .. } => ty.clone(),
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx
             .return_ty_opt
