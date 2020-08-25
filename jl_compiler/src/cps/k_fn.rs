@@ -75,6 +75,10 @@ impl KFnOutline {
             result_ty: Box::new(self.result_ty.clone()),
         }
     }
+
+    pub(crate) fn is_generic(&self) -> bool {
+        !self.ty_params.is_empty()
+    }
 }
 
 #[derive(Clone, Default, Debug)]

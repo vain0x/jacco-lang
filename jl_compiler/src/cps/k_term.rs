@@ -91,6 +91,16 @@ pub(crate) enum KTerm {
 }
 
 impl KTerm {
+    pub(crate) fn is_generic(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> bool {
+        match self {
+            KTerm::Fn { k_fn, ty, .. } => {
+                k_fn.of(&mod_outline.fns).is_generic()
+                    && ty.as_fn(ty_env).map_or(false, |(_, ty)| ty.is_ptr(ty_env))
+            }
+            _ => false,
+        }
+    }
+
     // いまのところ CPS 変換からしか呼ばれていないので多相型をインスンタンス化する必要はなくて、型環境は受け取っていない
     pub(crate) fn ty<'a>(
         &self,
