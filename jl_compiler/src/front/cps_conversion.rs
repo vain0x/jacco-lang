@@ -1487,19 +1487,9 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
 
         for ty_param in &fn_decl.ty_params {
             let name = ty_param.name.text().to_string();
-            let meta_opt = {
-                let meta_ty = xx.ty_env.alloc(KMetaTyData::new_fresh(loc));
-                Some(meta_ty)
-            };
             let loc = Loc::new(xx.doc, PLoc::Name(ANameKey::TyParam(decl_id)));
-            xx.env.insert_ty(
-                name.to_string(),
-                KTy::Var(KTyVar {
-                    name,
-                    meta_opt,
-                    loc,
-                }),
-            );
+            xx.env
+                .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
         }
 
         // 関数の本体を格納しておくラベル

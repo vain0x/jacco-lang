@@ -1,6 +1,4 @@
-use super::{
-    KAlias, KConstEnum, KMetaTy, KMod, KModOutlines, KMut, KNumberTy, KStruct, KStructEnum, KTyEnv,
-};
+use super::*;
 use crate::{
     parse::ATyId,
     source::Loc,
@@ -351,7 +349,6 @@ pub(crate) struct KTyParam {
 #[derive(Clone, PartialEq)]
 pub(crate) struct KTyVar {
     pub(crate) name: String,
-    pub(crate) meta_opt: Option<KMetaTy>,
     pub(crate) loc: Loc,
 }
 
@@ -562,9 +559,10 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
 
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
-        KTy::Var(_) => match context.ty_env {
-            Some(_) => todo!(),
+        KTy::Var(ref ty_var) => match context.env.get(&ty_var.name).copied() {
+            Some(meta_ty) => KTy2::Meta(meta_ty),
             None => {
+                // FIXME: この段階では型変数のままにしておく方がよい (例えば `x as T` の式の型は型変数 T のままになるはず。型を消去するのはコード生成の工程でいい)
                 // DESIGN: unknown の方がいい？
                 KTy2::Unit
             }
@@ -574,16 +572,26 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         KTy::Number(number_ty) => KTy2::Number(number_ty),
         KTy::Ptr { k_mut, ref ty } => do_instantiate(&*ty, context).into_ptr(k_mut),
         KTy::Fn {
-            ty_params: _,
+            ref ty_params,
             ref param_tys,
             ref result_ty,
-        } => KTy2::new_fn(
-            param_tys
-                .into_iter()
-                .map(|ty| do_instantiate(&ty, context))
-                .collect::<Vec<_>>(),
-            do_instantiate(&result_ty, context),
-        ),
+        } => {
+            // 可変な型環境が与えられている場合、型引数をインスタンス化する。
+            if let Some(ty_env) = context.ty_env.as_mut() {
+                for ty_param in ty_params {
+                    let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                    context.env.insert(ty_param.name.to_string(), meta_ty);
+                }
+            }
+
+            KTy2::new_fn(
+                param_tys
+                    .into_iter()
+                    .map(|ty| do_instantiate(&ty, context))
+                    .collect::<Vec<_>>(),
+                do_instantiate(&result_ty, context),
+            )
+        }
         KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),

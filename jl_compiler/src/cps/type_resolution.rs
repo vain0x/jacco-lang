@@ -600,7 +600,20 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::Let => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([init], [result]) => {
                 let init_ty = resolve_term(init, tx);
-                resolve_symbol_def2(result, Some(&init_ty), tx);
+
+                // 型注釈と単一化する。
+                let result_ty = {
+                    let expected_ty = result.ty(&tx.locals);
+                    if expected_ty.is_unresolved() {
+                        init_ty
+                    } else {
+                        // FIXME: 本来なら init_ty <- expected_ty の向きで単一化しないといけないが、 `let p: *u8 = transmute(...)` のように後ろから型を伝播するにはこの向きでなければいけない。
+                        unify2(&init_ty, &expected_ty, node.loc, tx);
+                        expected_ty
+                    }
+                };
+
+                resolve_symbol_def2(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
