@@ -453,8 +453,9 @@ fn alloc_outline(
 }
 
 fn resolve_outline(
+    doc: Doc,
     tree: &PTree,
-    env: &Env,
+    env: &mut Env,
     mod_outline: &mut KModOutline,
     decl_symbols: &DeclSymbols,
     listener: &mut dyn NameResolutionListener,
@@ -468,7 +469,7 @@ fn resolve_outline(
         logger,
     };
 
-    for (decl, decl_symbol_opt) in ast.decls().iter().zip(decl_symbols.iter()) {
+    for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter()) {
         let symbol = match decl_symbol_opt {
             Some(it) => it,
             None => continue,
@@ -496,12 +497,24 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
+                ty_resolver.env.enter_scope();
+
+                for ty_param in &fn_decl.ty_params {
+                    let name = ty_param.name.text().to_string();
+                    let loc = Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id)));
+                    ty_resolver
+                        .env
+                        .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
+                }
+
                 let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);
                 let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, ty_resolver);
 
                 let fn_data = k_fn.of_mut(&mut mod_outline.fns);
                 fn_data.param_tys = param_tys;
                 fn_data.result_ty = result_ty;
+
+                ty_resolver.env.leave_scope();
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = match symbol {
@@ -561,8 +574,9 @@ pub(crate) fn generate_outline(
         logger,
     );
     resolve_outline(
+        doc,
         tree,
-        &env,
+        &mut env,
         &mut mod_outline,
         &decl_symbols,
         listener,

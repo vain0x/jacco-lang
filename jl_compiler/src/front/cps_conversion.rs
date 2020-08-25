@@ -254,7 +254,7 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 // -----------------------------------------------
 
 pub(crate) struct TyResolver<'a> {
-    pub(crate) env: &'a Env,
+    pub(crate) env: &'a mut Env,
     pub(crate) ast: &'a ATree,
     pub(crate) listener: &'a mut dyn NameResolutionListener,
     pub(crate) logger: &'a DocLogger,
@@ -262,7 +262,7 @@ pub(crate) struct TyResolver<'a> {
 
 fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     TyResolver {
-        env: &xx.env,
+        env: &mut xx.env,
         ast: xx.ast,
         listener: xx.listener,
         logger: xx.logger,
