@@ -102,10 +102,6 @@ impl KTy2 {
         KTy2::Struct(k_mod, k_struct)
     }
 
-    pub(crate) fn from_ty1(ty: KTy, k_mod: KMod, ty_env: &mut KTyEnv) -> Self {
-        do_instantiate(&ty, &mut TySchemeInstantiationFn::new(k_mod, Some(ty_env)))
-    }
-
     pub(crate) fn is_unbound(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
             KTy2::Unresolved { .. } => true,
@@ -454,12 +450,18 @@ impl KTy {
 
     /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
     pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &mut KTyEnv) -> KTy2 {
-        KTy2::from_ty1(self.clone(), k_mod, ty_env)
+        do_instantiate(
+            self,
+            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Instantiate(ty_env)),
+        )
     }
 
     /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
     pub(crate) fn erasure(&self, k_mod: KMod) -> KTy2 {
-        do_instantiate(self, &mut TySchemeInstantiationFn::new(k_mod, None))
+        do_instantiate(
+            self,
+            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Erasure),
+        )
     }
 
     pub(crate) fn into_ptr(self, k_mut: KMut) -> KTy {
@@ -546,21 +548,27 @@ impl Debug for KTy {
     }
 }
 
+/// 型スキームを式の型に変換する際に型変数をどう扱うか
+enum TySchemeConversionMode<'a> {
+    /// インスタンス化: 型引数にフレッシュなメタ型を割り当てる。
+    Instantiate(&'a mut KTyEnv),
+    /// unknown にする。
+    Erasure,
+}
+
 struct TySchemeInstantiationFn<'a> {
     k_mod: KMod,
     /// Some なら型変数をインスタンス化する。
     /// None なら型変数は消去して unit に落とす。
-    #[allow(unused)]
-    ty_env: Option<&'a mut KTyEnv>,
-    #[allow(unused)]
+    mode: TySchemeConversionMode<'a>,
     env: HashMap<String, KMetaTy>,
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, ty_env: Option<&'a mut KTyEnv>) -> Self {
+    fn new(k_mod: KMod, mode: TySchemeConversionMode<'a>) -> Self {
         Self {
             k_mod,
-            ty_env,
+            mode,
             env: HashMap::new(),
         }
     }
@@ -589,8 +597,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             ref param_tys,
             ref result_ty,
         } => {
-            // 可変な型環境が与えられている場合、型引数をインスタンス化する。
-            if let Some(ty_env) = context.ty_env.as_mut() {
+            if let TySchemeConversionMode::Instantiate(ty_env) = &mut context.mode {
                 for ty_param in ty_params {
                     let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
                     context.env.insert(ty_param.name.to_string(), meta_ty);
