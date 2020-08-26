@@ -100,15 +100,13 @@ TODO: f16, f128 を追加
 
 ## 特殊な型: unknown
 
-*未実装*
-
 `unknown` は型である。値のサイズは静的に決定できない (不定サイズ型)。
 
 T を型とするとき、`*T` は `*unknown` の部分型である。`*T` と `*unknown` は `as` 演算子により相互にキャストできる。`*mut T` と `*mut unknown` も同様。
 
 備考: `*unknown` はC言語の `const void*` に相当し、`*mut unknown` は `void*` に相当する。
 
-TODO: 標準ライブラリに `std::ptr::transmute` を追加して `*unknown` からのダウンキャストを廃止する。
+TODO: 標準ライブラリに `std::ptr::transmute` を追加して `as` による `*unknown` からのダウンキャストを廃止する。
 
 ## 特殊な型: never
 
