@@ -369,7 +369,6 @@ pub(crate) enum KTy {
     Unresolved {
         cause: KTyCause,
     },
-    #[allow(unused)]
     Var(KTyVar),
     Unknown,
     Never,
