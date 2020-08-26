@@ -302,6 +302,18 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
             let base_ty = convert_ty_opt(*ty_opt, xx);
             base_ty.into_ptr(k_mut)
         }
+        ATy::Fn(AFnTy {
+            param_tys,
+            result_ty_opt,
+        }) => {
+            let param_tys = param_tys.iter().map(|&ty| convert_ty(ty, xx)).collect();
+            let result_ty = Box::new(convert_ty_or_unit(*result_ty_opt, xx));
+            KTy::Fn {
+                ty_params: vec![],
+                param_tys,
+                result_ty,
+            }
+        }
     }
 }
 
@@ -316,6 +328,13 @@ pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy 
         None => KTy::Unresolved {
             cause: KTyCause::Miss,
         },
+    }
+}
+
+pub(crate) fn convert_ty_or_unit(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy {
+    match ty_opt {
+        Some(ty) => convert_ty(ty, xx),
+        None => KTy::Unit,
     }
 }
 

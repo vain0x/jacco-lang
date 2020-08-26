@@ -8,6 +8,8 @@ pub(crate) type AfterUnderscore = (AName, ParseEnd);
 pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
 pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterTyParamList = Vec<ATyParamDecl>;
+pub(crate) type AfterParamTy = (AfterTy, Option<PToken>, ParseEnd);
+pub(crate) type AfterParamTyList = Vec<AfterTy>;
 pub(crate) type AfterParam = (AParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterParamList = Vec<AfterParam>;
 pub(crate) type AfterArg = (AExpr, ExprEnd);
@@ -125,6 +127,26 @@ pub(crate) fn alloc_ty_param_list(
         .collect()
 }
 
+pub(crate) fn alloc_param_ty(
+    event: ParseStart,
+    ty: AfterTy,
+    comma_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterParamTy {
+    (ty, comma_opt, event.end(PElementKind::ParamTy, px))
+}
+
+pub(crate) fn alloc_param_ty_list(
+    left_paren: PToken,
+    param_tys: Vec<AfterParamTy>,
+    right_paren_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterParamTyList {
+    // FIXME: 構文エラーを報告する
+
+    param_tys.into_iter().map(|(ty, _, _)| ty).collect()
+}
+
 pub(crate) fn alloc_param(
     event: ParseStart,
     name: AfterUnqualifiableName,
@@ -205,6 +227,32 @@ pub(crate) fn alloc_ptr_ty(
         ATy::Ptr(APtrTy {
             mut_opt: mut_opt.map(|p| p.0),
             ty_opt: a_ty_opt,
+        }),
+        event.end(PElementKind::PtrTy, px),
+    )
+}
+
+pub(crate) fn alloc_fn_ty(
+    event: TyStart,
+    keyword: PToken,
+    param_ty_list_opt: Option<AfterParamTyList>,
+    arrow_opt: Option<PToken>,
+    result_ty_opt: Option<AfterTy>,
+    px: &mut Px,
+) -> AfterTy {
+    // FIXME: 構文エラーを報告する
+
+    let param_tys = param_ty_list_opt
+        .into_iter()
+        .flatten()
+        .map(|ty| px.alloc_ty(ty))
+        .collect();
+    let result_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
+
+    (
+        ATy::Fn(AFnTy {
+            param_tys,
+            result_ty_opt,
         }),
         event.end(PElementKind::PtrTy, px),
     )

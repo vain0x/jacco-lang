@@ -62,7 +62,7 @@ fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
 }
 
 /// 結果型注釈 (`-> T`) のパース
-fn parse_result_ty(px: &mut Px) -> (Option<PToken>, Option<AfterTy>) {
+pub(crate) fn parse_result_ty(px: &mut Px) -> (Option<PToken>, Option<AfterTy>) {
     let arrow_opt = px.eat(TokenKind::RightSlimArrow);
     let ty_opt = if arrow_opt.is_some() {
         parse_ty(px)

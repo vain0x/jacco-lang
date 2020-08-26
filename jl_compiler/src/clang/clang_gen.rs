@@ -255,10 +255,16 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         KTy2::Never => CTy::Other("/* never */ void"),
         KTy2::Unit => CTy::Void,
         KTy2::Number(basic_ty) => gen_basic_ty(*basic_ty),
-        KTy2::Fn { .. } => {
-            // FIXME: この時点で fn 型は除去されているべき
-            error!("Unexpected fn type {:?}", ty);
-            CTy::Other("/* fn */ void")
+        KTy2::Fn {
+            param_tys,
+            result_ty,
+        } => {
+            let param_tys = param_tys.iter().map(|ty| gen_ty2(ty, ty_env, cx)).collect();
+            let result_ty = Box::new(gen_ty2(&result_ty, ty_env, cx));
+            CTy::FnPtr {
+                param_tys,
+                result_ty,
+            }
         }
         KTy2::Ptr { k_mut, base_ty } => {
             let base_ty = gen_ty2(&base_ty, ty_env, cx);

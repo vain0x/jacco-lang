@@ -12,7 +12,10 @@ pub(crate) enum PElementKind {
     Name,
 
     // パラメータ
+    /// 型引数リストの項目
     TyParam,
+    /// 関数ポインタ型のパラメータリストの項目
+    ParamTy,
 
     // 型
     NeverTy,
@@ -59,6 +62,7 @@ pub(crate) enum PElementKind {
     LoopExpr,
 
     // 宣言の一部
+    /// 関数宣言のパラメータリストの項目
     ParamDecl,
     ConstVariantDecl,
     FieldDecl,

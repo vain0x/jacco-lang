@@ -82,6 +82,11 @@ pub(crate) struct ATyParamDecl {
     pub(crate) name: AName,
 }
 
+// パラメータ型
+pub(crate) struct AParamTyDecl {
+    pub(crate) ty: ATy,
+}
+
 // -----------------------------------------------
 // 型
 // -----------------------------------------------
@@ -95,12 +100,18 @@ pub(crate) struct APtrTy {
     pub(crate) ty_opt: Option<ATyId>,
 }
 
+pub(crate) struct AFnTy {
+    pub(crate) param_tys: Vec<ATyId>,
+    pub(crate) result_ty_opt: Option<ATyId>,
+}
+
 pub(crate) enum ATy {
     Name(AName),
     InferTy,
     Never,
     Unit,
     Ptr(APtrTy),
+    Fn(AFnTy),
 }
 
 // -----------------------------------------------

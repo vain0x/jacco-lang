@@ -58,6 +58,26 @@ fn write_indent(dx: &mut Dx<impl Write>) -> io::Result<()> {
     Ok(())
 }
 
+fn write_fn_ptr_ty(
+    name_opt: Option<&str>,
+    param_tys: &[CTy],
+    result_ty: &CTy,
+    dx: &mut Dx<impl Write>,
+) -> io::Result<()> {
+    write_ty(&result_ty, dx)?;
+    write!(dx, " (*{})(", name_opt.unwrap_or(""))?;
+
+    for (i, param_ty) in param_tys.iter().enumerate() {
+        if i != 0 {
+            write!(dx, ", ")?;
+        }
+
+        write_ty(param_ty, dx)?;
+    }
+
+    return write!(dx, ")");
+}
+
 fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
     match ty {
         CTy::Other(text) => write!(dx, "{}", text),
@@ -80,6 +100,10 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write_ty(&ty, dx)?;
             write!(dx, "*")
         }
+        CTy::FnPtr {
+            param_tys,
+            result_ty,
+        } => write_fn_ptr_ty(None, param_tys, result_ty, dx),
         CTy::Enum(name) => write!(dx, "enum {}", name),
         CTy::Struct(name) => write!(dx, "struct {}", name),
     }
@@ -87,6 +111,14 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
 
 /// 変数と型を書き込む。(`int foo` や `void (*f)()` など。)
 fn write_var_with_ty(name: &str, ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
+    if let CTy::FnPtr {
+        param_tys,
+        result_ty,
+    } = ty
+    {
+        return write_fn_ptr_ty(Some(name), param_tys, result_ty, dx);
+    }
+
     write_ty(ty, dx)?;
     write!(dx, " {}", name)
 }
@@ -245,8 +277,7 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             result_ty,
             body_opt,
         } => {
-            write_ty(result_ty, dx)?;
-            write!(dx, " {}", name)?;
+            write_var_with_ty(name, result_ty, dx)?;
             write_param_list(&params, dx)?;
 
             match body_opt {

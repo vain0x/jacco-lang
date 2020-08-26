@@ -1,4 +1,5 @@
 use super::*;
+use parse_decl::parse_result_ty;
 
 pub(crate) fn parse_mut(px: &mut Px) -> Option<PMut> {
     let p_mut = match px.next() {
@@ -39,6 +40,19 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
             let ty_opt = parse_ty(px);
             alloc_ptr_ty(event, star, mut_opt, ty_opt, px)
         }
+        TokenKind::Fn => {
+            let keyword = px.bump();
+            let param_ty_list_opt = parse_param_ty_list(px);
+            let (arrow_opt, result_ty_opt) = parse_result_ty(px);
+            alloc_fn_ty(
+                event,
+                keyword,
+                param_ty_list_opt,
+                arrow_opt,
+                result_ty_opt,
+                px,
+            )
+        }
         _ => return None,
     };
     Some(ty)
@@ -55,4 +69,37 @@ pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<AfterT
     };
 
     (colon_opt, ty_opt)
+}
+
+/// 関数ポインタ型のパラメータリストのパース
+fn parse_param_ty_list(px: &mut Px) -> Option<AfterParamTyList> {
+    let left_paren = px.eat(TokenKind::LeftParen)?;
+    let mut param_tys = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
+            _ => {}
+        }
+
+        let param_event = px.start_element();
+        let ty = match parse_ty(px) {
+            Some(it) => it,
+            None => {
+                px.skip();
+                continue;
+            }
+        };
+        let comma_opt = px.eat(TokenKind::Comma);
+
+        param_tys.push(alloc_param_ty(param_event, ty, comma_opt, px));
+    }
+
+    let right_paren_opt = px.eat(TokenKind::RightParen);
+    Some(alloc_param_ty_list(
+        left_paren,
+        param_tys,
+        right_paren_opt,
+        px,
+    ))
 }
