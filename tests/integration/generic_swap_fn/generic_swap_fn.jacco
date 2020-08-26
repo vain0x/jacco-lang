@@ -4,12 +4,12 @@ extern fn print_sss(s1: *c8, s2: *c8, s3: *c8);
 extern fn print_sds(s1: *c8, d2: i32, s3: *c8);
 
 extern fn assert(cond: bool);
-extern fn memcpy(dest: *mut unit, src: *unit, size: usize) -> *unit;
+extern fn memcpy(dest: *mut unknown, src: *unknown, size: usize) -> *unknown;
 
 fn swap[T](left: *mut T, right: *mut T, temp: *mut T, size: usize) {
-    memcpy(temp as *mut unit, left as *unit, size);
-    memcpy(left as *mut unit, right as *unit, size);
-    memcpy(right as *mut unit, temp as *unit, size);
+    memcpy(temp as *mut unknown, left, size);
+    memcpy(left as *mut unknown, right, size);
+    memcpy(right as *mut unknown, temp, size);
     unit
 }
 
