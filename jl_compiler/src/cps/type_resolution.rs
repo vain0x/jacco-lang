@@ -148,6 +148,10 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
             ux.bug_unresolved(other, *cause);
         }
 
+        // 任意の型は unknown に upcast できる。
+        (KTy2::Unknown, _) if ux.variance == Variance::Co => {}
+        (_, KTy2::Unknown) if ux.variance == Variance::Contra => {}
+
         // never は任意の型に upcast できる。
         (_, KTy2::Never) if ux.variance == Variance::Co => {}
         (KTy2::Never, _) if ux.variance == Variance::Contra => {}
@@ -155,6 +159,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         // 左右の型が完全に一致するケース:
         (KTy2::Meta(..), KTy2::Meta(..))
         | (KTy2::Var(..), KTy2::Var(..))
+        | (KTy2::Unknown, KTy2::Unknown)
         | (KTy2::Unit, KTy2::Unit)
         | (KTy2::Number(..), KTy2::Number(..))
         | (KTy2::Alias(..), KTy2::Alias(..))
@@ -256,6 +261,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         // 不一致
         (KTy2::Var(..), _)
         | (KTy2::Never, _)
+        | (KTy2::Unknown, _)
         | (KTy2::Unit, _)
         | (KTy2::Number(_), _)
         | (KTy2::Ptr { .. }, _)

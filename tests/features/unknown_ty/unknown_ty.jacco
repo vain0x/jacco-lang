@@ -1,0 +1,13 @@
+#![test("run", 0)]
+
+// unknown 型
+
+fn take_unknown_ptr(p: *unknown) {}
+
+pub fn main() -> i32 {
+    let x = 0_i32;
+
+    // unknown へのアップキャスト
+    take_unknown_ptr(&x);
+    0
+}

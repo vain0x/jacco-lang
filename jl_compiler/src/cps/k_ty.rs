@@ -29,6 +29,7 @@ pub(crate) enum KTy2 {
     #[allow(unused)]
     /// 型変数はメタ型とは異なり、多相関数の型引数などの構文で明示的に宣言される。
     Var(KTyVar),
+    Unknown,
     Never,
     Unit,
     Number(KNumberTy),
@@ -236,6 +237,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 None => write!(f, "?{}", meta_ty.to_index()),
             },
             KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
+            KTy2::Unknown => write!(f, "unknown"),
             KTy2::Never => write!(f, "never"),
             KTy2::Unit => write!(f, "unit"),
             KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -291,6 +293,7 @@ impl Debug for KTy2 {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
             KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
             KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
+            KTy2::Unknown => write!(f, "unknown"),
             KTy2::Never => write!(f, "!"),
             KTy2::Unit => write!(f, "()"),
             KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -368,6 +371,7 @@ pub(crate) enum KTy {
     },
     #[allow(unused)]
     Var(KTyVar),
+    Unknown,
     Never,
     Unit,
     Number(KNumberTy),
@@ -506,6 +510,7 @@ impl Debug for KTy {
         match self {
             KTy::Unresolved { .. } => write!(f, "???"),
             KTy::Var(ty_var) => write!(f, "{}", ty_var.name),
+            KTy::Unknown => write!(f, "unknown"),
             KTy::Never => write!(f, "never"),
             KTy::Unit => write!(f, "()"),
             KTy::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
@@ -601,6 +606,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 KTy2::Unit
             }
         },
+        KTy::Unknown => KTy2::Unknown,
         KTy::Never => KTy2::Never,
         KTy::Unit => KTy2::Unit,
         KTy::Number(number_ty) => KTy2::Number(number_ty),

@@ -3,8 +3,6 @@
 // ジェネリックなベクタの実装
 // 参考: [Implementing Vec - The Rustonomicon](https://doc.rust-lang.org/nomicon/vec.html)
 
-struct unknown {}
-
 // -----------------------------------------------
 // ライブラリなど
 // -----------------------------------------------
