@@ -132,6 +132,10 @@ T を型とする。`*mut T` は可変なポインタ型である。
 
 型 T に関する部分型関係は遺伝しない (invariant)。`*T` の部分型である。
 
+備考: `*mut T` のような読み書き可能な参照を共変・反変にすると、例えば `Cat <: Animal, Dog <: Animal` のような部分型関係があるとき `cat: *mut Cat` に対して `*(cat as *mut Animal) = dog as Animal` のような整合性のない書き込みを許容してしまう。
+
+QUESTION: `*mut T <: *mut unknown` は問題ない？ (`unknown` に対する書き込みは常に不正であるため)
+
 ## enum 型
 
 enum 宣言 `enum T ...` は新しい型 T を導入する。これを enum 型と呼ぶ。
