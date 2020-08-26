@@ -147,9 +147,65 @@ fn swap[T](left: *mut T, right: *mut T, size: usize) {
 
 - [ベクタ](../../libjacco_alloc/src/vec.jacco)
 
+## 拡張予定: ジェネリックな構造体
+
+fn と同様に struct も型引数を持てて、本体で型変数 T を使える。
+
+```rust
+struct Slice[T] {
+    //      ^^^ 型引数リスト
+    ptr: *T,
+    //    ^ 型変数
+    len: usize,
+}
+
+fn Slice_new[T](ptr: *T, len: usize) -> Slice[T] {
+    //                                  ^^^^^^^^ 型引数をつける
+    Slice {
+        ptr: ptr,
+        len: len,
+    }
+}
+
+let hello: Slice[c8] = Slice_new("hello, world!", 5);
+
+printf("%.*s", hello.ptr, hello.len);
+//                  ^ フィールド参照
+```
+
+コード生成において、型変数に由来している型を脱参照する際はキャストを挟む必要がある。
+
+```rust
+let h: c8 = *hello.ptr;
+//          ^ これの型は Slice の型変数に由来していて、
+//            普通にコード生成すると void になってしまう
+```
+
+```c
+char h = *(char const*)hello.ptr;
+//        ^^^^^^^^^^^^^ 追加
+```
+
+メモリレイアウトが型変数に依存するジェネリックな構造体は不定サイズになる。不定サイズな構造体は値として受け渡すことはできず、レコード式で構築できない。フィールド参照はできる。
+
+```rust
+struct Option[T] {
+    has_value: bool,
+    value: T,
+}
+
+fn as_ref[T](opt: *Option[T]) -> Option[*T] {
+    Option {
+        has_value: (*opt).has_value,
+        value: &(*opt).value,
+    }
+}
+```
+
 ## 今後の拡張の予定
 
 - enum, struct などの型も型変数を持てるようにする
+- パス式に型引数リストをつけられるようにする (`f::[i32]` など)
 - 使いやすくする案
     - 暗黙的に型のメモリレイアウトを引数で渡す (?)
     - 辞書渡し (?)
