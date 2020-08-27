@@ -45,6 +45,11 @@ pub(crate) enum KTy2 {
     ConstEnum(KMod, KConstEnum),
     StructEnum(KMod, KStructEnum),
     Struct(KMod, KStruct),
+    App {
+        k_mod: KMod,
+        k_struct: KStruct,
+        ty_args: Vec<KTy2>,
+    },
 }
 
 impl KTy2 {
@@ -283,6 +288,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 k_mod.of(mod_outlines).name,
                 k_struct.of(&k_mod.of(mod_outlines).structs).name
             ),
+            KTy2::App { .. } => write!(f, "app"),
         }
     }
 }
@@ -310,6 +316,7 @@ impl Debug for KTy2 {
             KTy2::ConstEnum(..) => Ok(()),
             KTy2::StructEnum(_, _) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
+            KTy2::App { .. } => write!(f, "app"),
         }
     }
 }
@@ -387,6 +394,10 @@ pub(crate) enum KTy {
     ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
     Struct(KStruct),
+    StructGeneric {
+        k_struct: KStruct,
+        ty_params: Vec<KTyParam>,
+    },
 }
 
 impl KTy {
@@ -555,6 +566,10 @@ impl Debug for KTy {
                 // FIXME: print name
                 write!(f, "struct {}", k_struct.to_index())
             }
+            KTy::StructGeneric {
+                k_struct,
+                ty_params,
+            } => write!(f, "struct[{}] {}", ty_params.len(), k_struct.to_index()),
         }
     }
 }
@@ -634,6 +649,27 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
         KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
+        KTy::StructGeneric {
+            k_struct,
+            ref ty_params,
+        } => {
+            let ty_args = match &mut context.mode {
+                TySchemeConversionMode::Instantiate(ty_env) => ty_params
+                    .iter()
+                    .map(|ty_param| {
+                        let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                        KTy2::Meta(meta_ty)
+                    })
+                    .collect(),
+                _ => vec![KTy2::Unknown; ty_params.len()],
+            };
+
+            KTy2::App {
+                k_mod,
+                k_struct,
+                ty_args,
+            }
+        }
     }
 }
 

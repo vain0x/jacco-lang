@@ -257,6 +257,25 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 
             do_unify2(result_ty, right_result_ty, ux);
         }
+        (
+            KTy2::App {
+                k_mod,
+                k_struct,
+                ty_args,
+            },
+            KTy2::App {
+                k_mod: right_mod,
+                k_struct: right_struct,
+                ty_args: right_args,
+            },
+        ) if k_mod == right_mod && k_struct == right_struct => {
+            // 型引数に互換性があるか？
+            ux.do_with_invariant(|ux| {
+                for (left, right) in ty_args.iter().zip(right_args) {
+                    do_unify2(left, right, ux);
+                }
+            });
+        }
 
         // 不一致
         (KTy2::Var(..), _)
@@ -268,7 +287,8 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         | (KTy2::Fn { .. }, _)
         | (KTy2::ConstEnum(..), _)
         | (KTy2::StructEnum(..), _)
-        | (KTy2::Struct(..), _) => {
+        | (KTy2::Struct(..), _)
+        | (KTy2::App { .. }, _) => {
             ux.error_ununifiable(left, right);
         }
     }

@@ -37,7 +37,16 @@ impl KStruct {
     pub(crate) fn ty(self, structs: &KStructArena) -> KTy {
         match structs[self].parent {
             KStructParent::Enum { struct_enum, .. } => KTy::StructEnum(struct_enum),
-            KStructParent::Struct { .. } => KTy::Struct(self),
+            KStructParent::Struct { ref ty_params, .. } => {
+                if ty_params.is_empty() {
+                    KTy::Struct(self)
+                } else {
+                    KTy::StructGeneric {
+                        k_struct: self,
+                        ty_params: ty_params.clone(),
+                    }
+                }
+            }
         }
     }
 
