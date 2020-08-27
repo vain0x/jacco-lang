@@ -70,10 +70,28 @@ impl ANameKey {
         parent
             .of(&tree.elements)
             .nth_child_element_of(PElementKind::Name, 0, tree)
-            .unwrap_or(
+            .unwrap_or_else(|| {
                 // FIXME: 名前があるべき位置を見つける？
-                parent,
-            )
+
+                // struct K[T] {} の T を指すときは struct 宣言 → バリアント → 型パラメータ、と辿る必要がある。
+                if let ANameKey::TyParam(_) = self {
+                    if let Some(name) = parent
+                        .of(&tree.elements)
+                        .nth_child_element_either_of(PElementKind::VARIANT_DECL, 0, tree)
+                        .and_then(|variant| {
+                            variant.of(&tree.elements).nth_child_element_of(
+                                PElementKind::Name,
+                                0,
+                                tree,
+                            )
+                        })
+                    {
+                        return name;
+                    }
+                }
+
+                parent
+            })
     }
 }
 
