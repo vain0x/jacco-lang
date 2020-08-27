@@ -30,6 +30,21 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
     }
 }
 
+fn add_ty_params_to_env(
+    ty_params: &[ATyParamDecl],
+    doc: Doc,
+    decl_id: ADeclId,
+    ty_resolver: &mut TyResolver,
+) {
+    for ty_param in ty_params {
+        let name = ty_param.name.text().to_string();
+        let loc = Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id)));
+        ty_resolver
+            .env
+            .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
+    }
+}
+
 fn alloc_const(
     decl_id: ADeclId,
     decl: &AFieldLikeDecl,
@@ -248,15 +263,20 @@ fn alloc_variant(
 }
 
 fn resolve_variant_decl(
+    decl_id: ADeclId,
     variant_decl: &AVariantDecl,
     k_struct: KStruct,
+    doc: Doc,
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     match variant_decl {
         AVariantDecl::Const(_) => {}
         AVariantDecl::Record(decl) => {
+            ty_resolver.env.enter_scope();
+            add_ty_params_to_env(&decl.ty_params, doc, decl_id, ty_resolver);
             resolve_record_variant_decl(decl, k_struct, ty_resolver, mod_outline);
+            ty_resolver.env.leave_scope();
         }
     }
 }
@@ -342,14 +362,23 @@ fn resolve_const_enum_decl(
 }
 
 fn resolve_struct_enum_decl(
+    decl_id: ADeclId,
     decl: &AEnumDecl,
     struct_enum: KStructEnum,
+    doc: Doc,
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let variants = struct_enum.variants(&mod_outline.struct_enums).to_owned();
     for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
-        resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
+        resolve_variant_decl(
+            decl_id,
+            variant_decl,
+            k_struct,
+            doc,
+            ty_resolver,
+            mod_outline,
+        );
     }
 }
 
@@ -512,14 +541,7 @@ fn resolve_outline(
                 };
 
                 ty_resolver.env.enter_scope();
-
-                for ty_param in &fn_decl.ty_params {
-                    let name = ty_param.name.text().to_string();
-                    let loc = Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id)));
-                    ty_resolver
-                        .env
-                        .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
-                }
+                add_ty_params_to_env(&fn_decl.ty_params, doc, decl_id, ty_resolver);
 
                 let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);
                 let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, ty_resolver);
@@ -547,9 +569,14 @@ fn resolve_outline(
                 KModLocalSymbol::ConstEnum(const_enum) => {
                     resolve_const_enum_decl(decl, *const_enum, ty_resolver, mod_outline)
                 }
-                KModLocalSymbol::StructEnum(struct_enum) => {
-                    resolve_struct_enum_decl(decl, *struct_enum, ty_resolver, mod_outline)
-                }
+                KModLocalSymbol::StructEnum(struct_enum) => resolve_struct_enum_decl(
+                    decl_id,
+                    decl,
+                    *struct_enum,
+                    doc,
+                    ty_resolver,
+                    mod_outline,
+                ),
                 _ => unreachable!(),
             },
             ADecl::Struct(decl) => {
@@ -561,7 +588,14 @@ fn resolve_outline(
                     KModLocalSymbol::Struct(it) => it,
                     _ => continue,
                 };
-                resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
+                resolve_variant_decl(
+                    decl_id,
+                    variant_decl,
+                    k_struct,
+                    doc,
+                    ty_resolver,
+                    mod_outline,
+                );
             }
             ADecl::Use(_) => {}
         }

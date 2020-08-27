@@ -8,6 +8,7 @@ use std::{
     collections::HashMap,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
+    mem::take,
     ops::Deref,
 };
 
@@ -653,16 +654,19 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             k_struct,
             ref ty_params,
         } => {
+            let mut env = take(&mut context.env);
             let ty_args = match &mut context.mode {
                 TySchemeConversionMode::Instantiate(ty_env) => ty_params
                     .iter()
                     .map(|ty_param| {
                         let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                        env.insert(ty_param.name.to_string(), meta_ty);
                         KTy2::Meta(meta_ty)
                     })
                     .collect(),
                 _ => vec![KTy2::Unknown; ty_params.len()],
             };
+            context.env = env;
 
             KTy2::App {
                 k_mod,
