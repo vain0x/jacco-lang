@@ -334,6 +334,7 @@ pub(crate) struct AFnLikeDecl {
 
 pub(crate) struct ARecordVariantDecl {
     pub(crate) name: AName,
+    pub(crate) ty_params: Vec<ATyParamDecl>,
     pub(crate) fields: Vec<AFieldLikeDecl>,
 }
 

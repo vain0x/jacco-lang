@@ -4,6 +4,11 @@ use super::*;
 use crate::{cps::KVis, logs::DocLogger};
 use parse_expr::parse_unqualifiable_name;
 
+enum VariantParentKind {
+    Enum,
+    Struct,
+}
+
 fn parse_ty_param_list(px: &mut Px) -> Option<AfterTyParamList> {
     let left_paren = px.eat(TokenKind::LeftBracket)?;
     let mut ty_params = vec![];
@@ -227,6 +232,7 @@ fn parse_field_decls(px: &mut Px) -> AfterFieldDecls {
 fn parse_record_variant_decl(
     event: ParseStart,
     name: AfterUnqualifiableName,
+    ty_param_list_opt: Option<AfterTyParamList>,
     left_brace: PToken,
     px: &mut Px,
 ) -> AfterVariantDecl {
@@ -236,6 +242,7 @@ fn parse_record_variant_decl(
     alloc_record_variant_decl(
         event,
         name,
+        ty_param_list_opt,
         left_brace,
         fields,
         right_brace_opt,
@@ -244,16 +251,24 @@ fn parse_record_variant_decl(
     )
 }
 
-fn parse_variant_decl(px: &mut Px) -> Option<AfterVariantDecl> {
+fn parse_variant_decl(parent: VariantParentKind, px: &mut Px) -> Option<AfterVariantDecl> {
     let event = px.start_element();
     let name = parse_unqualifiable_name(px)?;
+
+    let ty_param_list_opt = match parent {
+        VariantParentKind::Enum => None,
+        VariantParentKind::Struct => parse_ty_param_list(px),
+    };
 
     let variant_decl = match px.next() {
         TokenKind::LeftBrace => {
             let left_brace = px.bump();
-            parse_record_variant_decl(event, name, left_brace, px)
+            parse_record_variant_decl(event, name, ty_param_list_opt, left_brace, px)
         }
-        _ => parse_const_variant_decl(event, name, px),
+        _ => {
+            // FIXME: このとき型パラメータリストは空でなければいけない
+            parse_const_variant_decl(event, name, px)
+        }
     };
     Some(variant_decl)
 }
@@ -267,7 +282,7 @@ fn parse_variants(px: &mut Px) -> AfterVariantDecls {
             _ => {}
         }
 
-        match parse_variant_decl(px) {
+        match parse_variant_decl(VariantParentKind::Enum, px) {
             Some(variant_decl) => variants.push(variant_decl),
             None => px.skip(),
         }
@@ -303,7 +318,7 @@ fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) 
 }
 
 fn parse_struct_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    let variant_opt = parse_variant_decl(px);
+    let variant_opt = parse_variant_decl(VariantParentKind::Struct, px);
     let semi_opt = px.eat(TokenKind::Semi);
 
     alloc_struct_decl(modifiers, keyword, variant_opt, semi_opt, px)

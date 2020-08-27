@@ -1040,6 +1040,7 @@ pub(crate) fn alloc_field_decls(fields: Vec<AfterFieldDecl>, _px: &mut Px) -> Af
 pub(crate) fn alloc_record_variant_decl(
     event: ParseStart,
     name: AfterUnqualifiableName,
+    ty_param_list_opt: Option<AfterTyParamList>,
     left_brace: PToken,
     fields: AfterFieldDecls,
     right_brace_opt: Option<PToken>,
@@ -1049,9 +1050,14 @@ pub(crate) fn alloc_record_variant_decl(
     validate_record_variant_decl(&name, left_brace, &fields, right_brace_opt, px);
 
     let (name, _) = name;
+    let ty_params = ty_param_list_opt.unwrap_or_default();
 
     (
-        AVariantDecl::Record(ARecordVariantDecl { name, fields }),
+        AVariantDecl::Record(ARecordVariantDecl {
+            name,
+            ty_params,
+            fields,
+        }),
         event.end(PElementKind::RecordVariantDecl, px),
     )
 }

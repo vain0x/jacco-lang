@@ -1,0 +1,14 @@
+#![test("parse")]
+
+struct RawVec[T] {
+    ptr: *mut T,
+    cap: usize,
+}
+
+pub fn main() -> i32 {
+    let vec = RawVec {
+        ptr: 4 as *mut i32,
+        cap: 0_usize,
+    };
+    0
+}

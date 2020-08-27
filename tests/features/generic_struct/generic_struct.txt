@@ -1,0 +1,128 @@
+RootDecl [
+    AttrDecl [
+        HashBang,
+        LeftBracket,
+        "test",
+        LeftParen,
+        "\"parse\"",
+        RightParen,
+        RightBracket,
+    ],
+    StructDecl [
+        Struct,
+        RecordVariantDecl [
+            Name [
+                "RawVec",
+            ],
+            LeftBracket,
+            TyParam [
+                Name [
+                    "T",
+                ],
+            ],
+            RightBracket,
+            LeftBrace,
+            FieldDecl [
+                Name [
+                    "ptr",
+                ],
+                Colon,
+                PtrTy [
+                    Star,
+                    Mut,
+                    NameTy [
+                        Name [
+                            "T",
+                        ],
+                    ],
+                ],
+                Comma,
+            ],
+            FieldDecl [
+                Name [
+                    "cap",
+                ],
+                Colon,
+                NameTy [
+                    Name [
+                        "usize",
+                    ],
+                ],
+                Comma,
+            ],
+            RightBrace,
+        ],
+    ],
+    FnDecl [
+        Pub,
+        Fn,
+        Name [
+            "main",
+        ],
+        LeftParen,
+        RightParen,
+        RightSlimArrow,
+        NameTy [
+            Name [
+                "i32",
+            ],
+        ],
+        BlockExpr [
+            LeftBrace,
+            LetDecl [
+                Let,
+                Name [
+                    "vec",
+                ],
+                Equal,
+                RecordExpr [
+                    Name [
+                        "RawVec",
+                    ],
+                    LeftBrace,
+                    Arg [
+                        Name [
+                            "ptr",
+                        ],
+                        Colon,
+                        AsExpr [
+                            NumberExpr [
+                                "4",
+                            ],
+                            As,
+                            PtrTy [
+                                Star,
+                                Mut,
+                                NameTy [
+                                    Name [
+                                        "i32",
+                                    ],
+                                ],
+                            ],
+                        ],
+                        Comma,
+                    ],
+                    Arg [
+                        Name [
+                            "cap",
+                        ],
+                        Colon,
+                        NumberExpr [
+                            "0_usize",
+                        ],
+                        Comma,
+                    ],
+                    RightBrace,
+                ],
+                Semi,
+            ],
+            ExprDecl [
+                NumberExpr [
+                    "0",
+                ],
+            ],
+            RightBrace,
+        ],
+    ],
+    Eof,
+]
