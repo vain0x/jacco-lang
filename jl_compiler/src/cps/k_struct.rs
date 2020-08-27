@@ -12,7 +12,9 @@ pub(crate) enum KStructParent {
         /// これが何番目のバリアントか？
         index: usize,
     },
-    Struct,
+    Struct {
+        ty_params: Vec<KTyParam>,
+    },
 }
 
 impl KStructParent {
@@ -35,21 +37,21 @@ impl KStruct {
     pub(crate) fn ty(self, structs: &KStructArena) -> KTy {
         match structs[self].parent {
             KStructParent::Enum { struct_enum, .. } => KTy::StructEnum(struct_enum),
-            KStructParent::Struct => KTy::Struct(self),
+            KStructParent::Struct { .. } => KTy::Struct(self),
         }
     }
 
     pub(crate) fn tag_ty(self, structs: &KStructArena, struct_enums: &KStructEnumArena) -> KTy {
         match structs[self].parent {
             KStructParent::Enum { struct_enum, .. } => struct_enum.tag_ty(struct_enums),
-            KStructParent::Struct => KTy::Unit,
+            KStructParent::Struct { .. } => KTy::Unit,
         }
     }
 
     pub(crate) fn tag_value_opt(self, structs: &KStructArena) -> Option<usize> {
         match structs[self].parent {
             KStructParent::Enum { index, .. } => Some(index),
-            KStructParent::Struct => None,
+            KStructParent::Struct { .. } => None,
         }
     }
 

@@ -84,6 +84,19 @@ fn resolve_static_decl(
     static_var.of_mut(&mut mod_outline.static_vars).ty = value_ty;
 }
 
+fn convert_ty_params(ty_params: &[ATyParamDecl], doc: Doc, decl_id: ADeclId) -> Vec<KTyParam> {
+    ty_params
+        .iter()
+        .map(|ty_param| {
+            let name = resolve_name_opt(Some(&ty_param.name));
+            KTyParam {
+                name,
+                loc: Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id))),
+            }
+        })
+        .collect()
+}
+
 fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -> Vec<KTy> {
     param_decls
         .iter()
@@ -96,14 +109,7 @@ fn alloc_fn(decl_id: ADeclId, decl: &AFnLikeDecl, doc: Doc, mod_outline: &mut KM
 
     let vis_opt = resolve_modifiers(&decl.modifiers);
     let name = resolve_name_opt(decl.name_opt.as_ref());
-    let ty_params = decl
-        .ty_params
-        .iter()
-        .map(|ty_param| {
-            let name = resolve_name_opt(Some(&ty_param.name));
-            KTyParam { name, loc }
-        })
-        .collect();
+    let ty_params = convert_ty_params(&decl.ty_params, doc, decl_id);
 
     mod_outline.fns.alloc(KFnOutline {
         name,
@@ -359,9 +365,17 @@ fn alloc_struct(
     logger: &DocLogger,
 ) -> Option<KStruct> {
     let key = AVariantDeclKey::Struct(decl_id);
+    let ty_params = decl
+        .variant_opt
+        .as_ref()
+        .map(|variant_decl| match variant_decl {
+            AVariantDecl::Const(_) => vec![],
+            AVariantDecl::Record(decl) => convert_ty_params(&decl.ty_params, doc, decl_id),
+        })
+        .unwrap_or_default();
     let k_struct = alloc_variant(
         decl.variant_opt.as_ref()?,
-        KStructParent::Struct,
+        KStructParent::Struct { ty_params },
         doc,
         key,
         mod_outline,
