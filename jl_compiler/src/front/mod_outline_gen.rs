@@ -166,7 +166,7 @@ fn resolve_field_decl(decl: &AFieldLikeDecl, loc: Loc) -> KFieldOutline {
 
 fn alloc_unit_like_variant(
     decl: &AFieldLikeDecl,
-    parent_opt: Option<KStructParent>,
+    parent: KStructParent,
     doc: Doc,
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
@@ -183,14 +183,14 @@ fn alloc_unit_like_variant(
     mod_outline.structs.alloc(KStructOutline {
         name,
         fields: vec![],
-        parent_opt,
+        parent,
         loc: new_struct_loc(doc, key),
     })
 }
 
 fn alloc_record_variant(
     decl: &ARecordVariantDecl,
-    parent_opt: Option<KStructParent>,
+    parent: KStructParent,
     doc: Doc,
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
@@ -207,7 +207,7 @@ fn alloc_record_variant(
     mod_outline.structs.alloc(KStructOutline {
         name,
         fields,
-        parent_opt,
+        parent,
         loc: new_struct_loc(doc, key),
     })
 }
@@ -227,7 +227,7 @@ fn resolve_record_variant_decl(
 
 fn alloc_variant(
     variant_decl: &AVariantDecl,
-    parent_opt: Option<KStructParent>,
+    parent: KStructParent,
     doc: Doc,
     key: AVariantDeclKey,
     mod_outline: &mut KModOutline,
@@ -235,9 +235,9 @@ fn alloc_variant(
 ) -> KStruct {
     match variant_decl {
         AVariantDecl::Const(decl) => {
-            alloc_unit_like_variant(decl, parent_opt, doc, key, mod_outline, logger)
+            alloc_unit_like_variant(decl, parent, doc, key, mod_outline, logger)
         }
-        AVariantDecl::Record(decl) => alloc_record_variant(decl, parent_opt, doc, key, mod_outline),
+        AVariantDecl::Record(decl) => alloc_record_variant(decl, parent, doc, key, mod_outline),
     }
 }
 
@@ -312,8 +312,8 @@ fn alloc_enum(
         .enumerate()
         .map(|(index, variant)| {
             let key = AVariantDeclKey::Enum(decl_id, index);
-            let parent_opt = Some(KStructParent::new(struct_enum, index));
-            alloc_variant(variant, parent_opt, doc, key, mod_outline, logger)
+            let parent = KStructParent::new_enum(struct_enum, index);
+            alloc_variant(variant, parent, doc, key, mod_outline, logger)
         })
         .collect();
 
@@ -361,7 +361,7 @@ fn alloc_struct(
     let key = AVariantDeclKey::Struct(decl_id);
     let k_struct = alloc_variant(
         decl.variant_opt.as_ref()?,
-        None,
+        KStructParent::Struct,
         doc,
         key,
         mod_outline,

@@ -5,16 +5,19 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub(crate) struct KStructParent {
-    struct_enum: KStructEnum,
+pub(crate) enum KStructParent {
+    Enum {
+        struct_enum: KStructEnum,
 
-    /// これが何番目のバリアントか？
-    index: usize,
+        /// これが何番目のバリアントか？
+        index: usize,
+    },
+    Struct,
 }
 
 impl KStructParent {
-    pub(crate) fn new(struct_enum: KStructEnum, index: usize) -> Self {
-        Self { struct_enum, index }
+    pub(crate) fn new_enum(struct_enum: KStructEnum, index: usize) -> Self {
+        Self::Enum { struct_enum, index }
     }
 }
 
@@ -30,21 +33,24 @@ impl KStruct {
     }
 
     pub(crate) fn ty(self, structs: &KStructArena) -> KTy {
-        match &structs[self].parent_opt {
-            Some(parent) => KTy::StructEnum(parent.struct_enum),
-            None => KTy::Struct(self),
+        match structs[self].parent {
+            KStructParent::Enum { struct_enum, .. } => KTy::StructEnum(struct_enum),
+            KStructParent::Struct => KTy::Struct(self),
         }
     }
 
     pub(crate) fn tag_ty(self, structs: &KStructArena, struct_enums: &KStructEnumArena) -> KTy {
-        match &structs[self].parent_opt {
-            Some(parent) => parent.struct_enum.tag_ty(struct_enums),
-            None => KTy::Unit,
+        match structs[self].parent {
+            KStructParent::Enum { struct_enum, .. } => struct_enum.tag_ty(struct_enums),
+            KStructParent::Struct => KTy::Unit,
         }
     }
 
     pub(crate) fn tag_value_opt(self, structs: &KStructArena) -> Option<usize> {
-        Some(structs[self].parent_opt.as_ref()?.index)
+        match structs[self].parent {
+            KStructParent::Enum { index, .. } => Some(index),
+            KStructParent::Struct => None,
+        }
     }
 
     pub(crate) fn fields(self, structs: &KStructArena) -> &[KField] {
@@ -71,7 +77,7 @@ impl KProjectStruct {
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,
-    pub(crate) parent_opt: Option<KStructParent>,
+    pub(crate) parent: KStructParent,
     pub(crate) loc: Loc,
 }
 
