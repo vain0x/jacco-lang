@@ -6,9 +6,12 @@ struct RawVec[T] {
 }
 
 pub fn main() -> i32 {
+    let x = 0_i32;
     let vec = RawVec {
-        ptr: 4 as *mut i32,
+        ptr: &mut x,
         cap: 0_usize,
     };
+    let p = vec.ptr;
+    *p = 1;
     0
 }

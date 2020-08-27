@@ -499,9 +499,13 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     );
                 }
 
-                let ty = k_struct
-                    .ty(&mod_outline.structs)
-                    .to_ty2(k_mod, &mut tx.ty_env);
+                let ty = if !ty_args.is_empty() {
+                    ty.clone()
+                } else {
+                    k_struct
+                        .ty(&mod_outline.structs)
+                        .to_ty2(k_mod, &mut tx.ty_env)
+                };
                 resolve_symbol_def2(result, Some(&ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
@@ -523,6 +527,29 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty = (|| {
                     let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
+
+                    // ジェネリック構造体のケース
+                    if let KTy2::App {
+                        k_struct,
+                        ref ty_args,
+                    } = ty
+                    {
+                        let k_mod = k_struct.0;
+                        return k_struct
+                            .of(tx.mod_outlines)
+                            .fields
+                            .iter()
+                            .find(|field| {
+                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
+                            })
+                            .map(|field| {
+                                field
+                                    .ty(&k_mod.of(&tx.mod_outlines).fields)
+                                    .substitute(k_mod, ty_args)
+                            })
+                            .map(|ty| ty.into_ptr(KMut::Const));
+                    }
+
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
                         KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
                             .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
