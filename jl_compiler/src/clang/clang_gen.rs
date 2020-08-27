@@ -288,12 +288,13 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             cx,
         ),
         &KTy2::StructEnum(k_mod, struct_enum) => gen_struct_enum_ty(k_mod, struct_enum, cx),
-        KTy2::Struct(k_mod, k_struct)
-        | KTy2::App {
-            k_mod, k_struct, ..
-        } => {
+        KTy2::Struct(k_mod, k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
             let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);
+            CTy::Struct(name.to_string())
+        }
+        KTy2::App { k_struct, .. } => {
+            let name = &k_struct.of(cx.mod_outlines).name;
             CTy::Struct(name.to_string())
         }
     }
@@ -581,7 +582,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 });
 
                 let self_name = match k_struct.ty(&k_mod.of(cx.mod_outlines).structs) {
-                    KTy::Struct(_) => CExpr::Name(name.clone()),
+                    KTy::Struct(_) | KTy::StructGeneric { .. } => CExpr::Name(name.clone()),
                     KTy::StructEnum(_) => {
                         // タグを設定する。
                         let left = CExpr::Name(name.clone()).into_dot("tag_");

@@ -47,8 +47,7 @@ pub(crate) enum KTy2 {
     StructEnum(KMod, KStructEnum),
     Struct(KMod, KStruct),
     App {
-        k_mod: KMod,
-        k_struct: KStruct,
+        k_struct: KProjectStruct,
         ty_args: Vec<KTy2>,
     },
 }
@@ -192,6 +191,10 @@ impl KTy2 {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::StructEnum(k_mod, struct_enum) => Some(KEnumOrStruct::Enum(k_mod, struct_enum)),
             KTy2::Struct(k_mod, k_struct) => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
+            KTy2::App {
+                k_struct: KProjectStruct(k_mod, k_struct),
+                ..
+            } => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
             _ => None,
         })
     }
@@ -203,10 +206,13 @@ impl KTy2 {
         })
     }
 
-    #[allow(unused)]
     pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::Struct(k_mod, k_struct) => Some((k_mod, k_struct)),
+            KTy2::App {
+                k_struct: KProjectStruct(k_mod, k_struct),
+                ..
+            } => Some((k_mod, k_struct)),
             _ => None,
         })
     }
@@ -395,6 +401,7 @@ pub(crate) enum KTy {
     ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
     Struct(KStruct),
+    #[allow(unused)]
     StructGeneric {
         k_struct: KStruct,
         ty_params: Vec<KTyParam>,
@@ -504,6 +511,21 @@ impl KTy {
         match self {
             KTy::Unit => true,
             _ => false,
+        }
+    }
+
+    pub(crate) fn substitute(&self, k_mod: KMod, ty_args: &[KTy2]) -> KTy2 {
+        // FIXME: instantiate と統合する
+        match self.clone() {
+            KTy::Var(_) => {
+                // FIXME: 名前を解決する
+                ty_args[0].clone()
+            }
+            KTy::Ptr { k_mut, ty } => KTy2::Ptr {
+                k_mut,
+                base_ty: Box::new(ty.substitute(k_mod, ty_args)),
+            },
+            _ => self.erasure(k_mod),
         }
     }
 }
@@ -669,8 +691,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             context.env = env;
 
             KTy2::App {
-                k_mod,
-                k_struct,
+                k_struct: KProjectStruct(k_mod, k_struct),
                 ty_args,
             }
         }

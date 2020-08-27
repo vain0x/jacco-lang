@@ -1,4 +1,4 @@
-#![test("parse")]
+#![test("run", 0)]
 
 struct RawVec[T] {
     ptr: *mut T,

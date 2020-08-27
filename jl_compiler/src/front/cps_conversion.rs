@@ -852,6 +852,20 @@ fn do_convert_record_expr(
     };
 
     let KProjectStruct(k_mod, _) = k_struct;
+    let ty = match &k_struct.of(xx.mod_outlines).parent {
+        KStructParent::Struct { ty_params } if !ty_params.is_empty() => KTy2::App {
+            k_struct,
+            ty_args: ty_params
+                .iter()
+                .map(|ty_param| {
+                    let meta_ty = xx.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                    KTy2::Meta(meta_ty)
+                })
+                .collect(),
+        },
+        _ => k_struct.to_ty2(),
+    };
+
     let fields = &k_struct.of(xx.mod_outlines).fields;
     let perm = match calculate_field_ordering(
         &expr.fields,
@@ -872,13 +886,8 @@ fn do_convert_record_expr(
     }
 
     let result = fresh_symbol(&k_struct.of(xx.mod_outlines).name, loc, xx);
-    xx.nodes.push(new_record_node(
-        k_struct.to_ty2(),
-        args,
-        result,
-        new_cont(),
-        loc,
-    ));
+    xx.nodes
+        .push(new_record_node(ty, args, result, new_cont(), loc));
     Some(result)
 }
 

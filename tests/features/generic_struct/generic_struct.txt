@@ -1,128 +1,15 @@
-RootDecl [
-    AttrDecl [
-        HashBang,
-        LeftBracket,
-        "test",
-        LeftParen,
-        "\"parse\"",
-        RightParen,
-        RightBracket,
-    ],
-    StructDecl [
-        Struct,
-        RecordVariantDecl [
-            Name [
-                "RawVec",
-            ],
-            LeftBracket,
-            TyParam [
-                Name [
-                    "T",
-                ],
-            ],
-            RightBracket,
-            LeftBrace,
-            FieldDecl [
-                Name [
-                    "ptr",
-                ],
-                Colon,
-                PtrTy [
-                    Star,
-                    Mut,
-                    NameTy [
-                        Name [
-                            "T",
-                        ],
-                    ],
-                ],
-                Comma,
-            ],
-            FieldDecl [
-                Name [
-                    "cap",
-                ],
-                Colon,
-                NameTy [
-                    Name [
-                        "usize",
-                    ],
-                ],
-                Comma,
-            ],
-            RightBrace,
-        ],
-    ],
-    FnDecl [
-        Pub,
-        Fn,
-        Name [
-            "main",
-        ],
-        LeftParen,
-        RightParen,
-        RightSlimArrow,
-        NameTy [
-            Name [
-                "i32",
-            ],
-        ],
-        BlockExpr [
-            LeftBrace,
-            LetDecl [
-                Let,
-                Name [
-                    "vec",
-                ],
-                Equal,
-                RecordExpr [
-                    Name [
-                        "RawVec",
-                    ],
-                    LeftBrace,
-                    Arg [
-                        Name [
-                            "ptr",
-                        ],
-                        Colon,
-                        AsExpr [
-                            NumberExpr [
-                                "4",
-                            ],
-                            As,
-                            PtrTy [
-                                Star,
-                                Mut,
-                                NameTy [
-                                    Name [
-                                        "i32",
-                                    ],
-                                ],
-                            ],
-                        ],
-                        Comma,
-                    ],
-                    Arg [
-                        Name [
-                            "cap",
-                        ],
-                        Colon,
-                        NumberExpr [
-                            "0_usize",
-                        ],
-                        Comma,
-                    ],
-                    RightBrace,
-                ],
-                Semi,
-            ],
-            ExprDecl [
-                NumberExpr [
-                    "0",
-                ],
-            ],
-            RightBrace,
-        ],
-    ],
-    Eof,
-]
+struct RawVec {
+    void* ptr;
+    unsigned long long cap;
+};
+
+int main();
+
+int main() {
+    int* cast_1 = (int*)4;
+    struct RawVec RawVec_1;
+    RawVec_1.ptr = cast_1;
+    RawVec_1.cap = 0ULL;
+    struct RawVec vec_1 = RawVec_1;
+    return 0;
+}
