@@ -130,3 +130,4 @@ endif(x):
 
 - [コンパイラの作り方 (詳解)](https://www.is.s.u-tokyo.ac.jp/vu/96/cad/compilerresume/)
 - [RustでCPS変換が簡単になったよという話 | κeenのHappy Hacκing Blog](https://keens.github.io/blog/2019/12/07/rustdecpshenkangakantanninattayotoiuhanashi/)
+- [なんでも継続](http://practical-scheme.net/docs/cont-j.html)

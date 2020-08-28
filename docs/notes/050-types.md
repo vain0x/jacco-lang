@@ -118,6 +118,10 @@ TODO: 標準ライブラリに `std::ptr::transmute` を追加して `as` によ
 
 `!` はあらゆる型の部分型である (`! <: T`)。ただし、他の発散型はそうではない。
 
+関連記事:
+
+- [Never patterns, exhaustive matching, and uninhabited types (oh my!)](https://smallcultfollowing.com/babysteps/blog/2018/08/13/never-patterns-exhaustive-matching-and-uninhabited-types-oh-my/)
+
 ## 読み取り専用のポインタ型
 
 T を型とする。`*const T` は読み取り専用のポインタ型である。`*T` は `*const T` に等しい。

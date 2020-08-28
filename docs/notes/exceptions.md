@@ -231,6 +231,7 @@ C++ に静的例外を導入する提案:
     - 批判の1つ: [Reply to Zero-overhead deterministic exceptions](https://lists.isocpp.org/std-proposals/att-0486/Reply_to_Zero-overhead_deterministic_exceptions:_Throwing.pdf)
     - 日本語での解説: [C++に提案されている静的例外](https://cpplover.blogspot.com/2018/07/c.html)
     - この提案を受けてビャーネ氏が書いたという記事の和訳: [［翻訳］なぜそんなに確信が持てるのか？](https://onihusube.hatenablog.com/entry/2019/12/13/211603)
+    - [The Evils of ParadigmsOrBeware of one-solution-fits-all thinking | p0976r0.pdf](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0976r0.pdf)
 - [Low-Cost Deterministic C++ Exceptions for Embedded Systems](https://www.research.ed.ac.uk/portal/files/78829292/low_cost_deterministic_C_exceptions_for_embedded_systems.pdf)
 
 Java の検査例外に関する記事:
@@ -248,3 +249,7 @@ Java の検査例外の悪い点 (?):
     - エフェクトに関する抽象が必要 (?)
     - 参考: [The problem of effects in Rust](https://without.boats/blog/the-problem-of-effects/)
 - 再送の構文が冗長
+
+エラーハンドリングに関連する記事:
+
+- [Working with Errors in Go 1.13 - The Go Blog](https://blog.golang.org/go1.13-errors)
