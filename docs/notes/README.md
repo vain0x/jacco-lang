@@ -156,7 +156,6 @@
 - [n月刊ラムダノートにパターンマッチについて寄稿しました | κeenのHappy Hacκing Blog](https://keens.github.io/blog/2019/11/02/ngekkanramudano_tonipata_nmatchinitsuitekikoushimashita/)
 - [Crafting IDE-Ready Compilers - DEV Community 👩‍💻👨‍💻](https://dev.to/cad97/crafting-ide-ready-compilers-500o)
 - rust-analyzer の具象構文木の設計: [rust-analyzer/syntax.md at master · rust-analyzer/rust-analyzer](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/syntax.md)
-- [Closures\: Magic Functions | Rusty Yato](https://rustyyato.github.io/rust/syntactic/sugar/2019/01/17/Closures-Magic-Functions.html)
 
 処理系のアーキテクチャに関する記事:
 
