@@ -59,27 +59,6 @@ cargo build
 
 `tests/xxx/xxx.jacco` がコンパイルされて `xxx.txt` が生成される。(アサーションは特にない。一部のテストケースでは、C言語として有効でないコードが生成されてしまう。)
 
-## 内部実装
-
-### 内部: ステージ
-
-- 字句列 (token)
-    - 字句解析
-- 構文木 (parse)
-    - 構文解析 (parse)
-    - 構文検査 (front::syntax_validation)
-    - 名前解決 (front::name_resolution)
-    - 命令列の生成 (front::cps_conversion)
-        - CPS ノードの構築 (cps::cps_fold)
-- CPS 中間表現 (cps)
-    - 型推論 (type_resolution)
-    - unit 除去 (eliminate_unit)
-- C言語 構文木 (clang)
-    - 構文木の構築 (clang_gen)
-    - 文字列への変換 (clang_dump)
-
 ## その他
 
-- [設計のメモ](design.md)
-- [略語など](docs/abbreviations.md)
-- [その他のメモ](notes.md)
+- [その他のメモ](docs/notes)

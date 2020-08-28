@@ -1,8 +1,6 @@
-# 設計メモ
+# 設計・実装用のメモ
 
-Jacco 言語の設計判断に関するメモ。
-
-## 構文
+記述は誤っているかもしれないし、古いかもしれない。
 
 ## 言語機能
 
@@ -125,3 +123,40 @@ Jacco 言語の設計判断に関するメモ。
 - リソース制御機構
     - ownership/borrow/lifetime?
     - static contracts?
+
+## パス
+
+- 字句列 (token)
+    - 字句解析
+- 構文木 (parse)
+    - 構文解析 (parse)
+    - 構文検査 (front::syntax_validation)
+    - 名前解決 (front::name_resolution)
+    - 命令列の生成 (front::cps_conversion)
+        - CPS ノードの構築 (cps::cps_fold)
+- CPS 中間表現 (cps)
+    - 型推論 (type_resolution)
+    - unit 除去 (eliminate_unit)
+- C言語 構文木 (clang)
+    - 構文木の構築 (clang_gen)
+    - 文字列への変換 (clang_dump)
+
+## 関連記事
+
+読み物系:
+
+- [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook)
+- [Next Few Years#Language Design for Locality](https://rust-analyzer.github.io/blog/2020/05/18/next-few-years.html#language-design-for-locality)
+    > There’s a very important language property that an IDE can leverage to massively improve performance:
+    >
+    > *What happens inside a function, stays inside the function*
+- [Why the Sorbet typechecker is fast - Made of Bugs](https://blog.nelhage.com/post/why-sorbet-is-fast/)
+    - なぜ Sorbet (Ruby の型検査器) の型検査が速いか
+- [Reflections on software performance - Made of Bugs](https://blog.nelhage.com/post/reflections-on-performance/)
+    - ソフトウェアが速いと何が嬉しいか
+
+資料系:
+
+- [C language - cppreference.com](https://en.cppreference.com/w/c/language)
+- [C++ language - cppreference.com](https://en.cppreference.com/w/cpp/language)
+- [cpprefjp - C++日本語リファレンス](https://cpprefjp.github.io/)
