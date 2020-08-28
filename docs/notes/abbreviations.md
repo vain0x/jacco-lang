@@ -39,3 +39,5 @@
 | sig   | signature     | シグネチャ |
 | sub   | subtraction   | 減算 |
 | ty    | type          | (静的) 型 |
+
+(info などの一般的な略語や、fn などの Rust のキーワードは除く。)
