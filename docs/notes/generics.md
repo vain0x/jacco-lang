@@ -111,39 +111,66 @@ fn id[T](x: T) -> T {
 
 ## 例
 
+型に依存しないアルゴリズムを書ける。
+
 ```rust
 // スライスのバブルソート
 
 fn bubble_sort[T](
     ptr: *mut T,
     len: usize,
-    // T のサイズ (不正な値を渡すと undefined behavior)
+    /// T のサイズ (不正な値を渡すと undefined behavior)
     value_size: usize,
-    // T の比較関数へのポインタ (型安全)
-    compare_fn: fn(*T, *T) -> i32
+    /// T の比較関数へのポインタ (型安全)
+    compare_fn: fn(*T, *T) -> i32,
 ) {
-    // コンパイラは T のサイズを知らないので &ptr[i] や ptr += i は書けない。
-    // 代わりに usize でアドレスを計算して、必要に応じてポインタに再キャストする。
-
-    let p = ptr as usize;
-    let r = p + value_size * len;
-    while p + value_size < r {
-        let q = p + value_size;
-        while q < r {
-            if compare_fn(p as *T, q as *T) > 0 {
-                swap(p as *mut T, q as *mut T, value_size);
+    let i = 0_usize;
+    while i < len {
+        let j = i + 1;
+        while j < r {
+            let p = slice_index_mut(ptr, i, value_size);
+            let q = slice_index_mut(ptr, j, value_size);
+            if compare_fn(p, q) > 0 {
+                swap(p, q, value_size);
             }
-            q += value_size;
+            j += 1;
         }
-        p += value_size;
+        i += 1;
     }
 }
 
+/// ptr から始まる可変スライスの index 番目へのポインタを得る。
+fn slice_index_mut[T](ptr: *mut T, index: usize, value_size: usize) -> *mut T {
+    // コンパイラは T のサイズを知らないので &ptr[i] とは書けない。
+    (ptr as usize + index * value_size) as *mut T
+}
+
 fn swap[T](left: *mut T, right: *mut T, size: usize) {
-    let t = [0_u8; size] as *mut T;
+    let t = [0_u8; size] as *mut T; // 配列は未実装
     memcpy(t, left, size);
     memcpy(left, right, size);
     memcpy(right, t, size);
+}
+
+```rust
+// 使用例
+
+fn use_bubble_sort() {
+    let array: []i32 = [3, 1, 4, 1, 5]; // 配列は未実装
+    let array_len = 5_usize;
+    let i32_size = 4_usize;
+    bubble_sort(&mut array, array_len, i32_size, i32_compare);
+    // array == [1, 1, 3, 4, 5]
+}
+
+fn i32_compare(first: *i32, second: *i32) -> i32 {
+    if *first < *second {
+        -1
+    } else if *first == *second {
+        0
+    } else {
+        1
+    }
 }
 ```
 
@@ -204,6 +231,98 @@ fn as_ref[T](opt: *Option[T]) -> Option[*T] {
 }
 ```
 
+### 例
+
+ジェネリックなデータ構造のためのライブラリを書けるようになる。また、アルゴリズムの実装も少し楽になる。
+
+```rust
+/// 型 T のメモリレイアウト。幽霊型として型変数を持つことで安全性が高まるはず。
+struct Layout[T] {
+    size: usize,
+}
+
+/// 可変なスライス。メモリ上の特定の型のオブジェクトがメモリ上に連続して配置されている領域への参照。
+struct SliceMut[T] {
+    ptr: *mut T,
+    len: usize,
+    layout: *Layout[T],
+}
+
+fn SliceMut_new[T](ptr: *mut T, len: usize, layout: *Layout[T]) -> SliceMut[T] {
+    SliceMut {
+        ptr: ptr,
+        len: len,
+        layout: layout,
+    }
+}
+
+fn SliceMut_get[T](slice: SliceMut[T], index: usize) -> *mut T {
+    assert(index < slice.len);
+
+    // コンパイラは T のサイズを知らないので &ptr[index] とは書けない。
+    ((slice.ptr as usize) + index * (*slice.layout).size) as *mut T
+}
+```
+
+```rust
+// スライスのバブルソート
+
+fn bubble_sort[T](slice: SliceMut[T], ord: Ord[T]) {
+    let i = 0_usize;
+    while i < slice.len {
+        let j = i + 1;
+        while j < slice.len {
+            let p = SliceMut_get(slice, i);
+            let q = SliceMut_get(slice, j);
+            if (ord.compare_fn)(p, q) > 0 {
+                swap(p, q, slice.layout);
+            }
+            j += 1;
+        }
+        i += 1;
+    }
+}
+
+struct Ord[T] {
+    compare_fn: fn(*T, *T) -> i32,
+}
+
+fn swap[T](left: *mut T, right: *mut T, layout: *Layout[T]) {
+    let size = (*layout).size;
+    let t = [0_u8; size] as *mut T; // 配列は未実装
+    memcpy(t, left, size);
+    memcpy(left, right, size);
+    memcpy(right, t, size);
+}
+```
+
+```rust
+// 使用例
+
+fn use_bubble_sort() {
+    static I32_LAYOUT: Layout[i32] = Layout {
+        size: 4,
+    };
+    static I32_ORD: Ord[i32] = Ord {
+        compare_fn: i32_compare,
+    };
+
+    let array = [3, 1, 4, 1, 5]; // 配列は未実装
+    bubble_sort(SliceMut_new(&mut array, 5), &I32_LAYOUT, &I32_ORD);
+    // array == [1, 1, 3, 4, 5]
+}
+
+fn i32_compare(first: *i32, second: *i32) -> i32 {
+    if *first < *second {
+        -1
+    } else if *first == *second {
+        0
+    } else {
+        1
+    }
+}
+```
+
 ## 今後の拡張の予定
 
 - enum, struct などの型も型変数を持てるようにする
@@ -212,5 +331,6 @@ fn as_ref[T](opt: *Option[T]) -> Option[*T] {
     - 暗黙的に型のメモリレイアウトを引数で渡す (?)
     - 辞書渡し (?)
     - 単相化 (?)
+    - 固定長配列の長さに関するジェネリクス (?)
 
 ほか
