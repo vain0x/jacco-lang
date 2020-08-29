@@ -2,11 +2,7 @@
 
 #![allow(unused)]
 
-use super::{
-    p_token::PTokenSlice, DeclEnd, EventArena, EventId, ExprEnd, PBinaryOp, PElement,
-    PElementArena, PElementData, PElementKind, PLoc, PToken, PTokens, PTree, PUnaryOp, PatEnd,
-    TyEnd,
-};
+use super::*;
 use crate::{
     cps::{KMut, KVis},
     token::TokenKind,
@@ -111,6 +107,7 @@ pub(crate) struct AParamTyDecl {
 
 pub(crate) struct ATyTag;
 pub(crate) type ATyId = VecArenaId<ATyTag>;
+pub(crate) type ATyIds = VecArenaSlice<ATyTag>;
 pub(crate) type ATyArena = VecArena<ATyTag, ATy>;
 
 pub(crate) struct APtrTy {
@@ -125,6 +122,7 @@ pub(crate) struct AFnTy {
 
 pub(crate) enum ATy {
     Name(AName),
+    App(AName, ATyIds),
     InferTy,
     Never,
     Unit,

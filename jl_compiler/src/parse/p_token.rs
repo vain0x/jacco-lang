@@ -9,6 +9,7 @@ pub(crate) struct PTokenTag;
 /// 構文解析フェイズから見たトークン
 pub(crate) type PToken = VecArenaId<PTokenTag>;
 
+#[allow(unused)]
 pub(crate) type PTokenSlice = VecArenaSlice<PTokenTag>;
 
 impl PToken {

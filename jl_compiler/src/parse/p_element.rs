@@ -11,9 +11,11 @@ pub(crate) enum PElementKind {
     // 名前
     Name,
 
-    // パラメータ
-    /// 型引数リストの項目
+    // パラメータ・引数
+    /// 型パラメータリストの項目
     TyParam,
+    /// 型引数リストの項目
+    TyArg,
     /// 関数ポインタ型のパラメータリストの項目
     ParamTy,
 
@@ -22,6 +24,7 @@ pub(crate) enum PElementKind {
     UnitTy,
     InferTy,
     NameTy,
+    AppTy,
     PtrTy,
 
     // パターン

@@ -15,7 +15,13 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
     let ty = match px.next() {
         TokenKind::Ident => {
             let name = parse_qualifiable_name(px).unwrap();
-            alloc_name_ty(event, name, px)
+            match px.next() {
+                TokenKind::LeftBracket => {
+                    let ty_arg_list = parse_ty_arg_list(px).unwrap();
+                    alloc_app_ty(event, name, ty_arg_list, px)
+                }
+                _ => alloc_name_ty(event, name, px),
+            }
         }
         TokenKind::Underscore => {
             let token = px.bump();
@@ -69,6 +75,39 @@ pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<AfterT
     };
 
     (colon_opt, ty_opt)
+}
+
+/// 型引数リストのパース
+fn parse_ty_arg_list(px: &mut Px) -> Option<AfterParamTyList> {
+    let left_bracket = px.eat(TokenKind::LeftBracket)?;
+    let mut ty_args = vec![];
+
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
+            _ => {}
+        }
+
+        let ty_arg_event = px.start_element();
+        let ty = match parse_ty(px) {
+            Some(it) => it,
+            None => {
+                px.skip();
+                continue;
+            }
+        };
+        let comma_opt = px.eat(TokenKind::Comma);
+
+        ty_args.push(alloc_ty_arg(ty_arg_event, ty, comma_opt, px));
+    }
+
+    let right_bracket_opt = px.eat(TokenKind::RightBracket);
+    Some(alloc_ty_arg_list(
+        left_bracket,
+        ty_args,
+        right_bracket_opt,
+        px,
+    ))
 }
 
 /// 関数ポインタ型のパラメータリストのパース

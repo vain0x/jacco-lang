@@ -273,7 +273,8 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
     let loc = PLoc::Name(key);
 
     match ty {
-        ATy::Name(name) => {
+        // FIXME: 型適用を処理する
+        ATy::Name(name) | ATy::App(name, _) => {
             if name.is_qualified() {
                 error_unsupported_path_ty(loc, xx.logger);
             }

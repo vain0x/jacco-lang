@@ -8,6 +8,8 @@ pub(crate) type AfterUnderscore = (AName, ParseEnd);
 pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
 pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterTyParamList = Vec<ATyParamDecl>;
+pub(crate) type AfterTyArg = (AfterTy, Option<PToken>, ParseEnd);
+pub(crate) type AfterTyArgList = Vec<AfterTy>;
 pub(crate) type AfterParamTy = (AfterTy, Option<PToken>, ParseEnd);
 pub(crate) type AfterParamTyList = Vec<AfterTy>;
 pub(crate) type AfterParam = (AParamDecl, Option<PToken>, ParseEnd);
@@ -33,6 +35,12 @@ impl Px {
     fn alloc_ty(&mut self, (ty, event): (ATy, TyEnd)) -> ATyId {
         self.ast.ty_events.alloc(event);
         self.ast.tys.alloc(ty)
+    }
+
+    fn alloc_tys(&mut self, tys: Vec<(ATy, TyEnd)>) -> ATyIds {
+        let (tys, events): (Vec<_>, Vec<_>) = tys.into_iter().unzip();
+        self.ast.ty_events.alloc_slice(events);
+        self.ast.tys.alloc_slice(tys)
     }
 
     fn alloc_pat(&mut self, (pat, event): (APat, PatEnd)) -> APatId {
@@ -93,7 +101,7 @@ pub(crate) fn alloc_name_from_underscore(
 }
 
 // -----------------------------------------------
-// パラメータ
+// パラメータ・引数
 // -----------------------------------------------
 
 pub(crate) fn alloc_ty_param(
@@ -125,6 +133,26 @@ pub(crate) fn alloc_ty_param_list(
         .into_iter()
         .map(|(ty_param, _, _)| ty_param)
         .collect()
+}
+
+pub(crate) fn alloc_ty_arg(
+    event: ParseStart,
+    ty: AfterTy,
+    comma_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterParamTy {
+    (ty, comma_opt, event.end(PElementKind::TyArg, px))
+}
+
+pub(crate) fn alloc_ty_arg_list(
+    left_bracket: PToken,
+    ty_args: Vec<AfterTyArg>,
+    right_bracket_opt: Option<PToken>,
+    px: &mut Px,
+) -> AfterTyArgList {
+    // FIXME: 構文エラーを報告する
+
+    ty_args.into_iter().map(|(ty, _, _)| ty).collect()
 }
 
 pub(crate) fn alloc_param_ty(
@@ -189,6 +217,18 @@ pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut
     let (a_name, _) = name;
 
     (ATy::Name(a_name), event.end(PElementKind::NameTy, px))
+}
+
+pub(crate) fn alloc_app_ty(
+    event: TyStart,
+    name: AfterQualifiableName,
+    ty_args: AfterTyArgList,
+    px: &mut Px,
+) -> AfterTy {
+    let (name, _) = name;
+    let ty_args = px.alloc_tys(ty_args);
+
+    (ATy::App(name, ty_args), event.end(PElementKind::AppTy, px))
 }
 
 pub(crate) fn alloc_infer_ty(event: TyStart, token: PToken, px: &mut Px) -> AfterTy {
