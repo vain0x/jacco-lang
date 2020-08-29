@@ -196,7 +196,7 @@ pub(crate) fn resolve_ty_path(
             KTy2::Struct(k_mod, k_struct)
         }
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
-            Some(KTy2::StructEnum(k_mod, struct_enum)) => {
+            Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = path.token.text(tokens);
                 let k_struct = find_struct_variant(struct_enum, name, k_mod.of(&mod_outlines))?;
 

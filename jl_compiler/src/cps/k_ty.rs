@@ -43,7 +43,7 @@ pub(crate) enum KTy2 {
         result_ty: Box<KTy2>,
     },
     ConstEnum(KProjectConstEnum),
-    StructEnum(KMod, KStructEnum),
+    StructEnum(KProjectStructEnum),
     Struct(KMod, KStruct),
     App {
         k_struct: KProjectStruct,
@@ -188,7 +188,9 @@ impl KTy2 {
 
     pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::StructEnum(k_mod, struct_enum) => Some(KEnumOrStruct::Enum(k_mod, struct_enum)),
+            KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)) => {
+                Some(KEnumOrStruct::Enum(k_mod, struct_enum))
+            }
             KTy2::Struct(k_mod, k_struct) => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
             KTy2::App {
                 k_struct: KProjectStruct(k_mod, k_struct),
@@ -198,9 +200,9 @@ impl KTy2 {
         })
     }
 
-    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<(KMod, KStructEnum)> {
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KProjectStructEnum> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::StructEnum(k_mod, struct_enum) => Some((k_mod, struct_enum)),
+            KTy2::StructEnum(struct_enum) => Some(struct_enum),
             _ => None,
         })
     }
@@ -278,12 +280,9 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
             KTy2::ConstEnum(const_enum) => {
                 write!(f, "enum(const) {}", &const_enum.of(mod_outlines).name)
             }
-            KTy2::StructEnum(k_mod, struct_enum) => write!(
-                f,
-                "enum {}::{}",
-                k_mod.of(mod_outlines).name,
-                struct_enum.of(&k_mod.of(mod_outlines).struct_enums).name
-            ),
+            KTy2::StructEnum(struct_enum) => {
+                write!(f, "enum(struct) {}", &struct_enum.of(mod_outlines).name)
+            }
             KTy2::Struct(k_mod, k_struct) => write!(
                 f,
                 "struct {}::{}",
@@ -315,7 +314,7 @@ impl Debug for KTy2 {
             // FIXME: 実装
             KTy2::Fn { .. } => Ok(()),
             KTy2::ConstEnum(..) => Ok(()),
-            KTy2::StructEnum(_, _) => Ok(()),
+            KTy2::StructEnum(..) => Ok(()),
             KTy2::Struct(_, _) => Ok(()),
             KTy2::App { .. } => write!(f, "app"),
         }
@@ -697,7 +696,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             }
         },
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
-        KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
+        KTy::StructEnum(struct_enum) => KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)),
         KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         KTy::StructGeneric {
             k_struct,

@@ -193,11 +193,9 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     }
 }
 
-fn gen_struct_enum_ty(k_mod: KMod, struct_enum: KStructEnum, cx: &mut Cx) -> CTy {
+fn gen_struct_enum_ty(struct_enum: KProjectStructEnum, cx: &mut Cx) -> CTy {
     // FIXME: unique_enum_name を事前に計算しておく
-    let name = struct_enum
-        .name(&k_mod.of(&cx.mod_outlines).struct_enums)
-        .to_string();
+    let name = struct_enum.of(cx.mod_outlines).name.to_string();
     CTy::Struct(name)
 }
 
@@ -274,7 +272,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             }
         }
         KTy2::ConstEnum(const_enum) => gen_ty(&const_enum.of(cx.mod_outlines).repr_ty, ty_env, cx),
-        &KTy2::StructEnum(k_mod, struct_enum) => gen_struct_enum_ty(k_mod, struct_enum, cx),
+        &KTy2::StructEnum(struct_enum) => gen_struct_enum_ty(struct_enum, cx),
         KTy2::Struct(k_mod, k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
             let name = k_struct.name(&k_mod.of(&cx.mod_outlines).structs);
