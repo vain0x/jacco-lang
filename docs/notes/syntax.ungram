@@ -220,6 +220,12 @@ Vis =
   'priv'
 | 'pub'
 
+TyParam =
+  UnqualName
+
+TyParamList =
+  '[' (TyParam (',' TyParam)* ','?)? ']'
+
 AttrDecl =
   '#' '!' '[' AttrItem (',' AttrItem)* ','? ']'
 
@@ -241,7 +247,7 @@ Param =
 FnDecl =
   Attr* Vis?
   'extern'?
-  'fn' UnqualName
+  'fn' UnqualName TyParamList?
   '(' params:(Param (',' Param)*)? ','? ')'
   ('->' Ty)?
   (
@@ -266,11 +272,19 @@ VariantDecl =
 
 EnumDecl =
   Attr* Vis?
-  'enum' UnqualName '{' (VariantDecl (',' VariantDecl)* ','?)? '}'
+  'enum' UnqualName TyParamList? '{'
+    (VariantDecl (',' VariantDecl)* ','?)?
+  '}'
 
 StructDecl =
   Attr* Vis?
-  'struct' VariantDecl? ';'?
+  'struct' UnqualName TyParamList?
+  (
+    '{'
+      fields:(FieldDecl (',' FieldDecl)* ','?)?
+    '}'
+  | ';'
+  )
 
 UseDecl =
   Attr* Vis?
