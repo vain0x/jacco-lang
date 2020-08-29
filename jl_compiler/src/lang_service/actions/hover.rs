@@ -134,9 +134,9 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 ));
             });
         }
-        SymbolOccurrence::ModLocal(KModLocalSymbol::Const(_)) => {}
-        SymbolOccurrence::ModLocal(KModLocalSymbol::StaticVar(_)) => {}
-        SymbolOccurrence::ModLocal(KModLocalSymbol::Fn(k_fn)) => {
+        SymbolOccurrence::ModLocal(KModSymbol::Const(_)) => {}
+        SymbolOccurrence::ModLocal(KModSymbol::StaticVar(_)) => {}
+        SymbolOccurrence::ModLocal(KModSymbol::Fn(k_fn)) => {
             let mut out = Vec::new();
 
             ls.do_with_mods(|ls, mod_outlines, mods| {
@@ -158,7 +158,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 contents_opt = Some(Content::JaccoCode(text));
             });
         }
-        SymbolOccurrence::ModLocal(KModLocalSymbol::ExternFn(extern_fn)) => {
+        SymbolOccurrence::ModLocal(KModSymbol::ExternFn(extern_fn)) => {
             let mut out = Vec::new();
 
             ls.do_with_mods(|ls, mod_outlines, mods| {

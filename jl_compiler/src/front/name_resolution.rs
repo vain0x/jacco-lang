@@ -12,7 +12,7 @@ impl NameResolutionListener for NullNameResolutionListener {
     fn ty_did_resolve(&mut self, _loc: PLoc, _ty: &KTy) {}
 }
 
-pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModLocalSymbol>>;
+pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModSymbol>>;
 
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
@@ -36,23 +36,23 @@ fn decl_to_name_symbol_pair(
     decl_id: ADeclId,
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
-) -> Option<(String, KModLocalSymbol)> {
+) -> Option<(String, KModSymbol)> {
     let symbol = decl_symbols.get(decl_id).copied().flatten()?;
     let name = symbol.name(mod_outline);
     Some((name.to_string(), symbol))
 }
 
-pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol, env: &mut Env) {
+pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModSymbol, env: &mut Env) {
     let ty = match symbol {
-        KModLocalSymbol::Const(_)
-        | KModLocalSymbol::StaticVar(_)
-        | KModLocalSymbol::Fn(_)
-        | KModLocalSymbol::ExternFn(_)
-        | KModLocalSymbol::Field(_) => return,
-        KModLocalSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
-        KModLocalSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
-        KModLocalSymbol::Struct(k_struct) => KTy::Struct(k_struct),
-        KModLocalSymbol::Alias(alias) => KTy::Alias(alias),
+        KModSymbol::Const(_)
+        | KModSymbol::StaticVar(_)
+        | KModSymbol::Fn(_)
+        | KModSymbol::ExternFn(_)
+        | KModSymbol::Field(_) => return,
+        KModSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
+        KModSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
+        KModSymbol::Struct(k_struct) => KTy::Struct(k_struct),
+        KModSymbol::Alias(alias) => KTy::Alias(alias),
     };
 
     env.insert_ty(name.to_string(), ty);
@@ -60,23 +60,23 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol,
 
 fn do_add_value_symbol_to_local_env(
     name: &str,
-    symbol: KModLocalSymbol,
+    symbol: KModSymbol,
     mod_outline: &KModOutline,
     env: &mut Env,
 ) {
     let value = match symbol {
-        KModLocalSymbol::Const(k_const) => KLocalValue::Const(k_const),
-        KModLocalSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
-        KModLocalSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
-        KModLocalSymbol::ExternFn(extern_fn) => KLocalValue::ExternFn(extern_fn),
-        KModLocalSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
+        KModSymbol::Const(k_const) => KLocalValue::Const(k_const),
+        KModSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
+        KModSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
+        KModSymbol::ExternFn(extern_fn) => KLocalValue::ExternFn(extern_fn),
+        KModSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
             KLocalValue::UnitLikeStruct(k_struct)
         }
-        KModLocalSymbol::ConstEnum(_)
-        | KModLocalSymbol::StructEnum(_)
-        | KModLocalSymbol::Struct(_)
-        | KModLocalSymbol::Field(_) => return,
-        KModLocalSymbol::Alias(alias) => KLocalValue::Alias(alias),
+        KModSymbol::ConstEnum(_)
+        | KModSymbol::StructEnum(_)
+        | KModSymbol::Struct(_)
+        | KModSymbol::Field(_) => return,
+        KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
     };
 
     env.insert_value(name.to_string(), value)
@@ -84,7 +84,7 @@ fn do_add_value_symbol_to_local_env(
 
 fn add_symbol_to_local_env(
     name: &str,
-    symbol: KModLocalSymbol,
+    symbol: KModSymbol,
     mod_outline: &KModOutline,
     env: &mut Env,
 ) {

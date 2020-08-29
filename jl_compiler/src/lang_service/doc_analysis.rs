@@ -22,7 +22,7 @@ pub(super) struct Syntax {
 
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
-    pub(super) decl_symbols: VecArena<ADeclTag, Option<KModLocalSymbol>>,
+    pub(super) decl_symbols: VecArena<ADeclTag, Option<KModSymbol>>,
     pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
 }

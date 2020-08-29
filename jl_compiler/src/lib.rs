@@ -80,8 +80,8 @@ mod cps {
     pub(crate) use k_local_var::*;
     pub(crate) use k_meta_ty::*;
     pub(crate) use k_mod::{
-        resolve_aliases, KMod, KModArena, KModData, KModLocalSymbol, KModOutline, KModOutlines,
-        KModTag, KProjectSymbol,
+        resolve_aliases, KMod, KModArena, KModData, KModOutline, KModOutlines, KModSymbol, KModTag,
+        KProjectSymbol,
     };
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;

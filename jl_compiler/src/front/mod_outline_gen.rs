@@ -453,24 +453,24 @@ fn alloc_outline(
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
                 let k_const = alloc_const(decl_id, &const_decl, doc, mod_outline);
-                KModLocalSymbol::Const(k_const)
+                KModSymbol::Const(k_const)
             }
             ADecl::Static(static_decl) => {
                 let static_var = alloc_static(decl_id, &static_decl, doc, mod_outline);
-                KModLocalSymbol::StaticVar(static_var)
+                KModSymbol::StaticVar(static_var)
             }
             ADecl::Fn(fn_decl) => {
                 let k_fn = alloc_fn(decl_id, fn_decl, doc, mod_outline);
-                KModLocalSymbol::Fn(k_fn)
+                KModSymbol::Fn(k_fn)
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, mod_outline);
-                KModLocalSymbol::ExternFn(extern_fn)
+                KModSymbol::ExternFn(extern_fn)
             }
             ADecl::Enum(enum_decl) => {
                 match alloc_enum(decl_id, enum_decl, doc, mod_outline, logger) {
-                    KEnumLike::ConstEnum(const_enum) => KModLocalSymbol::ConstEnum(const_enum),
-                    KEnumLike::StructEnum(struct_enum) => KModLocalSymbol::StructEnum(struct_enum),
+                    KEnumLike::ConstEnum(const_enum) => KModSymbol::ConstEnum(const_enum),
+                    KEnumLike::StructEnum(struct_enum) => KModSymbol::StructEnum(struct_enum),
                 }
             }
             ADecl::Struct(struct_decl) => {
@@ -478,11 +478,11 @@ fn alloc_outline(
                     Some(it) => it,
                     None => continue,
                 };
-                KModLocalSymbol::Struct(k_struct)
+                KModSymbol::Struct(k_struct)
             }
             ADecl::Use(use_decl) => {
                 let alias = alloc_alias(use_decl, loc, &tree.tokens, mod_outline);
-                KModLocalSymbol::Alias(alias)
+                KModSymbol::Alias(alias)
             }
         };
 
@@ -521,21 +521,21 @@ fn resolve_outline(
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
                 let k_const = match symbol {
-                    KModLocalSymbol::Const(it) => it,
+                    KModSymbol::Const(it) => it,
                     _ => unreachable!(),
                 };
                 resolve_const_decl(const_decl, *k_const, ty_resolver, mod_outline);
             }
             ADecl::Static(static_decl) => {
                 let static_var = match symbol {
-                    KModLocalSymbol::StaticVar(it) => it,
+                    KModSymbol::StaticVar(it) => it,
                     _ => unreachable!(),
                 };
                 resolve_static_decl(static_decl, *static_var, ty_resolver, mod_outline);
             }
             ADecl::Fn(fn_decl) => {
                 let k_fn = match symbol {
-                    KModLocalSymbol::Fn(it) => it,
+                    KModSymbol::Fn(it) => it,
                     _ => unreachable!(),
                 };
 
@@ -553,7 +553,7 @@ fn resolve_outline(
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = match symbol {
-                    KModLocalSymbol::ExternFn(it) => it,
+                    KModSymbol::ExternFn(it) => it,
                     _ => unreachable!(),
                 };
 
@@ -565,10 +565,10 @@ fn resolve_outline(
                 extern_fn_data.result_ty = result_ty;
             }
             ADecl::Enum(decl) => match symbol {
-                KModLocalSymbol::ConstEnum(const_enum) => {
+                KModSymbol::ConstEnum(const_enum) => {
                     resolve_const_enum_decl(decl, *const_enum, ty_resolver, mod_outline)
                 }
-                KModLocalSymbol::StructEnum(struct_enum) => resolve_struct_enum_decl(
+                KModSymbol::StructEnum(struct_enum) => resolve_struct_enum_decl(
                     decl_id,
                     decl,
                     *struct_enum,
@@ -584,7 +584,7 @@ fn resolve_outline(
                     None => continue,
                 };
                 let k_struct = match *symbol {
-                    KModLocalSymbol::Struct(it) => it,
+                    KModSymbol::Struct(it) => it,
                     _ => continue,
                 };
                 resolve_variant_decl(

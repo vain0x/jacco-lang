@@ -1739,37 +1739,37 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
         }
         ADecl::Const(decl) => {
             let k_const = match symbol_opt {
-                Some(KModLocalSymbol::Const(it)) => it,
+                Some(KModSymbol::Const(it)) => it,
                 _ => return,
             };
             convert_const_decl(k_const, decl, loc, xx)
         }
         ADecl::Static(decl) => {
             let static_var = match symbol_opt {
-                Some(KModLocalSymbol::StaticVar(it)) => it,
+                Some(KModSymbol::StaticVar(it)) => it,
                 _ => return,
             };
             convert_static_decl(static_var, decl, loc, xx)
         }
         ADecl::Fn(fn_decl) => {
             let k_fn = match symbol_opt {
-                Some(KModLocalSymbol::Fn(it)) => it,
+                Some(KModSymbol::Fn(it)) => it,
                 _ => return,
             };
             convert_fn_decl(decl_id, k_fn, fn_decl, loc, xx);
         }
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
-                Some(KModLocalSymbol::ExternFn(it)) => it,
+                Some(KModSymbol::ExternFn(it)) => it,
                 _ => return,
             };
             convert_extern_fn_decl(decl_id, extern_fn, extern_fn_decl, xx);
         }
         ADecl::Enum(enum_decl) => match symbol_opt {
-            Some(KModLocalSymbol::ConstEnum(const_enum)) => {
+            Some(KModSymbol::ConstEnum(const_enum)) => {
                 convert_const_enum_decl(const_enum, enum_decl, loc, xx)
             }
-            Some(KModLocalSymbol::StructEnum(struct_enum)) => {
+            Some(KModSymbol::StructEnum(struct_enum)) => {
                 convert_struct_enum_decl(struct_enum, enum_decl, loc, xx)
             }
             _ => return,
