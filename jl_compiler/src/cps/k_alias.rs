@@ -48,9 +48,7 @@ impl KAliasOutline {
         let ty = match self.referent() {
             Some(KProjectSymbol::ConstEnum(const_enum)) => KTy2::ConstEnum(const_enum),
             Some(KProjectSymbol::StructEnum(struct_enum)) => KTy2::StructEnum(struct_enum),
-            Some(KProjectSymbol::Struct(KProjectStruct(k_mod, k_struct))) => {
-                KTy2::Struct(k_mod, k_struct)
-            }
+            Some(KProjectSymbol::Struct(k_struct)) => KTy2::Struct(k_struct),
             _ => return None,
         };
         Some(ty)

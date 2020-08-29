@@ -463,7 +463,7 @@ fn convert_record_pat_as_cond(
 ) -> AfterRval {
     let key = ANameKey::Pat(pat_id);
     let (k_mod, k_struct) = match resolve_ty_path(&pat.left, key, path_resolution_context(xx)) {
-        Some(KTy2::Struct(k_mod, k_struct)) => (k_mod, k_struct),
+        Some(KTy2::Struct(KProjectStruct(k_mod, k_struct))) => (k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return new_error_term(loc);
@@ -690,7 +690,7 @@ fn emit_unit_like_struct(
     loc: Loc,
     nodes: &mut Vec<KNode>,
 ) -> AfterRval {
-    let ty = KTy2::Struct(k_mod, k_struct);
+    let ty = KTy2::Struct(KProjectStruct(k_mod, k_struct));
 
     nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
     KTerm::Name(result)
@@ -891,7 +891,7 @@ fn do_convert_record_expr(
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
     let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
-        Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
+        Some(KTy2::Struct(k_struct)) => k_struct,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return None;
@@ -910,7 +910,7 @@ fn do_convert_record_expr(
                 })
                 .collect(),
         },
-        _ => k_struct.to_ty2(),
+        _ => KTy2::Struct(k_struct),
     };
 
     let fields = &k_struct.of(xx.mod_outlines).fields;
