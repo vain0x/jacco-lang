@@ -1,0 +1,12 @@
+#![test("run", 0)]
+
+// 他のモジュールの定数を use で参照できる。
+
+use exit_code::EXIT_FAILURE;
+
+extern fn assert(cond: bool);
+
+pub fn main() -> i32 {
+    assert(EXIT_FAILURE == 1);
+    0
+}
