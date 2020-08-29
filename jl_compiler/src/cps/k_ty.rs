@@ -48,7 +48,7 @@ pub(crate) enum KTy2 {
     Struct(KMod, KStruct),
     App {
         k_struct: KProjectStruct,
-        ty_args: Vec<KTy2>,
+        ty_args: HashMap<String, KTy2>,
     },
 }
 
@@ -514,19 +514,11 @@ impl KTy {
         }
     }
 
-    pub(crate) fn substitute(&self, k_mod: KMod, ty_args: &[KTy2]) -> KTy2 {
-        // FIXME: instantiate と統合する
-        match self.clone() {
-            KTy::Var(_) => {
-                // FIXME: 名前を解決する
-                ty_args[0].clone()
-            }
-            KTy::Ptr { k_mut, ty } => KTy2::Ptr {
-                k_mut,
-                base_ty: Box::new(ty.substitute(k_mod, ty_args)),
-            },
-            _ => self.erasure(k_mod),
-        }
+    pub(crate) fn substitute(&self, k_mod: KMod, ty_args: &HashMap<String, KTy2>) -> KTy2 {
+        do_instantiate(
+            self,
+            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Substitute(ty_args)),
+        )
     }
 }
 
@@ -601,6 +593,8 @@ impl Debug for KTy {
 enum TySchemeConversionMode<'a> {
     /// インスタンス化: 型引数にフレッシュなメタ型を割り当てる。
     Instantiate(&'a mut KTyEnv),
+    /// 型代入
+    Substitute(&'a HashMap<String, KTy2>),
     /// 型変数のままにする。
     Preserve,
     /// unknown にする。
@@ -636,6 +630,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 let meta_ty = context.env.get(&ty_var.name).copied().unwrap();
                 KTy2::Meta(meta_ty)
             }
+            TySchemeConversionMode::Substitute(env) => env.get(&ty_var.name).cloned().unwrap(),
             TySchemeConversionMode::Preserve => KTy2::Var(ty_var.clone()),
             TySchemeConversionMode::Erasure => {
                 // FIXME: この段階では型変数のままにしておく方がよい (例えば `x as T` の式の型は型変数 T のままになるはず。型を消去するのはコード生成の工程でいい)
@@ -683,10 +678,13 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                     .map(|ty_param| {
                         let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
                         env.insert(ty_param.name.to_string(), meta_ty);
-                        KTy2::Meta(meta_ty)
+                        (ty_param.name.to_string(), KTy2::Meta(meta_ty))
                     })
                     .collect(),
-                _ => vec![KTy2::Unknown; ty_params.len()],
+                _ => ty_params
+                    .iter()
+                    .map(|ty_param| (ty_param.name.to_string(), KTy2::Unknown))
+                    .collect(),
             };
             context.env = env;
 

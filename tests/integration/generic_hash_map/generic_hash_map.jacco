@@ -1,0 +1,79 @@
+// WIP.
+// ジェネリックなハッシュマップの実装
+
+struct Entry[K, T] {
+    key: *K,
+    value: *mut T,
+}
+
+// extern fn print_sss(s1: *c8, s2: *c8, s3: *c8);
+// extern fn print_sds(s1: *c8, d2: i32, s3: *c8);
+
+// extern fn assert(cond: bool);
+// extern fn memcpy(dest: *mut unknown, src: *unknown, size: usize) -> *unknown;
+
+// struct Layout[T] {
+//     size: usize
+// }
+
+// struct HashState {
+//     value: u64,
+// }
+
+// struct Hash[T] {
+//     hash: fn(*T, *mut HashState),
+// }
+
+// struct HashMap[K, T] {
+//     keys: *mut unknown,
+//     values: *mut unknown,
+//     len: usize,
+//     cap: usize,
+//     key_size: Layout[K],
+//     key_hash: Hash[K],
+//     value_size: Layout[T],
+// }
+
+// fn HashMap_new[K, T](key_size: Layout[K], key_hash: Hash[K], value_size: Layout[T]) -> HashMap[K, T] {
+//     HashMap {
+//         len: 0_usize,
+//         cap: 0_usize,
+//         key_size: key_size,
+//         key_hash: key_hash,
+//         value_size: value_size,
+//     }
+// }
+
+// fn hash_i32(p: *i32, state: *mut HashState) {
+//     // 雑
+//     (*state).value ^= (*p) as u64;
+// }
+
+pub fn main() -> i32 {
+    let key = 2;
+    let value = 6_usize;
+
+    let entry = Entry {
+        key: &key,
+        value: &mut value,
+    };
+
+    let k = *entry.key;
+    *entry.value += 1_usize;
+
+    // let i32_layout = Layout {
+    //     size: 4,
+    // };
+
+    // let i32_hash = Hash {
+    //     hash: hash_i32,
+    // };
+
+    // let i64_layout: Layout[i64] = Layout {
+    //     size: 8,
+    // };
+
+    // let map = HashMap_new(i32_layout, i32_hash, i64_layout);
+
+    0
+}

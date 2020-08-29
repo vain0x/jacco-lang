@@ -150,6 +150,7 @@ else
     expect_compile_err syntax_error
     expect_compile_err undefined_local_var name_resolution
 
+    expect_run generic_hash_map integration
     expect_run generic_swap_fn integration
 
     cargo test

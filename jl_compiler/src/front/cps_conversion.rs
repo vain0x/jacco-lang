@@ -859,7 +859,7 @@ fn do_convert_record_expr(
                 .iter()
                 .map(|ty_param| {
                     let meta_ty = xx.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
-                    KTy2::Meta(meta_ty)
+                    (ty_param.name.to_string(), KTy2::Meta(meta_ty))
                 })
                 .collect(),
         },

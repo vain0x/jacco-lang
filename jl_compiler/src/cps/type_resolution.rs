@@ -265,8 +265,13 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
             },
         ) if k_struct == right_struct => {
             // 型引数に互換性があるか？
+            let mut ty_args = ty_args.iter().collect::<Vec<_>>();
+            ty_args.sort_by_key(|&(key, _)| key);
+            let mut right_args = right_args.iter().collect::<Vec<_>>();
+            right_args.sort_by_key(|&(key, _)| key);
+
             ux.do_with_invariant(|ux| {
-                for (left, right) in ty_args.iter().zip(right_args) {
+                for ((_, left), (_, right)) in ty_args.iter().zip(right_args) {
                     do_unify2(left, right, ux);
                 }
             });
@@ -480,8 +485,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let mod_outline = k_mod.of(&tx.mod_outlines);
 
                 let ty_args = match ty {
-                    KTy2::App { ty_args, .. } => ty_args.as_slice(),
-                    _ => &[],
+                    KTy2::App { ty_args, .. } => Some(&*ty_args),
+                    _ => None,
                 };
 
                 for (arg, field) in node
@@ -491,7 +496,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
-                        &field.ty(&mod_outline.fields).substitute(k_mod, ty_args),
+                        &field
+                            .ty(&mod_outline.fields)
+                            .substitute(k_mod, ty_args.unwrap_or(&Default::default())),
                         // .to_ty2(k_mod, &mut tx.ty_env),
                         &arg_ty,
                         node.loc,
@@ -499,7 +506,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     );
                 }
 
-                let ty = if !ty_args.is_empty() {
+                let ty = if ty_args.is_some() {
                     ty.clone()
                 } else {
                     k_struct
