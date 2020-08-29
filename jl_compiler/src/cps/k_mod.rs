@@ -35,31 +35,6 @@ pub(crate) struct KModData {
     pub(crate) extern_fns: KExternFnArena,
 }
 
-/// ローカル変数の親
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum KLocalVarParent {
-    Fn(KFn),
-    ExternFn(KExternFn),
-}
-
-impl KLocalVarParent {
-    #[cfg(unused)]
-    pub(crate) fn local_vars(self, mod_data: &KModData) -> &KLocalArena {
-        match self {
-            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
-            KLocalVarParent::ExternFn(extern_fn) => &extern_fn.of(&mod_data.extern_fns).local_vars,
-        }
-    }
-
-    #[cfg(unused)]
-    pub(crate) fn labels(self, mod_data: &KModData) -> &KLabelArena {
-        match self {
-            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).labels,
-            KLocalVarParent::ExternFn(_) => KLabelArena::EMPTY,
-        }
-    }
-}
-
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KModLocalSymbol {

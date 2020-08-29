@@ -1,4 +1,5 @@
 use super::k_ty::{KTy2, KTyCause};
+use super::*;
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -18,6 +19,31 @@ impl KLocalVar {
 
     pub(crate) fn ty(self, local_vars: &KLocalVarArena) -> KTy2 {
         local_vars[self].ty.clone()
+    }
+}
+
+/// ローカル変数の親
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) enum KLocalVarParent {
+    Fn(KFn),
+    ExternFn(KExternFn),
+}
+
+impl KLocalVarParent {
+    #[cfg(unused)]
+    pub(crate) fn local_vars(self, mod_data: &KModData) -> &KLocalVarArena {
+        match self {
+            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
+            KLocalVarParent::ExternFn(extern_fn) => &extern_fn.of(&mod_data.extern_fns).local_vars,
+        }
+    }
+
+    #[cfg(unused)]
+    pub(crate) fn labels(self, mod_data: &KModData) -> &KLabelArena {
+        match self {
+            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).labels,
+            KLocalVarParent::ExternFn(_) => KLabelArena::EMPTY,
+        }
     }
 }
 
