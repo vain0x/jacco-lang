@@ -38,7 +38,7 @@ fn decl_to_name_symbol_pair(
     mod_outline: &KModOutline,
 ) -> Option<(String, KModLocalSymbol)> {
     let symbol = decl_symbols.get(decl_id).copied().flatten()?;
-    let name = symbol.name(mod_outline)?;
+    let name = symbol.name(mod_outline);
     Some((name.to_string(), symbol))
 }
 

@@ -489,8 +489,7 @@ fn alloc_outline(
         *decl_symbol_opt = Some(symbol);
 
         // FIXME: スコープを無視している
-        // FIXME: ローカル変数でなければ名前を取れるので unwrap は成功するが、unwrap は使うべきでない
-        let name = symbol.name(&mod_outline).unwrap();
+        let name = symbol.name(&mod_outline);
         do_add_ty_symbol_to_local_env(name, symbol, env);
     }
 }

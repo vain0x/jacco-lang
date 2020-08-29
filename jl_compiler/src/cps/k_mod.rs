@@ -111,8 +111,8 @@ impl KModLocalSymbol {
         }
     }
 
-    pub(crate) fn name(self, mod_outline: &KModOutline) -> Option<&str> {
-        let name = match self.outline(mod_outline) {
+    pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
+        match self.outline(mod_outline) {
             KModLocalSymbolOutline::Const(_, const_data) => &const_data.name,
             KModLocalSymbolOutline::StaticVar(_, static_var_data) => &static_var_data.name,
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
@@ -122,8 +122,7 @@ impl KModLocalSymbol {
             KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
             KModLocalSymbolOutline::Field(_, field_outline) => &field_outline.name,
             KModLocalSymbolOutline::Alias(_, alias_data) => alias_data.name(),
-        };
-        Some(name)
+        }
     }
 }
 
