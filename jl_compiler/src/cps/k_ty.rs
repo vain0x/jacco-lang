@@ -150,11 +150,11 @@ impl KTy2 {
         })
     }
 
-    // FIXME: const enum も primitive とみなす
     pub(crate) fn is_primitive(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match ty {
             KTy2::Number(_) => true,
             KTy2::Ptr { .. } => true,
+            KTy2::ConstEnum { .. } => true,
             _ => false,
         })
     }

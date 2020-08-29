@@ -1,0 +1,18 @@
+#![test("run", 0)]
+
+// const enum は数値型にキャストできる。
+
+enum Hand {
+    Rock,
+    Paper = 8,
+    Scissors,
+}
+
+extern fn assert(cond: bool);
+
+pub fn main() -> i32 {
+    assert(Hand::Rock as i32 == 0);
+    assert(Hand::Paper as i32 == 8);
+    assert(Hand::Scissors as i32 == 9);
+    0
+}

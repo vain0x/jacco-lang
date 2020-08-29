@@ -1,0 +1,19 @@
+void assert(int cond_1);
+
+int main();
+
+int main() {
+    int cast_1 = (int)0ULL;
+    int equal_1 = cast_1 == 0;
+    // call_result_1 is killed.
+    assert(equal_1);
+    int cast_2 = (int)8ULL;
+    int equal_2 = cast_2 == 8;
+    // call_result_2 is killed.
+    assert(equal_2);
+    int cast_3 = (int)9ULL;
+    int equal_3 = cast_3 == 9;
+    // call_result_3 is killed.
+    assert(equal_3);
+    return 0;
+}
