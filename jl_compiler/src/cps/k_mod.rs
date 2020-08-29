@@ -51,56 +51,52 @@ pub(crate) enum KModSymbol {
 }
 
 impl KModSymbol {
-    pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModLocalSymbolOutline<'_> {
+    pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModSymbolRef<'_> {
         match self {
-            KModSymbol::Alias(alias) => {
-                KModLocalSymbolOutline::Alias(alias, alias.of(&mod_outline.aliases))
-            }
+            KModSymbol::Alias(alias) => KModSymbolRef::Alias(alias, alias.of(&mod_outline.aliases)),
             KModSymbol::Const(k_const) => {
-                KModLocalSymbolOutline::Const(k_const, k_const.of(&mod_outline.consts))
+                KModSymbolRef::Const(k_const, k_const.of(&mod_outline.consts))
             }
-            KModSymbol::StaticVar(static_var) => KModLocalSymbolOutline::StaticVar(
-                static_var,
-                static_var.of(&mod_outline.static_vars),
-            ),
-            KModSymbol::Fn(k_fn) => KModLocalSymbolOutline::Fn(k_fn, k_fn.of(&mod_outline.fns)),
+            KModSymbol::StaticVar(static_var) => {
+                KModSymbolRef::StaticVar(static_var, static_var.of(&mod_outline.static_vars))
+            }
+            KModSymbol::Fn(k_fn) => KModSymbolRef::Fn(k_fn, k_fn.of(&mod_outline.fns)),
             KModSymbol::ExternFn(extern_fn) => {
-                KModLocalSymbolOutline::ExternFn(extern_fn, extern_fn.of(&mod_outline.extern_fns))
+                KModSymbolRef::ExternFn(extern_fn, extern_fn.of(&mod_outline.extern_fns))
             }
-            KModSymbol::ConstEnum(const_enum) => KModLocalSymbolOutline::ConstEnum(
-                const_enum,
-                const_enum.of(&mod_outline.const_enums),
-            ),
-            KModSymbol::StructEnum(struct_enum) => KModLocalSymbolOutline::StructEnum(
-                struct_enum,
-                struct_enum.of(&mod_outline.struct_enums),
-            ),
+            KModSymbol::ConstEnum(const_enum) => {
+                KModSymbolRef::ConstEnum(const_enum, const_enum.of(&mod_outline.const_enums))
+            }
+            KModSymbol::StructEnum(struct_enum) => {
+                KModSymbolRef::StructEnum(struct_enum, struct_enum.of(&mod_outline.struct_enums))
+            }
             KModSymbol::Struct(k_struct) => {
-                KModLocalSymbolOutline::Struct(k_struct, k_struct.of(&mod_outline.structs))
+                KModSymbolRef::Struct(k_struct, k_struct.of(&mod_outline.structs))
             }
             KModSymbol::Field(k_field) => {
-                KModLocalSymbolOutline::Field(k_field, k_field.of(&mod_outline.fields))
+                KModSymbolRef::Field(k_field, k_field.of(&mod_outline.fields))
             }
         }
     }
 
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
-            KModLocalSymbolOutline::Const(_, const_outline) => &const_outline.name,
-            KModLocalSymbolOutline::StaticVar(_, static_var_outline) => &static_var_outline.name,
-            KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
-            KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
-            KModLocalSymbolOutline::ConstEnum(_, const_enum_data) => &const_enum_data.name,
-            KModLocalSymbolOutline::StructEnum(_, enum_data) => &enum_data.name,
-            KModLocalSymbolOutline::Struct(_, struct_data) => &struct_data.name,
-            KModLocalSymbolOutline::Field(_, field_outline) => &field_outline.name,
-            KModLocalSymbolOutline::Alias(_, alias_data) => alias_data.name(),
+            KModSymbolRef::Const(_, const_outline) => &const_outline.name,
+            KModSymbolRef::StaticVar(_, static_var_outline) => &static_var_outline.name,
+            KModSymbolRef::Fn(_, fn_data) => &fn_data.name,
+            KModSymbolRef::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
+            KModSymbolRef::ConstEnum(_, const_enum_data) => &const_enum_data.name,
+            KModSymbolRef::StructEnum(_, enum_data) => &enum_data.name,
+            KModSymbolRef::Struct(_, struct_data) => &struct_data.name,
+            KModSymbolRef::Field(_, field_outline) => &field_outline.name,
+            KModSymbolRef::Alias(_, alias_data) => alias_data.name(),
         }
     }
 }
 
+/// モジュール内で定義されるシンボルのアウトラインの参照
 #[derive(Copy, Clone)]
-pub(crate) enum KModLocalSymbolOutline<'a> {
+pub(crate) enum KModSymbolRef<'a> {
     Const(KConst, &'a KConstOutline),
     StaticVar(KStaticVar, &'a KStaticVarOutline),
     Fn(KFn, &'a KFnOutline),
