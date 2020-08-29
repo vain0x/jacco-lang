@@ -77,7 +77,7 @@ PtrTy =
 
 Pat =
   LiteralPat
-| DiscardPat
+| WildcardPat
 | NamePat
 | RecordPat
 | ParenPat
@@ -85,7 +85,7 @@ Pat =
 LiteralPat =
   Literal
 
-DiscardPat =
+WildcardPat =
   '_'
 
 NamePat =
