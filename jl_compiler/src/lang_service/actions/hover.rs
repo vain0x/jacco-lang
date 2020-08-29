@@ -3,7 +3,7 @@ use crate::{
     cps::*,
     lang_service::{
         doc_analysis::DocContentAnalysisMut,
-        lang_service::{collect_def_sites, hit_test, Content},
+        lang_service::{collect_def_sites, hit_test, Content, SymbolOccurrence},
     },
     source::TPos,
     token::{tokenize, TokenKind},
@@ -28,7 +28,7 @@ fn do_collect_doc_comments(source_code: Rc<String>, pos: TPos, comments: &mut Ve
 
 fn collect_doc_comments(
     doc: Doc,
-    symbol: KModLocalSymbol,
+    symbol: SymbolOccurrence,
     ls: &mut LangService,
 ) -> Option<Vec<String>> {
     let DocContentAnalysisMut {
@@ -112,7 +112,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
 
     let mut contents_opt = None;
     match symbol {
-        KModLocalSymbol::LocalVar { parent, local_var } => {
+        SymbolOccurrence::LocalVar(local_var, parent) => {
             ls.do_with_mods(|ls, mod_outlines, mods| {
                 let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
                 let mod_data = k_mod.of_mut(mods);
@@ -134,9 +134,9 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 ));
             });
         }
-        KModLocalSymbol::Const(_) => {}
-        KModLocalSymbol::StaticVar(_) => {}
-        KModLocalSymbol::Fn(k_fn) => {
+        SymbolOccurrence::ModLocal(KModLocalSymbol::Const(_)) => {}
+        SymbolOccurrence::ModLocal(KModLocalSymbol::StaticVar(_)) => {}
+        SymbolOccurrence::ModLocal(KModLocalSymbol::Fn(k_fn)) => {
             let mut out = Vec::new();
 
             ls.do_with_mods(|ls, mod_outlines, mods| {
@@ -158,7 +158,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 contents_opt = Some(Content::JaccoCode(text));
             });
         }
-        KModLocalSymbol::ExternFn(extern_fn) => {
+        SymbolOccurrence::ModLocal(KModLocalSymbol::ExternFn(extern_fn)) => {
             let mut out = Vec::new();
 
             ls.do_with_mods(|ls, mod_outlines, mods| {
@@ -180,11 +180,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                 contents_opt = Some(Content::JaccoCode(text));
             });
         }
-        KModLocalSymbol::ConstEnum(..) => {}
-        KModLocalSymbol::StructEnum(_) => {}
-        KModLocalSymbol::Struct(_) => {}
-        KModLocalSymbol::Field(_) => {}
-        KModLocalSymbol::Alias(_) => {}
+        _ => {}
     }
 
     let mut contents = vec![];

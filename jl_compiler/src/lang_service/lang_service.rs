@@ -306,7 +306,13 @@ enum DefOrUse {
     Use,
 }
 
-type Sites = Vec<(KModLocalSymbol, DefOrUse, Loc)>;
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(super) enum SymbolOccurrence {
+    ModLocal(KModLocalSymbol),
+    LocalVar(KLocal, KLocalVarParent),
+}
+
+type Sites = Vec<(SymbolOccurrence, DefOrUse, Loc)>;
 
 fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
     fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
@@ -317,7 +323,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         };
 
         let (local_var, loc) = (symbol.local, symbol.cause.loc());
-        let symbol = KModLocalSymbol::LocalVar { local_var, parent };
+        let symbol = SymbolOccurrence::LocalVar(local_var, parent);
         sites.push((symbol, kind, loc));
     }
 
@@ -355,7 +361,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
             KTerm::ExternFn { extern_fn, loc } => (KModLocalSymbol::ExternFn(extern_fn), loc),
             KTerm::RecordTag { .. } | KTerm::FieldTag(_) => return,
         };
-        sites.push((symbol, DefOrUse::Use, loc));
+        sites.push((SymbolOccurrence::ModLocal(symbol), DefOrUse::Use, loc));
     }
 
     fn on_node(node: &KNode, k_fn: KFn, sites: &mut Sites) {
@@ -374,7 +380,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
 
     for (k_const, const_data) in symbols.mod_outline.consts.enumerate() {
         sites.push((
-            KModLocalSymbol::Const(k_const),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::Const(k_const)),
             DefOrUse::Def,
             const_data.loc,
         ));
@@ -382,7 +388,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
 
     for (static_var, static_var_data) in symbols.mod_outline.static_vars.enumerate() {
         sites.push((
-            KModLocalSymbol::StaticVar(static_var),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::StaticVar(static_var)),
             DefOrUse::Def,
             static_var_data.loc,
         ));
@@ -394,7 +400,11 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         .enumerate()
         .zip(cps.mod_data.fns.iter())
     {
-        sites.push((KModLocalSymbol::Fn(k_fn), DefOrUse::Def, fn_outline.loc));
+        sites.push((
+            SymbolOccurrence::ModLocal(KModLocalSymbol::Fn(k_fn)),
+            DefOrUse::Def,
+            fn_outline.loc,
+        ));
 
         on_params(&fn_data.params, KLocalVarParent::Fn(k_fn), sites);
 
@@ -410,7 +420,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         .zip(cps.mod_data.extern_fns.iter())
     {
         sites.push((
-            KModLocalSymbol::ExternFn(extern_fn),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::ExternFn(extern_fn)),
             DefOrUse::Def,
             outline.loc,
         ));
@@ -420,7 +430,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
 
     for (const_enum, outline) in symbols.mod_outline.const_enums.enumerate() {
         sites.push((
-            KModLocalSymbol::ConstEnum(const_enum),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::ConstEnum(const_enum)),
             DefOrUse::Def,
             outline.loc,
         ));
@@ -430,7 +440,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
 
     for (struct_enum, outline) in symbols.mod_outline.struct_enums.enumerate() {
         sites.push((
-            KModLocalSymbol::StructEnum(struct_enum),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::StructEnum(struct_enum)),
             DefOrUse::Def,
             outline.loc,
         ));
@@ -440,7 +450,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
 
     for (k_struct, outline) in symbols.mod_outline.structs.enumerate() {
         sites.push((
-            KModLocalSymbol::Struct(k_struct),
+            SymbolOccurrence::ModLocal(KModLocalSymbol::Struct(k_struct)),
             DefOrUse::Def,
             outline.loc,
         ));
@@ -456,7 +466,11 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
             KTy::Struct(k_struct) => KModLocalSymbol::Struct(*k_struct),
             _ => continue,
         };
-        sites.push((symbol, DefOrUse::Use, Loc::new(doc, *loc)));
+        sites.push((
+            SymbolOccurrence::ModLocal(symbol),
+            DefOrUse::Use,
+            Loc::new(doc, *loc),
+        ));
     }
 }
 
@@ -466,7 +480,7 @@ pub(super) fn hit_test(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
-) -> Option<(KModLocalSymbol, Location)> {
+) -> Option<(SymbolOccurrence, Location)> {
     let mut sites = vec![];
     collect_symbols(doc, symbols, cps, &mut sites);
 
@@ -482,7 +496,7 @@ pub(super) fn hit_test(
 
 pub(super) fn collect_def_sites(
     doc: Doc,
-    symbol: KModLocalSymbol,
+    symbol: SymbolOccurrence,
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
@@ -506,7 +520,7 @@ pub(super) fn collect_def_sites(
 
 pub(super) fn collect_use_sites(
     doc: Doc,
-    symbol: KModLocalSymbol,
+    symbol: SymbolOccurrence,
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,

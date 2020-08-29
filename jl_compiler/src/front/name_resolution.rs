@@ -44,8 +44,7 @@ fn decl_to_name_symbol_pair(
 
 pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModLocalSymbol, env: &mut Env) {
     let ty = match symbol {
-        KModLocalSymbol::LocalVar { .. }
-        | KModLocalSymbol::Const(_)
+        KModLocalSymbol::Const(_)
         | KModLocalSymbol::StaticVar(_)
         | KModLocalSymbol::Fn(_)
         | KModLocalSymbol::ExternFn(_)
@@ -66,7 +65,6 @@ fn do_add_value_symbol_to_local_env(
     env: &mut Env,
 ) {
     let value = match symbol {
-        KModLocalSymbol::LocalVar { local_var, .. } => KLocalValue::LocalVar(local_var),
         KModLocalSymbol::Const(k_const) => KLocalValue::Const(k_const),
         KModLocalSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
         KModLocalSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),

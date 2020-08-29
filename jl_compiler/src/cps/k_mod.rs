@@ -63,10 +63,6 @@ impl KLocalVarParent {
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KModLocalSymbol {
-    LocalVar {
-        parent: KLocalVarParent,
-        local_var: KLocal,
-    },
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(KFn),
@@ -84,9 +80,6 @@ impl KModLocalSymbol {
         match self {
             KModLocalSymbol::Alias(alias) => {
                 KModLocalSymbolOutline::Alias(alias, alias.of(&mod_outline.aliases))
-            }
-            KModLocalSymbol::LocalVar { parent, local_var } => {
-                KModLocalSymbolOutline::LocalVar(parent, local_var)
             }
             KModLocalSymbol::Const(k_const) => {
                 KModLocalSymbolOutline::Const(k_const, k_const.of(&mod_outline.consts))
@@ -120,7 +113,6 @@ impl KModLocalSymbol {
 
     pub(crate) fn name(self, mod_outline: &KModOutline) -> Option<&str> {
         let name = match self.outline(mod_outline) {
-            KModLocalSymbolOutline::LocalVar(..) => return None,
             KModLocalSymbolOutline::Const(_, const_data) => &const_data.name,
             KModLocalSymbolOutline::StaticVar(_, static_var_data) => &static_var_data.name,
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
@@ -137,7 +129,6 @@ impl KModLocalSymbol {
 
 #[derive(Copy, Clone)]
 pub(crate) enum KModLocalSymbolOutline<'a> {
-    LocalVar(KLocalVarParent, KLocal),
     Const(KConst, &'a KConstData),
     StaticVar(KStaticVar, &'a KStaticVarData),
     Fn(KFn, &'a KFnOutline),
