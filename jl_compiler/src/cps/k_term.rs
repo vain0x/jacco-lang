@@ -108,12 +108,7 @@ impl KTerm {
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
             KTerm::Name(symbol) => symbol.local.ty(&locals),
-            KTerm::Alias { .. } => {
-                // FIXME: 実装. mod_outlines を受け取る必要がある
-                KTy2::Unresolved {
-                    cause: KTyCause::Alias,
-                }
-            }
+            KTerm::Alias { alias, .. } => KTy2::Alias(k_mod, *alias),
             KTerm::Const { k_mod, k_const, .. } => {
                 k_const.ty(&k_mod.of(mod_outlines).consts).erasure(*k_mod)
             }
