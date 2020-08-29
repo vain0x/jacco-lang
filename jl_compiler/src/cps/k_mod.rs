@@ -88,7 +88,7 @@ impl KModLocalSymbol {
 
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
-            KModLocalSymbolOutline::Const(_, const_data) => &const_data.name,
+            KModLocalSymbolOutline::Const(_, const_outline) => &const_outline.name,
             KModLocalSymbolOutline::StaticVar(_, static_var_outline) => &static_var_outline.name,
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
             KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,

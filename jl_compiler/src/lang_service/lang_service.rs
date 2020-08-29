@@ -378,11 +378,11 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         }
     }
 
-    for (k_const, const_data) in symbols.mod_outline.consts.enumerate() {
+    for (k_const, const_outline) in symbols.mod_outline.consts.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModLocalSymbol::Const(k_const)),
             DefOrUse::Def,
-            const_data.loc,
+            const_outline.loc,
         ));
     }
 

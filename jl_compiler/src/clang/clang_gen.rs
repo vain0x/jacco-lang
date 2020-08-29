@@ -306,8 +306,8 @@ fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     (name, gen_ty2(&ty, &ty_env, cx))
 }
 
-fn gen_const_data(const_data: &KConstOutline) -> CExpr {
-    match &const_data.value_opt {
+fn gen_const(const_outline: &KConstOutline) -> CExpr {
+    match &const_outline.value_opt {
         Some(value) => gen_constant_value(value),
         None => gen_invalid_constant_value(),
     }
@@ -388,7 +388,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
-            Some(KProjectSymbol::Const(k_const)) => gen_const_data(k_const.of(cx.mod_outlines)),
+            Some(KProjectSymbol::Const(k_const)) => gen_const(k_const.of(cx.mod_outlines)),
             Some(KProjectSymbol::StaticVar(static_var)) => gen_static_var_term(static_var, cx),
             Some(KProjectSymbol::Fn(k_fn)) => {
                 let fn_name = k_fn.of(cx.mod_outlines).name.to_string();
@@ -414,7 +414,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             }
         },
         KTerm::Const { k_mod, k_const, .. } => {
-            gen_const_data((*k_const).of(&k_mod.of(cx.mod_outlines).consts))
+            gen_const((*k_const).of(&k_mod.of(cx.mod_outlines).consts))
         }
         KTerm::StaticVar { static_var, .. } => {
             gen_static_var_term(KProjectStaticVar(cx.k_mod, *static_var), cx)
