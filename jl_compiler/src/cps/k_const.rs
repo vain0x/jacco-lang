@@ -10,11 +10,11 @@ pub(crate) type KConst = VecArenaId<KConstTag>;
 
 pub(crate) type KConsts = VecArenaSlice<KConstTag>;
 
-pub(crate) type KConstArena = VecArena<KConstTag, KConstOutline>;
+pub(crate) type KConstOutlineArena = VecArena<KConstTag, KConstOutline>;
 
 impl KConst {
     /// 値の型、またはこの定数が属する enum の型
-    pub(crate) fn ty(self, consts: &KConstArena) -> KTy {
+    pub(crate) fn ty(self, consts: &KConstOutlineArena) -> KTy {
         match consts[self].parent_opt {
             Some(const_enum) => KTy::ConstEnum(const_enum),
             None => consts[self].value_ty.clone(),

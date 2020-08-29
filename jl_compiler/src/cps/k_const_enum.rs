@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    cps::k_const::KConstArena,
+    cps::k_const::KConstOutlineArena,
     source::Loc,
     utils::{VecArena, VecArenaId},
 };
@@ -46,7 +46,10 @@ pub(crate) struct KConstEnumOutline {
 }
 
 impl KConstEnumOutline {
-    pub(crate) fn determine_tags(consts: &mut KConstArena, const_enums: &KConstEnumOutlines) {
+    pub(crate) fn determine_tags(
+        consts: &mut KConstOutlineArena,
+        const_enums: &KConstEnumOutlines,
+    ) {
         for data in const_enums.iter() {
             let mut tag = 0;
             for k_const in data.variants.iter() {

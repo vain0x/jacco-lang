@@ -17,7 +17,7 @@ pub(crate) type KModArena = VecArena<KModTag, KModData>;
 pub(crate) struct KModOutline {
     pub(crate) name: String,
     pub(crate) aliases: KAliasArena,
-    pub(crate) consts: KConstArena,
+    pub(crate) consts: KConstOutlineArena,
     pub(crate) static_vars: KStaticVarArena,
     pub(crate) fns: KFnOutlineArena,
     pub(crate) extern_fns: KExternFnOutlineArena,
