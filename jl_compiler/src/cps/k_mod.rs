@@ -123,36 +123,34 @@ pub(crate) enum KProjectSymbol {
 }
 
 impl KProjectSymbol {
-    pub(crate) fn outline<'a>(self, mod_outlines: &'a KModOutlines) -> KProjectSymbolOutline<'a> {
+    pub(crate) fn outline<'a>(self, mod_outlines: &'a KModOutlines) -> KProjectSymbolRef<'a> {
         match self {
-            KProjectSymbol::Mod(k_mod) => KProjectSymbolOutline::Mod(k_mod, k_mod.of(mod_outlines)),
+            KProjectSymbol::Mod(k_mod) => KProjectSymbolRef::Mod(k_mod, k_mod.of(mod_outlines)),
             KProjectSymbol::Const(k_const) => {
-                KProjectSymbolOutline::Const(k_const.k_mod(), k_const.of(mod_outlines))
+                KProjectSymbolRef::Const(k_const.k_mod(), k_const.of(mod_outlines))
             }
             KProjectSymbol::StaticVar(static_var) => {
-                KProjectSymbolOutline::StaticVar(static_var.k_mod(), static_var.of(mod_outlines))
+                KProjectSymbolRef::StaticVar(static_var.k_mod(), static_var.of(mod_outlines))
             }
-            KProjectSymbol::Fn(k_fn) => {
-                KProjectSymbolOutline::Fn(k_fn.k_mod(), k_fn.of(mod_outlines))
-            }
+            KProjectSymbol::Fn(k_fn) => KProjectSymbolRef::Fn(k_fn.k_mod(), k_fn.of(mod_outlines)),
             KProjectSymbol::ExternFn(extern_fn) => {
-                KProjectSymbolOutline::ExternFn(extern_fn.k_mod(), extern_fn.of(mod_outlines))
+                KProjectSymbolRef::ExternFn(extern_fn.k_mod(), extern_fn.of(mod_outlines))
             }
             KProjectSymbol::ConstEnum(const_enum) => {
-                KProjectSymbolOutline::ConstEnum(const_enum.of(mod_outlines))
+                KProjectSymbolRef::ConstEnum(const_enum.of(mod_outlines))
             }
             KProjectSymbol::StructEnum(struct_enum) => {
-                KProjectSymbolOutline::StructEnum(struct_enum.of(mod_outlines))
+                KProjectSymbolRef::StructEnum(struct_enum.of(mod_outlines))
             }
             KProjectSymbol::Struct(k_struct) => {
-                KProjectSymbolOutline::Struct(k_struct.of(mod_outlines))
+                KProjectSymbolRef::Struct(k_struct.of(mod_outlines))
             }
         }
     }
 }
 
 #[derive(Copy, Clone)]
-pub(crate) enum KProjectSymbolOutline<'a> {
+pub(crate) enum KProjectSymbolRef<'a> {
     Mod(KMod, &'a KModOutline),
     Const(KMod, &'a KConstOutline),
     StaticVar(KMod, &'a KStaticVarOutline),
@@ -167,7 +165,7 @@ impl KAliasOutline {
     pub(crate) fn referent_outline<'a>(
         &self,
         mod_outlines: &'a KModOutlines,
-    ) -> Option<KProjectSymbolOutline<'a>> {
+    ) -> Option<KProjectSymbolRef<'a>> {
         self.referent().map(|symbol| symbol.outline(mod_outlines))
     }
 }

@@ -3,7 +3,7 @@
 use super::*;
 use crate::{source::HaveLoc, source::Loc};
 use k_meta_ty::KMetaTyData;
-use k_mod::KProjectSymbolOutline;
+use k_mod::KProjectSymbolRef;
 use k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance};
 use std::{
     cell::RefCell,
@@ -361,28 +361,26 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     };
 
     match outline {
-        KProjectSymbolOutline::Mod(..) => {
+        KProjectSymbolRef::Mod(..) => {
             tx.logger.error(
                 loc,
                 "モジュールを指すエイリアスを値として使うことはできません",
             );
             KTy2::Never
         }
-        KProjectSymbolOutline::Const(k_mod, const_outline) => {
+        KProjectSymbolRef::Const(k_mod, const_outline) => {
             const_outline.value_ty.to_ty2(k_mod, &mut tx.ty_env)
         }
-        KProjectSymbolOutline::StaticVar(k_mod, static_var_outline) => {
+        KProjectSymbolRef::StaticVar(k_mod, static_var_outline) => {
             static_var_outline.ty.to_ty2(k_mod, &mut tx.ty_env)
         }
-        KProjectSymbolOutline::Fn(k_mod, fn_outline) => {
-            fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env)
-        }
-        KProjectSymbolOutline::ExternFn(k_mod, extern_fn_outline) => {
+        KProjectSymbolRef::Fn(k_mod, fn_outline) => fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env),
+        KProjectSymbolRef::ExternFn(k_mod, extern_fn_outline) => {
             extern_fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env)
         }
-        KProjectSymbolOutline::ConstEnum(..)
-        | KProjectSymbolOutline::StructEnum(..)
-        | KProjectSymbolOutline::Struct(_) => {
+        KProjectSymbolRef::ConstEnum(..)
+        | KProjectSymbolRef::StructEnum(..)
+        | KProjectSymbolRef::Struct(_) => {
             tx.logger
                 .unimpl(loc, "インポートされた型の型検査は未実装です");
             KTy2::Never
