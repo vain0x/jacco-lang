@@ -719,10 +719,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
         };
 
     match value {
-        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
-            local_var: local_var,
-            cause,
-        }),
+        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
         KLocalValue::Const(k_const) => KTerm::Const {
             k_mod,
             k_const,
