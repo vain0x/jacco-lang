@@ -216,17 +216,9 @@ impl LangService {
         });
     }
 
-    pub fn open_doc(&mut self, doc: Doc, version: i64, text: Rc<String>) {
-        self.docs.insert(
-            doc,
-            AnalysisCache::new(
-                doc,
-                version,
-                text,
-                // FIXME: 引数でもらう
-                PathBuf::from("main.jacco").into(),
-            ),
-        );
+    pub fn open_doc(&mut self, doc: Doc, path: PathBuf, version: i64, text: Rc<String>) {
+        self.docs
+            .insert(doc, AnalysisCache::new(doc, version, text, path.into()));
         self.dirty_sources.insert(doc);
     }
 
@@ -539,6 +531,7 @@ pub(super) fn collect_use_sites(
 mod tests {
     use super::{Content, Doc, LangService};
     use crate::source::{cursor_text::parse_cursor_text, TPos16};
+    use std::path::PathBuf;
 
     const DOC: Doc = Doc::new(1);
 
@@ -549,7 +542,7 @@ mod tests {
     fn new_service_from_str(s: &str) -> LangService {
         let mut it = LangService::new();
         it.did_initialize();
-        it.open_doc(DOC, 1, s.to_string().into());
+        it.open_doc(DOC, PathBuf::from("test.jacco"), 1, s.to_string().into());
         it
     }
 

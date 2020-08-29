@@ -74,9 +74,10 @@ impl<W: Write> LspHandler<W> {
                     doc,
                     version,
                     text,
-                    path: _,
+                    path,
                 } => {
-                    self.service.open_doc(doc, version, text);
+                    self.service
+                        .open_doc(doc, path.to_path_buf(), version, text);
                     dirty_docs.insert(doc);
                 }
                 DocChange::DidChange { doc, version, text } => {
