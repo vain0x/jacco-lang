@@ -20,7 +20,7 @@
 // -----------------------------------------------
 
 Literal =
-  '(' ')'
+  'unit'
 | 'true'
 | 'false'
 | 'number'
@@ -55,20 +55,12 @@ Attr =
 
 Ty =
   InferTy
-| NeverTy
-| UnitTy
 | NameTy
 | ParenTy
 | PtrTy
 
 InferTy =
   '_'
-
-NeverTy =
-  '!'
-
-UnitTy =
-  '(' ')'
 
 NameTy =
   Name
