@@ -306,7 +306,7 @@ fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     (name, gen_ty2(&ty, &ty_env, cx))
 }
 
-fn gen_const_data(const_data: &KConstData) -> CExpr {
+fn gen_const_data(const_data: &KConstOutline) -> CExpr {
     match &const_data.value_opt {
         Some(value) => gen_constant_value(value),
         None => gen_invalid_constant_value(),

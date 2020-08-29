@@ -10,7 +10,7 @@ pub(crate) type KConst = VecArenaId<KConstTag>;
 
 pub(crate) type KConsts = VecArenaSlice<KConstTag>;
 
-pub(crate) type KConstArena = VecArena<KConstTag, KConstData>;
+pub(crate) type KConstArena = VecArena<KConstTag, KConstOutline>;
 
 impl KConst {
     /// 値の型、またはこの定数が属する enum の型
@@ -30,14 +30,14 @@ impl KProjectConst {
         self.0
     }
 
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KConstData {
+    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KConstOutline {
         let KProjectConst(k_mod, k_const) = self;
         k_const.of(&k_mod.of(mod_outlines).consts)
     }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KConstData {
+pub(crate) struct KConstOutline {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
     pub(crate) value_opt: Option<KConstValue>,

@@ -53,7 +53,7 @@ fn alloc_const(
 ) -> KConst {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
-    let k_const = mod_outline.consts.alloc(KConstData {
+    let k_const = mod_outline.consts.alloc(KConstOutline {
         name,
         value_ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
         value_opt: None,
@@ -158,11 +158,11 @@ fn new_const_data_from_variant(
     parent_opt: Option<KConstEnum>,
     doc: Doc,
     key: AVariantDeclKey,
-) -> KConstData {
+) -> KConstOutline {
     let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
-    KConstData {
+    KConstOutline {
         name,
         value_ty: KTy::init_later(loc),
         value_opt: None,

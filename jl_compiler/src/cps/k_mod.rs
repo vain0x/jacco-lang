@@ -103,7 +103,7 @@ impl KModLocalSymbol {
 
 #[derive(Copy, Clone)]
 pub(crate) enum KModLocalSymbolOutline<'a> {
-    Const(KConst, &'a KConstData),
+    Const(KConst, &'a KConstOutline),
     StaticVar(KStaticVar, &'a KStaticVarData),
     Fn(KFn, &'a KFnOutline),
     ExternFn(KExternFn, &'a KExternFnOutline),
@@ -160,7 +160,7 @@ impl KProjectSymbol {
 #[derive(Copy, Clone)]
 pub(crate) enum KProjectSymbolOutline<'a> {
     Mod(KMod, &'a KModOutline),
-    Const(KMod, &'a KConstData),
+    Const(KMod, &'a KConstOutline),
     StaticVar(KMod, &'a KStaticVarData),
     Fn(KMod, &'a KFnOutline),
     ExternFn(KMod, &'a KExternFnOutline),
