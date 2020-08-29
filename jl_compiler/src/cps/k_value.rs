@@ -3,7 +3,7 @@ use super::*;
 /// モジュール内で定義・使用される、値を表すシンボル
 #[derive(Copy, Clone)]
 pub(crate) enum KLocalValue {
-    LocalVar(KLocal),
+    LocalVar(KLocalVar),
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(KFn),

@@ -64,7 +64,7 @@ fn collect_doc_comments(
 fn write_param_sig(
     out: &mut impl Write,
     params: &[KSymbol],
-    locals: &KLocalArena,
+    local_vars: &KLocalVarArena,
     mod_outlines: &KModOutlines,
 ) -> io::Result<()> {
     for (i, symbol) in params.iter().enumerate() {
@@ -72,7 +72,7 @@ fn write_param_sig(
             write!(out, ", ")?;
         }
 
-        let local_var = symbol.local.of(&locals);
+        let local_var = symbol.local_var.of(&local_vars);
         write!(
             out,
             "{}: {}",
@@ -122,15 +122,15 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
                     KLocalVarParent::ExternFn(_) => KTyEnv::EMPTY,
                 };
 
-                let locals = match parent {
-                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
+                let local_vars = match parent {
+                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
                     KLocalVarParent::ExternFn(extern_fn) => {
-                        &extern_fn.of(&mod_data.extern_fns).locals
+                        &extern_fn.of(&mod_data.extern_fns).local_vars
                     }
                 };
 
                 contents_opt = Some(Content::JaccoCode(
-                    local_var.ty(locals).display(ty_env, mod_outlines),
+                    local_var.ty(local_vars).display(ty_env, mod_outlines),
                 ));
             });
         }
@@ -148,7 +148,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
 
                 let text = {
                     write!(out, "fn {}(", &fn_outline.name).unwrap();
-                    write_param_sig(&mut out, &fn_data.params, &fn_data.locals, mod_outlines)
+                    write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outlines)
                         .unwrap();
                     write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
                     write!(out, ";").unwrap();
@@ -170,7 +170,7 @@ pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Conte
 
                 let text = {
                     write!(out, "extern fn {}(", &fn_outline.name).unwrap();
-                    write_param_sig(&mut out, &fn_data.params, &fn_data.locals, mod_outlines)
+                    write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outlines)
                         .unwrap();
                     write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
                     write!(out, ";").unwrap();

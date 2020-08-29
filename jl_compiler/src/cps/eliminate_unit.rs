@@ -1,9 +1,9 @@
-use super::{k_local::KLocalArena, KModData, KModOutline, KNode, KPrim, KTerm, KTyEnv};
+use super::{k_local_var::KLocalVarArena, KModData, KModOutline, KNode, KPrim, KTerm, KTyEnv};
 use std::{collections::HashSet, mem::swap};
 
 #[derive(Default)]
 struct Ex {
-    locals: KLocalArena,
+    local_vars: KLocalVarArena,
     ty_env: KTyEnv,
 }
 
@@ -12,7 +12,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     match node.prim {
         KPrim::CallDirect | KPrim::Jump => node.args.retain(|arg| match arg {
             KTerm::Unit { .. } => false,
-            KTerm::Name(symbol) => !symbol.local.ty(&ex.locals).is_unit(&ex.ty_env),
+            KTerm::Name(symbol) => !symbol.local_var.ty(&ex.local_vars).is_unit(&ex.ty_env),
             _ => true,
         }),
         _ => {}
@@ -22,9 +22,9 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
         // unit/never 型の変数の参照をリテラルで置き換える。
         // FIXME: never 型の変数は never リテラル (?) に置き換える？
         if let KTerm::Name(symbol) = arg {
-            let local_data = &mut ex.locals[symbol.local];
-            if local_data.ty.is_unit_or_never(&ex.ty_env) {
-                local_data.is_alive = false;
+            let local_var_data = &mut ex.local_vars[symbol.local_var];
+            if local_var_data.ty.is_unit_or_never(&ex.ty_env) {
+                local_var_data.is_alive = false;
                 let loc = symbol.loc();
                 *arg = KTerm::Unit { loc };
             }
@@ -65,12 +65,12 @@ pub(crate) fn eliminate_unit(mod_outline: &mut KModOutline, k_root: &mut KModDat
 
     for fn_data in k_root.fns.iter_mut() {
         swap(&mut ex.ty_env, &mut fn_data.ty_env);
-        swap(&mut ex.locals, &mut fn_data.locals);
+        swap(&mut ex.local_vars, &mut fn_data.local_vars);
 
         // unit 型の引数は捨てる。
         fn_data
             .params
-            .retain(|param| !param.ty(&ex.locals).is_unit(&ex.ty_env));
+            .retain(|param| !param.ty(&ex.local_vars).is_unit(&ex.ty_env));
 
         for label_sig in fn_data.label_sigs.iter_mut() {
             label_sig
@@ -78,9 +78,9 @@ pub(crate) fn eliminate_unit(mod_outline: &mut KModOutline, k_root: &mut KModDat
                 .retain(|ty| !ty.is_unit(&ex.ty_env));
         }
 
-        for local_data in ex.locals.iter_mut() {
-            if local_data.ty.is_unit_or_never(&ex.ty_env) {
-                local_data.is_alive = false;
+        for local_var_data in ex.local_vars.iter_mut() {
+            if local_var_data.ty.is_unit_or_never(&ex.ty_env) {
+                local_var_data.is_alive = false;
             }
         }
 
@@ -88,12 +88,12 @@ pub(crate) fn eliminate_unit(mod_outline: &mut KModOutline, k_root: &mut KModDat
             // unit 型の引数は捨てる。
             label_data
                 .params
-                .retain(|param| !param.ty(&ex.locals).is_unit(&ex.ty_env));
+                .retain(|param| !param.ty(&ex.local_vars).is_unit(&ex.ty_env));
 
             on_node(&mut label_data.body, &mut ex);
         }
 
-        swap(&mut ex.locals, &mut fn_data.locals);
+        swap(&mut ex.local_vars, &mut fn_data.local_vars);
         swap(&mut ex.ty_env, &mut fn_data.ty_env);
     }
 }

@@ -48,7 +48,7 @@ mod cps {
     mod k_field;
     mod k_fn;
     mod k_label;
-    mod k_local;
+    mod k_local_var;
     mod k_meta_ty;
     mod k_mod;
     mod k_mut;
@@ -77,7 +77,7 @@ mod cps {
     pub(crate) use k_label::{
         KLabel, KLabelArena, KLabelData, KLabelSig, KLabelSigArena, KLabelTag,
     };
-    pub(crate) use k_local::{KLocal, KLocalArena, KLocalData};
+    pub(crate) use k_local_var::*;
     pub(crate) use k_meta_ty::*;
     pub(crate) use k_mod::{
         resolve_aliases, KLocalVarParent, KMod, KModArena, KModData, KModLocalSymbol, KModOutline,

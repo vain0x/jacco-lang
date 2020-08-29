@@ -1,4 +1,4 @@
-use super::{k_local::KLocalArena, k_ty::KTy2, KLocal};
+use super::{k_local_var::KLocalVarArena, k_ty::KTy2, KLocalVar};
 use crate::{
     parse::{ANameKey, PLoc, PToken},
     source::Loc,
@@ -36,17 +36,17 @@ impl From<Loc> for KSymbolCause {
 /// ローカル変数の出現
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct KSymbol {
-    pub(crate) local: KLocal,
+    pub(crate) local_var: KLocalVar,
     pub(crate) cause: KSymbolCause,
 }
 
 impl KSymbol {
-    pub(crate) fn ty(&self, locals: &KLocalArena) -> KTy2 {
-        self.local.ty(locals)
+    pub(crate) fn ty(&self, local_vars: &KLocalVarArena) -> KTy2 {
+        self.local_var.ty(local_vars)
     }
 
-    pub(crate) fn ty_mut<'a>(&mut self, locals: &'a mut KLocalArena) -> &'a mut KTy2 {
-        &mut self.local.of_mut(locals).ty
+    pub(crate) fn ty_mut<'a>(&mut self, local_vars: &'a mut KLocalVarArena) -> &'a mut KTy2 {
+        &mut self.local_var.of_mut(local_vars).ty
     }
 
     pub(crate) fn loc(&self) -> Loc {
@@ -60,12 +60,12 @@ impl HaveLoc for KSymbol {
     }
 }
 
-impl DebugWithContext<KLocalArena> for KSymbol {
-    fn fmt(&self, context: &KLocalArena, f: &mut Formatter<'_>) -> fmt::Result {
+impl DebugWithContext<KLocalVarArena> for KSymbol {
+    fn fmt(&self, context: &KLocalVarArena, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{} (cause = {:?})",
-            self.local.of(context).name,
+            self.local_var.of(context).name,
             self.cause
         )
     }

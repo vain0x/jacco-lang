@@ -126,7 +126,7 @@ struct Xx<'a> {
     mod_data: KModData,
     label: KLabel,
     nodes: Vec<KNode>,
-    local_vars: KLocalArena,
+    local_vars: KLocalVarArena,
     labels: VecArena<KLabelTag, KLabelConstruction>,
     ty_env: KTyEnv,
     /// return のターゲットとなる関数
@@ -169,7 +169,7 @@ impl<'a> Xx<'a> {
         Self {
             label: toplevel,
             nodes: vec![],
-            local_vars: KLocalArena::new(),
+            local_vars: KLocalVarArena::new(),
             labels,
             ty_env: KTyEnv::new(),
             fn_opt: None,
@@ -442,14 +442,14 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
 
 fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
     let symbol = match term {
-        KTerm::Name(symbol) if symbol.local.name(&xx.local_vars) == "_" => return,
+        KTerm::Name(symbol) if symbol.local_var.name(&xx.local_vars) == "_" => return,
         KTerm::Name(it) => it,
         _ => return,
     };
 
-    let name = symbol.local.name(&xx.local_vars).to_string();
+    let name = symbol.local_var.name(&xx.local_vars).to_string();
     xx.env
-        .insert_value(name, KLocalValue::LocalVar(symbol.local));
+        .insert_value(name, KLocalValue::LocalVar(symbol.local_var));
 
     xx.nodes
         .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
@@ -699,8 +699,10 @@ fn emit_unit_like_struct(
 fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSymbol {
     let cause = cause.into();
     let loc = cause.loc();
-    let local = xx.local_vars.alloc(KLocalData::new(hint.to_string(), loc));
-    KSymbol { local, cause }
+    let local_var = xx
+        .local_vars
+        .alloc(KLocalVarData::new(hint.to_string(), loc));
+    KSymbol { local_var, cause }
 }
 
 fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
@@ -718,7 +720,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
 
     match value {
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol {
-            local: local_var,
+            local_var: local_var,
             cause,
         }),
         KLocalValue::Const(k_const) => KTerm::Const {
@@ -758,7 +760,7 @@ fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> A
         };
 
     let term = match value {
-        KLocalValue::LocalVar(local) => KTerm::Name(KSymbol { local, cause }),
+        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::Const(_)
@@ -1537,19 +1539,19 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
     let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
 
-    let local = xx.local_vars.alloc(
-        KLocalData::new(
+    let local_var = xx.local_vars.alloc(
+        KLocalVarData::new(
             name_opt.clone().unwrap_or_else(|| "_".to_string()),
             cause.loc(),
         )
         .with_ty(ty),
     );
-    let symbol = KSymbol { local, cause };
+    let symbol = KSymbol { local_var, cause };
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
     if let Some(name) = name_opt {
-        xx.env.insert_value(name, KLocalValue::LocalVar(local));
+        xx.env.insert_value(name, KLocalValue::LocalVar(local_var));
     }
 }
 
@@ -1602,7 +1604,7 @@ fn convert_param_decls(
     param_tys: &[KTy],
     doc: Doc,
     decl_id: ADeclId,
-    locals: &mut KLocalArena,
+    local_vars: &mut KLocalVarArena,
     env: &mut Env,
 ) -> Vec<KSymbol> {
     assert_eq!(param_decls.len(), param_tys.len());
@@ -1615,10 +1617,10 @@ fn convert_param_decls(
             let name_key = new_param_name_key(decl_id, index);
             let loc = Loc::new(doc, PLoc::Name(name_key));
             let name = param_decl.name.text.to_string();
-            let local = locals.alloc(KLocalData::new(name.to_string(), loc));
-            env.insert_value(name, KLocalValue::LocalVar(local));
+            let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
+            env.insert_value(name, KLocalValue::LocalVar(local_var));
             KSymbol {
-                local,
+                local_var,
                 cause: KSymbolCause::NameDef(doc, name_key),
             }
         })
@@ -1626,20 +1628,20 @@ fn convert_param_decls(
 }
 
 fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
-    let mut locals = KLocalArena::new();
+    let mut local_vars = KLocalVarArena::new();
 
     let params = convert_param_decls(
         &fn_decl.params,
         k_fn.param_tys(&xx.mod_outline.fns),
         xx.doc,
         decl_id,
-        &mut locals,
+        &mut local_vars,
         &mut xx.env,
     );
 
     let fn_data = xx.do_out_fn(|xx| {
         xx.fn_opt = Some(k_fn);
-        xx.local_vars = locals;
+        xx.local_vars = local_vars;
 
         for ty_param in &fn_decl.ty_params {
             let name = ty_param.name.text().to_string();
@@ -1666,7 +1668,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
             );
         }
 
-        let locals = take(&mut xx.local_vars);
+        let local_vars = take(&mut xx.local_vars);
         let labels =
             KLabelArena::from_iter(take(&mut xx.labels).into_vec().into_iter().map(|label| {
                 let name = label.name;
@@ -1676,7 +1678,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
             }));
         let ty_env = take(&mut xx.ty_env);
 
-        KFnData::new(params, locals, labels, ty_env)
+        KFnData::new(params, local_vars, labels, ty_env)
     });
 
     *k_fn.of_mut(&mut xx.mod_data.fns) = fn_data;
@@ -1693,18 +1695,18 @@ fn convert_extern_fn_decl(
     extern_fn_decl: &AFnLikeDecl,
     xx: &mut Xx,
 ) {
-    let mut locals = KLocalArena::new();
+    let mut local_vars = KLocalVarArena::new();
 
     let params = convert_param_decls(
         &extern_fn_decl.params,
         extern_fn.param_tys(&xx.mod_outline.extern_fns),
         xx.doc,
         decl_id,
-        &mut locals,
+        &mut local_vars,
         &mut xx.env,
     );
 
-    *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, locals };
+    *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, local_vars };
 }
 
 fn convert_const_enum_decl(const_enum: KConstEnum, decl: &AEnumDecl, loc: Loc, xx: &mut Xx) {

@@ -4,32 +4,32 @@ use crate::{
     utils::{VecArena, VecArenaId},
 };
 
-pub(crate) struct KLocalTag;
+pub(crate) struct KLocalVarTag;
 
 /// ローカル変数や仮引数
-pub(crate) type KLocal = VecArenaId<KLocalTag>;
+pub(crate) type KLocalVar = VecArenaId<KLocalVarTag>;
 
-pub(crate) type KLocalArena = VecArena<KLocalTag, KLocalData>;
+pub(crate) type KLocalVarArena = VecArena<KLocalVarTag, KLocalVarData>;
 
-impl KLocal {
-    pub(crate) fn name(self, locals: &KLocalArena) -> &str {
-        &locals[self].name
+impl KLocalVar {
+    pub(crate) fn name(self, local_vars: &KLocalVarArena) -> &str {
+        &local_vars[self].name
     }
 
-    pub(crate) fn ty(self, locals: &KLocalArena) -> KTy2 {
-        locals[self].ty.clone()
+    pub(crate) fn ty(self, local_vars: &KLocalVarArena) -> KTy2 {
+        local_vars[self].ty.clone()
     }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct KLocalData {
+pub(crate) struct KLocalVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy2,
     pub(crate) loc: Loc,
     pub(crate) is_alive: bool,
 }
 
-impl KLocalData {
+impl KLocalVarData {
     pub(crate) fn new(name: String, loc: Loc) -> Self {
         Self {
             name,

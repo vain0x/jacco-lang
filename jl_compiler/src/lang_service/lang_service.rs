@@ -309,7 +309,7 @@ enum DefOrUse {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub(super) enum SymbolOccurrence {
     ModLocal(KModLocalSymbol),
-    LocalVar(KLocal, KLocalVarParent),
+    LocalVar(KLocalVar, KLocalVarParent),
 }
 
 type Sites = Vec<(SymbolOccurrence, DefOrUse, Loc)>;
@@ -322,7 +322,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
             _ => return,
         };
 
-        let (local_var, loc) = (symbol.local, symbol.cause.loc());
+        let (local_var, loc) = (symbol.local_var, symbol.cause.loc());
         let symbol = SymbolOccurrence::LocalVar(local_var, parent);
         sites.push((symbol, kind, loc));
     }

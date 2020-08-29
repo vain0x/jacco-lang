@@ -65,5 +65,5 @@ impl KExternFnOutline {
 #[derive(Clone, Default, Debug)]
 pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KSymbol>,
-    pub(crate) locals: KLocalArena,
+    pub(crate) local_vars: KLocalVarArena,
 }

@@ -16,7 +16,7 @@ struct Tx<'a> {
     /// 現在の関数の型環境
     ty_env: KTyEnv,
     /// 現在の関数に含まれるローカル変数の情報
-    locals: KLocalArena,
+    local_vars: KLocalVarArena,
     /// 現在の関数に含まれるラベルのシグネチャ情報
     label_sigs: KLabelSigArena,
     /// 現在の関数の return ラベルの型
@@ -37,7 +37,7 @@ impl<'a> Tx<'a> {
     ) -> Self {
         Self {
             ty_env: KTyEnv::default(),
-            locals: Default::default(),
+            local_vars: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
             k_mod,
@@ -307,24 +307,24 @@ fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
 }
 
 fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
-    if symbol.ty(&tx.locals).is_unresolved() {
+    if symbol.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
             None => fresh_meta_ty(symbol.loc(), tx),
             Some(ty) => ty.clone(),
         };
 
-        *symbol.ty_mut(&mut tx.locals) = expected_ty;
+        *symbol.ty_mut(&mut tx.local_vars) = expected_ty;
         return;
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.ty(&tx.locals);
+        let symbol_ty = symbol.ty(&tx.local_vars);
         unify2(&symbol_ty, expected_ty, symbol.loc(), tx);
     }
 }
 
 fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
-    let current_ty = symbol.ty(&tx.locals);
+    let current_ty = symbol.ty(&tx.local_vars);
     if current_ty.is_unresolved() {
         error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
     }
@@ -667,7 +667,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // 型注釈と単一化する。
                 // FIXME: 本来なら init_ty <- expected_ty の向きで単一化しないといけないが、 `let p: *u8 = transmute(...)` のように後ろから型を伝播するにはこの向きでなければいけない。そのせいで部分型付けがうまく動いていない (tests/never/never.jacco など)。
                 let result_ty = {
-                    let expected_ty = result.ty(&tx.locals);
+                    let expected_ty = result.ty(&tx.local_vars);
                     if init_ty.is_never(&tx.ty_env) {
                         KTy2::Never
                     } else if expected_ty.is_unresolved() {
@@ -900,7 +900,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
             let param_tys = label_data
                 .params
                 .iter()
-                .map(|param| param.ty(&tx.locals))
+                .map(|param| param.ty(&tx.local_vars))
                 .collect();
             KLabelSig::new(name, param_tys)
         };
@@ -936,25 +936,25 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
     }
 
     for (extern_fn, extern_fn_data) in root.extern_fns.enumerate_mut() {
-        swap(&mut tx.locals, &mut extern_fn_data.locals);
+        swap(&mut tx.local_vars, &mut extern_fn_data.local_vars);
 
         prepare_extern_fn(extern_fn, extern_fn_data, tx);
 
-        swap(&mut tx.locals, &mut extern_fn_data.locals);
+        swap(&mut tx.local_vars, &mut extern_fn_data.local_vars);
     }
 
     for (k_fn, fn_data) in root.fns.enumerate_mut() {
-        swap(&mut tx.locals, &mut fn_data.locals);
+        swap(&mut tx.local_vars, &mut fn_data.local_vars);
 
         prepare_fn(k_fn, fn_data, tx);
 
-        swap(&mut tx.locals, &mut fn_data.locals);
+        swap(&mut tx.local_vars, &mut fn_data.local_vars);
     }
 
     // 項の型を解決する。
     for (k_fn, fn_data) in root.fns.enumerate_mut() {
         tx.return_ty_opt = Some(k_fn.return_ty(&tx.mod_outline.fns));
-        swap(&mut tx.locals, &mut fn_data.locals);
+        swap(&mut tx.local_vars, &mut fn_data.local_vars);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
@@ -962,13 +962,13 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
             resolve_node(&mut label.body, tx);
         }
 
-        for local_data in tx.locals.iter_mut() {
-            if local_data.ty.is_unbound(&tx.ty_env) {
-                local_data.ty = KTy2::Never;
+        for local_var_data in tx.local_vars.iter_mut() {
+            if local_var_data.ty.is_unbound(&tx.ty_env) {
+                local_var_data.ty = KTy2::Never;
             }
         }
 
-        swap(&mut tx.locals, &mut fn_data.locals);
+        swap(&mut tx.local_vars, &mut fn_data.local_vars);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
         tx.return_ty_opt.take();

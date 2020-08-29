@@ -20,8 +20,8 @@ struct Cx<'a> {
     fn_ident_ids: Vec<Option<usize>>,
     enum_ident_ids: Vec<Option<usize>>,
     struct_ident_ids: Vec<Option<usize>>,
-    locals: KLocalArena,
-    local_ident_ids: Vec<Option<usize>>,
+    local_vars: KLocalVarArena,
+    local_var_ident_ids: Vec<Option<usize>>,
     label_raw_names: VecArena<KLabelTag, String>,
     label_param_lists: VecArena<KLabelTag, Vec<KSymbol>>,
     label_ident_ids: Vec<Option<usize>>,
@@ -40,8 +40,8 @@ impl<'a> Cx<'a> {
             fn_ident_ids: Default::default(),
             enum_ident_ids: Default::default(),
             struct_ident_ids: Default::default(),
-            locals: Default::default(),
-            local_ident_ids: Default::default(),
+            local_vars: Default::default(),
+            local_var_ident_ids: Default::default(),
             label_raw_names: Default::default(),
             label_param_lists: Default::default(),
             label_ident_ids: Default::default(),
@@ -90,7 +90,7 @@ fn do_unique_name(
 }
 
 fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
-    unique_local_name(symbol.local, cx)
+    unique_local_var_name(symbol.local_var, cx)
 }
 
 fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
@@ -137,11 +137,11 @@ fn unique_struct_name(k_mod: KMod, k_struct: KStruct, cx: &mut Cx) -> String {
     // )
 }
 
-fn unique_local_name(local: KLocal, cx: &mut Cx) -> String {
+fn unique_local_var_name(local_var: KLocalVar, cx: &mut Cx) -> String {
     do_unique_name(
-        local.to_index(),
-        &cx.locals[local].name,
-        &mut cx.local_ident_ids,
+        local_var.to_index(),
+        &cx.local_vars[local_var].name,
+        &mut cx.local_var_ident_ids,
         &mut cx.ident_map,
     )
 }
@@ -156,7 +156,7 @@ fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
 }
 
 fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
-    let is_alive = symbol.local.of(&cx.locals).is_alive;
+    let is_alive = symbol.local_var.of(&cx.local_vars).is_alive;
     let (name, ty) = gen_param(symbol, ty_env, cx);
 
     // 不要な変数なら束縛しない。
@@ -302,7 +302,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
 
 fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     let name = unique_name(param, cx);
-    let ty = param.ty(&cx.locals);
+    let ty = param.ty(&cx.local_vars);
     (name, gen_ty2(&ty, &ty_env, cx))
 }
 
@@ -487,10 +487,10 @@ fn emit_assign(
     match (args, conts) {
         ([left, right], [cont]) => {
             match left {
-                KTerm::Name(symbol) if !symbol.local.of(&cx.locals).is_alive => {
+                KTerm::Name(symbol) if !symbol.local_var.of(&cx.local_vars).is_alive => {
                     cx.stmts.push(CStmt::Comment(format!(
                         "assignment to {} is eliminated.",
-                        symbol.local.of(&cx.locals).name
+                        symbol.local_var.of(&cx.local_vars).name
                     )));
                 }
                 _ => {
@@ -533,7 +533,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 for (param, arg) in params.into_iter().zip(args) {
                     let name = unique_name(&param, cx);
 
-                    if !param.local.of(&cx.locals).is_alive {
+                    if !param.local_var.of(&cx.local_vars).is_alive {
                         CStmt::Comment(format!("{} is skipped.", &name));
                         continue;
                     }
@@ -649,7 +649,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         cx.k_mod,
                         &cx.mod_outline,
                         &KLabelSigArena::default(),
-                        &cx.locals,
+                        &cx.local_vars,
                         cx.mod_outlines,
                     )
                     .as_enum(ty_env)
@@ -699,7 +699,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         cx.k_mod,
                         &cx.mod_outline,
                         &VecArena::default(),
-                        &cx.locals,
+                        &cx.local_vars,
                         cx.mod_outlines,
                     )
                     .is_bool(ty_env)
@@ -735,7 +735,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Cast => match (args, results, conts) {
             ([arg], [result], [cont]) => {
                 let arg = gen_term(arg, cx);
-                let result_ty = gen_ty2(&result.ty(&cx.locals), ty_env, cx);
+                let result_ty = gen_ty2(&result.ty(&cx.local_vars), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
                 emit_var_decl(result, Some(expr), ty_env, cx);
                 gen_node(cont, ty_env, cx);
@@ -858,12 +858,12 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
 
     for (extern_fn, extern_fn_data) in root.extern_fns.enumerate() {
         let params = extern_fn_data.params.as_slice();
-        let locals = &extern_fn_data.locals;
+        let local_vars = &extern_fn_data.local_vars;
 
         // FIXME: clone しない
-        cx.locals = locals.clone();
-        cx.local_ident_ids.clear();
-        cx.local_ident_ids.resize(cx.locals.len(), None);
+        cx.local_vars = local_vars.clone();
+        cx.local_var_ident_ids.clear();
+        cx.local_var_ident_ids.resize(cx.local_vars.len(), None);
 
         let name = unique_extern_fn_name(extern_fn, cx);
         let (params, result_ty) = {
@@ -876,7 +876,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             result_ty,
         });
 
-        cx.locals = VecArena::default();
+        cx.local_vars = VecArena::default();
     }
 
     // 関数宣言
@@ -886,8 +886,8 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .params
             .iter()
             .map(|symbol| {
-                let name = symbol.local.name(&fn_data.locals).to_string();
-                let ty = gen_ty2(&symbol.local.ty(&fn_data.locals), &empty_ty_env, cx);
+                let name = symbol.local_var.name(&fn_data.local_vars).to_string();
+                let ty = gen_ty2(&symbol.local_var.ty(&fn_data.local_vars), &empty_ty_env, cx);
                 (name, ty)
             })
             .collect();
@@ -906,14 +906,14 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
 fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
     for (k_fn, fn_data) in root.fns.enumerate() {
         let params = fn_data.params.as_slice();
-        let locals = &fn_data.locals;
+        let local_vars = &fn_data.local_vars;
         let labels = &fn_data.labels;
         let ty_env = &fn_data.ty_env;
 
         // FIXME: clone しない
-        cx.locals = locals.clone();
-        cx.local_ident_ids.clear();
-        cx.local_ident_ids.resize(cx.locals.len(), None);
+        cx.local_vars = local_vars.clone();
+        cx.local_var_ident_ids.clear();
+        cx.local_var_ident_ids.resize(cx.local_vars.len(), None);
 
         let stmts = cx.enter_block(|cx| {
             for label_data in labels.iter() {
@@ -953,7 +953,7 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
             body_opt: Some(CBlock { stmts }),
         });
 
-        cx.locals = VecArena::default();
+        cx.local_vars = VecArena::default();
     }
 }
 

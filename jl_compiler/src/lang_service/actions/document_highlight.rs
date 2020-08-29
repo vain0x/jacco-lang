@@ -34,7 +34,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             self.k_mod,
             self.mod_outline,
             &self.fn_data.label_sigs,
-            &self.fn_data.locals,
+            &self.fn_data.local_vars,
             self.mod_outlines,
         );
 

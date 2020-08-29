@@ -44,10 +44,10 @@ pub(crate) enum KLocalVarParent {
 
 impl KLocalVarParent {
     #[cfg(unused)]
-    pub(crate) fn locals(self, mod_data: &KModData) -> &KLocalArena {
+    pub(crate) fn local_vars(self, mod_data: &KModData) -> &KLocalArena {
         match self {
-            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).locals,
-            KLocalVarParent::ExternFn(extern_fn) => &extern_fn.of(&mod_data.extern_fns).locals,
+            KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
+            KLocalVarParent::ExternFn(extern_fn) => &extern_fn.of(&mod_data.extern_fns).local_vars,
         }
     }
 

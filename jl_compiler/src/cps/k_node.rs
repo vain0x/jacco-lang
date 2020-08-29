@@ -1,4 +1,4 @@
-use super::{KLabelArena, KLocalArena, KModOutline, KPrim, KSymbol, KTerm, KTy2};
+use super::{KLabelArena, KLocalVarArena, KModOutline, KPrim, KSymbol, KTerm, KTy2};
 use crate::{
     source::{HaveLoc, Loc},
     utils::{DebugWith, DebugWithContext},
@@ -72,10 +72,18 @@ impl Debug for KNode {
     }
 }
 
-impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>)> for KNode {
+impl<'a>
+    DebugWithContext<(
+        &'a KModOutline,
+        Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+    )> for KNode
+{
     fn fmt(
         &self,
-        context: &(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>),
+        context: &(
+            &'a KModOutline,
+            Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+        ),
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
         if self.tys.is_empty() {

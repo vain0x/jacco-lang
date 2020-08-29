@@ -97,7 +97,7 @@ impl KTerm {
         k_mod: KMod,
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
-        locals: &KLocalArena,
+        local_vars: &KLocalVarArena,
         mod_outlines: &KModOutlines,
     ) -> KTy2 {
         let ty = match self {
@@ -107,7 +107,7 @@ impl KTerm {
             KTerm::Char { ty, .. } => ty.clone(),
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
-            KTerm::Name(symbol) => symbol.local.ty(&locals),
+            KTerm::Name(symbol) => symbol.local_var.ty(&local_vars),
             KTerm::Alias { alias, .. } => KTy2::Alias(k_mod, *alias),
             KTerm::Const { k_mod, k_const, .. } => {
                 k_const.ty(&k_mod.of(mod_outlines).consts).erasure(*k_mod)
@@ -176,13 +176,21 @@ impl Debug for KTerm {
     }
 }
 
-impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>)> for KTerm {
+impl<'a>
+    DebugWithContext<(
+        &'a KModOutline,
+        Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+    )> for KTerm
+{
     fn fmt(
         &self,
-        context: &(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelArena)>),
+        context: &(
+            &'a KModOutline,
+            Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+        ),
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
-        let (mod_outline, local_opt) = context;
+        let (mod_outline, local_var_opt) = context;
 
         match self {
             KTerm::Unit { .. } => write!(f, "()"),
@@ -192,8 +200,8 @@ impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelA
             KTerm::Str { text, .. } => write!(f, "{:?}", text),
             KTerm::True { .. } => write!(f, "true"),
             KTerm::False { .. } => write!(f, "false"),
-            KTerm::Name(symbol) => match local_opt {
-                Some((locals, _)) => write!(f, "{}", symbol.local.of(locals).name),
+            KTerm::Name(symbol) => match local_var_opt {
+                Some((local_vars, _)) => write!(f, "{}", symbol.local_var.of(local_vars).name),
                 None => write!(f, "symbol({:?})", symbol.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
@@ -204,7 +212,7 @@ impl<'a> DebugWithContext<(&'a KModOutline, Option<(&'a KLocalArena, &'a KLabelA
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }
             KTerm::Fn { k_fn, .. } => write!(f, "{}", k_fn.name(&mod_outline.fns)),
-            KTerm::Label { label, .. } => match local_opt {
+            KTerm::Label { label, .. } => match local_var_opt {
                 Some((_, labels)) => write!(f, "{}", label.of(labels).name),
                 None => write!(f, "label#{}", label.to_index()),
             },
