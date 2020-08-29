@@ -113,7 +113,7 @@ Expr =
 | ParenExpr
 | CallExpr
 | IndexExpr
-| DotFieldExpr
+| FieldExpr
 | AsExpr
 | UnaryOpExpr
 | BinaryOpExpr
@@ -149,7 +149,7 @@ CallExpr =
 IndexExpr =
   Expr '[' Expr ']'
 
-DotFieldExpr =
+FieldExpr =
   Expr '.' UnqualName
 
 AsExpr =
