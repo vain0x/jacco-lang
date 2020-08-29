@@ -80,14 +80,11 @@ FnTy =
 // -----------------------------------------------
 
 Pat =
-  LiteralPat
+  Literal
 | WildcardPat
 | NamePat
 | RecordPat
 | ParenPat
-
-LiteralPat =
-  Literal
 
 WildcardPat =
   '_'
