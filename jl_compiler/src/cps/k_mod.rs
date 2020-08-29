@@ -38,6 +38,7 @@ pub(crate) struct KModData {
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum KModSymbol {
+    Alias(KAlias),
     Const(KConst),
     StaticVar(KStaticVar),
     Fn(KFn),
@@ -47,7 +48,6 @@ pub(crate) enum KModSymbol {
     Struct(KStruct),
     #[allow(unused)]
     Field(KField),
-    Alias(KAlias),
 }
 
 impl KModSymbol {
@@ -81,6 +81,7 @@ impl KModSymbol {
 
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
+            KModSymbolRef::Alias(_, alias_data) => alias_data.name(),
             KModSymbolRef::Const(_, const_outline) => &const_outline.name,
             KModSymbolRef::StaticVar(_, static_var_outline) => &static_var_outline.name,
             KModSymbolRef::Fn(_, fn_data) => &fn_data.name,
@@ -89,7 +90,6 @@ impl KModSymbol {
             KModSymbolRef::StructEnum(_, enum_data) => &enum_data.name,
             KModSymbolRef::Struct(_, struct_data) => &struct_data.name,
             KModSymbolRef::Field(_, field_outline) => &field_outline.name,
-            KModSymbolRef::Alias(_, alias_data) => alias_data.name(),
         }
     }
 }
@@ -97,6 +97,7 @@ impl KModSymbol {
 /// モジュール内で定義されるシンボルのアウトラインの参照
 #[derive(Copy, Clone)]
 pub(crate) enum KModSymbolRef<'a> {
+    Alias(KAlias, &'a KAliasOutline),
     Const(KConst, &'a KConstOutline),
     StaticVar(KStaticVar, &'a KStaticVarOutline),
     Fn(KFn, &'a KFnOutline),
@@ -105,7 +106,6 @@ pub(crate) enum KModSymbolRef<'a> {
     StructEnum(KStructEnum, &'a KStructEnumOutline),
     Struct(KStruct, &'a KStructOutline),
     Field(KField, &'a KFieldOutline),
-    Alias(KAlias, &'a KAliasOutline),
 }
 
 /// プロジェクト内で定義されるシンボルの名前。それが属するプロジェクトを基準としている。

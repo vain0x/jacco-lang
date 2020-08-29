@@ -44,6 +44,7 @@ fn decl_to_name_symbol_pair(
 
 pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModSymbol, env: &mut Env) {
     let ty = match symbol {
+        KModSymbol::Alias(alias) => KTy::Alias(alias),
         KModSymbol::Const(_)
         | KModSymbol::StaticVar(_)
         | KModSymbol::Fn(_)
@@ -52,7 +53,6 @@ pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModSymbol, env:
         KModSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
         KModSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
         KModSymbol::Struct(k_struct) => KTy::Struct(k_struct),
-        KModSymbol::Alias(alias) => KTy::Alias(alias),
     };
 
     env.insert_ty(name.to_string(), ty);
@@ -65,6 +65,7 @@ fn do_add_value_symbol_to_local_env(
     env: &mut Env,
 ) {
     let value = match symbol {
+        KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
         KModSymbol::Const(k_const) => KLocalValue::Const(k_const),
         KModSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
         KModSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
@@ -76,7 +77,6 @@ fn do_add_value_symbol_to_local_env(
         | KModSymbol::StructEnum(_)
         | KModSymbol::Struct(_)
         | KModSymbol::Field(_) => return,
-        KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
     };
 
     env.insert_value(name.to_string(), value)
@@ -189,12 +189,6 @@ pub(crate) fn resolve_ty_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
-        KTy::StructEnum(struct_enum) => {
-            let name = path.token.text(tokens);
-            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
-
-            KTy2::Struct(KProjectStruct(k_mod, k_struct))
-        }
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = path.token.text(tokens);
@@ -204,6 +198,12 @@ pub(crate) fn resolve_ty_path(
             }
             _ => return None,
         },
+        KTy::StructEnum(struct_enum) => {
+            let name = path.token.text(tokens);
+            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
+
+            KTy2::Struct(KProjectStruct(k_mod, k_struct))
+        }
         _ => return None,
     };
     Some(ty)
@@ -242,21 +242,6 @@ pub(crate) fn resolve_value_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
-        KTy::ConstEnum(const_enum) => {
-            let name = path.token.text(tokens);
-            let k_const = find_const_variant(const_enum, name, mod_outline)?;
-            KLocalValue::Const(k_const)
-        }
-        KTy::StructEnum(struct_enum) => {
-            let name = path.token.text(tokens);
-            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
-
-            if k_struct.of(&mod_outline.structs).is_unit_like() {
-                KLocalValue::UnitLikeStruct(k_struct)
-            } else {
-                return None;
-            }
-        }
         KTy::Alias(alias) => {
             let name = path.token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
@@ -278,6 +263,21 @@ pub(crate) fn resolve_value_path(
                 _ => return None,
             };
             return Some(value);
+        }
+        KTy::ConstEnum(const_enum) => {
+            let name = path.token.text(tokens);
+            let k_const = find_const_variant(const_enum, name, mod_outline)?;
+            KLocalValue::Const(k_const)
+        }
+        KTy::StructEnum(struct_enum) => {
+            let name = path.token.text(tokens);
+            let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
+
+            if k_struct.of(&mod_outline.structs).is_unit_like() {
+                KLocalValue::UnitLikeStruct(k_struct)
+            } else {
+                return None;
+            }
         }
         _ => return None,
     };

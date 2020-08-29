@@ -68,7 +68,7 @@ mod cps {
 
     pub(crate) use eliminate_unit::eliminate_unit;
     pub(crate) use eval::eval_cps;
-    pub(crate) use k_alias::{KAlias, KAliasArena, KAliasOutline};
+    pub(crate) use k_alias::*;
     pub(crate) use k_const::*;
     pub(crate) use k_const_enum::*;
     pub(crate) use k_extern_fn::*;
@@ -79,10 +79,7 @@ mod cps {
     };
     pub(crate) use k_local_var::*;
     pub(crate) use k_meta_ty::*;
-    pub(crate) use k_mod::{
-        resolve_aliases, KMod, KModArena, KModData, KModOutline, KModOutlines, KModSymbol, KModTag,
-        KProjectSymbol,
-    };
+    pub(crate) use k_mod::*;
     pub(crate) use k_mut::KMut;
     pub(crate) use k_node::KNode;
     pub(crate) use k_number::KNumber;

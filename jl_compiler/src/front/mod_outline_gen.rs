@@ -45,6 +45,30 @@ fn add_ty_params_to_env(
     }
 }
 
+fn alloc_alias(
+    decl: &AUseDecl,
+    loc: Loc,
+    tokens: &PTokens,
+    mod_outline: &mut KModOutline,
+) -> KAlias {
+    let (name, path) = match &decl.name_opt {
+        Some(AName { quals, text, .. }) => (
+            text.to_string(),
+            quals
+                .iter()
+                .map(|token| token.text(tokens))
+                .chain(once(text.as_str()))
+                .map(|text| text.to_string())
+                .collect(),
+        ),
+        None => Default::default(),
+    };
+
+    mod_outline
+        .aliases
+        .alloc(KAliasOutline::new(name, path, loc))
+}
+
 fn alloc_const(
     decl_id: ADeclId,
     decl: &AFieldLikeDecl,
@@ -411,30 +435,6 @@ fn alloc_struct(
         logger,
     );
     Some(k_struct)
-}
-
-fn alloc_alias(
-    decl: &AUseDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    mod_outline: &mut KModOutline,
-) -> KAlias {
-    let (name, path) = match &decl.name_opt {
-        Some(AName { quals, text, .. }) => (
-            text.to_string(),
-            quals
-                .iter()
-                .map(|token| token.text(tokens))
-                .chain(once(text.as_str()))
-                .map(|text| text.to_string())
-                .collect(),
-        ),
-        None => Default::default(),
-    };
-
-    mod_outline
-        .aliases
-        .alloc(KAliasOutline::new(name, path, loc))
 }
 
 fn alloc_outline(

@@ -422,6 +422,10 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
         };
 
     match value {
+        KLocalValue::Alias(alias) => {
+            // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
+            Branch::Case(KTerm::Alias { alias, loc })
+        }
         KLocalValue::Const(k_const) => Branch::Case(KTerm::Const {
             k_mod,
             k_const,
@@ -432,10 +436,6 @@ fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch 
             k_struct,
             loc,
         }),
-        KLocalValue::Alias(alias) => {
-            // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
-            Branch::Case(KTerm::Alias { alias, loc })
-        }
         _ => emit_default_branch(name, key, xx),
     }
 }
@@ -719,6 +719,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
         };
 
     match value {
+        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
         KLocalValue::Const(k_const) => KTerm::Const {
             k_mod,
@@ -741,7 +742,6 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
             let result = fresh_symbol(name, cause, xx);
             emit_unit_like_struct(k_mod, k_struct, result, loc, &mut xx.nodes)
         }
-        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
     }
 }
 
@@ -759,9 +759,9 @@ fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> A
         };
 
     let term = match value {
+        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
-        KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::Const(_)
         | KLocalValue::Fn(_)
         | KLocalValue::ExternFn(_)
