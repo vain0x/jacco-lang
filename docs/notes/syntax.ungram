@@ -58,7 +58,7 @@ Ty =
 | NeverTy
 | UnitTy
 | NameTy
-| GroupTy
+| ParenTy
 | PtrTy
 
 InferTy =
@@ -73,7 +73,7 @@ UnitTy =
 NameTy =
   Name
 
-GroupTy =
+ParenTy =
   '(' Ty ')'
 
 PtrTy =
@@ -88,7 +88,7 @@ Pat =
 | DiscardPat
 | NamePat
 | RecordPat
-| GroupPat
+| ParenPat
 
 LiteralPat =
   Literal
@@ -107,7 +107,7 @@ RecordPat =
 RecordFieldPat =
   UnqualName ':' Pat
 
-GroupPat =
+ParenPat =
   '(' Pat ')'
 
 // -----------------------------------------------
@@ -118,7 +118,7 @@ Expr =
   Literal
 | NameExpr
 | RecordExpr
-| GroupExpr
+| ParenExpr
 | CallExpr
 | IndexExpr
 | DotFieldExpr
@@ -148,7 +148,7 @@ RecordExpr =
 RecordFieldExpr =
   UnqualName (':' Expr)?
 
-GroupExpr =
+ParenExpr =
   '(' Expr ')'
 
 CallExpr =
