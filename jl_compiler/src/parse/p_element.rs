@@ -26,6 +26,7 @@ pub(crate) enum PElementKind {
     NameTy,
     AppTy,
     PtrTy,
+    FnTy,
 
     // パターン
     CharPat,

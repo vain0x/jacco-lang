@@ -294,7 +294,7 @@ pub(crate) fn alloc_fn_ty(
             param_tys,
             result_ty_opt,
         }),
-        event.end(PElementKind::PtrTy, px),
+        event.end(PElementKind::FnTy, px),
     )
 }
 
