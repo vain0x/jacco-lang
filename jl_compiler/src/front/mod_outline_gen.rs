@@ -81,7 +81,7 @@ fn alloc_static(
 ) -> KStaticVar {
     let name = resolve_name_opt(decl.name_opt.as_ref());
 
-    mod_outline.static_vars.alloc(KStaticVarData {
+    mod_outline.static_vars.alloc(KStaticVarOutline {
         name,
         ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
         value_opt: None,

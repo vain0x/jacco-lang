@@ -844,10 +844,13 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         });
     }
 
-    for (static_var, static_var_data) in cx.mod_outline.static_vars.enumerate() {
+    for (static_var, static_var_outline) in cx.mod_outline.static_vars.enumerate() {
         let name = unique_static_var_name(static_var, cx);
-        let ty = gen_ty(&static_var_data.ty, &empty_ty_env, cx);
-        let init_opt = static_var_data.value_opt.as_ref().map(gen_constant_value);
+        let ty = gen_ty(&static_var_outline.ty, &empty_ty_env, cx);
+        let init_opt = static_var_outline
+            .value_opt
+            .as_ref()
+            .map(gen_constant_value);
         cx.decls.push(CStmt::VarDecl {
             storage_modifier_opt: Some(CStorageModifier::Static),
             name,

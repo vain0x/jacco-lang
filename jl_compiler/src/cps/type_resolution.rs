@@ -371,8 +371,8 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
         KProjectSymbolOutline::Const(k_mod, const_data) => {
             const_data.value_ty.to_ty2(k_mod, &mut tx.ty_env)
         }
-        KProjectSymbolOutline::StaticVar(k_mod, static_var_data) => {
-            static_var_data.ty.to_ty2(k_mod, &mut tx.ty_env)
+        KProjectSymbolOutline::StaticVar(k_mod, static_var_outline) => {
+            static_var_outline.ty.to_ty2(k_mod, &mut tx.ty_env)
         }
         KProjectSymbolOutline::Fn(k_mod, fn_outline) => {
             fn_outline.ty().to_ty2(k_mod, &mut tx.ty_env)

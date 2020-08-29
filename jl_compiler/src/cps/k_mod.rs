@@ -89,7 +89,7 @@ impl KModLocalSymbol {
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
             KModLocalSymbolOutline::Const(_, const_data) => &const_data.name,
-            KModLocalSymbolOutline::StaticVar(_, static_var_data) => &static_var_data.name,
+            KModLocalSymbolOutline::StaticVar(_, static_var_outline) => &static_var_outline.name,
             KModLocalSymbolOutline::Fn(_, fn_data) => &fn_data.name,
             KModLocalSymbolOutline::ExternFn(_, extern_fn_data) => &extern_fn_data.name,
             KModLocalSymbolOutline::ConstEnum(_, const_enum_data) => &const_enum_data.name,
@@ -104,7 +104,7 @@ impl KModLocalSymbol {
 #[derive(Copy, Clone)]
 pub(crate) enum KModLocalSymbolOutline<'a> {
     Const(KConst, &'a KConstOutline),
-    StaticVar(KStaticVar, &'a KStaticVarData),
+    StaticVar(KStaticVar, &'a KStaticVarOutline),
     Fn(KFn, &'a KFnOutline),
     ExternFn(KExternFn, &'a KExternFnOutline),
     ConstEnum(KConstEnum, &'a KConstEnumOutline),
@@ -161,7 +161,7 @@ impl KProjectSymbol {
 pub(crate) enum KProjectSymbolOutline<'a> {
     Mod(KMod, &'a KModOutline),
     Const(KMod, &'a KConstOutline),
-    StaticVar(KMod, &'a KStaticVarData),
+    StaticVar(KMod, &'a KStaticVarOutline),
     Fn(KMod, &'a KFnOutline),
     ExternFn(KMod, &'a KExternFnOutline),
     ConstEnum(&'a KConstEnumOutline),

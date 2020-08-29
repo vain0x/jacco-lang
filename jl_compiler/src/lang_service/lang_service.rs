@@ -386,11 +386,11 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         ));
     }
 
-    for (static_var, static_var_data) in symbols.mod_outline.static_vars.enumerate() {
+    for (static_var, static_var_outline) in symbols.mod_outline.static_vars.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModLocalSymbol::StaticVar(static_var)),
             DefOrUse::Def,
-            static_var_data.loc,
+            static_var_outline.loc,
         ));
     }
 
