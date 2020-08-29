@@ -18,7 +18,7 @@ pub(crate) struct KModOutline {
     pub(crate) name: String,
     pub(crate) aliases: KAliasArena,
     pub(crate) consts: KConstOutlineArena,
-    pub(crate) static_vars: KStaticVarArena,
+    pub(crate) static_vars: KStaticVarOutlineArena,
     pub(crate) fns: KFnOutlineArena,
     pub(crate) extern_fns: KExternFnOutlineArena,
     pub(crate) const_enums: KConstEnumOutlines,

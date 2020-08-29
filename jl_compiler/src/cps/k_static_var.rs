@@ -8,17 +8,17 @@ pub(crate) struct KStaticVarTag;
 
 pub(crate) type KStaticVar = VecArenaId<KStaticVarTag>;
 
-pub(crate) type KStaticVarArena = VecArena<KStaticVarTag, KStaticVarOutline>;
+pub(crate) type KStaticVarOutlineArena = VecArena<KStaticVarTag, KStaticVarOutline>;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct KProjectStaticVar(pub(crate) KMod, pub(crate) KStaticVar);
 
 impl KStaticVar {
-    pub(crate) fn name(self, static_vars: &KStaticVarArena) -> &str {
+    pub(crate) fn name(self, static_vars: &KStaticVarOutlineArena) -> &str {
         &static_vars[self].name
     }
 
-    pub(crate) fn ty(self, static_vars: &KStaticVarArena) -> &KTy {
+    pub(crate) fn ty(self, static_vars: &KStaticVarOutlineArena) -> &KTy {
         &static_vars[self].ty
     }
 }
