@@ -180,7 +180,7 @@ pub(crate) struct ACallLikeExpr {
     pub(crate) args: AExprIds,
 }
 
-pub(crate) struct AAsExpr {
+pub(crate) struct ACastExpr {
     pub(crate) left: AExprId,
     pub(crate) ty_opt: Option<ATyId>,
 }
@@ -252,7 +252,7 @@ pub(crate) enum AExpr {
     Field(AFieldExpr),
     Call(ACallLikeExpr),
     Index(ACallLikeExpr),
-    As(AAsExpr),
+    Cast(ACastExpr),
     UnaryOp(AUnaryOpExpr),
     BinaryOp(ABinaryOpExpr),
     Block(ABlockExpr),

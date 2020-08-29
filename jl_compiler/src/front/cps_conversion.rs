@@ -1064,7 +1064,7 @@ fn convert_index_lval(
     KTerm::Name(result)
 }
 
-fn convert_as_expr(expr: &AAsExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
+fn convert_cast_expr(expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
@@ -1440,7 +1440,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, ty_expect, loc, xx),
-        AExpr::As(as_expr) => convert_as_expr(as_expr, ty_expect, loc, xx),
+        AExpr::Cast(cast_expr) => convert_cast_expr(cast_expr, ty_expect, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_expr(unary_op_expr, ty_expect, loc, xx),
         AExpr::BinaryOp(binary_op_expr) => {
             convert_binary_op_expr(binary_op_expr, ty_expect, loc, xx)

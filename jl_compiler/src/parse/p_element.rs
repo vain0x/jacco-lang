@@ -52,7 +52,7 @@ pub(crate) enum PElementKind {
     FieldExpr,
     CallExpr,
     IndexExpr,
-    AsExpr,
+    CastExpr,
     UnaryOpExpr,
     BinaryOpExpr,
     BlockExpr,

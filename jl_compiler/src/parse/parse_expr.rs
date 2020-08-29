@@ -179,7 +179,7 @@ fn parse_suffix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
     }
 }
 
-fn parse_as_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
+fn parse_cast_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
     let mut left = parse_suffix_expr(allow_struct, px)?;
 
     loop {
@@ -191,7 +191,7 @@ fn parse_as_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
         let event = px.start_parent(&left.1);
         let keyword = px.bump();
         let ty_opt = parse_ty(px);
-        left = alloc_as_expr(event, left, keyword, ty_opt, px);
+        left = alloc_cast_expr(event, left, keyword, ty_opt, px);
     }
 }
 
@@ -202,7 +202,7 @@ fn parse_prefix_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         TokenKind::Bang => PUnaryOp::Not,
         TokenKind::Minus => PUnaryOp::Minus,
         TokenKind::Star => PUnaryOp::Deref,
-        _ => return parse_as_expr(allow_struct, px),
+        _ => return parse_cast_expr(allow_struct, px),
     };
 
     let token = px.bump();

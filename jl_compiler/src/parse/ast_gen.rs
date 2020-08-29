@@ -479,24 +479,24 @@ pub(crate) fn alloc_index_expr(
     )
 }
 
-pub(crate) fn alloc_as_expr(
+pub(crate) fn alloc_cast_expr(
     event: ExprStart,
     left: AfterExpr,
     keyword: PToken,
     ty_opt: Option<AfterTy>,
     px: &mut Px,
 ) -> AfterExpr {
-    validate_as_expr(&left, keyword, ty_opt.as_ref(), px);
+    validate_cast_expr(&left, keyword, ty_opt.as_ref(), px);
 
     let a_left = px.alloc_expr(left);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
-        AExpr::As(AAsExpr {
+        AExpr::Cast(ACastExpr {
             left: a_left,
             ty_opt: a_ty_opt,
         }),
-        event.end(PElementKind::AsExpr, px),
+        event.end(PElementKind::CastExpr, px),
     )
 }
 

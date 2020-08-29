@@ -73,7 +73,7 @@ pub(crate) fn validate_field_expr(
     }
 }
 
-pub(crate) fn validate_as_expr(
+pub(crate) fn validate_cast_expr(
     _left: &AfterExpr,
     keyword: PToken,
     ty_opt: Option<&AfterTy>,
@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn test_as_expr_syntax_error() {
+    fn test_cast_expr_syntax_error() {
         assert_syntax_error("0 as<[]> ;");
     }
 
