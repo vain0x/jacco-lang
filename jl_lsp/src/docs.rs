@@ -1,6 +1,6 @@
 use crate::utils::Uri;
 use jl_compiler::rust_api::Doc;
-use std::{collections::HashMap, path::PathBuf, rc::Rc};
+use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 use url::Url;
 
 pub(crate) enum DocChange {
@@ -8,8 +8,7 @@ pub(crate) enum DocChange {
         doc: Doc,
         version: i64,
         text: Rc<String>,
-        #[allow(unused)]
-        path: Rc<PathBuf>,
+        path: Arc<PathBuf>,
     },
     DidChange {
         doc: Doc,
@@ -72,7 +71,7 @@ impl Docs {
                         .map(PathBuf::from)
                 })
                 .unwrap_or_else(|| PathBuf::from("_.jacco"));
-            Rc::new(path)
+            Arc::new(path)
         };
 
         self.changes.push(DocChange::DidOpen {

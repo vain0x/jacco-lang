@@ -10,6 +10,7 @@ use std::{
     mem::take,
     path::PathBuf,
     rc::Rc,
+    sync::Arc,
 };
 
 #[derive(Ord, PartialOrd, Eq, PartialEq)]
@@ -216,9 +217,9 @@ impl LangService {
         });
     }
 
-    pub fn open_doc(&mut self, doc: Doc, path: PathBuf, version: i64, text: Rc<String>) {
+    pub fn open_doc(&mut self, doc: Doc, path: Arc<PathBuf>, version: i64, text: Rc<String>) {
         self.docs
-            .insert(doc, AnalysisCache::new(doc, version, text, path.into()));
+            .insert(doc, AnalysisCache::new(doc, version, text, path));
         self.dirty_sources.insert(doc);
     }
 
@@ -542,7 +543,12 @@ mod tests {
     fn new_service_from_str(s: &str) -> LangService {
         let mut it = LangService::new();
         it.did_initialize();
-        it.open_doc(DOC, PathBuf::from("test.jacco"), 1, s.to_string().into());
+        it.open_doc(
+            DOC,
+            PathBuf::from("test.jacco").into(),
+            1,
+            s.to_string().into(),
+        );
         it
     }
 
