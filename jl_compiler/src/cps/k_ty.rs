@@ -42,7 +42,7 @@ pub(crate) enum KTy2 {
         param_tys: Vec<KTy2>,
         result_ty: Box<KTy2>,
     },
-    ConstEnum(KMod, KConstEnum),
+    ConstEnum(KProjectConstEnum),
     StructEnum(KMod, KStructEnum),
     Struct(KMod, KStruct),
     App {
@@ -275,12 +275,9 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 }
                 Ok(())
             }
-            KTy2::ConstEnum(k_mod, const_enum) => write!(
-                f,
-                "enum(const) {}::{}",
-                k_mod.of(mod_outlines).name,
-                const_enum.name(&k_mod.of(mod_outlines).const_enums)
-            ),
+            KTy2::ConstEnum(const_enum) => {
+                write!(f, "enum(const) {}", &const_enum.of(mod_outlines).name)
+            }
             KTy2::StructEnum(k_mod, struct_enum) => write!(
                 f,
                 "enum {}::{}",
@@ -699,7 +696,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 };
             }
         },
-        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
+        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
         KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),
         KTy::StructGeneric {

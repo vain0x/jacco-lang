@@ -13,17 +13,8 @@ pub(crate) type KConstEnum = VecArenaId<KConstEnumTag>;
 pub(crate) type KConstEnumOutlines = VecArena<KConstEnumTag, KConstEnumOutline>;
 
 impl KConstEnum {
-    pub(crate) fn name(self, const_enums: &KConstEnumOutlines) -> &str {
-        &self.of(const_enums).name
-    }
-
-    #[allow(unused)]
     pub(crate) fn variants(self, const_enums: &KConstEnumOutlines) -> KConsts {
         self.of(const_enums).variants.clone()
-    }
-
-    pub(crate) fn repr_ty(self, const_enums: &KConstEnumOutlines) -> &KTy {
-        &self.of(const_enums).repr_ty
     }
 }
 
