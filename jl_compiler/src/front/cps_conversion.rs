@@ -728,9 +728,11 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Fn(k_fn) => KTerm::Fn {
             k_fn,
-            ty: k_fn
-                .ty(&k_mod.of(&xx.mod_outlines).fns)
-                .to_ty2(k_mod, &mut xx.ty_env),
+            ty: k_fn.ty(&k_mod.of(&xx.mod_outlines).fns).to_ty2(
+                k_mod,
+                xx.mod_outlines,
+                &mut xx.ty_env,
+            ),
             loc,
         },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
@@ -889,16 +891,6 @@ fn do_convert_record_expr(
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
     let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
-        Some(KTy2::Alias(k_mod, alias)) => match alias
-            .of(&k_mod.of(&xx.mod_outlines).aliases)
-            .referent_as_ty()
-        {
-            Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
-            _ => {
-                error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
-                return None;
-            }
-        },
         Some(KTy2::Struct(k_mod, k_struct)) => KProjectStruct(k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -1065,7 +1057,8 @@ fn convert_index_lval(
 }
 
 fn convert_cast_expr(expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
+    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx))
+        .to_ty2_poly(xx.k_mod, xx.mod_outlines);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
     let result = fresh_symbol("cast", loc, xx);
@@ -1534,7 +1527,8 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.k_mod);
+    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx))
+        .to_ty2_poly(xx.k_mod, xx.mod_outlines);
 
     let local_var = xx.local_vars.alloc(
         KLocalVarData::new(

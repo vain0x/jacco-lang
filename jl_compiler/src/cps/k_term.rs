@@ -100,7 +100,7 @@ impl KTerm {
         local_vars: &KLocalVarArena,
         mod_outlines: &KModOutlines,
     ) -> KTy2 {
-        let ty = match self {
+        match self {
             KTerm::Unit { .. } => KTy2::Unit,
             KTerm::Int { ty, .. } => ty.clone(),
             KTerm::Float { ty, .. } => ty.clone(),
@@ -108,26 +108,33 @@ impl KTerm {
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
             KTerm::Name(symbol) => symbol.local_var.ty(&local_vars),
-            KTerm::Alias { alias, .. } => KTy2::Alias(k_mod, *alias),
-            KTerm::Const { k_mod, k_const, .. } => {
-                k_const.ty(&k_mod.of(mod_outlines).consts).erasure(*k_mod)
+            KTerm::Alias { .. } => {
+                log::error!("エイリアス項の型は未実装");
+                KTy2::Unresolved {
+                    cause: KTyCause::Alias,
+                }
             }
-            KTerm::StaticVar { static_var, .. } => {
-                static_var.ty(&mod_outline.static_vars).erasure(k_mod)
-            }
+            KTerm::Const { k_mod, k_const, .. } => k_const
+                .ty(&k_mod.of(mod_outlines).consts)
+                .erasure(*k_mod, mod_outlines),
+            KTerm::StaticVar { static_var, .. } => static_var
+                .ty(&mod_outline.static_vars)
+                .erasure(k_mod, mod_outlines),
             KTerm::Fn { ty, .. } => ty.clone(),
             KTerm::Label { label, .. } => label.ty(labels),
-            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).erasure(k_mod),
-            KTerm::ExternFn { extern_fn, .. } => {
-                extern_fn.ty(&mod_outline.extern_fns).erasure(k_mod)
-            }
+            KTerm::Return { k_fn, .. } => k_fn
+                .return_ty(&mod_outline.fns)
+                .erasure(k_mod, mod_outlines),
+            KTerm::ExternFn { extern_fn, .. } => extern_fn
+                .ty(&mod_outline.extern_fns)
+                .erasure(k_mod, mod_outlines),
             KTerm::RecordTag {
                 k_mod, k_struct, ..
             } => {
                 let mod_outline = k_mod.of(mod_outlines);
                 k_struct
                     .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                    .erasure(*k_mod)
+                    .erasure(*k_mod, mod_outlines)
             }
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
@@ -135,14 +142,6 @@ impl KTerm {
                     cause: KTyCause::FieldTag,
                 }
             }
-        };
-
-        match ty {
-            KTy2::Alias(k_mod, alias) => alias
-                .of(&k_mod.of(mod_outlines).aliases)
-                .referent_as_ty()
-                .unwrap_or(ty),
-            _ => ty,
         }
     }
 

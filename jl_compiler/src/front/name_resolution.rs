@@ -177,7 +177,8 @@ pub(crate) fn resolve_ty_path(
     let (head, tail) = match path.quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(&path.text, key, env, listener).map(|ty| ty.to_ty2_poly(k_mod));
+            return resolve_ty_name(&path.text, key, env, listener)
+                .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
 

@@ -42,7 +42,6 @@ pub(crate) enum KTy2 {
         param_tys: Vec<KTy2>,
         result_ty: Box<KTy2>,
     },
-    Alias(KMod, KAlias),
     ConstEnum(KMod, KConstEnum),
     StructEnum(KMod, KStructEnum),
     Struct(KMod, KStruct),
@@ -276,7 +275,6 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 }
                 Ok(())
             }
-            KTy2::Alias(..) => write!(f, "{{alias}}"),
             KTy2::ConstEnum(k_mod, const_enum) => write!(
                 f,
                 "enum(const) {}::{}",
@@ -318,7 +316,6 @@ impl Debug for KTy2 {
                 Debug::fmt(base_ty, f)
             }
             // FIXME: 実装
-            KTy2::Alias(..) => Ok(()),
             KTy2::Fn { .. } => Ok(()),
             KTy2::ConstEnum(..) => Ok(()),
             KTy2::StructEnum(_, _) => Ok(()),
@@ -471,25 +468,38 @@ impl KTy {
     }
 
     /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
-    pub(crate) fn to_ty2(&self, k_mod: KMod, ty_env: &mut KTyEnv) -> KTy2 {
+    pub(crate) fn to_ty2(
+        &self,
+        k_mod: KMod,
+        mod_outlines: &KModOutlines,
+        ty_env: &mut KTyEnv,
+    ) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Instantiate(ty_env)),
+            &mut TySchemeInstantiationFn::new(
+                k_mod,
+                mod_outlines,
+                TySchemeConversionMode::Instantiate(ty_env),
+            ),
         )
     }
 
-    pub(crate) fn to_ty2_poly(&self, k_mod: KMod) -> KTy2 {
+    pub(crate) fn to_ty2_poly(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Preserve),
+            &mut TySchemeInstantiationFn::new(
+                k_mod,
+                mod_outlines,
+                TySchemeConversionMode::Preserve,
+            ),
         )
     }
 
     /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
-    pub(crate) fn erasure(&self, k_mod: KMod) -> KTy2 {
+    pub(crate) fn erasure(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Erasure),
+            &mut TySchemeInstantiationFn::new(k_mod, mod_outlines, TySchemeConversionMode::Erasure),
         )
     }
 
@@ -514,10 +524,19 @@ impl KTy {
         }
     }
 
-    pub(crate) fn substitute(&self, k_mod: KMod, ty_args: &HashMap<String, KTy2>) -> KTy2 {
+    pub(crate) fn substitute(
+        &self,
+        k_mod: KMod,
+        mod_outlines: &KModOutlines,
+        ty_args: &HashMap<String, KTy2>,
+    ) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, TySchemeConversionMode::Substitute(ty_args)),
+            &mut TySchemeInstantiationFn::new(
+                k_mod,
+                mod_outlines,
+                TySchemeConversionMode::Substitute(ty_args),
+            ),
         )
     }
 }
@@ -603,6 +622,7 @@ enum TySchemeConversionMode<'a> {
 
 struct TySchemeInstantiationFn<'a> {
     k_mod: KMod,
+    mod_outlines: &'a KModOutlines,
     /// Some なら型変数をインスタンス化する。
     /// None なら型変数は消去して unit に落とす。
     mode: TySchemeConversionMode<'a>,
@@ -610,9 +630,10 @@ struct TySchemeInstantiationFn<'a> {
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, mode: TySchemeConversionMode<'a>) -> Self {
+    fn new(k_mod: KMod, mod_outlines: &'a KModOutlines, mode: TySchemeConversionMode<'a>) -> Self {
         Self {
             k_mod,
+            mod_outlines,
             mode,
             env: HashMap::new(),
         }
@@ -663,7 +684,21 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 do_instantiate(&result_ty, context),
             )
         }
-        KTy::Alias(alias) => KTy2::Alias(k_mod, alias),
+        KTy::Alias(alias) => match alias
+            .of(&k_mod.of(context.mod_outlines).aliases)
+            .referent_as_ty()
+        {
+            Some(it) => it,
+            None => {
+                log::error!(
+                    "エイリアスを解決できないか、エイリアスが型を指していません {:?}",
+                    alias
+                );
+                return KTy2::Unresolved {
+                    cause: KTyCause::Alias,
+                };
+            }
+        },
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(k_mod, const_enum),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(k_mod, struct_enum),
         KTy::Struct(k_struct) => KTy2::new_struct(k_mod, k_struct),

@@ -234,7 +234,7 @@ fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
 }
 
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
-    gen_ty2(&ty.erasure(cx.k_mod), ty_env, cx)
+    gen_ty2(&ty.erasure(cx.k_mod, cx.mod_outlines), ty_env, cx)
 }
 
 fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
@@ -271,15 +271,6 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             match k_mut {
                 KMut::Const => base_ty.into_const().into_ptr(),
                 KMut::Mut => base_ty.into_ptr(),
-            }
-        }
-        KTy2::Alias(k_mod, alias) => {
-            match alias
-                .of(&k_mod.of(cx.mod_outlines).aliases)
-                .referent_as_ty()
-            {
-                Some(ty) => gen_ty2(&ty, ty_env, cx),
-                None => CTy::Other("/* unresolved alias */ void"),
             }
         }
         KTy2::ConstEnum(k_mod, const_enum) => gen_ty(

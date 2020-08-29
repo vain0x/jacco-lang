@@ -91,7 +91,7 @@ fn write_result_ty(
 ) -> io::Result<()> {
     if !result_ty.is_unit() {
         let ty = result_ty
-            .erasure(k_mod)
+            .erasure(k_mod, mod_outlines)
             .display(KTyEnv::EMPTY, mod_outlines);
         write!(out, " -> {}", ty)?;
     }
