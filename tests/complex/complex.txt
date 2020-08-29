@@ -20,6 +20,8 @@ int a_fn_declared_later_1();
 
 void use_extern_fn_declared_later_1();
 
+int use_struct_defined_later_1();
+
 int main() {
     if (1) {
         goto next_1;
@@ -102,4 +104,14 @@ void use_extern_fn_declared_later_1() {
     // call_result_3 is killed.
     an_extern_fn_declared_later();
     return;
+}
+
+int use_struct_defined_later_1() {
+    struct StructDeclaredLater StructDeclaredLater_1;
+    StructDeclaredLater_1.sdl_content = 1;
+    struct StructDeclaredLater it_1 = StructDeclaredLater_1;
+    struct StructDeclaredLater const* ref_4 = &it_1;
+    int const* sdl_content_ptr_1 = &ref_4->sdl_content;
+    int sdl_content_1 = *sdl_content_ptr_1;
+    return sdl_content_1;
 }

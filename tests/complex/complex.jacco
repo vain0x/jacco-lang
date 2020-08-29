@@ -51,6 +51,14 @@ fn use_extern_fn_declared_later() {
 
 extern fn an_extern_fn_declared_later();
 
+fn use_struct_defined_later() -> i32 {
+    // 後ろで定義された構造体を参照できる。
+    let it = StructDeclaredLater {
+        sdl_content: 1,
+    };
+    it.sdl_content
+}
+
 struct StructWithFieldOfStructDeclaredLater {
     // 後ろで定義された構造体を参照できる。
     // FIXME: 不完全型をフィールドに持つ、C言語として不正なコードを生成してしまう。
@@ -60,15 +68,3 @@ struct StructWithFieldOfStructDeclaredLater {
 struct StructDeclaredLater {
     sdl_content: i32,
 }
-
-// FIXME: コンパイルすると不正なコードが生成される
-// fn use_struct_defined_later() -> i32 {
-//     let it = StructDeclaredLater {
-//         sdl_content: 1,
-//     };
-//     it.sdl_content
-// }
-//
-// struct StructDeclaredLater {
-//     sdl_content: i32,
-// }
