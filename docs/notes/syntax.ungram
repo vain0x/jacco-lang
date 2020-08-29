@@ -54,10 +54,11 @@ Attr =
 // -----------------------------------------------
 
 Ty =
-  InferTy
-| NameTy
+  NameTy
+| InferTy
 | ParenTy
 | PtrTy
+| FnTy
 
 InferTy =
   '_'
@@ -70,6 +71,9 @@ ParenTy =
 
 PtrTy =
   '*' ('const' | 'mut')? Ty
+
+FnTy =
+  'fn' '(' (Ty (',' Ty)*)? ','? ')' ('->' Ty)?
 
 // -----------------------------------------------
 // パターン
