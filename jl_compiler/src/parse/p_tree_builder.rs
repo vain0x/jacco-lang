@@ -53,11 +53,11 @@ struct PElementBuilder {
     id: EventId,
     start: usize,
     end_opt: Option<(PElementKind, usize)>,
-    children: Vec<Option<PNodeBuilder>>,
+    children: Vec<PNodeBuilder>,
 }
 
 impl PElementBuilder {
-    fn new(id: EventId, start: usize, children: Vec<Option<PNodeBuilder>>) -> Self {
+    fn new(id: EventId, start: usize, children: Vec<PNodeBuilder>) -> Self {
         Self {
             id,
             start,
@@ -78,11 +78,10 @@ impl PElementBuilder {
 
         for child_opt in self.children {
             match child_opt {
-                None => continue,
-                Some(PNodeBuilder::Token(token)) => {
+                PNodeBuilder::Token(token) => {
                     children.push(PNode::Token(token));
                 }
-                Some(PNodeBuilder::Element(element)) => {
+                PNodeBuilder::Element(element) => {
                     let element = element.finish(elements, events);
                     children.push(PNode::Element(element));
                 }
@@ -137,14 +136,14 @@ impl PTreeBuilder {
         }
     }
 
-    fn split_off(&mut self, start: usize) -> Vec<Option<PNodeBuilder>> {
+    fn split_off(&mut self, start: usize) -> Vec<PNodeBuilder> {
         let mut nodes = vec![];
 
         for node in self.stack.drain(start..) {
             match node {
-                PNodeBuilder::Token(_) => nodes.push(Some(node)),
+                PNodeBuilder::Token(_) => nodes.push(node),
                 PNodeBuilder::Element(element) if element.end_opt.is_some() => {
-                    nodes.push(Some(PNodeBuilder::Element(element)))
+                    nodes.push(PNodeBuilder::Element(element))
                 }
                 PNodeBuilder::Element(element) => {
                     // 終了していないノードは flatten する。
@@ -236,7 +235,7 @@ impl PTreeBuilder {
     ) -> (PElement, EventArena) {
         let children = self.split_off(0);
         let eof = match children.last() {
-            Some(Some(PNodeBuilder::Token(token))) => *token,
+            Some(PNodeBuilder::Token(token)) => *token,
             _ => unreachable!(),
         };
 
