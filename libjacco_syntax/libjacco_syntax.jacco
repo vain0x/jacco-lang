@@ -343,6 +343,13 @@ fn untyped_vec_end_mut(vec: *mut UntypedVec) -> *mut unknown {
     (((*vec).ptr as usize) + (*vec).len) as *mut unknown
 }
 
+/// すべての要素を削除する。キャパシティは維持される。
+///
+/// (デストラクタとかはないので、長さを 0 にするだけ。)
+fn untyped_vec_clear(vec: *mut UntypedVec) {
+    (*vec).len = 0_usize;
+}
+
 /// ベクタのキャパシティを `required_size` バイト以上に拡張する。
 /// すでに十分なキャパシティがあるなら、何もしない。
 fn untyped_vec_grow(vec: *mut UntypedVec, align: Align, required_size: usize) {
@@ -2132,9 +2139,9 @@ struct PToken {
 
 // const P_TOKEN_SIZE: usize = 8_usize;
 
-// fn p_token_align() -> Align {
-//     align_from_i32(2)
-// }
+fn p_token_align() -> Align {
+    align_from_i32(2)
+}
 
 fn p_token_new(kind: SyntaxKind, leading_len: usize, body_len: usize, trailing_len: usize) -> PToken {
     PToken {
@@ -2243,6 +2250,129 @@ fn px_peek1(px: *Px) -> SyntaxKind {
 fn px_peek2(px: *Px) -> SyntaxKind {
     p_token_kind((*px).next2)
 }
+
+// -----------------------------------------------
+// PEvent
+// -----------------------------------------------
+
+struct PEvent {
+    event_id: u32,
+    depth: u32,
+}
+
+fn p_event_new(event_id: u32, depth: u32) -> PEvent {
+    PEvent {
+        event_id: event_id,
+        depth: depth,
+    }
+}
+
+// -----------------------------------------------
+// PElementBuilder
+// -----------------------------------------------
+
+struct PElementBuilder {
+    event_id: u32,
+    start: u32,
+
+    /// 構築が完了したときに設定される。
+    kind: SyntaxKind,
+
+    /// `Vec[PNodeBuilder]`
+    children: UntypedVec,
+}
+
+enum PNodeBuilder {
+    Token { token: PToken },
+    Element { element: PElementBuilder },
+}
+
+struct PTreeBuilder {
+    stack: UntypedVec,
+    events: UntypedVec,
+    errors: UntypedVec,
+}
+
+// -----------------------------------------------
+// PTree
+// -----------------------------------------------
+
+struct PTokenRef {
+    parent_index: usize,
+    child_index: usize,
+    tree: *PTree,
+}
+
+struct PElementRef {
+    index: usize,
+    tree: *PTree,
+}
+
+fn p_element_ref_tombstone() -> PElementRef {
+    PElementRef {
+        index: !0_usize,
+        tree: 0 as *PTree,
+    }
+}
+
+struct PElementData {
+    /// `SyntaxKind`. 非終端の構文要素を表す値しか入らない。
+    kind: u16,
+    children: usize,
+}
+
+fn p_element_data_align() -> Align {
+    align_from_i32(8)
+}
+
+enum PNodeRef {
+    Token {
+        token: PTokenRef,
+    },
+    Element {
+        element: PElementRef,
+    },
+}
+
+fn p_node_ref_align() -> Align {
+    align_from_i32(8)
+}
+
+struct PTree {
+    /// `[]PToken`
+    token_vec: UntypedVec,
+    /// `[]PElementData`
+    element_vec: UntypedVec,
+    /// `[]PNodeRef`
+    node_ref_vec: UntypedVec,
+    root: PElementRef,
+}
+
+fn p_tree_default() -> PTree {
+    PTree {
+        /// `[]PToken`
+        token_vec: untyped_vec_new(p_token_align()),
+        /// `[]PElementData`
+        element_vec: untyped_vec_new(p_element_data_align()),
+        /// `[]PNodeRef`
+        node_ref_vec: untyped_vec_new(p_node_ref_align()),
+        root: p_element_ref_tombstone(),
+    }
+}
+
+fn p_tree_init(tree: *mut PTree) {
+    (*tree).root.tree = tree;
+}
+
+fn p_tree_tokenize(tree: *mut PTree, source_code: Str) {
+    untyped_vec_clear(&mut (*tree).token_vec);
+
+
+}
+
+// -----------------------------------------------
+// 構文解析のテスト
+// -----------------------------------------------
 
 fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
     let ts = token_stream_from_raw(s);
