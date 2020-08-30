@@ -57,7 +57,7 @@ fn align_from_i32(align: i32) -> Align {
 /// アラインメントの倍数に切り上げる。
 fn align_ceil(align: Align, value: usize) -> usize {
     let mask = align.value - 1_usize;
-    (value + mask) & usize_bitwise_not(mask)
+    (value + mask) & !mask
 }
 
 /// サイズ 0 のメモリ領域を指す、アラインされたポインタを作る。
@@ -303,11 +303,6 @@ fn usize_max(left: usize, right: usize) -> usize {
     } else {
         right
     }
-}
-
-// FIXME: !x が誤ったコードにコンパイルされるバグがある
-fn usize_bitwise_not(value: usize) -> usize {
-    value ^ ((-1) as usize)
 }
 
 // -----------------------------------------------
