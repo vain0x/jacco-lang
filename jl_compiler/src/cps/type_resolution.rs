@@ -818,6 +818,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let right_ty = resolve_term(right, tx);
 
                     // 左辺は lval なのでポインタ型のはず
+                    // FIXME: unwrap できないことがある
                     let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
                     if let KMut::Const = k_mut {
                         tx.logger.error(&left.loc(), "unexpected const reference");

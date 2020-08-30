@@ -2110,6 +2110,170 @@ fn tokenize_tests(tt: *mut TestTools) {
 }
 
 // -----------------------------------------------
+// PToken
+// -----------------------------------------------
+
+/// 構文木の一要素としてのトークン
+struct PToken {
+    /// `SyntaxKind`
+    ///
+    /// トリビアではないトークンの種類のみ入る。
+    kind: u16,
+
+    /// 先行トリビアの長さ
+    leading_len: u16,
+
+    /// 本体の長さ
+    body_len: u16,
+
+    /// 後続トリビアの長さ
+    trailing_len: u16,
+}
+
+// const P_TOKEN_SIZE: usize = 8_usize;
+
+// fn p_token_align() -> Align {
+//     align_from_i32(2)
+// }
+
+fn p_token_new(kind: SyntaxKind, leading_len: usize, body_len: usize, trailing_len: usize) -> PToken {
+    PToken {
+        kind: syntax_kind_to_u16(kind),
+        leading_len: leading_len as u16,
+        body_len: body_len as u16,
+        trailing_len: trailing_len as u16,
+    }
+}
+
+fn p_token_default() -> PToken {
+    p_token_new(SyntaxKind::Eof, 0_usize, 0_usize, 0_usize)
+}
+
+fn p_token_kind(token: PToken) -> SyntaxKind {
+    syntax_kind_from_u16(token.kind)
+}
+
+fn p_token_leading_len(token: PToken) -> usize {
+    token.leading_len as usize
+}
+
+fn p_token_body_len(token: PToken) -> usize {
+    token.body_len as usize
+}
+
+fn p_token_trailing_len(token: PToken) -> usize {
+    token.trailing_len as usize
+}
+
+// -----------------------------------------------
+// Px
+// -----------------------------------------------
+
+/// Parsing context. 構文解析の状態
+struct Px {
+    ts: *mut TokenStream,
+
+    /// `ts` から最後に取り出したトークン。(初期状態では最初のトークンが入っている。)
+    lookahead: GreenToken,
+
+    /// 先読み (1個目)
+    next1: PToken,
+
+    /// 先読み (2個目)
+    next2: PToken,
+}
+
+/// 次の1トークンを先読みする。読み進めたら true で、token に字句が代入される。
+fn do_lookahead(ts: *mut TokenStream, lookahead: *mut GreenToken, token: *mut PToken) -> bool {
+    if green_token_kind(*lookahead) == SyntaxKind::Eof {
+        *token = p_token_default();
+        return false;
+    }
+
+    let leading_len = 0_usize;
+    while green_token_is_leading_trivia(*lookahead)  {
+        leading_len += green_token_len(*lookahead);
+        *lookahead = token_stream_next(ts);
+    }
+
+    let kind = green_token_kind(*lookahead);
+    let body_len = green_token_len(*lookahead);
+    *lookahead = token_stream_next(ts);
+
+    let trailing_len = 0_usize;
+    while green_token_is_trailing_trivia(*lookahead)  {
+        trailing_len += green_token_len(*lookahead);
+        *lookahead = token_stream_next(ts);
+    }
+
+    *token = p_token_new(kind, leading_len, body_len, trailing_len);
+    true
+}
+
+fn px_new(ts: *mut TokenStream) -> Px {
+    // 常に2トークン先読みした状態にする。
+    let lookahead = token_stream_next(ts);
+    let next1 = p_token_default();
+    let next2 = p_token_default();
+    do_lookahead(ts, &mut lookahead, &mut next1);
+    do_lookahead(ts, &mut lookahead, &mut next2);
+
+    Px {
+        ts: ts,
+        lookahead: lookahead,
+        next1: next1,
+        next2: next2,
+    }
+}
+
+/// 次のトークンを取り出す。
+fn px_bump(px: *mut Px) -> PToken {
+    let token = (*px).next1;
+
+    (*px).next1 = (*px).next2;
+    do_lookahead((*px).ts, &mut (*px).lookahead, &mut (*px).next2);
+
+    token
+}
+
+fn px_peek1(px: *Px) -> SyntaxKind {
+    p_token_kind((*px).next1)
+}
+
+fn px_peek2(px: *Px) -> SyntaxKind {
+    p_token_kind((*px).next2)
+}
+
+fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
+    let ts = token_stream_from_raw(s);
+    let px = px_new(&mut ts);
+    let i = 0_i32;
+
+    // FIXME: この let を while の中に置くと不正なコードが生成されてしまうバグがある
+    let token = p_token_default();
+
+    while px_peek1(&px) != SyntaxKind::Eof {
+        token = px_bump(&mut px);
+
+        if i != 0 {
+            str_buf_push_raw(output, ", ");
+        }
+
+        let name = syntax_kind_name(p_token_kind(token));
+        str_buf_push_str(output, name);
+        i += 1;
+    }
+
+    str_buf_as_str(output)
+}
+
+fn parse_tests(tt: *mut TestTools) {
+    let output = str_buf_empty();
+    let actual = parse_dump_tokens("pub fn main() -> i32 {\n    0\n}\n", &mut output);
+    assert_eq_str(tt, actual, str_from_raw("PUB, FN, IDENT, LEFT_PAREN, RIGHT_PAREN, ->, IDENT, LEFT_BRACE, NUMBER, RIGHT_BRACE"));
+}
+
+// -----------------------------------------------
 // エントリポイント
 // -----------------------------------------------
 
@@ -2130,6 +2294,7 @@ pub fn libjacco_syntax_tests() -> i32 {
         str_tests(tt);
         str_buf_tests(tt);
         tokenize_tests(tt);
+        parse_tests(tt);
     }
 
     eprint_s("[TRACE] テストの実行が終了しました。\n");
