@@ -844,9 +844,22 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let left_ty = resolve_term(left, tx);
                     let right_ty = resolve_term(right, tx);
 
-                    // 左辺は lval なのでポインタ型のはず
-                    // FIXME: unwrap できないことがある
-                    let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
+                    // 左辺は lval なのでポインタ型のはず。ただし不正なコードだと unresolved/never になることもある。
+                    let (k_mut, left_ty) = match left_ty.as_ptr(&tx.ty_env) {
+                        Some(it) => it,
+                        None => {
+                            log::error!(
+                                "AddAssign etc. left={}",
+                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                            );
+                            (
+                                KMut::Mut,
+                                KTy2::Unresolved {
+                                    cause: KTyCause::Loc(node.loc),
+                                },
+                            )
+                        }
+                    };
                     if let KMut::Const = k_mut {
                         tx.logger.error(&left.loc(), "unexpected const reference");
                     }
@@ -876,7 +889,21 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     let right_ty = resolve_term(right, tx);
 
                     // 左辺は lval なのでポインタ型のはず
-                    let (k_mut, left_ty) = left_ty.as_ptr(&tx.ty_env).unwrap();
+                    let (k_mut, left_ty) = match left_ty.as_ptr(&tx.ty_env) {
+                        Some(it) => it,
+                        None => {
+                            log::error!(
+                                "MulAssign etc. left={}",
+                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                            );
+                            (
+                                KMut::Mut,
+                                KTy2::Unresolved {
+                                    cause: KTyCause::Loc(node.loc),
+                                },
+                            )
+                        }
+                    };
                     if let KMut::Const = k_mut {
                         tx.logger.error(&left.loc(), "unexpected const reference");
                     }
