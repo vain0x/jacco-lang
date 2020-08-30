@@ -1,6 +1,6 @@
 // ジャッコ言語の構文的操作を扱うライブラリ
 
-extern fn memcpy(dest: *mut (), src: *(), size: usize) -> *mut ();
+extern fn memcpy(dest: *mut unknown, src: *unknown, size: usize) -> *mut unknown;
 
 extern fn strncmp(s: *c8, t: *c8, len: usize) -> i32;
 
@@ -61,8 +61,8 @@ fn align_ceil(align: Align, value: usize) -> usize {
 }
 
 /// サイズ 0 のメモリ領域を指す、アラインされたポインタを作る。
-fn aligned_ptr(align: Align) -> *mut () {
-    align.value as *mut()
+fn aligned_ptr(align: Align) -> *mut unknown {
+    align.value as *mut unknown
 }
 
 /// アラインされたバイト単位のサイズ
@@ -108,9 +108,9 @@ fn aligned_size_by_ceiling(size: usize, align: Align) -> AlignedSize {
 // メモリ管理
 // -----------------------------------------------
 
-extern fn malloc(size: usize) -> *mut ();
-extern fn realloc(ptr: *mut (), new_size: usize) -> *mut ();
-extern fn free(ptr: *mut ());
+extern fn malloc(size: usize) -> *mut unknown;
+extern fn realloc(ptr: *mut unknown, new_size: usize) -> *mut unknown;
+extern fn free(ptr: *mut unknown);
 
 // FIXME: 実装
 struct Heap {}
@@ -125,7 +125,7 @@ fn heap_drop(_heap: Heap) {}
 ///
 /// 返されるポインタは NULL ではなく、アラインメントされている。
 /// 書き込まれている値は未定義。
-fn heap_alloc(_heap: *mut Heap, aligned_size: AlignedSize) -> *mut ()
+fn heap_alloc(_heap: *mut Heap, aligned_size: AlignedSize) -> *mut unknown
     // ensures(p) p != nullptr && p % aligned_size.align == 0
 {
     let align = aligned_size.align;
@@ -150,7 +150,7 @@ fn heap_alloc(_heap: *mut Heap, aligned_size: AlignedSize) -> *mut ()
     ptr
 }
 
-fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), aligned_size: AlignedSize) -> *mut () {
+fn heap_realloc(_heap: *mut Heap, old_ptr: *mut unknown, aligned_size: AlignedSize) -> *mut unknown {
     let align = aligned_size.align;
     let size = aligned_size.size;
 
@@ -171,7 +171,7 @@ fn heap_realloc(_heap: *mut Heap, old_ptr: *mut (), aligned_size: AlignedSize) -
     new_ptr
 }
 
-fn heap_dealloc(_heap: *mut Heap, _ptr: *mut ()) {}
+fn heap_dealloc(_heap: *mut Heap, _ptr: *mut unknown) {}
 
 fn global_heap_init() {}
 
@@ -316,7 +316,7 @@ fn usize_bitwise_not(value: usize) -> usize {
 
 /// 型なし動的配列
 struct UntypedVec {
-    ptr: *mut (),
+    ptr: *mut unknown,
     /// 使用済みの領域のサイズ (バイト単位、アラインメントの倍数。)
     len: usize,
     /// 確保している領域のサイズ (バイト単位、アラインメントの倍数。)
@@ -339,13 +339,13 @@ fn untyped_vec_len(vec: *UntypedVec) -> usize {
     (*vec).len
 }
 
-fn untyped_vec_get(vec: *UntypedVec, aligned_index: AlignedSize) -> *() {
-    ((*vec).ptr as usize + aligned_index.size) as *()
+fn untyped_vec_get(vec: *UntypedVec, aligned_index: AlignedSize) -> *unknown {
+    ((*vec).ptr as usize + aligned_index.size) as *unknown
 }
 
 /// 使用済みの領域の末尾へのポインタ
-fn untyped_vec_end_mut(vec: *mut UntypedVec) -> *mut () {
-    (((*vec).ptr as usize) + (*vec).len) as *mut ()
+fn untyped_vec_end_mut(vec: *mut UntypedVec) -> *mut unknown {
+    (((*vec).ptr as usize) + (*vec).len) as *mut unknown
 }
 
 /// ベクタのキャパシティを `required_size` バイト以上に拡張する。
@@ -362,16 +362,16 @@ fn untyped_vec_grow(vec: *mut UntypedVec, align: Align, required_size: usize) {
 
     if (*vec).cap == 0_usize {
         // ptr がヒープを指していないので、realloc は使えない。
-        (*vec).ptr = heap_alloc(global_heap(), new_size) as *mut ();
+        (*vec).ptr = heap_alloc(global_heap(), new_size) as *mut unknown;
     } else {
-        (*vec).ptr = heap_realloc(global_heap(), (*vec).ptr, new_size) as *mut ();
+        (*vec).ptr = heap_realloc(global_heap(), (*vec).ptr, new_size) as *mut unknown;
     }
 
     (*vec).cap = new_size.size;
 }
 
 /// `data` が指す一定サイズのデータを `vec` の末尾に書き込み、長さを増やす。
-fn untyped_vec_push(vec: *mut UntypedVec, data: *(), aligned_size: AlignedSize) {
+fn untyped_vec_push(vec: *mut UntypedVec, data: *unknown, aligned_size: AlignedSize) {
     if aligned_size.size == 0_usize {
         return;
     }
@@ -389,15 +389,15 @@ fn untyped_vec_tests(tt: *mut TestTools) {
     let numbers = untyped_vec_new(align4);
 
     let x = 3;
-    untyped_vec_push(&mut numbers, (&x) as *(), aligned_size_from_align(align4));
+    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
     assert_eq_usize(tt, numbers.len, 4_usize);
 
     x = 1;
-    untyped_vec_push(&mut numbers, (&x) as *(), aligned_size_from_align(align4));
+    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
     assert_eq_usize(tt, numbers.len, 8_usize);
 
     x = 4;
-    untyped_vec_push(&mut numbers, (&x) as *(), aligned_size_from_align(align4));
+    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
     assert_eq_usize(tt, numbers.len, 12_usize);
 
     let value = *(untyped_vec_get(&numbers, aligned_size_by_mul(0_usize, align4)) as *i32);
@@ -559,11 +559,11 @@ fn str_buf_grow(buf: *mut StrBuf, new_size: usize) {
 }
 
 fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
-    untyped_vec_push(&mut (*buf).vec, (&c) as *(), aligned_size_of_align1(1_usize));
+    untyped_vec_push(&mut (*buf).vec, (&c) as *unknown, aligned_size_of_align1(1_usize));
 }
 
 fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
-    untyped_vec_push(&mut (*buf).vec, other.ptr as *(), aligned_size_of_align1(other.len));
+    untyped_vec_push(&mut (*buf).vec, other.ptr as *unknown, aligned_size_of_align1(other.len));
 }
 
 fn str_buf_tests(tt: *mut TestTools)  {
