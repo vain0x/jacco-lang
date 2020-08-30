@@ -561,6 +561,10 @@ fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
     untyped_vec_push(&mut (*buf).vec, other.ptr as *unknown, aligned_size_of_align1(other.len));
 }
 
+fn str_buf_push_raw(buf: *mut StrBuf, other: *c8) {
+    str_buf_push_str(buf, str_from_raw(other));
+}
+
 fn str_buf_tests(tt: *mut TestTools)  {
     let s = str_buf_empty();
     // s == ""
