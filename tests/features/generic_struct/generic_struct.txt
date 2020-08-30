@@ -12,10 +12,8 @@ int main() {
     RawVec_1.ptr = refmut_1;
     RawVec_1.cap = 0ULL;
     struct RawVec vec_1 = RawVec_1;
-    struct RawVec const* ref_1 = &vec_1;
-    int* const* ptr_ptr_1 = &ref_1->ptr;
-    int* ptr_1 = *ptr_ptr_1;
-    int* p_1 = ptr_1;
-    *p_1 = 1;
+    struct RawVec* refmut_2 = &vec_1;
+    int** ptr_ptr_1 = &refmut_2->ptr;
+    *ptr_ptr_1 += 1ULL;
     return 0;
 }
