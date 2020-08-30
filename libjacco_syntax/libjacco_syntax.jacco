@@ -8,9 +8,9 @@ extern fn strncmp(s: *c8, t: *c8, len: usize) -> i32;
 // プロセス管理
 // -----------------------------------------------
 
-extern fn abort() -> !;
+extern fn abort() -> never;
 
-fn panic(s: *c8) -> ! {
+fn panic(s: *c8) -> never {
     eprint_s("[ERROR] ");
     eprint_s(s);
     eprint_s("\n");
