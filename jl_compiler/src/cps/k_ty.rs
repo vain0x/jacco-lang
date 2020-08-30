@@ -392,6 +392,10 @@ pub(crate) enum KTy {
         k_struct: KStruct,
         ty_params: Vec<KTyParam>,
     },
+    App {
+        ty: Box<KTy>,
+        ty_args: Vec<KTy>,
+    },
 }
 
 impl KTy {
@@ -593,6 +597,10 @@ impl Debug for KTy {
                 k_struct,
                 ty_params,
             } => write!(f, "struct[{}] {}", ty_params.len(), k_struct.to_index()),
+            KTy::App { ty, ty_args } => {
+                Debug::fmt(&**ty, f)?;
+                f.debug_list().entries(ty_args.iter()).finish()
+            }
         }
     }
 }
@@ -717,6 +725,32 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 ty_args,
             }
         }
+        KTy::App {
+            ref ty,
+            ref ty_args,
+        } => match **ty {
+            KTy::Struct(k_struct) => {
+                let k_struct = KProjectStruct(k_mod, k_struct);
+                let ty_params = k_struct.of(context.mod_outlines).ty_params();
+                // FIXME: 型引数の個数が違ったらエラーにする
+                let ty_args = ty_args
+                    .iter()
+                    .chain((ty_args.len()..ty_params.len()).map(|_| &KTy::Never));
+                let ty_args = ty_params
+                    .iter()
+                    .zip(ty_args)
+                    .map(|(ty_param, ty_arg)| {
+                        let name = ty_param.name.to_string();
+                        let ty = do_instantiate(ty_arg, context);
+                        (name, ty)
+                    })
+                    .collect();
+                KTy2::App { k_struct, ty_args }
+            }
+            _ => KTy2::Unresolved {
+                cause: KTyCause::Default,
+            },
+        },
     }
 }
 

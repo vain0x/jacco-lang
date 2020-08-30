@@ -312,26 +312,34 @@ fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     }
 }
 
+fn do_convert_name_ty(ty_id: ATyId, name: &AName, key: ANameKey, xx: &mut TyResolver) -> KTy {
+    let loc = PLoc::Name(key);
+
+    if name.is_qualified() {
+        error_unsupported_path_ty(loc, xx.logger);
+    }
+
+    match resolve_ty_name(name.text(), key, &xx.env, xx.listener) {
+        Some(ty) => ty,
+        None => {
+            error_unresolved_ty(loc, xx.logger);
+            KTy::Unresolved {
+                cause: KTyCause::NameUnresolved(ty_id),
+            }
+        }
+    }
+}
+
 fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
     let key = ANameKey::Ty(ty_id);
     let loc = PLoc::Name(key);
 
     match ty {
-        // FIXME: 型適用を処理する
-        ATy::Name(name) | ATy::App(name, _) => {
-            if name.is_qualified() {
-                error_unsupported_path_ty(loc, xx.logger);
-            }
-
-            match resolve_ty_name(name.text(), key, &xx.env, xx.listener) {
-                Some(ty) => ty,
-                None => {
-                    error_unresolved_ty(loc, xx.logger);
-                    KTy::Unresolved {
-                        cause: KTyCause::NameUnresolved(ty_id),
-                    }
-                }
-            }
+        ATy::Name(name) => do_convert_name_ty(ty_id, name, key, xx),
+        ATy::App(name, ty_args) => {
+            let ty = Box::new(do_convert_name_ty(ty_id, name, key, xx));
+            let ty_args = ty_args.iter().map(|ty| convert_ty(ty, xx)).collect();
+            KTy::App { ty, ty_args }
         }
         ATy::InferTy => {
             // FIXME: メタ変数にする。シグネチャだったらエラーにする。

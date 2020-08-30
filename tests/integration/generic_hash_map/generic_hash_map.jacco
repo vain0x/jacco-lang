@@ -49,6 +49,10 @@ struct Entry[K, T] {
 //     (*state).value ^= (*p) as u64;
 // }
 
+fn id[K, T](entry: *mut Entry[K, T]) -> *mut Entry[K, T] {
+    entry
+}
+
 pub fn main() -> i32 {
     let key = 2;
     let value = 6_usize;
@@ -60,6 +64,8 @@ pub fn main() -> i32 {
 
     let k = *entry.key;
     *entry.value += 1_usize;
+
+    let x = id(&mut entry);
 
     // let i32_layout = Layout {
     //     size: 4,

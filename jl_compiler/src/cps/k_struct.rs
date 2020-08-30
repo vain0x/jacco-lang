@@ -82,4 +82,11 @@ impl KStructOutline {
     pub(crate) fn is_unit_like(&self) -> bool {
         self.fields.is_empty()
     }
+
+    pub(crate) fn ty_params(&self) -> &[KTyParam] {
+        match &self.parent {
+            KStructParent::Enum { .. } => &[],
+            KStructParent::Struct { ty_params } => ty_params.as_ref(),
+        }
+    }
 }
