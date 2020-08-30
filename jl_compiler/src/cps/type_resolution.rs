@@ -562,6 +562,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                                 field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
                             })
                             .map(|field| {
+                                // FIXME: フィールドの型には型変数が束縛されずに出現する(ようにみえる)ので、インスタンス化の実装がパニックしてしまう
                                 field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(
                                     k_mod,
                                     tx.mod_outlines,
@@ -615,6 +616,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                                 field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
                             })
                             .map(|field| {
+                                // FIXME: フィールドの型には型変数が束縛されずに出現する(ようにみえる)ので、インスタンス化の実装がパニックしてしまう
                                 field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(
                                     k_mod,
                                     tx.mod_outlines,

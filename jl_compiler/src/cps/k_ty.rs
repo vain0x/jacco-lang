@@ -645,6 +645,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
         KTy::Var(ref ty_var) => match context.mode {
             TySchemeConversionMode::Instantiate(_) => {
+                // FIXME: unwrap できないことがある
                 let meta_ty = context.env.get(&ty_var.name).copied().unwrap();
                 KTy2::Meta(meta_ty)
             }
