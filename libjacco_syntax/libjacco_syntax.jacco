@@ -599,7 +599,7 @@ fn assert_eq_str(tt: *mut TestTools, actual: Str, expected: Str) {
 }
 
 // -----------------------------------------------
-// 構文
+// SyntaxKind
 // -----------------------------------------------
 
 /// 構文木のノードやトークンの種類
@@ -1502,13 +1502,62 @@ fn syntax_kind_parse_star_pun(s: Str, len: *mut usize) -> SyntaxKind {
     SyntaxKind::Star
 }
 
-struct GreenToken {
-    kind: SyntaxKind,
-    len: u16,
+fn syntax_kind_from_u16(kind: u16) -> SyntaxKind {
+    let kind = (*((&kind) as *u16)) as usize;
+    *((&kind) as *SyntaxKind)
+}
+
+fn syntax_kind_to_u16(kind: SyntaxKind) -> u16 {
+    (*((&kind) as *usize)) as u16
 }
 
 // -----------------------------------------------
-// 字句解析
+// GreenToken
+// -----------------------------------------------
+
+/// トークンの種類と長さ
+///
+/// トークンストリームから出力される。
+struct GreenToken {
+    kind: u16,
+    len: u16,
+}
+
+// const GREEN_TOKEN_SIZE: usize = 4_usize;
+
+// fn green_token_align() -> Align {
+//     align_from_i32(2)
+// }
+
+fn green_token_new(kind: SyntaxKind, len: usize) -> GreenToken {
+    GreenToken {
+        kind: syntax_kind_to_u16(kind),
+        len: len as u16,
+    }
+}
+
+// fn green_token_eof() -> GreenToken {
+//     green_token_new(SyntaxKind::Eof, 0_usize)
+// }
+
+fn green_token_kind(token: GreenToken) -> SyntaxKind {
+    syntax_kind_from_u16(token.kind)
+}
+
+fn green_token_len(token: GreenToken) -> usize {
+    token.len as usize
+}
+
+fn green_token_is_leading_trivia(token: GreenToken) -> bool {
+    syntax_kind_is_leading_trivia(green_token_kind(token))
+}
+
+fn green_token_is_trailing_trivia(token: GreenToken) -> bool {
+    syntax_kind_is_trailing_trivia(green_token_kind(token))
+}
+
+// -----------------------------------------------
+// TokenStream
 // -----------------------------------------------
 
 struct TokenStream {
@@ -1577,10 +1626,7 @@ fn ts_commit(ts: *mut TokenStream, kind: SyntaxKind) -> GreenToken {
 
     (*ts).last = (*ts).current;
 
-    GreenToken {
-        kind: kind,
-        len: len as u16,
-    }
+    green_token_new(kind, len)
 }
 
 fn c8_is_new_line(c: c8) -> bool {
@@ -1981,11 +2027,12 @@ fn do_tokenize_dump(s: *c8, include_trivia: bool) -> StrBuf {
 
     loop {
         let token = token_stream_next(&mut ts);
-        if token.kind == SyntaxKind::Eof {
+        let kind = green_token_kind(token);
+        if kind == SyntaxKind::Eof {
             break;
         }
 
-        if !include_trivia && syntax_kind_is_trivia(token.kind) {
+        if !include_trivia && syntax_kind_is_trivia(kind) {
             i += 1;
             continue;
         }
@@ -1994,7 +2041,7 @@ fn do_tokenize_dump(s: *c8, include_trivia: bool) -> StrBuf {
             str_buf_push_str(&mut buf, str_from_raw(", "));
         }
 
-        str_buf_push_str(&mut buf, syntax_kind_name(token.kind));
+        str_buf_push_str(&mut buf, syntax_kind_name(kind));
         i += 1;
 
         if i >= 10_000_000 {
@@ -2015,9 +2062,9 @@ fn tokenize_dump_without_trivia(s: *c8) -> StrBuf {
 
 fn tokenize_tests(tt: *mut TestTools) {
     let ts = token_stream_from_raw(" \t");
-    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Blank, "expect blank");
-    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Eof, "expect eof");
-    assert_that(tt, token_stream_next(&mut ts).kind == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Eof, "expect eof");
 
     let buf = tokenize_dump("  \r\n\r\n  \n");
     assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
