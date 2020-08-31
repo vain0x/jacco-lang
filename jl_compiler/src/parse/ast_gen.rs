@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use super::*;
-use crate::parse::syntax_error::*;
+use crate::{front::name_resolution, parse::syntax_error::*};
 
 pub(crate) type AfterQualifiableName = (AName, NameEnd);
 pub(crate) type AfterUnderscore = (AName, NameEnd);
@@ -408,6 +408,8 @@ pub(crate) fn alloc_name_expr(
     px: &mut Px,
 ) -> AfterExpr {
     let name = px.alloc_name(name);
+
+    name_resolution::v3::on_name_expr(name, &px.ast, &mut px.name_resolver);
 
     (AExpr::Name(name), event.end(PElementKind::NameExpr, px))
 }
@@ -846,6 +848,8 @@ pub(crate) fn alloc_let_decl(
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
+
+    name_resolution::v3::leave_let_decl(name_opt, &px.ast, &mut px.name_resolver);
 
     (
         ADecl::Let(AFieldLikeDecl {

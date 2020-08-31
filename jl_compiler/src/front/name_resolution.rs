@@ -1,6 +1,8 @@
 //! 名前解決の処理
 
 use crate::{cps::*, front::env::Env, front::*, utils::VecArena};
+use env::map_stack::MapStack;
+use std::collections::HashMap;
 
 pub(crate) trait NameResolutionListener {
     fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy);
@@ -110,6 +112,23 @@ pub(crate) fn add_decl_to_local_env(
 // -----------------------------------------------
 // 型
 // -----------------------------------------------
+
+#[derive(Copy, Clone, Debug)]
+enum BuiltInTy {
+    Number(KNumberTy),
+    Unknown,
+    Never,
+}
+
+fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
+    KNumberTy::parse(text)
+        .map(BuiltInTy::Number)
+        .or_else(|| match text {
+            "unknown" => Some(BuiltInTy::Unknown),
+            "never" => Some(BuiltInTy::Never),
+            _ => None,
+        })
+}
 
 fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
     KNumberTy::parse(name)
@@ -285,4 +304,165 @@ pub(crate) fn resolve_value_path(
         _ => return None,
     };
     Some(KProjectValue::new(k_mod, value))
+}
+
+// =============================================================================
+// V3
+// =============================================================================
+
+#[derive(Copy, Clone, Debug)]
+enum BaseReferent {
+    BeforeProcess,
+    Deferred,
+    Unresolved,
+    Name(ANameId),
+    BuiltInTy(BuiltInTy),
+}
+
+#[derive(Default)]
+pub(crate) struct NameResolver {
+    value_env: MapStack<ANameId>,
+    ty_env: MapStack<ANameId>,
+    defer_map: HashMap<(String, FindKind), Vec<ANameId>>,
+    name_referents: HashMap<ANameId, BaseReferent>,
+}
+
+impl<'a> NameResolver {
+    pub(crate) fn new() -> Self {
+        let mut resolver = Self::default();
+        resolver.value_env.push();
+        resolver.ty_env.push();
+        resolver
+    }
+}
+
+#[derive(Copy, Clone)]
+enum ImportKind {
+    Value,
+    Ty,
+    Both,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+enum FindKind {
+    Value,
+    Ty,
+}
+
+mod v3_core {
+    use super::*;
+
+    pub(super) fn enter_scope(resolver: &mut NameResolver) {
+        log::trace!("enter_scope");
+        resolver.ty_env.push();
+        resolver.value_env.push();
+    }
+
+    pub(super) fn leave_scope(resolver: &mut NameResolver) {
+        log::trace!("leave_scope");
+        resolver.ty_env.pop();
+        resolver.value_env.pop();
+    }
+
+    fn import_name(name_id: ANameId, kind: ImportKind, text: &str, resolver: &mut NameResolver) {
+        match kind {
+            ImportKind::Value => {
+                log::trace!("import value {} -> {}", text, name_id.to_index());
+                resolver.value_env.insert(text.to_string(), name_id);
+            }
+            ImportKind::Ty => {
+                log::trace!("import ty {} -> {}", text, name_id.to_index());
+                resolver.ty_env.insert(text.to_string(), name_id);
+            }
+            ImportKind::Both => {
+                log::trace!("import ty/value {} -> {}", text, name_id.to_index());
+                resolver.value_env.insert(text.to_string(), name_id);
+                resolver.ty_env.insert(text.to_string(), name_id);
+            }
+        }
+    }
+
+    fn find_name(kind: FindKind, text: &str, resolver: &mut NameResolver) -> Option<BaseReferent> {
+        match kind {
+            FindKind::Value => resolver
+                .value_env
+                .get(text)
+                .map(|&name| BaseReferent::Name(name)),
+            FindKind::Ty => resolver
+                .ty_env
+                .get(text)
+                .map(|&name| BaseReferent::Name(name))
+                .or_else(|| resolve_builtin_ty(text).map(|ty| BaseReferent::BuiltInTy(ty))),
+        }
+    }
+
+    /// 前方参照を許さない名前が追加される。
+    pub(super) fn on_name_def_stacked(
+        name: ANameId,
+        kind: ImportKind,
+        text: &str,
+        resolver: &mut NameResolver,
+    ) {
+        import_name(name, kind, text, resolver);
+    }
+
+    pub(super) fn on_name_use(
+        name: ANameId,
+        kind: FindKind,
+        text: &str,
+        resolver: &mut NameResolver,
+    ) {
+        let referent = match find_name(kind, text, resolver) {
+            Some(it) => it,
+            None => {
+                resolver
+                    .defer_map
+                    .entry((text.to_string(), kind))
+                    .or_insert(vec![])
+                    .push(name);
+                BaseReferent::Deferred
+            }
+        };
+        log::trace!("on_name_use {} -> {:?}", text, referent);
+
+        let old = resolver.name_referents.insert(name, referent);
+        debug_assert!(old.is_none());
+    }
+}
+
+pub(crate) mod v3 {
+    use super::*;
+
+    pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        log::trace!(
+            "on_name_expr {}#{}",
+            name.of(ast.names()).text(),
+            name.to_index()
+        );
+
+        v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).text(), resolver);
+    }
+
+    pub(crate) fn leave_let_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        log::trace!(
+            "leave_let_decl {:?}",
+            name_opt.map_or("???".into(), |name| format!(
+                "{}#{}",
+                name.of(ast.names()).text(),
+                name.to_index()
+            ))
+        );
+        if let Some(name) = name_opt {
+            v3_core::on_name_def_stacked(
+                name,
+                ImportKind::Value,
+                name.of(ast.names()).text(),
+                resolver,
+            );
+        }
+    }
 }

@@ -42,7 +42,7 @@ impl Env {
     }
 }
 
-mod map_stack {
+pub(crate) mod map_stack {
     use std::collections::HashMap;
 
     pub(crate) struct MapStack<T> {
