@@ -14,6 +14,14 @@ use std::fmt::{self, Debug, Formatter};
 // 名前
 // -----------------------------------------------
 
+// 識別子、あるいはパス
+
+pub(crate) struct ANameTag;
+
+pub(crate) type ANameId = VecArenaId<ANameTag>;
+
+pub(crate) type ANameArena = VecArena<ANameTag, AName>;
+
 pub(crate) struct AName {
     pub(crate) quals: Vec<PToken>,
     pub(crate) token: PToken,
@@ -93,7 +101,7 @@ impl ANameKey {
 
 /// 型パラメータ
 pub(crate) struct ATyParamDecl {
-    pub(crate) name: AName,
+    pub(crate) name: ANameId,
 }
 
 // パラメータ型
@@ -121,8 +129,8 @@ pub(crate) struct AFnTy {
 }
 
 pub(crate) enum ATy {
-    Name(AName),
-    App(AName, ATyIds),
+    Name(ANameId),
+    App(ANameId, ATyIds),
     InferTy,
     Never,
     Unit,
@@ -139,12 +147,12 @@ pub(crate) type APatId = VecArenaId<APatTag>;
 pub(crate) type APatArena = VecArena<APatTag, APat>;
 
 pub(crate) struct AFieldPat {
-    pub(crate) name: AName,
+    pub(crate) name: ANameId,
     pub(crate) pat_opt: Option<APatId>,
 }
 
 pub(crate) struct ARecordPat {
-    pub(crate) left: AName,
+    pub(crate) left: ANameId,
     pub(crate) fields: Vec<AFieldPat>,
 }
 
@@ -156,7 +164,7 @@ pub(crate) enum APat {
     Char(PToken),
     Str(PToken),
     Wildcard(PToken),
-    Name(AName),
+    Name(ANameId),
     Record(ARecordPat),
 }
 
@@ -198,12 +206,12 @@ pub(crate) struct ABinaryOpExpr {
 }
 
 pub(crate) struct ALabeledArg {
-    pub(crate) field_name: AName,
+    pub(crate) field_name: ANameId,
     pub(crate) value_opt: Option<AExprId>,
 }
 
 pub(crate) struct ARecordExpr {
-    pub(crate) left: AName,
+    pub(crate) left: ANameId,
     pub(crate) fields: Vec<ALabeledArg>,
 }
 
@@ -247,7 +255,7 @@ pub(crate) enum AExpr {
     Number(PToken),
     Char(PToken),
     Str(PToken),
-    Name(AName),
+    Name(ANameId),
     Record(ARecordExpr),
     Field(AFieldExpr),
     Call(ACallLikeExpr),
@@ -283,7 +291,7 @@ pub(crate) struct ADeclModifiers {
 /// let, const, static, const variant, field of record variant
 pub(crate) struct AFieldLikeDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<AName>,
+    pub(crate) name_opt: Option<ANameId>,
     pub(crate) ty_opt: Option<ATyId>,
     pub(crate) value_opt: Option<AExprId>,
 }
@@ -314,7 +322,7 @@ pub(crate) struct AExprDecl {
 }
 
 pub(crate) struct AParamDecl {
-    pub(crate) name: AName,
+    pub(crate) name: ANameId,
     pub(crate) ty_opt: Option<ATyId>,
 }
 
@@ -341,7 +349,7 @@ impl AParamDeclKey {
 
 pub(crate) struct AFnLikeDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<AName>,
+    pub(crate) name_opt: Option<ANameId>,
     pub(crate) ty_params: Vec<ATyParamDecl>,
     pub(crate) params: Vec<AParamDecl>,
     pub(crate) result_ty_opt: Option<ATyId>,
@@ -349,7 +357,7 @@ pub(crate) struct AFnLikeDecl {
 }
 
 pub(crate) struct ARecordVariantDecl {
-    pub(crate) name: AName,
+    pub(crate) name: ANameId,
     pub(crate) ty_params: Vec<ATyParamDecl>,
     pub(crate) fields: Vec<AFieldLikeDecl>,
 }
@@ -391,7 +399,7 @@ impl AVariantDeclKey {
 
 pub(crate) struct AEnumDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<AName>,
+    pub(crate) name_opt: Option<ANameId>,
     pub(crate) variants: Vec<AVariantDecl>,
 }
 
@@ -408,7 +416,7 @@ pub(crate) struct AStructDecl {
 
 pub(crate) struct AUseDecl {
     pub(crate) modifiers: ADeclModifiers,
-    pub(crate) name_opt: Option<AName>,
+    pub(crate) name_opt: Option<ANameId>,
 }
 
 pub(crate) enum ADecl {
@@ -553,10 +561,12 @@ pub(crate) enum ALoc {
 #[derive(Default)]
 pub(crate) struct ATree {
     pub(super) root: ARoot,
+    pub(super) names: ANameArena,
     pub(super) tys: ATyArena,
     pub(super) pats: APatArena,
     pub(super) exprs: AExprArena,
     pub(super) decls: ADeclArena,
+    pub(super) name_events: VecArena<ANameTag, NameEnd>,
     pub(super) ty_events: VecArena<ATyTag, TyEnd>,
     pub(super) pat_events: VecArena<APatTag, PatEnd>,
     pub(super) expr_events: VecArena<AExprTag, ExprEnd>,
@@ -567,6 +577,10 @@ pub(crate) struct ATree {
 impl ATree {
     pub(crate) fn root_decls(&self) -> ADeclIds {
         self.root.decls.clone()
+    }
+
+    pub(crate) fn names(&self) -> &ANameArena {
+        &self.names
     }
 
     pub(crate) fn tys(&self) -> &ATyArena {

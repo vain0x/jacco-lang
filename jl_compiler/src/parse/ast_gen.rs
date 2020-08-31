@@ -3,9 +3,9 @@
 use super::*;
 use crate::parse::syntax_error::*;
 
-pub(crate) type AfterQualifiableName = (AName, ParseEnd);
-pub(crate) type AfterUnderscore = (AName, ParseEnd);
-pub(crate) type AfterUnqualifiableName = (AName, ParseEnd);
+pub(crate) type AfterQualifiableName = (AName, NameEnd);
+pub(crate) type AfterUnderscore = (AName, NameEnd);
+pub(crate) type AfterUnqualifiableName = (AName, NameEnd);
 pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterTyParamList = Vec<ATyParamDecl>;
 pub(crate) type AfterTyArg = (AfterTy, Option<PToken>, ParseEnd);
@@ -32,6 +32,11 @@ pub(crate) type AfterSemi = Vec<(ADecl, DeclEnd)>;
 pub(crate) type AfterRoot = Vec<AfterDecl>;
 
 impl Px {
+    fn alloc_name(&mut self, (name, event): (AName, NameEnd)) -> ANameId {
+        self.ast.name_events.alloc(event);
+        self.ast.names.alloc(name)
+    }
+
     fn alloc_ty(&mut self, (ty, event): (ATy, TyEnd)) -> ATyId {
         self.ast.ty_events.alloc(event);
         self.ast.tys.alloc(ty)
@@ -71,7 +76,7 @@ impl Px {
 // -----------------------------------------------
 
 pub(crate) fn alloc_name(
-    event: ParseStart,
+    event: NameStart,
     quals: Vec<PToken>,
     token: PToken,
     px: &mut Px,
@@ -86,7 +91,7 @@ pub(crate) fn alloc_name(
 }
 
 pub(crate) fn alloc_name_from_underscore(
-    event: ParseStart,
+    event: NameStart,
     token: PToken,
     px: &mut Px,
 ) -> AfterQualifiableName {
@@ -112,7 +117,7 @@ pub(crate) fn alloc_ty_param(
 ) -> AfterTyParam {
     // FIXME: 構文エラーを報告する
 
-    let (name, _) = name;
+    let name = px.alloc_name(name);
 
     (
         ATyParamDecl { name },
@@ -185,12 +190,12 @@ pub(crate) fn alloc_param(
 ) -> AfterParam {
     validate_param(&name, colon_opt, ty_opt.as_ref(), px);
 
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         AParamDecl {
-            name: a_name,
+            name,
             ty_opt: a_ty_opt,
         },
         comma_opt,
@@ -214,9 +219,9 @@ pub(crate) fn alloc_param_list(
 // -----------------------------------------------
 
 pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut Px) -> AfterTy {
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
 
-    (ATy::Name(a_name), event.end(PElementKind::NameTy, px))
+    (ATy::Name(name), event.end(PElementKind::NameTy, px))
 }
 
 pub(crate) fn alloc_app_ty(
@@ -225,7 +230,7 @@ pub(crate) fn alloc_app_ty(
     ty_args: AfterTyArgList,
     px: &mut Px,
 ) -> AfterTy {
-    let (name, _) = name;
+    let name = px.alloc_name(name);
     let ty_args = px.alloc_tys(ty_args);
 
     (ATy::App(name, ty_args), event.end(PElementKind::AppTy, px))
@@ -314,9 +319,9 @@ pub(crate) fn alloc_wildcard_pat(event: PatStart, token: PToken, px: &mut Px) ->
 }
 
 pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &mut Px) -> AfterPat {
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
 
-    (APat::Name(a_name), event.end(PElementKind::NamePat, px))
+    (APat::Name(name), event.end(PElementKind::NamePat, px))
 }
 
 pub(crate) fn alloc_record_pat(
@@ -328,9 +333,11 @@ pub(crate) fn alloc_record_pat(
 ) -> AfterPat {
     validate_record_pat(&name, left_brace, right_brace_opt, px);
 
+    let name = px.alloc_name(name);
+
     (
         APat::Record(ARecordPat {
-            left: name.0,
+            left: name,
             fields: vec![],
         }),
         event.end(PElementKind::RecordPat, px),
@@ -400,8 +407,9 @@ pub(crate) fn alloc_name_expr(
     name: AfterQualifiableName,
     px: &mut Px,
 ) -> AfterExpr {
-    let (a_name, _) = name;
-    (AExpr::Name(a_name), event.end(PElementKind::NameExpr, px))
+    let name = px.alloc_name(name);
+
+    (AExpr::Name(name), event.end(PElementKind::NameExpr, px))
 }
 
 pub(crate) fn alloc_record_expr(
@@ -414,7 +422,7 @@ pub(crate) fn alloc_record_expr(
 ) -> AfterExpr {
     validate_record_expr(left_brace, right_brace_opt, px);
 
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
     let a_fields = fields
         .into_iter()
         .map(|(field_expr, _)| field_expr)
@@ -422,7 +430,7 @@ pub(crate) fn alloc_record_expr(
 
     (
         AExpr::Record(ARecordExpr {
-            left: a_name,
+            left: name,
             fields: a_fields,
         }),
         event.end(PElementKind::RecordExpr, px),
@@ -755,12 +763,12 @@ pub(crate) fn alloc_labeled_arg(
 ) -> AfterLabeledArg {
     // FIXME: 構文エラーを報告する
 
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
     let a_value_opt = value_opt.map(|expr| px.alloc_expr(expr));
 
     (
         ALabeledArg {
-            field_name: a_name,
+            field_name: name,
             value_opt: a_value_opt,
         },
         event.end(PElementKind::Arg, px),
@@ -835,14 +843,14 @@ pub(crate) fn alloc_let_decl(
     );
 
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         ADecl::Let(AFieldLikeDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
@@ -875,14 +883,14 @@ pub(crate) fn alloc_const_decl(
     );
 
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         ADecl::Const(AFieldLikeDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
@@ -915,14 +923,14 @@ pub(crate) fn alloc_static_decl(
     );
 
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         ADecl::Static(AFieldLikeDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
@@ -955,7 +963,7 @@ pub(crate) fn alloc_fn_decl(
 
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
     let ty_params = ty_param_list_opt.unwrap_or_default();
     let params = param_list_opt
         .into_iter()
@@ -1003,7 +1011,7 @@ pub(crate) fn alloc_extern_fn_decl(
     );
 
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
     let params = param_list_opt
         .into_iter()
         .flatten()
@@ -1014,7 +1022,7 @@ pub(crate) fn alloc_extern_fn_decl(
     (
         ADecl::ExternFn(AFnLikeDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
             // FIXME: 実装
             ty_params: vec![],
             params,
@@ -1035,13 +1043,13 @@ pub(crate) fn alloc_const_variant_decl(
 ) -> AfterVariantDecl {
     validate_const_variant_decl(&name, equal_opt, init_opt.as_ref(), px);
 
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
     (
         AVariantDecl::Const(AFieldLikeDecl {
             modifiers: ADeclModifiers::default(),
-            name_opt: Some(a_name),
+            name_opt: Some(name),
             ty_opt: None,
             value_opt: a_init_opt,
         }),
@@ -1059,13 +1067,13 @@ pub(crate) fn alloc_field_decl(
 ) -> AfterFieldDecl {
     validate_field_decl(&name, colon_opt, ty_opt.as_ref(), px);
 
-    let (a_name, _) = name;
+    let name = px.alloc_name(name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
     (
         AFieldLikeDecl {
             modifiers: ADeclModifiers::default(),
-            name_opt: Some(a_name),
+            name_opt: Some(name),
             ty_opt: a_ty_opt,
             value_opt: None,
         },
@@ -1089,7 +1097,7 @@ pub(crate) fn alloc_record_variant_decl(
 ) -> AfterVariantDecl {
     validate_record_variant_decl(&name, left_brace, &fields, right_brace_opt, px);
 
-    let (name, _) = name;
+    let name = px.alloc_name(name);
     let ty_params = ty_param_list_opt.unwrap_or_default();
 
     (
@@ -1130,12 +1138,12 @@ pub(crate) fn alloc_enum_decl(
 
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
 
     (
         ADecl::Enum(AEnumDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
             variants,
         }),
         event.end(PElementKind::EnumDecl, px),
@@ -1180,12 +1188,12 @@ pub(crate) fn alloc_use_decl(
     );
 
     let (event, modifiers) = alloc_modifiers(modifiers);
-    let a_name_opt = name_opt.map(|(name, _)| name);
+    let name_opt = name_opt.map(|name| px.alloc_name(name));
 
     (
         ADecl::Use(AUseDecl {
             modifiers,
-            name_opt: a_name_opt,
+            name_opt,
         }),
         event.end(PElementKind::UseDecl, px),
     )

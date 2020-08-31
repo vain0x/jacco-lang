@@ -16,6 +16,7 @@ pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModSymbol>>;
 
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
+    pub(super) ast: &'a ATree,
     pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
@@ -161,12 +162,13 @@ fn find_struct_variant(
 }
 
 pub(crate) fn resolve_ty_path(
-    path: &AName,
+    name: ANameId,
     key: ANameKey,
     context: PathResolutionContext<'_>,
 ) -> Option<KTy2> {
     let PathResolutionContext {
         tokens,
+        ast,
         k_mod,
         mod_outline,
         mod_outlines,
@@ -174,10 +176,10 @@ pub(crate) fn resolve_ty_path(
         listener,
     } = context;
 
-    let (head, tail) = match path.quals.split_first() {
+    let (head, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(&path.text, key, env, listener)
+            return resolve_ty_name(name.of(ast.names()).text(), key, env, listener)
                 .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
@@ -191,7 +193,7 @@ pub(crate) fn resolve_ty_path(
     let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
-                let name = path.token.text(tokens);
+                let name = name.of(ast.names()).token.text(tokens);
                 let k_struct = find_struct_variant(struct_enum, name, k_mod.of(&mod_outlines))?;
 
                 KTy2::Struct(KProjectStruct(k_mod, k_struct))
@@ -199,7 +201,7 @@ pub(crate) fn resolve_ty_path(
             _ => return None,
         },
         KTy::StructEnum(struct_enum) => {
-            let name = path.token.text(tokens);
+            let name = name.of(ast.names()).token.text(tokens);
             let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
             KTy2::Struct(KProjectStruct(k_mod, k_struct))
@@ -214,12 +216,13 @@ fn resolve_value_name(name: &str, env: &Env) -> Option<KLocalValue> {
 }
 
 pub(crate) fn resolve_value_path(
-    path: &AName,
+    name: ANameId,
     key: ANameKey,
     context: PathResolutionContext<'_>,
 ) -> Option<KProjectValue> {
     let PathResolutionContext {
         tokens,
+        ast,
         k_mod,
         mod_outline,
         mod_outlines,
@@ -227,10 +230,10 @@ pub(crate) fn resolve_value_path(
         listener,
     } = context;
 
-    let (head, tail) = match path.quals.split_first() {
+    let (head, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            let value = resolve_value_name(&path.text, env)?;
+            let value = resolve_value_name(&name.of(ast.names()).text, env)?;
             return Some(KProjectValue::new(k_mod, value));
         }
     };
@@ -243,7 +246,7 @@ pub(crate) fn resolve_value_path(
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
         KTy::Alias(alias) => {
-            let name = path.token.text(tokens);
+            let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
                 KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, const_enum)) => {
                     let mod_outline = k_mod.of(mod_outlines);
@@ -265,12 +268,12 @@ pub(crate) fn resolve_value_path(
             return Some(value);
         }
         KTy::ConstEnum(const_enum) => {
-            let name = path.token.text(tokens);
+            let name = name.of(ast.names()).token.text(tokens);
             let k_const = find_const_variant(const_enum, name, mod_outline)?;
             KLocalValue::Const(k_const)
         }
         KTy::StructEnum(struct_enum) => {
-            let name = path.token.text(tokens);
+            let name = name.of(ast.names()).token.text(tokens);
             let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
             if k_struct.of(&mod_outline.structs).is_unit_like() {

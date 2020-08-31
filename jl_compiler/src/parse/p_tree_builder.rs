@@ -40,6 +40,8 @@ pub(crate) struct DeclTag;
 
 pub(crate) type ParseStart<Tag = ()> = ParseEvent<(StartEventTag, Tag)>;
 pub(crate) type ParseEnd<Tag = ()> = ParseEvent<(EndEventTag, Tag)>;
+pub(crate) type NameStart = ParseEvent<(StartEventTag, ANameTag)>;
+pub(crate) type NameEnd = ParseEvent<(EndEventTag, ANameTag)>;
 pub(crate) type TyStart = ParseEvent<(StartEventTag, TyTag)>;
 pub(crate) type TyEnd = ParseEvent<(EndEventTag, TyTag)>;
 pub(crate) type PatStart = ParseEvent<(StartEventTag, PatTag)>;

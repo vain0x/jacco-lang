@@ -221,6 +221,7 @@ impl<'a> Xx<'a> {
 fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
     PathResolutionContext {
         tokens: xx.tokens,
+        ast: xx.ast,
         k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
@@ -312,14 +313,14 @@ fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     }
 }
 
-fn do_convert_name_ty(ty_id: ATyId, name: &AName, key: ANameKey, xx: &mut TyResolver) -> KTy {
+fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyResolver) -> KTy {
     let loc = PLoc::Name(key);
 
-    if name.is_qualified() {
+    if name.of(xx.ast.names()).is_qualified() {
         error_unsupported_path_ty(loc, xx.logger);
     }
 
-    match resolve_ty_name(name.text(), key, &xx.env, xx.listener) {
+    match resolve_ty_name(name.of(xx.ast.names()).text(), key, &xx.env, xx.listener) {
         Some(ty) => ty,
         None => {
             error_unresolved_ty(loc, xx.logger);
@@ -335,9 +336,9 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
     let loc = PLoc::Name(key);
 
     match ty {
-        ATy::Name(name) => do_convert_name_ty(ty_id, name, key, xx),
+        ATy::Name(name) => do_convert_name_ty(ty_id, *name, key, xx),
         ATy::App(name, ty_args) => {
-            let ty = Box::new(do_convert_name_ty(ty_id, name, key, xx));
+            let ty = Box::new(do_convert_name_ty(ty_id, *name, key, xx));
             let ty_args = ty_args.iter().map(|ty| convert_ty(ty, xx)).collect();
             KTy::App { ty, ty_args }
         }
@@ -409,22 +410,22 @@ fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
     Branch::Default(symbol)
 }
 
-fn emit_default_branch(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
-    if name.is_qualified() {
+fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
+    if name.of(xx.ast.names()).is_qualified() {
         error_unresolved_value(PLoc::Name(key), &xx.logger);
     }
 
     let symbol = {
         let cause = KSymbolCause::NameDef(xx.doc, key);
-        fresh_symbol(&name.text, cause, xx)
+        fresh_symbol(&name.of(xx.ast.names()).text, cause, xx)
     };
     Branch::Default(symbol)
 }
 
-fn convert_name_pat_as_cond(name: &AName, key: ANameKey, xx: &mut Xx) -> Branch {
+fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let KProjectValue { k_mod, value } =
-        match resolve_value_path(&name, key, path_resolution_context(xx)) {
+        match resolve_value_path(name, key, path_resolution_context(xx)) {
             Some(it) => it,
             None => return emit_default_branch(name, key, xx),
         };
@@ -470,7 +471,7 @@ fn convert_record_pat_as_cond(
     xx: &mut Xx,
 ) -> AfterRval {
     let key = ANameKey::Pat(pat_id);
-    let (k_mod, k_struct) = match resolve_ty_path(&pat.left, key, path_resolution_context(xx)) {
+    let (k_mod, k_struct) = match resolve_ty_path(pat.left, key, path_resolution_context(xx)) {
         Some(KTy2::Struct(KProjectStruct(k_mod, k_struct))) => (k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -495,7 +496,7 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         }
         APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         APat::Wildcard(token) => return convert_wildcard_pat_as_cond(*token, xx),
-        APat::Name(name) => return convert_name_pat_as_cond(name, ANameKey::Pat(pat_id), xx),
+        APat::Name(name) => return convert_name_pat_as_cond(*name, ANameKey::Pat(pat_id), xx),
         APat::Record(record_pat) => convert_record_pat_as_cond(pat_id, record_pat, loc, xx),
     };
     Branch::Case(term)
@@ -713,7 +714,7 @@ fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSym
     KSymbol { local_var, cause }
 }
 
-fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
+fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
@@ -753,7 +754,7 @@ fn convert_name_expr(name: &AName, key: ANameKey, xx: &mut Xx) -> AfterRval {
     }
 }
 
-fn convert_name_lval(name: &AName, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> AfterLval {
+fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> AfterLval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
@@ -806,11 +807,11 @@ enum FieldExhaustivityError {
     Missed(KField),
 }
 
-fn calculate_field_ordering<T>(
+fn calculate_field_ordering<'a, T>(
     items: &[T],
     fields: &[KField],
-    field_arena: &KFieldArena,
-    name_fn: impl Fn(&T) -> &str,
+    field_arena: &'a KFieldArena,
+    name_fn: impl Fn(&T) -> &'a str,
 ) -> Result<Vec<usize>, Vec<FieldExhaustivityError>> {
     // perm[item_index] = Some(field_index) or None
     let mut perm = vec![0; items.len()];
@@ -898,7 +899,7 @@ fn do_convert_record_expr(
     xx: &mut Xx,
 ) -> Option<KSymbol> {
     let key = ANameKey::Expr(expr_id);
-    let k_struct = match resolve_ty_path(&expr.left, key, path_resolution_context(xx)) {
+    let k_struct = match resolve_ty_path(expr.left, key, path_resolution_context(xx)) {
         Some(KTy2::Struct(k_struct)) => k_struct,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -926,7 +927,7 @@ fn do_convert_record_expr(
         &expr.fields,
         fields,
         &k_mod.of(&xx.mod_outlines).fields,
-        |field_expr| &field_expr.field_name.text,
+        |field_expr| &field_expr.field_name.of(xx.ast.names()).text,
     ) {
         Ok(it) => it,
         Err(errors) => {
@@ -1436,7 +1437,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Number(token) => convert_number_lit(*token, ty_expect, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        AExpr::Name(name) => convert_name_expr(name, ANameKey::Expr(expr_id), xx),
+        AExpr::Name(name) => convert_name_expr(*name, ANameKey::Expr(expr_id), xx),
         AExpr::Record(record_expr) => convert_record_expr(expr_id, record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),
@@ -1468,7 +1469,7 @@ fn do_convert_lval(
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
-        AExpr::Name(name) => convert_name_lval(name, k_mut, ANameKey::Expr(expr_id), xx),
+        AExpr::Name(name) => convert_name_lval(*name, k_mut, ANameKey::Expr(expr_id), xx),
         AExpr::Record(expr) => convert_record_lval(expr_id, expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_lval(field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, ty_expect, loc, xx),
@@ -1532,7 +1533,9 @@ fn convert_lval_opt(
 fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let cause = KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
 
-    let name_opt = decl.name_opt.as_ref().map(|name| name.text.to_string());
+    let name_opt = decl
+        .name_opt
+        .map(|name| name.of(xx.ast.names()).text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
     let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx))
@@ -1603,6 +1606,7 @@ fn convert_param_decls(
     param_tys: &[KTy],
     doc: Doc,
     decl_id: ADeclId,
+    ast: &ATree,
     local_vars: &mut KLocalVarArena,
     env: &mut Env,
 ) -> Vec<KSymbol> {
@@ -1615,7 +1619,7 @@ fn convert_param_decls(
         .map(|((index, param_decl), _param_ty)| {
             let name_key = new_param_name_key(decl_id, index);
             let loc = Loc::new(doc, PLoc::Name(name_key));
-            let name = param_decl.name.text.to_string();
+            let name = param_decl.name.of(ast.names()).text.to_string();
             let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
             env.insert_value(name, KLocalValue::LocalVar(local_var));
             KSymbol {
@@ -1634,6 +1638,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         k_fn.param_tys(&xx.mod_outline.fns),
         xx.doc,
         decl_id,
+        xx.ast,
         &mut local_vars,
         &mut xx.env,
     );
@@ -1643,7 +1648,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         xx.local_vars = local_vars;
 
         for ty_param in &fn_decl.ty_params {
-            let name = ty_param.name.text().to_string();
+            let name = ty_param.name.of(xx.ast.names()).text().to_string();
             let loc = Loc::new(xx.doc, PLoc::Name(ANameKey::TyParam(decl_id)));
             xx.env
                 .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
@@ -1701,6 +1706,7 @@ fn convert_extern_fn_decl(
         extern_fn.param_tys(&xx.mod_outline.extern_fns),
         xx.doc,
         decl_id,
+        xx.ast,
         &mut local_vars,
         &mut xx.env,
     );

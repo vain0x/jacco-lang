@@ -81,11 +81,15 @@ impl PTree {
     /// use 宣言で指名されているモジュールの名前を収集する。(いまのところトップレベルにある use 宣言の先頭にある名前だけを収集する。)
     pub(crate) fn collect_used_mod_names(&self, mod_names: &mut Vec<String>) {
         for decl in self.ast.decls.iter() {
-            match decl {
+            match *decl {
                 ADecl::Use(AUseDecl {
                     name_opt: Some(name),
                     ..
-                }) => mod_names.push(name.root_text(&self.tokens).to_string()),
+                }) => mod_names.push(
+                    name.of(self.ast.names())
+                        .root_text(&self.tokens)
+                        .to_string(),
+                ),
                 _ => {}
             }
         }
