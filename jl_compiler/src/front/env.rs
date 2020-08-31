@@ -1,6 +1,7 @@
 use self::map_stack::MapStack;
 use crate::cps::{KLocalValue, KTy};
 
+#[derive(Default)]
 pub(crate) struct Env {
     ty_env: MapStack<KTy>,
     value_env: MapStack<KLocalValue>,
@@ -67,6 +68,12 @@ mod map_stack {
 
         pub(crate) fn insert(&mut self, name: String, value: T) -> Option<T> {
             self.inner.last_mut().unwrap().insert(name, value)
+        }
+    }
+
+    impl<T> Default for MapStack<T> {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }
