@@ -17,6 +17,9 @@ fn panic(s: *c8) -> never {
     abort()
 }
 
+/// 実行時に何らかの条件が満たされていることを表明する。
+///
+/// リリースモードでも動作する。
 fn dyn_assert(cond: bool, message: *c8) {
     if !cond {
         eprint_s("[ERROR] 表明違反！\n");
@@ -24,6 +27,13 @@ fn dyn_assert(cond: bool, message: *c8) {
         eprint_s("\n");
         abort();
     }
+}
+
+/// 実行時に何らかの条件が満たされていることを表明する。
+///
+/// (のちのち、リリースモードでは除去する。)
+fn debug_assert(cond: bool, message: *c8) {
+    dyn_assert(cond, message);
 }
 
 // -----------------------------------------------
@@ -276,6 +286,14 @@ fn assert_eq_usize(tt: *mut TestTools, actual: usize, expected: usize) {
 }
 
 // -----------------------------------------------
+// i32
+// -----------------------------------------------
+
+fn i32_move(dest: *mut i32, src: *i32) {
+    *dest = *src;
+}
+
+// -----------------------------------------------
 // usize
 // -----------------------------------------------
 
@@ -303,6 +321,263 @@ fn usize_max(left: usize, right: usize) -> usize {
     } else {
         right
     }
+}
+
+// -----------------------------------------------
+// ポインタ
+// -----------------------------------------------
+
+fn ptr_is_null(ptr: *unknown) -> bool {
+    ptr as usize == 0_usize
+}
+
+// -----------------------------------------------
+// StaticLayout
+// -----------------------------------------------
+
+/// 型 T の値のアラインメントとサイズ。サイズは固定でなければいけない。
+struct StaticLayout[T] {
+    /// オブジェクトのサイズ (固定)
+    size: usize,
+    /// アラインメント
+    align: Align,
+}
+
+fn static_layout_new[T](size: usize, align: Align) -> StaticLayout[T] {
+    StaticLayout {
+        size: size,
+        align: align,
+    }
+}
+
+// -----------------------------------------------
+// RawVec
+// -----------------------------------------------
+
+/// 動的配列用のメモリバッファ
+struct RawVec[T] {
+    ptr: *mut T,
+    cap: usize,
+    vtable: *VecVtable[T],
+}
+
+/// ベクタが要素の型について知っていること
+struct VecVtable[T] {
+    layout: StaticLayout[T],
+    move_fn: fn(*mut T, *T),
+}
+
+/// 空のベクタを作る。
+///
+/// 動的確保は発生しない。
+fn raw_vec_new[T](vtable: *VecVtable[T]) -> RawVec[T] {
+    if (*vtable).layout.size == 0 {
+        return RawVec {
+            ptr: 1 as *mut T,
+            // ゼロサイズの要素は 0 バイトでも無限個確保されているとみなせる。
+            cap: !0_usize,
+            vtable: vtable,
+        };
+    }
+
+    RawVec {
+        ptr: aligned_ptr((*vtable).layout.align) as *mut T,
+        cap: 0_usize,
+        vtable: vtable,
+    }
+}
+
+/// ベクタの index 番目の要素への読み取り専用のポインタ (unchecked)
+fn raw_vec_get[T](vec: *RawVec[T], index: usize) -> *T {
+    debug_assert(index < (*vec).cap, "RawVec out of bounds");
+
+    let elem_size = (*(*vec).vtable).layout.size;
+    ((*vec).ptr as usize + index * elem_size) as *T
+}
+
+/// ベクタの index 番目の要素への可変なポインタ (unchecked)
+fn raw_vec_get_mut[T](vec: *mut RawVec[T], index: usize) -> *mut T {
+    debug_assert(index < (*vec).cap, "RawVec out of bounds");
+
+    raw_vec_get(vec, index) as *mut T
+}
+
+/// ベクタのキャパシティを `required_cap` 以上に拡張する。
+/// すでに十分なキャパシティがあるなら、何もしない。
+fn raw_vec_do_grow[T](vec: *mut RawVec[T], required_cap: usize)
+    // requires (*vec).cap < required_cap
+{
+    let layout = (*(*vec).vtable).layout;
+    dyn_assert(layout.size != 0_usize, "error: ゼロサイズの要素を持つベクタは拡張できません。");
+
+    let new_cap = 0_usize;
+    let new_ptr = 8 as *mut T;
+    if (*vec).cap == 0_usize {
+        new_cap = required_cap;
+        let new_size = aligned_size_by_mul(new_cap, layout.align);
+        new_ptr = heap_alloc(global_heap(), new_size) as *mut T;
+    } else {
+        new_cap = usize_max(required_cap, (*vec).cap * 2_usize);
+        let new_size = aligned_size_by_mul(new_cap, layout.align);
+        new_ptr = heap_realloc(global_heap(), (*vec).ptr as *mut unknown, new_size) as *mut T;
+    }
+    dyn_assert(!ptr_is_null(new_ptr), "error: heap API は null を返さないはず");
+
+    (*vec).ptr = new_ptr;
+    (*vec).cap = new_cap;
+}
+
+/// ベクタのメモリ領域を解放する。(要素のデストラクタとかはない。)
+fn raw_vec_drop[T](vec: *mut RawVec[T]) {
+    let layout = (*(*vec).vtable).layout;
+    if (*vec).cap != 0_usize && layout.size != 0_usize {
+        let ptr = (*vec).ptr;
+        (*vec).ptr = aligned_ptr(layout.align) as *mut T;
+        (*vec).cap = 0_usize;
+
+        heap_dealloc(global_heap(), ptr as *mut unknown);
+    }
+}
+
+// -----------------------------------------------
+// Vec
+// -----------------------------------------------
+
+/// 動的配列
+struct Vec[T] {
+    buf: RawVec[T],
+    len: usize,
+}
+
+/// 空のベクタを作る。
+///
+/// 動的確保は発生しない。
+fn vec_new[T](vtable: *VecVtable[T]) -> Vec[T] {
+    Vec {
+        buf: raw_vec_new(vtable),
+        len: 0_usize,
+    }
+}
+
+/// ベクタの index 番目の要素への読み取り専用のポインタを得る。
+///
+/// 動的に境界検査が行われる。
+fn vec_index[T](vec: *Vec[T], index: usize) -> *T {
+    dyn_assert(index < (*vec).len, "Vec out of bounds");
+
+    raw_vec_get(&(*vec).buf, index)
+}
+
+/// ベクタの index 番目の要素への可変なポインタを得る。
+///
+/// 動的に境界検査が行われる。
+fn vec_index_mut[T](vec: *mut Vec[T], index: usize) -> *mut T {
+    dyn_assert(index < (*vec).len, "Vec out of bounds");
+
+    raw_vec_get_mut(&mut (*vec).buf, index)
+}
+
+/// ベクタの要素数
+fn vec_len[T](vec: *Vec[T]) -> usize {
+    (*vec).len
+}
+
+/// ベクタのキャパシティ
+fn vec_cap[T](vec: *Vec[T]) -> usize {
+    (*vec).buf.cap
+}
+
+/// ベクタを空にする。(要素は解放されない。デストラクタとかはない。)
+fn vec_clear[T](vec: *mut Vec[T]) {
+    (*vec).len = 0_usize;
+}
+
+/// ベクタの末尾に要素を追加する。
+fn vec_push[T](vec: *mut Vec[T], value: *T) {
+    if (*vec).len == (*vec).buf.cap {
+        raw_vec_do_grow(&mut (*vec).buf, (*vec).len + 1_usize);
+    }
+
+    let end = raw_vec_get_mut(&mut (*vec).buf, (*vec).len);
+    ((*(*vec).buf.vtable).move_fn)(end, value);
+    (*vec).len += 1_usize;
+}
+
+/// ベクタの末尾の要素を取り出す。
+///
+/// 空なら false が返る。
+/// 空でなければ true が返り、output に値がコピーされる。
+fn vec_pop[T](vec: *mut Vec[T], output: *mut T) -> bool {
+    if (*vec).len == 0_usize {
+        return false;
+    }
+
+    (*vec).len -= 1_usize;
+    let end = raw_vec_get_mut(&mut (*vec).buf, (*vec).len);
+    ((*(*vec).buf.vtable).move_fn)(output, end);
+    true
+}
+
+/// ベクタの領域を解放する。
+///
+/// (要素のデストラクタとかはない。)
+fn vec_drop[T](vec: *mut Vec[T]) {
+    let vtable = (*vec).buf.vtable;
+    raw_vec_drop(&mut (*vec).buf);
+    *vec = vec_new(vtable);
+}
+
+fn vec_tests(tt: *mut TestTools) {
+    let i32_vec_vtable: VecVtable[i32] = {
+        let layout: StaticLayout[i32] = static_layout_new(4_usize, align_from_i32(4));
+        VecVtable {
+            layout: layout,
+            move_fn: i32_move,
+        }
+    };
+    let numbers = vec_new(&i32_vec_vtable);
+
+    // 3つの要素を push する。
+    let x = 3;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 1_usize);
+
+    x = 1;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 2_usize);
+
+    x = 4;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 3_usize);
+
+    // それぞれの要素の値を確認する。
+    let value = *vec_index(&numbers, 0);
+    assert_eq_i32(tt, value, 3);
+
+    let value = *vec_index(&numbers, 1);
+    assert_eq_i32(tt, value, 1);
+
+    let value = *vec_index(&numbers, 2);
+    assert_eq_i32(tt, value, 4);
+
+    // 3つの要素を pop する。
+    let value = -1;
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 4);
+
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 1);
+
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 3);
+
+    // 空になったはず。
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, !ok, "pop できないはず");
+    assert_eq_usize(tt, vec_len(&numbers), 0_usize);
 }
 
 // -----------------------------------------------
@@ -2290,6 +2565,7 @@ pub fn libjacco_syntax_tests() -> i32 {
         assert_eq_i32(tt, 40 + 2, 42);
         // assert_eq_i32(tt, 40 - 2, 42);
 
+        vec_tests(tt);
         untyped_vec_tests(tt);
         str_tests(tt);
         str_buf_tests(tt);
