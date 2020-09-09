@@ -2450,12 +2450,27 @@ fn px_bump(px: *mut Px) -> PToken {
     token
 }
 
+/// 次のトークンを飛ばす。
+fn px_skip(px: *mut Px) {
+    let token = px_bump(px);
+    eprint_sts("[ERROR] SKip ", syntax_kind_name(p_token_kind(token)), "\n");
+}
+
 fn px_peek1(px: *Px) -> SyntaxKind {
     p_token_kind((*px).next1)
 }
 
 fn px_peek2(px: *Px) -> SyntaxKind {
     p_token_kind((*px).next2)
+}
+
+fn px_eat(px: *mut Px, kind: SyntaxKind, token: *mut PToken) -> bool {
+    if px_peek1(px) == kind {
+        *token = px_bump(px);
+        true
+    } else {
+        false
+    }
 }
 
 fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
@@ -2481,10 +2496,86 @@ fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
     str_buf_as_str(output)
 }
 
+// -----------------------------------------------
+// 文のパース
+// -----------------------------------------------
+
+fn parse_fn_stmt(px: *mut Px) -> bool {
+    eprint_s("[TRACE] parse_fn_stmt\n");
+
+    debug_assert(px_peek1(px) == SyntaxKind::Fn, "Expected fn keyword");
+    let keyword = px_bump(px);
+
+    let ident = p_token_default();
+    px_eat(px, SyntaxKind::Ident, &mut ident);
+
+    let token = p_token_default();
+    px_eat(px, SyntaxKind::LeftParen, &mut token);
+    px_eat(px, SyntaxKind::RightParen, &mut token);
+
+    px_eat(px, SyntaxKind::MinusRight, &mut token);
+    px_eat(px, SyntaxKind::Ident, &mut token);
+
+    px_eat(px, SyntaxKind::LeftBrace, &mut token);
+    px_eat(px, SyntaxKind::Number, &mut token);
+    px_eat(px, SyntaxKind::RightBrace, &mut token);
+    true
+}
+
+fn parse_stmt(px: *mut Px) -> bool {
+    let token = p_token_default();
+    px_eat(px, SyntaxKind::Pub, &mut token);
+
+    match px_peek1(px) {
+        SyntaxKind::Semi => {
+            px_bump(px);
+            eprint_s("[TRACE] empty statement parsed");
+            return true;
+        }
+        SyntaxKind::Pub => {
+            eprint_s("[TRACE] pub");
+            let _ = px_bump(px);
+        }
+        _ => {}
+    }
+
+    match px_peek1(px) {
+        SyntaxKind::Fn => parse_fn_stmt(px),
+        _ => false,
+    }
+}
+
+fn parse_root(px: *mut Px) -> usize {
+    eprint_s("[TRACE] parse_root BEGIN\n");
+    let stmt_count = 0_usize;
+
+    while px_peek1(px) != SyntaxKind::Eof {
+        if !parse_stmt(px) {
+            px_skip(px);
+            continue;
+        }
+
+        stmt_count += 1_usize;
+    }
+
+    eprint_s("[TRACE] parse_root END\n");
+    stmt_count
+}
+
 fn parse_tests(tt: *mut TestTools) {
     let output = str_buf_new();
     let actual = parse_dump_tokens("pub fn main() -> i32 {\n    0\n}\n", &mut output);
     assert_eq_str(tt, actual, str_from_raw("PUB, FN, IDENT, LEFT_PAREN, RIGHT_PAREN, ->, IDENT, LEFT_BRACE, NUMBER, RIGHT_BRACE"));
+
+    let ts = token_stream_from_raw("pub fn main() -> i32 { 0 }");
+    let px = px_new(&mut ts);
+    let stmt_count = parse_root(&mut px);
+    assert_eq_usize(tt, stmt_count, 1_usize);
+
+    let ts = token_stream_from_raw("pub fn main() -> i32 { 0 } fn f() -> i64 {}");
+    let px = px_new(&mut ts);
+    let stmt_count = parse_root(&mut px);
+    assert_eq_usize(tt, stmt_count, 2_usize);
 }
 
 // -----------------------------------------------
