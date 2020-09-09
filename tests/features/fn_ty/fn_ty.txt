@@ -4,7 +4,9 @@ int add_1(int x, int y);
 
 int sub_1(int x, int y);
 
-int binary_op_1(int x, int y, int (*f)(int, int));
+typedef int (*fp_1)(int, int);
+
+int binary_op_1(int x, int y, fp_1 f);
 
 int main();
 
@@ -18,7 +20,9 @@ int sub_1(int x_2, int y_2) {
     return sub_2;
 }
 
-int binary_op_1(int x_3, int y_3, int (*f_1)(int, int)) {
+typedef int (*fp_2)(int, int);
+
+int binary_op_1(int x_3, int y_3, fp_2 f_1) {
     int call_result_1 = f_1(x_3, y_3);
     return call_result_1;
 }

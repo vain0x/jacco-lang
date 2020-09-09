@@ -54,4 +54,9 @@ pub(crate) enum CStmt {
         /// anonymous union
         union_opt: Option<Vec<(String, CTy)>>,
     },
+    TypeDefFnPtrDecl {
+        name: String,
+        param_tys: Vec<CTy>,
+        result_ty: CTy,
+    },
 }

@@ -1,0 +1,36 @@
+typedef void (*fp_1)(/* unknown */ void const*);
+
+struct Callback {
+    /* unknown */ void const* env;
+    fp_1 call;
+};
+
+void do_call_1(/* unknown */ void const* env);
+
+int main();
+
+void do_call_1(/* unknown */ void const* env_1) {
+    return;
+}
+
+typedef void (*fp_2)(/* unknown */ void const*);
+
+typedef void (*fp_3)(/* unknown */ void const*);
+
+int main() {
+    int env_2 = 0;
+    int const* ref_1 = &env_2;
+    struct Callback Callback_1;
+    Callback_1.env = ref_1;
+    Callback_1.call = do_call_1;
+    struct Callback f_1 = Callback_1;
+    struct Callback const* ref_2 = &f_1;
+    fp_2 const* call_ptr_1 = &ref_2->call;
+    fp_3 call_1 = *call_ptr_1;
+    struct Callback const* ref_3 = &f_1;
+    /* unknown */ void const* const* env_ptr_1 = &ref_3->env;
+    /* unknown */ void const* env_3 = *env_ptr_1;
+    // call_result_1 is killed.
+    call_1(env_3);
+    return 0;
+}

@@ -15,6 +15,7 @@ struct Cx<'a> {
     k_mod: KMod,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
+    fn_ptr_id: usize,
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
     fn_ident_ids: Vec<Option<usize>>,
@@ -35,6 +36,7 @@ impl<'a> Cx<'a> {
             k_mod,
             mod_outline,
             mod_outlines,
+            fn_ptr_id: 0,
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
             fn_ident_ids: Default::default(),
@@ -258,11 +260,21 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             result_ty,
         } => {
             let param_tys = param_tys.iter().map(|ty| gen_ty2(ty, ty_env, cx)).collect();
-            let result_ty = Box::new(gen_ty2(&result_ty, ty_env, cx));
-            CTy::FnPtr {
+            let result_ty = gen_ty2(&result_ty, ty_env, cx);
+
+            // 関数ポインタの型はすべて typedef する。
+            let fn_ptr_name = {
+                cx.fn_ptr_id += 1;
+                let id = cx.fn_ptr_id;
+                format!("fp_{:x}", id)
+            };
+            cx.decls.push(CStmt::TypeDefFnPtrDecl {
+                name: fn_ptr_name.to_string(),
                 param_tys,
                 result_ty,
-            }
+            });
+
+            CTy::Alias(fn_ptr_name)
         }
         KTy2::Ptr { k_mut, base_ty } => {
             let base_ty = gen_ty2(&base_ty, ty_env, cx);

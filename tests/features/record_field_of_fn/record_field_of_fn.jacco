@@ -1,0 +1,19 @@
+#![test("run", 0)]
+
+struct Callback {
+    env: *unknown,
+    call: fn(*unknown),
+}
+
+fn do_call(env: *unknown) {}
+
+pub fn main() -> i32 {
+    let env = 0;
+    let f = Callback {
+        env: &env,
+        call: do_call,
+    };
+
+    (f.call)(f.env);
+    0
+}

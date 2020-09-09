@@ -14,9 +14,11 @@ pub(crate) enum CTy {
     UnsignedLongLong,
     Float,
     Double,
+    Alias(String),
     Ptr {
         ty: Box<CTy>,
     },
+    #[allow(unused)]
     FnPtr {
         param_tys: Vec<CTy>,
         result_ty: Box<CTy>,

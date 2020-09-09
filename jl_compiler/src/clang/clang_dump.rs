@@ -92,6 +92,7 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
         CTy::UnsignedLongLong => write!(dx, "unsigned long long"),
         CTy::Float => write!(dx, "float"),
         CTy::Double => write!(dx, "double"),
+        CTy::Alias(name) => write!(dx, "{}", name),
         CTy::Const { ty } => {
             write_ty(ty, dx)?;
             write!(dx, " const")
@@ -354,6 +355,15 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
 
             write_indent(dx)?;
             write!(dx, "}};")
+        }
+        CStmt::TypeDefFnPtrDecl {
+            name,
+            param_tys,
+            result_ty,
+        } => {
+            write!(dx, "typedef ")?;
+            write_fn_ptr_ty(Some(&name), param_tys, result_ty, dx)?;
+            write!(dx, ";")
         }
         CStmt::Label { .. } => unreachable!(),
     }
