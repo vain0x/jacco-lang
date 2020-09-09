@@ -797,43 +797,82 @@ fn str_tests(tt: *mut TestTools) {
 // StrBuf
 // -----------------------------------------------
 
+// 文字列はゼロ終端されなければいけないので、Vec[c8] のラッパーとして定義しない。
+
 /// メモリを所有する文字列バッファ。
 ///
 /// Rust の `String`、C++ の `std::string` に相当。
 struct StrBuf {
-    vec: UntypedVec,
+    ptr: *mut c8,
+    len: usize,
+    cap: usize,
 }
 
 /// 空の StrBuf を生成する。
 ///
 /// 動的確保は発生しない。
-fn str_buf_empty() -> StrBuf {
+fn str_buf_new() -> StrBuf {
     StrBuf {
-        vec: untyped_vec_new(align1()),
+        // OK: len=0 なのでの書き込みは起きない。
+        ptr: "" as *mut c8,
+        len: 0_usize,
+        cap: 0_usize,
     }
 }
 
 fn str_buf_as_str(buf: *StrBuf) -> Str {
     Str {
-        ptr: (*buf).vec.ptr as *c8,
-        len: (*buf).vec.len,
+        ptr: (*buf).ptr,
+        len: (*buf).len,
     }
 }
 
 fn str_buf_len(buf: *StrBuf) -> usize {
-    (*buf).vec.len
+    (*buf).len
 }
 
-fn str_buf_grow(buf: *mut StrBuf, new_size: usize) {
-    untyped_vec_grow(&mut (*buf).vec, align1(), new_size);
+fn str_buf_cap(buf: *StrBuf) -> usize {
+    (*buf).cap
+}
+
+fn str_buf_grow(buf: *mut StrBuf, required_cap: usize) {
+    if required_cap <= (*buf).cap {
+        return;
+    }
+
+    let new_cap = 0_usize;
+    let new_ptr = 1 as *mut c8;
+    if (*buf).cap == 0_usize {
+        new_cap = required_cap;
+        new_ptr = heap_alloc(global_heap(), aligned_size_of_align1(new_cap)) as *mut c8;
+    } else {
+        new_cap = usize_max(required_cap, (*buf).cap * 2_usize);
+        new_ptr = heap_realloc(global_heap(), (*buf).ptr as *mut unknown, aligned_size_of_align1(new_cap)) as *mut c8;
+    }
+    dyn_assert(!ptr_is_null(new_ptr), "error: heap API は null を返さないはず");
+
+    (*buf).ptr = new_ptr;
+    (*buf).cap = new_cap;
 }
 
 fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
-    untyped_vec_push(&mut (*buf).vec, (&c) as *unknown, aligned_size_of_align1(1_usize));
+    str_buf_grow(buf, (*buf).len + 2_usize);
+
+    *((*buf).ptr + (*buf).len) = c;
+    (*buf).len += 1_usize;
+
+    // ゼロ終端
+    *((*buf).ptr + (*buf).len) = '\0';
 }
 
 fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
-    untyped_vec_push(&mut (*buf).vec, other.ptr as *unknown, aligned_size_of_align1(other.len));
+    str_buf_grow(buf, (*buf).len + other.len + 1_usize);
+
+    memcpy(((*buf).ptr + (*buf).len) as *mut unknown, other.ptr, other.len);
+    (*buf).len += other.len;
+
+    // ゼロ終端
+    *((*buf).ptr + (*buf).len) = '\0';
 }
 
 fn str_buf_push_raw(buf: *mut StrBuf, other: *c8) {
@@ -841,7 +880,7 @@ fn str_buf_push_raw(buf: *mut StrBuf, other: *c8) {
 }
 
 fn str_buf_tests(tt: *mut TestTools)  {
-    let s = str_buf_empty();
+    let s = str_buf_new();
     // s == ""
     assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_empty()), 0);
 
@@ -2298,7 +2337,7 @@ fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
 fn do_tokenize_dump(s: *c8, include_trivia: bool) -> StrBuf {
     let ts = token_stream_from_raw(s);
     let i = 0;
-    let buf = str_buf_empty();
+    let buf = str_buf_new();
 
     loop {
         let token = token_stream_next(&mut ts);
@@ -2543,7 +2582,7 @@ fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
 }
 
 fn parse_tests(tt: *mut TestTools) {
-    let output = str_buf_empty();
+    let output = str_buf_new();
     let actual = parse_dump_tokens("pub fn main() -> i32 {\n    0\n}\n", &mut output);
     assert_eq_str(tt, actual, str_from_raw("PUB, FN, IDENT, LEFT_PAREN, RIGHT_PAREN, ->, IDENT, LEFT_BRACE, NUMBER, RIGHT_BRACE"));
 }
