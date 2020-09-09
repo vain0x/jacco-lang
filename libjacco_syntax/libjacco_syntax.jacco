@@ -581,106 +581,6 @@ fn vec_tests(tt: *mut TestTools) {
 }
 
 // -----------------------------------------------
-// UntypedVec
-// -----------------------------------------------
-
-/// 型なし動的配列
-struct UntypedVec {
-    ptr: *mut unknown,
-    /// 使用済みの領域のサイズ (バイト単位、アラインメントの倍数。)
-    len: usize,
-    /// 確保している領域のサイズ (バイト単位、アラインメントの倍数。)
-    cap: usize,
-}
-
-/// 空の型なしベクタを作る。
-///
-/// 単一のインスタンスに対して、`align` 引数は一貫して同じ値を指定すること。
-/// 動的確保は行わない。
-fn untyped_vec_new(align: Align) -> UntypedVec {
-    UntypedVec {
-        ptr: aligned_ptr(align),
-        len: 0_usize,
-        cap: 0_usize,
-    }
-}
-
-fn untyped_vec_len(vec: *UntypedVec) -> usize {
-    (*vec).len
-}
-
-fn untyped_vec_get(vec: *UntypedVec, aligned_index: AlignedSize) -> *unknown {
-    ((*vec).ptr as usize + aligned_index.size) as *unknown
-}
-
-/// 使用済みの領域の末尾へのポインタ
-fn untyped_vec_end_mut(vec: *mut UntypedVec) -> *mut unknown {
-    (((*vec).ptr as usize) + (*vec).len) as *mut unknown
-}
-
-/// ベクタのキャパシティを `required_size` バイト以上に拡張する。
-/// すでに十分なキャパシティがあるなら、何もしない。
-fn untyped_vec_grow(vec: *mut UntypedVec, align: Align, required_size: usize) {
-    if required_size <= (*vec).cap {
-        return;
-    }
-
-    // 再確保の回数を抑えるため、バッファサイズは指数的に増やす。
-    required_size = usize_max(required_size, (*vec).cap * 2_usize);
-
-    let new_size = aligned_size_by_ceiling(required_size, align);
-
-    if (*vec).cap == 0_usize {
-        // ptr がヒープを指していないので、realloc は使えない。
-        (*vec).ptr = heap_alloc(global_heap(), new_size) as *mut unknown;
-    } else {
-        (*vec).ptr = heap_realloc(global_heap(), (*vec).ptr, new_size) as *mut unknown;
-    }
-
-    (*vec).cap = new_size.size;
-}
-
-/// `data` が指す一定サイズのデータを `vec` の末尾に書き込み、長さを増やす。
-fn untyped_vec_push(vec: *mut UntypedVec, data: *unknown, aligned_size: AlignedSize) {
-    if aligned_size.size == 0_usize {
-        return;
-    }
-
-    untyped_vec_grow(vec, aligned_size.align, (*vec).len + aligned_size.size);
-
-    memcpy(untyped_vec_end_mut(vec), data, aligned_size.size);
-    (*vec).len += aligned_size.size;
-
-    dyn_assert((*vec).len <= (*vec).cap, "len can't exceed cap");
-}
-
-fn untyped_vec_tests(tt: *mut TestTools) {
-    let align4 = align_from_i32(4);
-    let numbers = untyped_vec_new(align4);
-
-    let x = 3;
-    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
-    assert_eq_usize(tt, numbers.len, 4_usize);
-
-    x = 1;
-    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
-    assert_eq_usize(tt, numbers.len, 8_usize);
-
-    x = 4;
-    untyped_vec_push(&mut numbers, (&x) as *unknown, aligned_size_from_align(align4));
-    assert_eq_usize(tt, numbers.len, 12_usize);
-
-    let value = *(untyped_vec_get(&numbers, aligned_size_by_mul(0_usize, align4)) as *i32);
-    assert_eq_i32(tt, value, 3);
-
-    let value = *(untyped_vec_get(&numbers, aligned_size_by_mul(1_usize, align4)) as *i32);
-    assert_eq_i32(tt, value, 1);
-
-    let value = *(untyped_vec_get(&numbers, aligned_size_by_mul(2_usize, align4)) as *i32);
-    assert_eq_i32(tt, value, 4);
-}
-
-// -----------------------------------------------
 // Str
 // -----------------------------------------------
 
@@ -2605,7 +2505,6 @@ pub fn libjacco_syntax_tests() -> i32 {
         // assert_eq_i32(tt, 40 - 2, 42);
 
         vec_tests(tt);
-        untyped_vec_tests(tt);
         str_tests(tt);
         str_buf_tests(tt);
         tokenize_tests(tt);
