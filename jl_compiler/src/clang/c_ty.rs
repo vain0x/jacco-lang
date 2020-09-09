@@ -18,11 +18,6 @@ pub(crate) enum CTy {
     Ptr {
         ty: Box<CTy>,
     },
-    #[allow(unused)]
-    FnPtr {
-        param_tys: Vec<CTy>,
-        result_ty: Box<CTy>,
-    },
     Const {
         ty: Box<CTy>,
     },

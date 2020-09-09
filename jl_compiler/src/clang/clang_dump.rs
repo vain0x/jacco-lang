@@ -101,25 +101,13 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write_ty(&ty, dx)?;
             write!(dx, "*")
         }
-        CTy::FnPtr {
-            param_tys,
-            result_ty,
-        } => write_fn_ptr_ty(None, param_tys, result_ty, dx),
         CTy::Enum(name) => write!(dx, "enum {}", name),
         CTy::Struct(name) => write!(dx, "struct {}", name),
     }
 }
 
-/// 変数と型を書き込む。(`int foo` や `void (*f)()` など。)
+/// 変数と型を書き込む。(`int foo` など。)
 fn write_var_with_ty(name: &str, ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
-    if let CTy::FnPtr {
-        param_tys,
-        result_ty,
-    } = ty
-    {
-        return write_fn_ptr_ty(Some(name), param_tys, result_ty, dx);
-    }
-
     write_ty(ty, dx)?;
     write!(dx, " {}", name)
 }
