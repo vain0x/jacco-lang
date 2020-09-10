@@ -2517,7 +2517,10 @@ fn parse_fn_stmt(px: *mut Px) -> bool {
     px_eat(px, SyntaxKind::Ident, &mut token);
 
     px_eat(px, SyntaxKind::LeftBrace, &mut token);
-    px_eat(px, SyntaxKind::Number, &mut token);
+
+    let value = p_token_default();
+    px_eat(px, SyntaxKind::Number, &mut value);
+
     px_eat(px, SyntaxKind::RightBrace, &mut token);
     true
 }
@@ -2530,16 +2533,8 @@ fn parse_stmt(px: *mut Px) -> bool {
         SyntaxKind::Semi => {
             px_bump(px);
             eprint_s("[TRACE] empty statement parsed");
-            return true;
+            true
         }
-        SyntaxKind::Pub => {
-            eprint_s("[TRACE] pub");
-            let _ = px_bump(px);
-        }
-        _ => {}
-    }
-
-    match px_peek1(px) {
         SyntaxKind::Fn => parse_fn_stmt(px),
         _ => false,
     }
