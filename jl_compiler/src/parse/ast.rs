@@ -25,24 +25,27 @@ pub(crate) type ANameArena = VecArena<ANameTag, AName>;
 pub(crate) struct AName {
     pub(crate) quals: Vec<PToken>,
     pub(crate) token: PToken,
+
+    /// パスの先頭の識別子 (非修飾なら text と一致)
+    // 先頭がないケース (`::name` など) はパーサ側で対処している。
+    pub(crate) base: String,
+
+    /// パスの末尾の識別子 (非修飾なら text と一致)
+    // 末尾がないケース (`name::` など) はパーサ側で対処している。
     pub(crate) text: String,
 }
 
 impl AName {
+    pub(crate) fn base(&self) -> &str {
+        &self.base
+    }
+
     pub(crate) fn text(&self) -> &str {
         &self.text
     }
 
     pub(crate) fn is_qualified(&self) -> bool {
         !self.quals.is_empty()
-    }
-
-    /// 修飾子の最初のセグメントのテキスト
-    pub(crate) fn root_text<'a>(&self, tokens: &'a PTokens) -> &'a str {
-        self.quals
-            .first()
-            .map(|token| token.text(tokens))
-            .unwrap_or_else(|| self.token.text(tokens))
     }
 }
 
