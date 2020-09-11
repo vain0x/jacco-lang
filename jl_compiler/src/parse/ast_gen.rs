@@ -327,6 +327,8 @@ pub(crate) fn alloc_wildcard_pat(event: PatStart, token: PToken, px: &mut Px) ->
 pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &mut Px) -> AfterPat {
     let name = px.alloc_name(name);
 
+    name_resolution::v3::on_name_pat(name, &px.ast, &mut px.name_resolver);
+
     (APat::Name(name), event.end(PElementKind::NamePat, px))
 }
 
