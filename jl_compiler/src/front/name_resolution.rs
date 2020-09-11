@@ -668,6 +668,19 @@ pub(crate) mod v3 {
         leave_hoisted_decl("enum", name_opt, ImportKind::Ty, ast, resolver);
     }
 
+    pub(crate) fn enter_struct_decl(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
+    }
+
+    pub(crate) fn leave_struct_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        v3_core::leave_scope(resolver);
+        leave_hoisted_decl("struct", name_opt, ImportKind::Ty, ast, resolver);
+    }
+
     pub(crate) fn finish(resolver: &NameResolver, ast: &ATree) {
         let mut referents = resolver
             .name_referents

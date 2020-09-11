@@ -368,6 +368,13 @@ pub(crate) enum AVariantDecl {
 }
 
 impl AVariantDecl {
+    pub(crate) fn name_opt(&self) -> Option<ANameId> {
+        match self {
+            AVariantDecl::Const(decl) => decl.name_opt,
+            AVariantDecl::Record(decl) => Some(decl.name),
+        }
+    }
+
     pub(crate) fn as_const(&self) -> Option<&AFieldLikeDecl> {
         match self {
             AVariantDecl::Const(it) => Some(it),

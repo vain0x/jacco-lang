@@ -1183,6 +1183,10 @@ pub(crate) fn alloc_enum_decl(
     )
 }
 
+pub(crate) fn before_struct_decl(px: &mut Px) {
+    name_resolution::v3::enter_struct_decl(&mut px.name_resolver);
+}
+
 pub(crate) fn alloc_struct_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
@@ -1192,8 +1196,11 @@ pub(crate) fn alloc_struct_decl(
 ) -> AfterDecl {
     validate_struct_decl(&modifiers, keyword, variant_opt.as_ref(), semi_opt, px);
 
+    let name_opt = variant_opt.as_ref().and_then(|(v, _)| v.name_opt());
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_variant_opt = variant_opt.map(|(variant_decl, _)| variant_decl);
+
+    name_resolution::v3::leave_struct_decl(name_opt, &px.ast, &mut px.name_resolver);
 
     (
         ADecl::Struct(AStructDecl {

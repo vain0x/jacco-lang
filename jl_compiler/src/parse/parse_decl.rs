@@ -324,6 +324,7 @@ fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) 
 }
 
 fn parse_struct_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+    before_struct_decl(px);
     let variant_opt = parse_variant_decl(VariantParentKind::Struct, px);
     let semi_opt = px.eat(TokenKind::Semi);
 
