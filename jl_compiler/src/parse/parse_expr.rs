@@ -403,23 +403,27 @@ fn parse_arm(px: &mut Px) -> Option<AfterArm> {
     Some(alloc_arm(event, pat, arrow_opt, body_opt, comma_opt, px))
 }
 
+fn parse_arm_list(arms: &mut Vec<AfterArm>, px: &mut Px) {
+    loop {
+        match px.next() {
+            TokenKind::Eof | TokenKind::RightBrace => break,
+            _ => {}
+        }
+
+        match parse_arm(px) {
+            Some(arm) => arms.push(arm),
+            None => px.skip(),
+        }
+    }
+}
+
 fn parse_match_expr(event: ExprStart, keyword: PToken, px: &mut Px) -> AfterExpr {
     let cond_opt = parse_cond(px);
 
     let left_brace_opt = px.eat(TokenKind::LeftBrace);
     let mut arms = vec![];
     if left_brace_opt.is_some() {
-        loop {
-            match px.next() {
-                TokenKind::Eof | TokenKind::RightBrace => break,
-                _ => {}
-            }
-
-            match parse_arm(px) {
-                Some(arm) => arms.push(arm),
-                None => px.skip(),
-            }
-        }
+        parse_arm_list(&mut arms, px);
     }
     let right_brace_opt = if left_brace_opt.is_some() {
         px.eat(TokenKind::RightBrace)
