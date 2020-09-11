@@ -351,7 +351,7 @@ pub(crate) struct NameResolver {
     depth_counts: Vec<usize>,
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
-    defer_map: HashMap<(String, FindKind), Vec<ANameId>>,
+    defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopePos)>>,
     name_referents: HashMap<ANameId, BaseReferent>,
 }
 
@@ -475,23 +475,35 @@ mod v3_core {
     }
 
     /// 前方参照を許す値の名前を追加する。
-    // FIXME: ブロックの深さと位置を見る必要がある。例: `{ f(); } { fn f() {} } fn f() {}` や `f(); fn() {} f() {}` など
     pub(super) fn on_name_def_hoisted(
         name: ANameId,
         kind: ImportKind,
         text: &str,
         resolver: &mut NameResolver,
     ) {
+        let referent = BaseReferent::Name(name);
+        let def_pos = resolver.pos;
+
         let mut aux = |kind: FindKind| {
-            let names = match resolver.defer_map.remove(&(text.to_string(), kind)) {
+            // この定義がみえる位置にある前方参照を解決する。
+            let key = (text.to_string(), kind);
+            let mut vec = match resolver.defer_map.remove(&key) {
                 Some(it) => it,
                 None => return,
             };
 
-            let referent = BaseReferent::Name(name);
-            for name in names {
+            vec.retain(|&(name, pos)| {
+                if !pos.can_see(def_pos) {
+                    return true;
+                }
+
                 let expected = Some(BaseReferent::Deferred);
                 bind_name("hoist", name, None, referent, expected, resolver);
+                false
+            });
+
+            if !vec.is_empty() {
+                resolver.defer_map.insert(key, vec);
             }
         };
 
@@ -521,7 +533,7 @@ mod v3_core {
                     .defer_map
                     .entry((text.to_string(), kind))
                     .or_insert(vec![])
-                    .push(name);
+                    .push((name, resolver.pos));
                 BaseReferent::Deferred
             }
         };
