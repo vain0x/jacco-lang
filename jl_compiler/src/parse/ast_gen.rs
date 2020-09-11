@@ -952,6 +952,10 @@ pub(crate) fn alloc_static_decl(
     )
 }
 
+pub(crate) fn before_fn_decl(px: &mut Px) {
+    name_resolution::v3::enter_fn_decl(&mut px.name_resolver);
+}
+
 pub(crate) fn alloc_fn_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
@@ -1002,6 +1006,9 @@ pub(crate) fn alloc_fn_decl(
     )
 }
 
+pub(crate) fn before_extern_fn_decl(px: &mut Px) {
+    name_resolution::v3::enter_extern_fn_decl(&mut px.name_resolver);
+}
 pub(crate) fn alloc_extern_fn_decl(
     modifiers: AfterDeclModifiers,
     extern_keyword: PToken,

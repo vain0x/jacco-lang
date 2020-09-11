@@ -136,11 +136,14 @@ fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px
 }
 
 fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+    before_fn_decl(px);
+
     let name_opt = parse_unqualifiable_name(px);
     let ty_param_list_opt = parse_ty_param_list(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let block_opt = parse_block(px);
+
     alloc_fn_decl(
         modifiers,
         keyword,
@@ -160,6 +163,8 @@ fn parse_extern_fn_decl(
     fn_keyword: PToken,
     px: &mut Px,
 ) -> AfterDecl {
+    before_extern_fn_decl(px);
+
     let name_opt = parse_unqualifiable_name(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);

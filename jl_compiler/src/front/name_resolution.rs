@@ -622,12 +622,21 @@ pub(crate) mod v3 {
         }
     }
 
+    pub(crate) fn enter_fn_decl(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
+    }
+
     pub(crate) fn leave_fn_decl(
         name_opt: Option<ANameId>,
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
+        v3_core::leave_scope(resolver);
         leave_hoisted_value_decl("fn", name_opt, ast, resolver);
+    }
+
+    pub(crate) fn enter_extern_fn_decl(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
     }
 
     pub(crate) fn leave_extern_fn_decl(
@@ -635,6 +644,7 @@ pub(crate) mod v3 {
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
+        v3_core::leave_scope(resolver);
         leave_hoisted_value_decl("extern fn", name_opt, ast, resolver);
     }
 
