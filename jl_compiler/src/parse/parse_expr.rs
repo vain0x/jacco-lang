@@ -394,13 +394,22 @@ fn parse_if_expr(event: ExprStart, keyword: PToken, px: &mut Px) -> AfterExpr {
 }
 
 fn parse_arm(px: &mut Px) -> Option<AfterArm> {
+    before_arm(px);
+
     let event = px.start_element();
-    let pat = parse_pat(px)?;
+    let pat_opt = parse_pat(px);
     let arrow_opt = px.eat(TokenKind::RightFatArrow);
     let body_opt = parse_expr(px);
     let comma_opt = px.eat(TokenKind::Comma);
 
-    Some(alloc_arm(event, pat, arrow_opt, body_opt, comma_opt, px))
+    if pat_opt.is_none() && arrow_opt.is_none() && body_opt.is_none() && comma_opt.is_none() {
+        abandon_arm(event, px);
+        return None;
+    }
+
+    Some(alloc_arm(
+        event, pat_opt, arrow_opt, body_opt, comma_opt, px,
+    ))
 }
 
 fn parse_arm_list(arms: &mut Vec<AfterArm>, px: &mut Px) {

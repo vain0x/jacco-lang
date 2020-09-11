@@ -1,0 +1,9 @@
+#![test("compile_error")]
+
+// match 式のアームがカンマだけからなるケース。
+
+pub fn main() -> i32 {
+    match () {
+        ,
+    }
+}

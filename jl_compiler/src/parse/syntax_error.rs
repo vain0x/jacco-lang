@@ -142,26 +142,30 @@ pub(crate) fn validate_if_expr(
 }
 
 pub(crate) fn validate_arm(
-    pat: &AfterPat,
+    pat_opt: Option<&AfterPat>,
     arrow_opt: Option<PToken>,
     body_opt: Option<&AfterExpr>,
-    _comma_opt: Option<PToken>,
+    comma_opt: Option<PToken>,
     px: &mut Px,
 ) {
     // FIXME: 次のアームが存在し、本体が '{}' で終止していなければ、カンマの抜けを指摘する？ (match 式の方で調査するほうがよいかもしれない)
 
-    match (arrow_opt, body_opt) {
-        (Some(_), Some(_)) => {}
-        (None, ..) => {
-            px.builder
-                .error_behind(pat.1.id(), "パターンの後に => が必要です。");
-        }
-        (Some(arrow), _) => {
-            px.logger().error(
-                PLoc::TokenBehind(arrow),
-                "=> の後にアームの本体となる式が必要です。",
-            );
-        }
+    match (pat_opt, arrow_opt, body_opt, comma_opt) {
+        (None, None, None, None) | (None, None, Some(_), _) => unreachable!(),
+        (Some(_), Some(_), Some(_), _) => {}
+        (None, Some(arrow), ..) => px
+            .logger()
+            .error(PLoc::Token(arrow), "=> の前にパターンが必要です。"),
+        (Some(pat), None, ..) => px
+            .builder
+            .error_behind(pat.1.id(), "パターンの後に => が必要です。"),
+        (_, Some(arrow), None, _) => px.logger().error(
+            PLoc::TokenBehind(arrow),
+            "=> の後にアームの本体となる式が必要です。",
+        ),
+        (None, None, None, Some(comma)) => px
+            .logger()
+            .error(PLoc::Token(comma), "このカンマは不要です。"),
     }
 }
 

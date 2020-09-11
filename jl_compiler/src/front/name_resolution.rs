@@ -597,6 +597,14 @@ pub(crate) mod v3 {
         v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).text(), resolver);
     }
 
+    pub(crate) fn enter_arm(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
+    }
+
+    pub(crate) fn leave_arm(resolver: &mut NameResolver) {
+        v3_core::leave_scope(resolver);
+    }
+
     fn leave_stacked_value_decl(
         hint: &str,
         name_opt: Option<ANameId>,

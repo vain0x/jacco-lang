@@ -669,26 +669,58 @@ pub(crate) fn alloc_if_expr(
     )
 }
 
+pub(crate) fn before_arm(px: &mut Px) {
+    name_resolution::v3::enter_arm(&mut px.name_resolver);
+}
+
+// opt の少なくとも1つは Some
 pub(crate) fn alloc_arm(
     event: ParseStart,
-    pat: AfterPat,
+    pat_opt: Option<AfterPat>,
     arrow_opt: Option<PToken>,
     body_opt: Option<AfterExpr>,
     comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterArm {
-    validate_arm(&pat, arrow_opt, body_opt.as_ref(), comma_opt, px);
+    debug_assert!(
+        pat_opt.is_some() || arrow_opt.is_some() || body_opt.is_some() || comma_opt.is_some()
+    );
 
-    let a_pat = px.alloc_pat(pat);
-    let a_body_opt = body_opt.map(|expr| px.alloc_expr(expr));
+    validate_arm(
+        pat_opt.as_ref(),
+        arrow_opt,
+        body_opt.as_ref(),
+        comma_opt,
+        px,
+    );
+
+    let pat_opt = pat_opt.map(|pat| px.alloc_pat(pat));
+    let body_opt = body_opt.map(|expr| px.alloc_expr(expr));
+    let loc = match (pat_opt, arrow_opt, body_opt, comma_opt) {
+        (None, None, None, None) => unreachable!(),
+        (Some(pat), ..) => PLoc::Pat(pat),
+        (None, Some(arrow), ..) => PLoc::Token(arrow),
+        (None, None, Some(body), ..) => PLoc::Expr(body),
+        (None, None, None, Some(comma)) => PLoc::Token(comma),
+    };
+
+    name_resolution::v3::leave_arm(&mut px.name_resolver);
 
     (
         AArm {
-            pat: a_pat,
-            body_opt: a_body_opt,
+            pat_opt,
+            body_opt,
+            loc,
         },
         event.end(PElementKind::Arm, px),
     )
+}
+
+/// アームをパースしようとしたが、1トークンもパースできなかったとき。
+/// (アームの始まりはキーワードではなくパターンなので、ここだけこういうことが起こりうる。
+///  パターンの FIRST 集合をみてから alloc_arm を呼ぶ実装にすれば回避できる。)
+pub(crate) fn abandon_arm(event: ParseStart, px: &mut Px) {
+    name_resolution::v3::leave_arm(&mut px.name_resolver);
 }
 
 pub(crate) fn alloc_match_expr(

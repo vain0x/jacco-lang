@@ -515,10 +515,23 @@ fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> Branch {
     do_convert_pat_as_cond(pat_id, pat, loc, xx)
 }
 
+fn convert_pat_opt_as_cond(pat_opt: Option<APatId>, loc: PLoc, xx: &mut Xx) -> Branch {
+    match pat_opt {
+        Some(pat) => convert_pat_as_cond(pat, xx),
+        None => Branch::Case(new_error_term(Loc::new(xx.doc, loc))),
+    }
+}
+
 fn convert_pat_as_assign(pat_id: APatId, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     let pat = pat_id.of(xx.ast.pats());
     let loc = Loc::new(xx.doc, PLoc::Pat(pat_id));
     do_convert_pat_as_assign(pat, cond, term, loc, xx)
+}
+
+fn convert_pat_opt_as_assign(pat_opt: Option<APatId>, cond: &KTerm, term: KTerm, xx: &mut Xx) {
+    if let Some(pat) = pat_opt {
+        convert_pat_as_assign(pat, cond, term, xx);
+    }
 }
 
 // -----------------------------------------------
@@ -1354,7 +1367,7 @@ fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mu
             .arms
             .iter()
             .map(|arm| {
-                let term = match convert_pat_as_cond(arm.pat, xx) {
+                let term = match convert_pat_opt_as_cond(arm.pat_opt, arm.loc, xx) {
                     Branch::Case(term) => term,
                     Branch::Default(symbol) => KTerm::Name(symbol),
                 };
@@ -1374,7 +1387,7 @@ fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mu
         for (arm, term) in arms {
             do_in_branch(xx, |xx| {
                 xx.do_in_scope(|xx| {
-                    convert_pat_as_assign(arm.pat, &cond, term, xx);
+                    convert_pat_opt_as_assign(arm.pat_opt, &cond, term, xx);
                     let body = convert_expr_opt(arm.body_opt, TyExpect::Todo, loc, xx);
                     let node = new_jump_tail(break_label, vec![body], loc);
                     xx.nodes.push(node);

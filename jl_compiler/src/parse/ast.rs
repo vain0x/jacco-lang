@@ -230,8 +230,9 @@ pub(crate) struct AIfExpr {
 }
 
 pub(crate) struct AArm {
-    pub(crate) pat: APatId,
+    pub(crate) pat_opt: Option<APatId>,
     pub(crate) body_opt: Option<AExprId>,
+    pub(crate) loc: PLoc,
 }
 
 pub(crate) struct AMatchExpr {

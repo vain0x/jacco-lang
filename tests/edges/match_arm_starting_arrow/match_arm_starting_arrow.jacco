@@ -1,0 +1,10 @@
+#![test("compile_error")]
+
+// match 式のアームが => で始まるケースは構文エラーになる。
+
+pub fn main() -> i32 {
+    match () {
+        => {}
+//      ^^
+    }
+}
