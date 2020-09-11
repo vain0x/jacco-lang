@@ -193,6 +193,8 @@ pub(crate) fn alloc_param(
     let name = px.alloc_name(name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
+    name_resolution::v3::on_param_decl(name, &px.ast, &mut px.name_resolver);
+
     (
         AParamDecl {
             name,

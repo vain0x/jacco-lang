@@ -543,6 +543,11 @@ pub(crate) mod v3 {
         v3_core::leave_scope(resolver);
     }
 
+    pub(crate) fn on_param_decl(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        let text = name.of(ast.names()).text();
+        v3_core::on_name_def_stacked(name, ImportKind::Value, text, resolver);
+    }
+
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_expr {}#{}",
