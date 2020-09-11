@@ -568,12 +568,11 @@ pub(crate) mod v3 {
     pub(crate) fn on_name_ty(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_ty {}#{}",
-            name.of(ast.names()).text(),
+            name.of(ast.names()).base(),
             name.to_index()
         );
 
-        // FIXME: root_text でなければいけない
-        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).text(), resolver);
+        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).base(), resolver);
     }
 
     pub(crate) fn on_name_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
@@ -589,12 +588,11 @@ pub(crate) mod v3 {
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_expr {}#{}",
-            name.of(ast.names()).text(),
+            name.of(ast.names()).base(),
             name.to_index()
         );
 
-        // FIXME: root_text でなければいけない
-        v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).text(), resolver);
+        v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).base(), resolver);
     }
 
     pub(crate) fn enter_arm(resolver: &mut NameResolver) {
