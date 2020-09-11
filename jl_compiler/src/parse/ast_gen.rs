@@ -891,6 +891,8 @@ pub(crate) fn alloc_const_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
+    name_resolution::v3::leave_const_decl(name_opt, &px.ast, &mut px.name_resolver);
+
     (
         ADecl::Const(AFieldLikeDecl {
             modifiers,
@@ -930,6 +932,8 @@ pub(crate) fn alloc_static_decl(
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
+
+    name_resolution::v3::leave_static_decl(name_opt, &px.ast, &mut px.name_resolver);
 
     (
         ADecl::Static(AFieldLikeDecl {

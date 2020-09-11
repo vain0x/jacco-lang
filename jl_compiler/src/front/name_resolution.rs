@@ -443,14 +443,16 @@ pub(crate) mod v3 {
         v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).text(), resolver);
     }
 
-    pub(crate) fn leave_let_decl(
+    fn leave_stacked_value_decl(
+        hint: &str,
         name_opt: Option<ANameId>,
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
         log::trace!(
-            "leave_let_decl {:?}",
-            name_opt.map_or("???".into(), |name| format!(
+            "leave_stacked_value_decl({}) {}",
+            hint,
+            name_opt.map_or("name".into(), |name| format!(
                 "{}#{}",
                 name.of(ast.names()).text(),
                 name.to_index()
@@ -464,5 +466,29 @@ pub(crate) mod v3 {
                 resolver,
             );
         }
+    }
+
+    pub(crate) fn leave_let_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        leave_stacked_value_decl("let", name_opt, ast, resolver);
+    }
+
+    pub(crate) fn leave_const_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        leave_stacked_value_decl("const", name_opt, ast, resolver);
+    }
+
+    pub(crate) fn leave_static_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        leave_stacked_value_decl("static", name_opt, ast, resolver);
     }
 }
