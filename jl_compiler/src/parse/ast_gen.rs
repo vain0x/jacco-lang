@@ -1029,6 +1029,8 @@ pub(crate) fn alloc_extern_fn_decl(
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
 
+    name_resolution::v3::leave_extern_fn_decl(name_opt, &px.ast, &mut px.name_resolver);
+
     (
         ADecl::ExternFn(AFnLikeDecl {
             modifiers,

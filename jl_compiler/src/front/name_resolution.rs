@@ -549,13 +549,15 @@ pub(crate) mod v3 {
         leave_stacked_value_decl("static", name_opt, ast, resolver);
     }
 
-    pub(crate) fn leave_fn_decl(
+    fn leave_hoisted_value_decl(
+        hint: &str,
         name_opt: Option<ANameId>,
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
         log::trace!(
-            "leave_fn_decl {}",
+            "leave_hoisted_value_decl({}) {}",
+            hint,
             name_opt.map_or("name".into(), |name| format!(
                 "{}#{}",
                 name.of(ast.names()).text(),
@@ -570,6 +572,22 @@ pub(crate) mod v3 {
                 resolver,
             );
         }
+    }
+
+    pub(crate) fn leave_fn_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        leave_hoisted_value_decl("fn", name_opt, ast, resolver);
+    }
+
+    pub(crate) fn leave_extern_fn_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        leave_hoisted_value_decl("extern fn", name_opt, ast, resolver);
     }
 
     pub(crate) fn finish(resolver: &NameResolver, ast: &ATree) {
