@@ -981,6 +981,8 @@ pub(crate) fn alloc_fn_decl(
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
     let body_opt = block_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
 
+    name_resolution::v3::leave_fn_decl(name_opt, &px.ast, &mut px.name_resolver);
+
     (
         ADecl::Fn(AFnLikeDecl {
             modifiers,

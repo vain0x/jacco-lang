@@ -113,7 +113,7 @@ pub(crate) fn add_decl_to_local_env(
 // 型
 // -----------------------------------------------
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BuiltInTy {
     Number(KNumberTy),
     Unknown,
@@ -310,11 +310,14 @@ pub(crate) fn resolve_value_path(
 // V3
 // =============================================================================
 
-#[derive(Copy, Clone, Debug)]
+type Depth = usize;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BaseReferent {
     BeforeProcess,
     Deferred,
     Unresolved,
+    Def,
     Name(ANameId),
     BuiltInTy(BuiltInTy),
 }
@@ -364,6 +367,27 @@ mod v3_core {
         resolver.value_env.pop();
     }
 
+    fn bind_name(
+        hint: &str,
+        name_id: ANameId,
+        #[allow(unused)] text_opt: Option<&str>,
+        referent: BaseReferent,
+        expected: Option<BaseReferent>,
+        resolver: &mut NameResolver,
+    ) {
+        log::trace!(
+            "bind_name({}) {}#{} ({:?} -> {:?})",
+            hint,
+            text_opt.unwrap_or(""),
+            name_id.to_index(),
+            expected,
+            referent
+        );
+
+        let old = resolver.name_referents.insert(name_id, referent);
+        assert_eq!(old, expected);
+    }
+
     fn import_name(name_id: ANameId, kind: ImportKind, text: &str, resolver: &mut NameResolver) {
         match kind {
             ImportKind::Value => {
@@ -404,6 +428,41 @@ mod v3_core {
         resolver: &mut NameResolver,
     ) {
         import_name(name, kind, text, resolver);
+        bind_name("stack", name, Some(text), BaseReferent::Def, None, resolver)
+    }
+
+    /// 前方参照を許す値の名前を追加する。
+    // FIXME: ブロックの深さと位置を見る必要がある。例: `{ f(); } { fn f() {} } fn f() {}` や `f(); fn() {} f() {}` など
+    pub(super) fn on_name_def_hoisted(
+        name: ANameId,
+        kind: ImportKind,
+        text: &str,
+        resolver: &mut NameResolver,
+    ) {
+        let mut aux = |kind: FindKind| {
+            let names = match resolver.defer_map.remove(&(text.to_string(), kind)) {
+                Some(it) => it,
+                None => return,
+            };
+
+            let referent = BaseReferent::Name(name);
+            for name in names {
+                let expected = Some(BaseReferent::Deferred);
+                bind_name("hoist", name, None, referent, expected, resolver);
+            }
+        };
+
+        match kind {
+            ImportKind::Value => aux(FindKind::Value),
+            ImportKind::Ty => aux(FindKind::Ty),
+            ImportKind::Both => {
+                aux(FindKind::Value);
+                aux(FindKind::Ty);
+            }
+        }
+
+        import_name(name, kind, text, resolver);
+        bind_name("hoist", name, Some(text), BaseReferent::Def, None, resolver);
     }
 
     pub(super) fn on_name_use(
@@ -423,10 +482,8 @@ mod v3_core {
                 BaseReferent::Deferred
             }
         };
-        log::trace!("on_name_use {} -> {:?}", text, referent);
 
-        let old = resolver.name_referents.insert(name, referent);
-        debug_assert!(old.is_none());
+        bind_name("use", name, Some(text), referent, None, resolver);
     }
 }
 
@@ -490,5 +547,46 @@ pub(crate) mod v3 {
         resolver: &mut NameResolver,
     ) {
         leave_stacked_value_decl("static", name_opt, ast, resolver);
+    }
+
+    pub(crate) fn leave_fn_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        log::trace!(
+            "leave_fn_decl {}",
+            name_opt.map_or("name".into(), |name| format!(
+                "{}#{}",
+                name.of(ast.names()).text(),
+                name.to_index()
+            ))
+        );
+        if let Some(name) = name_opt {
+            v3_core::on_name_def_hoisted(
+                name,
+                ImportKind::Value,
+                name.of(ast.names()).text(),
+                resolver,
+            );
+        }
+    }
+
+    pub(crate) fn finish(resolver: &NameResolver, ast: &ATree) {
+        let mut referents = resolver
+            .name_referents
+            .iter()
+            .map(|(&name, &referent)| (name, referent))
+            .collect::<Vec<_>>();
+        referents.sort_by_key(|&(key, _)| key);
+
+        for (name, referent) in referents {
+            log::trace!(
+                "name#{} ({:?}) -> {:?}",
+                name.to_index(),
+                ast.names().get(name).map(|name| name.text()),
+                referent
+            );
+        }
     }
 }
