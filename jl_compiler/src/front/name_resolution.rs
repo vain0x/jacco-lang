@@ -325,6 +325,7 @@ impl ScopePos {
     /// 例 2. `{ { f(); } fn f() {} }` のとき、使用は定義と異なるスコープにあるが、定義の方が浅いスコープにあるので見える。
     /// 例 3. `{ f(); { fn f() {} } }` のとき使用箇所より定義の方が深いスコープにあるので見えない。
     /// 例 4. `{ f(); } { fn f() {} }` のとき使用箇所と定義箇所は同じ深さにあるが、異なるスコープにあるので見えない。
+    #[allow(unused)]
     pub(crate) fn can_see(self, def_pos: ScopePos) -> bool {
         // 定義がより浅いブロックにあるか、同一のブロックにあるなら OK.
         def_pos.depth < self.depth || def_pos == self
@@ -333,8 +334,10 @@ impl ScopePos {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BaseReferent {
+    #[allow(unused)]
     BeforeProcess,
     Deferred,
+    #[allow(unused)]
     Unresolved,
     Def,
     Name(ANameId),
@@ -365,7 +368,9 @@ impl<'a> NameResolver {
 #[derive(Copy, Clone)]
 enum ImportKind {
     Value,
+    #[allow(unused)]
     Ty,
+    #[allow(unused)]
     Both,
 }
 
