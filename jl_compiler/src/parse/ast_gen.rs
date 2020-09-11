@@ -1230,6 +1230,8 @@ pub(crate) fn alloc_use_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
+    name_resolution::v3::on_use_decl(name_opt, &px.ast, &mut px.name_resolver);
+
     (
         ADecl::Use(AUseDecl {
             modifiers,

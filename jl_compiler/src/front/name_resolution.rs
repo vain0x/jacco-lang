@@ -368,9 +368,7 @@ impl<'a> NameResolver {
 #[derive(Copy, Clone)]
 enum ImportKind {
     Value,
-    #[allow(unused)]
     Ty,
-    #[allow(unused)]
     Both,
 }
 
@@ -679,6 +677,10 @@ pub(crate) mod v3 {
     ) {
         v3_core::leave_scope(resolver);
         leave_hoisted_decl("struct", name_opt, ImportKind::Ty, ast, resolver);
+    }
+
+    pub(crate) fn on_use_decl(name_opt: Option<ANameId>, ast: &ATree, resolver: &mut NameResolver) {
+        leave_hoisted_decl("use", name_opt, ImportKind::Both, ast, resolver);
     }
 
     pub(crate) fn finish(resolver: &NameResolver, ast: &ATree) {
