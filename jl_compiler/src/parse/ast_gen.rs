@@ -702,7 +702,6 @@ pub(crate) fn alloc_match_expr(
     );
 
     let a_cond_opt = cond_opt.map(|expr| px.alloc_expr(expr));
-
     let a_arms = arms.into_iter().map(|(a_arm, _)| a_arm).collect();
 
     (
@@ -1011,6 +1010,7 @@ pub(crate) fn alloc_fn_decl(
 pub(crate) fn before_extern_fn_decl(px: &mut Px) {
     name_resolution::v3::enter_extern_fn_decl(&mut px.name_resolver);
 }
+
 pub(crate) fn alloc_extern_fn_decl(
     modifiers: AfterDeclModifiers,
     extern_keyword: PToken,
@@ -1144,6 +1144,10 @@ pub(crate) fn alloc_variants(variants: Vec<AfterVariantDecl>, _px: &mut Px) -> A
         .collect()
 }
 
+pub(crate) fn before_enum_decl(px: &mut Px) {
+    name_resolution::v3::enter_enum_decl(&mut px.name_resolver);
+}
+
 pub(crate) fn alloc_enum_decl(
     modifiers: AfterDeclModifiers,
     keyword: PToken,
@@ -1166,6 +1170,8 @@ pub(crate) fn alloc_enum_decl(
     let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
+
+    name_resolution::v3::leave_enum_decl(name_opt, &px.ast, &mut px.name_resolver);
 
     (
         ADecl::Enum(AEnumDecl {

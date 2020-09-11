@@ -297,6 +297,7 @@ fn parse_variants(px: &mut Px) -> AfterVariantDecls {
 }
 
 fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+    before_enum_decl(px);
     let name_opt = parse_unqualifiable_name(px);
 
     let left_brace_opt = px.eat(TokenKind::LeftBrace);

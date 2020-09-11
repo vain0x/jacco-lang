@@ -555,6 +555,7 @@ pub(crate) mod v3 {
             name.to_index()
         );
 
+        // FIXME: root_text でなければいけない
         v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).text(), resolver);
     }
 
@@ -607,14 +608,15 @@ pub(crate) mod v3 {
         leave_stacked_value_decl("static", name_opt, ast, resolver);
     }
 
-    fn leave_hoisted_value_decl(
+    fn leave_hoisted_decl(
         hint: &str,
         name_opt: Option<ANameId>,
+        kind: ImportKind,
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
         log::trace!(
-            "leave_hoisted_value_decl({}) {}",
+            "leave_hoisted_decl({}) {}",
             hint,
             name_opt.map_or("name".into(), |name| format!(
                 "{}#{}",
@@ -623,12 +625,7 @@ pub(crate) mod v3 {
             ))
         );
         if let Some(name) = name_opt {
-            v3_core::on_name_def_hoisted(
-                name,
-                ImportKind::Value,
-                name.of(ast.names()).text(),
-                resolver,
-            );
+            v3_core::on_name_def_hoisted(name, kind, name.of(ast.names()).text(), resolver);
         }
     }
 
@@ -642,7 +639,7 @@ pub(crate) mod v3 {
         resolver: &mut NameResolver,
     ) {
         v3_core::leave_scope(resolver);
-        leave_hoisted_value_decl("fn", name_opt, ast, resolver);
+        leave_hoisted_decl("fn", name_opt, ImportKind::Value, ast, resolver);
     }
 
     pub(crate) fn enter_extern_fn_decl(resolver: &mut NameResolver) {
@@ -655,7 +652,20 @@ pub(crate) mod v3 {
         resolver: &mut NameResolver,
     ) {
         v3_core::leave_scope(resolver);
-        leave_hoisted_value_decl("extern fn", name_opt, ast, resolver);
+        leave_hoisted_decl("extern fn", name_opt, ImportKind::Value, ast, resolver);
+    }
+
+    pub(crate) fn enter_enum_decl(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
+    }
+
+    pub(crate) fn leave_enum_decl(
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+        resolver: &mut NameResolver,
+    ) {
+        v3_core::leave_scope(resolver);
+        leave_hoisted_decl("enum", name_opt, ImportKind::Ty, ast, resolver);
     }
 
     pub(crate) fn finish(resolver: &NameResolver, ast: &ATree) {
