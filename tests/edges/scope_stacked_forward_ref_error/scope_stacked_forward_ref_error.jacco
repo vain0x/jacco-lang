@@ -1,0 +1,10 @@
+#![test("compile_error")]
+
+// stacked scope により導入される識別子は前方参照できない。
+
+pub fn main() -> i32 {
+    x;
+//  ^
+    let x = 0;
+    0
+}

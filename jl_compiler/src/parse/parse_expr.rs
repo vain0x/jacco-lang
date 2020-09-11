@@ -344,6 +344,8 @@ pub(crate) fn parse_cond(px: &mut Px) -> Option<AfterExpr> {
 pub(crate) fn parse_block(px: &mut Px) -> Option<AfterBlock> {
     let event = px.start_element();
     let left_brace = px.eat(TokenKind::LeftBrace)?;
+    before_block(px);
+
     let semi = parse_semi(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
 

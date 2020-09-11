@@ -1,0 +1,13 @@
+#![test("compile_error")]
+
+// hoisted scope により導入される識別子はブロックから漏れない。
+
+pub fn main() -> i32 {
+    f();
+//  ^^^
+
+    {
+        fn f() {}
+    }
+    0
+}

@@ -39,7 +39,10 @@ fn test_features() {
     let mut pass = 0;
     let mut fail = vec![];
 
-    for dir in fs::read_dir(tests_dir().join("features")).unwrap() {
+    for dir in fs::read_dir(tests_dir().join("features"))
+        .unwrap()
+        .chain(fs::read_dir(tests_dir().join("edges")).unwrap())
+    {
         let dir = match dir {
             Ok(it) => it,
             Err(_) => continue,

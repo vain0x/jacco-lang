@@ -560,6 +560,10 @@ fn do_alloc_block_expr(event: ExprEnd, decls: Vec<(ADecl, DeclEnd)>, px: &mut Px
     px.alloc_expr((AExpr::Block(ABlockExpr { decls }), event))
 }
 
+pub(crate) fn before_block(px: &mut Px) {
+    name_resolution::v3::enter_block(&mut px.name_resolver);
+}
+
 pub(crate) fn alloc_block(
     event: ExprStart,
     left_brace: PToken,
@@ -568,6 +572,8 @@ pub(crate) fn alloc_block(
     px: &mut Px,
 ) -> AfterBlock {
     let a_decls = semi;
+
+    name_resolution::v3::leave_block(&mut px.name_resolver);
 
     (a_decls, event.end(PElementKind::BlockExpr, px))
 }

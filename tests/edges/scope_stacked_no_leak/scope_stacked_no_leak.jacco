@@ -1,0 +1,12 @@
+#![test("compile_error")]
+
+// stacked scope により導入される識別子はブロックから漏れない。
+
+pub fn main() -> i32 {
+    {
+        let x = 0;
+    }
+    x;
+//  ^
+    0
+}

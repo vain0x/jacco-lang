@@ -310,7 +310,26 @@ pub(crate) fn resolve_value_path(
 // V3
 // =============================================================================
 
-type Depth = usize;
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+struct ScopePos {
+    /// スコープの深さ (親スコープの個数)
+    depth: usize,
+    /// スコープの深さごとのインデックス (前方にある同じ深さのスコープの個数)
+    index: usize,
+}
+
+impl ScopePos {
+    /// この位置のスコープから `def_pos` のスコープに含まれる定義が見えるか？ (定義は hoist されるものとする。定義が後方にあるケースにしか使わない。)
+    ///
+    /// 例 1. `{ f(); fn f() {} }` なら使用 (`f()`) と定義 (`fn f`) が同じスコープにあるので、みえる。
+    /// 例 2. `{ { f(); } fn f() {} }` のとき、使用は定義と異なるスコープにあるが、定義の方が浅いスコープにあるので見える。
+    /// 例 3. `{ f(); { fn f() {} } }` のとき使用箇所より定義の方が深いスコープにあるので見えない。
+    /// 例 4. `{ f(); } { fn f() {} }` のとき使用箇所と定義箇所は同じ深さにあるが、異なるスコープにあるので見えない。
+    pub(crate) fn can_see(self, def_pos: ScopePos) -> bool {
+        // 定義がより浅いブロックにあるか、同一のブロックにあるなら OK.
+        def_pos.depth < self.depth || def_pos == self
+    }
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BaseReferent {
@@ -324,6 +343,9 @@ enum BaseReferent {
 
 #[derive(Default)]
 pub(crate) struct NameResolver {
+    pos: ScopePos,
+    /// `depth_counts[d]`: 深さ d のスコープの個数
+    depth_counts: Vec<usize>,
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
     defer_map: HashMap<(String, FindKind), Vec<ANameId>>,
@@ -333,8 +355,9 @@ pub(crate) struct NameResolver {
 impl<'a> NameResolver {
     pub(crate) fn new() -> Self {
         let mut resolver = Self::default();
-        resolver.value_env.push();
+        resolver.depth_counts = vec![0; 8];
         resolver.ty_env.push();
+        resolver.value_env.push();
         resolver
     }
 }
@@ -355,16 +378,33 @@ enum FindKind {
 mod v3_core {
     use super::*;
 
+    fn inc_pos(resolver: &mut NameResolver) {
+        let d = resolver.pos.depth + 1;
+        if d >= resolver.depth_counts.len() {
+            resolver.depth_counts.push(0);
+        }
+        resolver.depth_counts[d] += 1;
+
+        resolver.pos.depth = d;
+        resolver.pos.index = resolver.depth_counts[d];
+    }
+
+    fn dec_pos(resolver: &mut NameResolver) {
+        resolver.pos.depth -= 1;
+    }
+
     pub(super) fn enter_scope(resolver: &mut NameResolver) {
-        log::trace!("enter_scope");
         resolver.ty_env.push();
         resolver.value_env.push();
+        inc_pos(resolver);
+        log::trace!("enter_scope pos={:?}", resolver.pos);
     }
 
     pub(super) fn leave_scope(resolver: &mut NameResolver) {
-        log::trace!("leave_scope");
+        log::trace!("leave_scope pos={:?}", resolver.pos);
         resolver.ty_env.pop();
         resolver.value_env.pop();
+        dec_pos(resolver);
     }
 
     fn bind_name(
@@ -489,6 +529,14 @@ mod v3_core {
 
 pub(crate) mod v3 {
     use super::*;
+
+    pub(crate) fn enter_block(resolver: &mut NameResolver) {
+        v3_core::enter_scope(resolver);
+    }
+
+    pub(crate) fn leave_block(resolver: &mut NameResolver) {
+        v3_core::leave_scope(resolver);
+    }
 
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
