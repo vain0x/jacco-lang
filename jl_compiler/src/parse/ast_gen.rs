@@ -119,6 +119,8 @@ pub(crate) fn alloc_ty_param(
 
     let name = px.alloc_name(name);
 
+    name_resolution::v3::on_ty_param_decl(name, &px.ast, &mut px.name_resolver);
+
     (
         ATyParamDecl { name },
         comma_opt,

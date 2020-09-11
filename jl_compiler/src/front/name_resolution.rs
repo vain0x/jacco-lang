@@ -553,7 +553,14 @@ pub(crate) mod v3 {
         v3_core::leave_scope(resolver);
     }
 
+    pub(crate) fn on_ty_param_decl(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        // FIXME: 型パラメータの名前の重複はエラーにする
+        let text = name.of(ast.names()).text();
+        v3_core::on_name_def_stacked(name, ImportKind::Ty, text, resolver);
+    }
+
     pub(crate) fn on_param_decl(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        // FIXME: パラメータの名前の重複はエラーにする
         let text = name.of(ast.names()).text();
         v3_core::on_name_def_stacked(name, ImportKind::Value, text, resolver);
     }
