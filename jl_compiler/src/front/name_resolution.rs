@@ -565,6 +565,17 @@ pub(crate) mod v3 {
         v3_core::on_name_def_stacked(name, ImportKind::Value, text, resolver);
     }
 
+    pub(crate) fn on_name_ty(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        log::trace!(
+            "on_name_ty {}#{}",
+            name.of(ast.names()).text(),
+            name.to_index()
+        );
+
+        // FIXME: root_text でなければいけない
+        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).text(), resolver);
+    }
+
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_expr {}#{}",

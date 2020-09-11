@@ -225,6 +225,8 @@ pub(crate) fn alloc_param_list(
 pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut Px) -> AfterTy {
     let name = px.alloc_name(name);
 
+    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
+
     (ATy::Name(name), event.end(PElementKind::NameTy, px))
 }
 
@@ -433,6 +435,8 @@ pub(crate) fn alloc_record_expr(
         .into_iter()
         .map(|(field_expr, _)| field_expr)
         .collect();
+
+    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
 
     (
         AExpr::Record(ARecordExpr {
