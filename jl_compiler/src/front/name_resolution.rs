@@ -571,13 +571,16 @@ pub(crate) mod v3 {
     }
 
     pub(crate) fn on_name_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        let name_data = name.of(ast.names());
+        let base = name.of(ast.names()).base();
+
+        // いまのところパス式の末尾以外は型名。
+        if name_data.is_qualified() {
+            return v3_core::on_name_use(name, FindKind::Ty, base, resolver);
+        }
+
         // FIXME: const/unit-like struct の可能性もある?
-        v3_core::on_name_def_stacked(
-            name,
-            ImportKind::Value,
-            name.of(ast.names()).text(),
-            resolver,
-        );
+        v3_core::on_name_def_stacked(name, ImportKind::Value, base, resolver);
     }
 
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
