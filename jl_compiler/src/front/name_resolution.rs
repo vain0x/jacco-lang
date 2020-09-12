@@ -19,6 +19,8 @@ pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModSymbol>>;
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
     pub(super) ast: &'a ATree,
+    pub(super) name_referents: &'a NameReferents,
+    pub(super) name_symbols: &'a NameSymbols,
     pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
@@ -143,7 +145,9 @@ fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
 pub(crate) fn resolve_ty_name(
     name: &str,
     key: ANameKey,
-    env: &Env,
+    #[allow(unused)] env: &Env,
+    name_referents: &NameReferents,
+    name_symbols: &NameSymbols,
     listener: &mut dyn NameResolutionListener,
 ) -> Option<KTy> {
     let ty_opt = env
@@ -188,6 +192,8 @@ pub(crate) fn resolve_ty_path(
     let PathResolutionContext {
         tokens,
         ast,
+        name_referents,
+        name_symbols,
         k_mod,
         mod_outline,
         mod_outlines,
@@ -198,8 +204,15 @@ pub(crate) fn resolve_ty_path(
     let (head, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(name.of(ast.names()).text(), key, env, listener)
-                .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
+            return resolve_ty_name(
+                name.of(ast.names()).text(),
+                key,
+                env,
+                name_referents,
+                name_symbols,
+                listener,
+            )
+            .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
 
@@ -209,7 +222,14 @@ pub(crate) fn resolve_ty_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let ty = match resolve_ty_name(head.text(tokens), key, env, listener)? {
+    let ty = match resolve_ty_name(
+        head.text(tokens),
+        key,
+        env,
+        name_referents,
+        name_symbols,
+        listener,
+    )? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = name.of(ast.names()).token.text(tokens);
@@ -242,6 +262,8 @@ pub(crate) fn resolve_value_path(
     let PathResolutionContext {
         tokens,
         ast,
+        name_referents,
+        name_symbols,
         k_mod,
         mod_outline,
         mod_outlines,
@@ -263,7 +285,14 @@ pub(crate) fn resolve_value_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let value = match resolve_ty_name(head.text(tokens), key, env, listener)? {
+    let value = match resolve_ty_name(
+        head.text(tokens),
+        key,
+        env,
+        name_referents,
+        name_symbols,
+        listener,
+    )? {
         KTy::Alias(alias) => {
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
@@ -339,6 +368,10 @@ pub(crate) enum BaseReferent {
     BuiltInTy(BuiltInTy),
 }
 
+pub(crate) type NameReferents = HashMap<ANameId, BaseReferent>;
+
+pub(crate) type NameSymbols = HashMap<ANameId, KModSymbol>;
+
 #[derive(Default)]
 pub(crate) struct NameResolver {
     pos: ScopePos,
@@ -347,7 +380,7 @@ pub(crate) struct NameResolver {
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
     defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopePos)>>,
-    pub(crate) name_referents: HashMap<ANameId, BaseReferent>,
+    pub(crate) name_referents: NameReferents,
 }
 
 impl<'a> NameResolver {

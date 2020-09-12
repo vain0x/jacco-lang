@@ -139,6 +139,8 @@ struct Xx<'a> {
     k_mod: KMod,
     tokens: &'a PTokens,
     ast: &'a ATree,
+    name_referents: &'a NameReferents,
+    name_symbols: &'a NameSymbols,
     decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
@@ -152,6 +154,8 @@ impl<'a> Xx<'a> {
         k_mod: KMod,
         tokens: &'a PTokens,
         ast: &'a ATree,
+        name_referents: &'a NameReferents,
+        name_symbols: &'a NameSymbols,
         decl_symbols: &'a DeclSymbols,
         mod_outline: &'a KModOutline,
         mod_outlines: &'a KModOutlines,
@@ -181,6 +185,8 @@ impl<'a> Xx<'a> {
             k_mod,
             tokens,
             ast,
+            name_referents,
+            name_symbols,
             decl_symbols,
             mod_outline,
             mod_outlines,
@@ -222,6 +228,8 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
     PathResolutionContext {
         tokens: xx.tokens,
         ast: xx.ast,
+        name_referents: xx.name_referents,
+        name_symbols: xx.name_symbols,
         k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
@@ -300,6 +308,8 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 pub(crate) struct TyResolver<'a> {
     pub(crate) env: &'a mut Env,
     pub(crate) ast: &'a ATree,
+    pub(crate) name_referents: &'a NameReferents,
+    pub(crate) name_symbols: &'a NameSymbols,
     pub(crate) listener: &'a mut dyn NameResolutionListener,
     pub(crate) logger: &'a DocLogger,
 }
@@ -308,6 +318,8 @@ fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     TyResolver {
         env: &mut xx.env,
         ast: xx.ast,
+        name_referents: xx.name_referents,
+        name_symbols: xx.name_symbols,
         listener: xx.listener,
         logger: xx.logger,
     }
@@ -320,7 +332,14 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyRes
         error_unsupported_path_ty(loc, xx.logger);
     }
 
-    match resolve_ty_name(name.of(xx.ast.names()).text(), key, &xx.env, xx.listener) {
+    match resolve_ty_name(
+        name.of(xx.ast.names()).text(),
+        key,
+        &xx.env,
+        xx.name_referents,
+        xx.name_symbols,
+        xx.listener,
+    ) {
         Some(ty) => ty,
         None => {
             error_unresolved_ty(loc, xx.logger);
@@ -1821,6 +1840,7 @@ pub(crate) fn convert_to_cps(
     doc: Doc,
     k_mod: KMod,
     tree: &PTree,
+    name_symbols: &NameSymbols,
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
     mod_outlines: &KModOutlines,
@@ -1832,6 +1852,8 @@ pub(crate) fn convert_to_cps(
         k_mod,
         &tree.tokens,
         &tree.ast,
+        &tree.name_referents,
+        name_symbols,
         decl_symbols,
         mod_outline,
         mod_outlines,

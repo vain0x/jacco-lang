@@ -1,8 +1,7 @@
 use super::{
     cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
     env::Env,
-    name_resolution::BaseReferent,
-    name_resolution::{do_add_ty_symbol_to_local_env, DeclSymbols, NameResolutionListener},
+    name_resolution::*,
 };
 use crate::{
     cps::*,
@@ -471,7 +470,7 @@ fn alloc_outline(
     decl_symbols: &mut DeclSymbols,
     env: &mut Env,
     mod_outline: &mut KModOutline,
-    name_symbols: &mut HashMap<ANameId, KModSymbol>,
+    name_symbols: &mut NameSymbols,
     logger: &DocLogger,
 ) {
     let ast = &tree.ast;
@@ -551,6 +550,8 @@ fn resolve_outline(
     tree: &PTree,
     env: &mut Env,
     mod_outline: &mut KModOutline,
+    name_referents: &NameReferents,
+    name_symbols: &NameSymbols,
     decl_symbols: &DeclSymbols,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
@@ -559,6 +560,8 @@ fn resolve_outline(
     let ty_resolver = &mut TyResolver {
         env,
         ast,
+        name_referents,
+        name_symbols,
         listener,
         logger,
     };
@@ -658,7 +661,7 @@ pub(crate) fn generate_outline(
     tree: &PTree,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
-) -> (KModOutline, DeclSymbols) {
+) -> (KModOutline, DeclSymbols, NameSymbols) {
     let mut decl_symbols = tree.ast.decls().slice().map_with_value(None);
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
@@ -679,11 +682,13 @@ pub(crate) fn generate_outline(
         tree,
         &mut env,
         &mut mod_outline,
+        &tree.name_referents,
+        &name_symbols,
         &decl_symbols,
         listener,
         logger,
     );
     env.leave_scope();
 
-    (mod_outline, decl_symbols)
+    (mod_outline, decl_symbols, name_symbols)
 }

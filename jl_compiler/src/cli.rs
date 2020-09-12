@@ -138,6 +138,7 @@ impl Project {
 
         let mut listener = NullNameResolutionListener;
         let mut decl_symbolss = vec![];
+        let mut name_symbols_vec = vec![];
 
         // アウトライン生成
         for (id, syntax) in self.syntaxes.enumerate_mut() {
@@ -146,7 +147,7 @@ impl Project {
             let doc_logs = take(&mut syntax.logs);
 
             let k_mod = self.mod_docs.alloc(doc);
-            let (mut mod_outline, decl_symbols) = super::front::generate_outline(
+            let (mut mod_outline, decl_symbols, name_symbols) = super::front::generate_outline(
                 doc,
                 &syntax.tree,
                 &mut listener,
@@ -158,6 +159,7 @@ impl Project {
 
             syntax.logs = doc_logs;
             decl_symbolss.push(decl_symbols);
+            name_symbols_vec.push(name_symbols);
         }
 
         // エイリアス解決
@@ -182,6 +184,7 @@ impl Project {
                 doc,
                 k_mod,
                 &syntax.tree,
+                &name_symbols_vec[i],
                 &decl_symbolss[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,
