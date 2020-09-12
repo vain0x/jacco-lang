@@ -385,6 +385,13 @@ impl AVariantDecl {
             _ => None,
         }
     }
+
+    pub(crate) fn is_unit_like(&self) -> bool {
+        match self {
+            AVariantDecl::Const(decl) => decl.ty_opt.is_none() && decl.value_opt.is_none(),
+            AVariantDecl::Record(_) => false,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

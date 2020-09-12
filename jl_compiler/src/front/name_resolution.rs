@@ -813,11 +813,20 @@ pub(crate) mod v3 {
 
     pub(crate) fn leave_struct_decl(
         name_opt: Option<ANameId>,
+        is_unit_like: bool,
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
         v3_core::leave_scope(resolver);
-        leave_hoisted_decl("struct", name_opt, ImportKind::Ty, ast, resolver);
+
+        // unit-like 構造体は値としても参照できる。
+        let kind = if is_unit_like {
+            ImportKind::Both
+        } else {
+            ImportKind::Ty
+        };
+
+        leave_hoisted_decl("struct", name_opt, kind, ast, resolver);
     }
 
     pub(crate) fn on_use_decl(name_opt: Option<ANameId>, ast: &ATree, resolver: &mut NameResolver) {

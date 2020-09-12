@@ -1257,7 +1257,11 @@ pub(crate) fn alloc_struct_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let a_variant_opt = variant_opt.map(|(variant_decl, _)| variant_decl);
 
-    name_resolution::v3::leave_struct_decl(name_opt, &px.ast, &mut px.name_resolver);
+    let is_unit_like = a_variant_opt
+        .as_ref()
+        .map_or(false, |variant| variant.is_unit_like());
+
+    name_resolution::v3::leave_struct_decl(name_opt, is_unit_like, &px.ast, &mut px.name_resolver);
 
     (
         ADecl::Struct(AStructDecl {
