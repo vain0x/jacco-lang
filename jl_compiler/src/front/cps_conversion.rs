@@ -142,7 +142,6 @@ struct Xx<'a> {
     name_symbols: &'a mut NameSymbols,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
-    listener: &'a mut dyn NameResolutionListener,
     logger: &'a DocLogger,
 }
 
@@ -156,7 +155,6 @@ impl<'a> Xx<'a> {
         name_symbols: &'a mut NameSymbols,
         mod_outline: &'a KModOutline,
         mod_outlines: &'a KModOutlines,
-        listener: &'a mut dyn NameResolutionListener,
         logger: &'a DocLogger,
     ) -> Self {
         let mut labels = VecArena::new();
@@ -185,7 +183,6 @@ impl<'a> Xx<'a> {
             name_symbols,
             mod_outline,
             mod_outlines,
-            listener,
             logger,
         }
     }
@@ -222,7 +219,6 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
-        listener: &mut *xx.listener,
     }
 }
 
@@ -297,7 +293,6 @@ pub(crate) struct TyResolver<'a> {
     pub(crate) ast: &'a ATree,
     pub(crate) name_referents: &'a NameReferents,
     pub(crate) name_symbols: &'a NameSymbols,
-    pub(crate) listener: &'a mut dyn NameResolutionListener,
     pub(crate) logger: &'a DocLogger,
 }
 
@@ -306,7 +301,6 @@ fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
         ast: xx.ast,
         name_referents: xx.name_referents,
         name_symbols: xx.name_symbols,
-        listener: xx.listener,
         logger: xx.logger,
     }
 }
@@ -318,7 +312,7 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyRes
         error_unsupported_path_ty(loc, xx.logger);
     }
 
-    match resolve_ty_name(name, key, xx.name_referents, xx.name_symbols, xx.listener) {
+    match resolve_ty_name(name, key, xx.name_referents, xx.name_symbols) {
         Some(ty) => ty,
         None => {
             error_unresolved_ty(loc, xx.logger);
@@ -1800,7 +1794,6 @@ pub(crate) fn convert_to_cps(
     name_symbols: &mut NameSymbols,
     mod_outline: &KModOutline,
     mod_outlines: &KModOutlines,
-    listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) -> KModData {
     let mut xx = Xx::new(
@@ -1812,7 +1805,6 @@ pub(crate) fn convert_to_cps(
         name_symbols,
         mod_outline,
         mod_outlines,
-        listener,
         logger,
     );
 

@@ -116,7 +116,6 @@ impl AnalysisCache {
         }
 
         let doc = self.doc;
-        let mut listener = NullNameResolutionListener;
 
         let symbols =
             {
@@ -124,7 +123,7 @@ impl AnalysisCache {
 
                 let doc_logs = DocLogs::new();
                 let (mod_outline, name_symbols) =
-                    front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
+                    front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
 
                 let errors = {
                     let logs = Logs::new();
@@ -186,7 +185,6 @@ impl AnalysisCache {
         let k_mod = self.mod_opt.unwrap();
         let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols();
 
-        let mut listener = NullNameResolutionListener;
         let doc_logs = DocLogs::new();
         let logs = Logs::new();
 
@@ -203,7 +201,6 @@ impl AnalysisCache {
             &mut symbols.name_symbols,
             &mod_outlines[k_mod],
             mod_outlines,
-            &mut listener,
             &doc_logs.logger(),
         );
         let errors = {

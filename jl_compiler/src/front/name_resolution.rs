@@ -3,16 +3,6 @@
 use crate::{cps::*, front::*, utils::MapStack};
 use std::collections::HashMap;
 
-pub(crate) trait NameResolutionListener {
-    fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy);
-}
-
-pub(crate) struct NullNameResolutionListener;
-
-impl NameResolutionListener for NullNameResolutionListener {
-    fn ty_did_resolve(&mut self, _loc: PLoc, _ty: &KTy) {}
-}
-
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
     pub(super) ast: &'a ATree,
@@ -21,7 +11,6 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
-    pub(super) listener: &'a mut dyn NameResolutionListener,
 }
 
 // -----------------------------------------------
@@ -57,12 +46,11 @@ fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
 
 pub(crate) fn resolve_ty_name(
     name: ANameId,
-    key: ANameKey,
+    _key: ANameKey,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
-    listener: &mut dyn NameResolutionListener,
 ) -> Option<KTy> {
-    let ty_opt = name_referents.get(&name).and_then(|referent| {
+    name_referents.get(&name).and_then(|referent| {
         let ty = match referent {
             BaseReferent::BeforeProcess | BaseReferent::Deferred | BaseReferent::Unresolved => {
                 return None;
@@ -72,12 +60,7 @@ pub(crate) fn resolve_ty_name(
             BaseReferent::BuiltInTy(ty) => ty.to_ty(),
         };
         Some(ty)
-    });
-
-    if let Some(ty) = &ty_opt {
-        listener.ty_did_resolve(PLoc::Name(key), ty);
-    }
-    ty_opt
+    })
 }
 
 fn find_const_variant(
@@ -116,13 +99,12 @@ pub(crate) fn resolve_ty_path(
         k_mod,
         mod_outline,
         mod_outlines,
-        listener,
     } = context;
 
     let (_, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(name, key, name_referents, name_symbols, listener)
+            return resolve_ty_name(name, key, name_referents, name_symbols)
                 .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
@@ -133,7 +115,7 @@ pub(crate) fn resolve_ty_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let ty = match resolve_ty_name(name, key, name_referents, name_symbols, listener)? {
+    let ty = match resolve_ty_name(name, key, name_referents, name_symbols)? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = name.of(ast.names()).token.text(tokens);
@@ -193,7 +175,6 @@ pub(crate) fn resolve_value_path(
         k_mod,
         mod_outline,
         mod_outlines,
-        listener,
     } = context;
 
     let (_, tail) = match name.of(ast.names()).quals.split_first() {
@@ -210,7 +191,7 @@ pub(crate) fn resolve_value_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let value = match resolve_ty_name(name, key, name_referents, name_symbols, listener)? {
+    let value = match resolve_ty_name(name, key, name_referents, name_symbols)? {
         KTy::Alias(alias) => {
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {

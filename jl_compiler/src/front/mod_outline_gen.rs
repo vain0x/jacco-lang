@@ -513,7 +513,6 @@ fn resolve_outline(
     mod_outline: &mut KModOutline,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
-    listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) {
     let ast = &tree.ast;
@@ -521,7 +520,6 @@ fn resolve_outline(
         ast,
         name_referents,
         name_symbols,
-        listener,
         logger,
     };
 
@@ -604,7 +602,6 @@ fn resolve_outline(
 pub(crate) fn generate_outline(
     doc: Doc,
     tree: &PTree,
-    listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) -> (KModOutline, NameSymbols) {
     let mut mod_outline = KModOutline::default();
@@ -616,7 +613,6 @@ pub(crate) fn generate_outline(
         &mut mod_outline,
         &tree.name_referents,
         &name_symbols,
-        listener,
         logger,
     );
 

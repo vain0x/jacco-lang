@@ -1,7 +1,6 @@
 use crate::{
     clang::clang_dump,
     cps::*,
-    front::NullNameResolutionListener,
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PTree},
     source::{Doc, TRange},
@@ -136,7 +135,6 @@ impl Project {
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let logs = Logs::new();
 
-        let mut listener = NullNameResolutionListener;
         let mut name_symbols_vec = vec![];
 
         // アウトライン生成
@@ -146,12 +144,8 @@ impl Project {
             let doc_logs = take(&mut syntax.logs);
 
             let k_mod = self.mod_docs.alloc(doc);
-            let (mut mod_outline, name_symbols) = super::front::generate_outline(
-                doc,
-                &syntax.tree,
-                &mut listener,
-                &doc_logs.logger(),
-            );
+            let (mut mod_outline, name_symbols) =
+                super::front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
             mod_outline.name = doc_name;
             let k_mod2 = self.mod_outlines.alloc(mod_outline);
             assert_eq!(k_mod, k_mod2);
@@ -185,7 +179,6 @@ impl Project {
                 &mut name_symbols_vec[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,
-                &mut listener,
                 &doc_logs.logger(),
             );
             let k_mod3 = self.mods.alloc(mod_data);
