@@ -333,6 +333,7 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyRes
     }
 
     match resolve_ty_name(
+        name,
         name.of(xx.ast.names()).text(),
         key,
         &xx.env,

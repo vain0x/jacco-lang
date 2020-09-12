@@ -134,15 +134,21 @@ fn convert_ty_params(
     doc: Doc,
     decl_id: ADeclId,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
 ) -> Vec<KTyParam> {
     ty_params
         .iter()
         .map(|ty_param| {
+            let name_id = ty_param.name;
+
             let name = resolve_name_opt(Some(ty_param.name.of(ast.names())));
-            KTyParam {
+            let ty_param = KTyParam {
                 name,
                 loc: Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id))),
-            }
+            };
+
+            name_symbols.insert(name_id, NameSymbol::TyParam(ty_param.clone()));
+            ty_param
         })
         .collect()
 }
@@ -159,13 +165,14 @@ fn alloc_fn(
     decl: &AFnLikeDecl,
     doc: Doc,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
 ) -> KFn {
     let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
 
     let vis_opt = resolve_modifiers(&decl.modifiers);
     let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-    let ty_params = convert_ty_params(&decl.ty_params, doc, decl_id, ast);
+    let ty_params = convert_ty_params(&decl.ty_params, doc, decl_id, ast, name_symbols);
 
     mod_outline.fns.alloc(KFnOutline {
         name,
@@ -440,6 +447,7 @@ fn alloc_struct(
     decl: &AStructDecl,
     doc: Doc,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
     logger: &DocLogger,
 ) -> Option<KStruct> {
@@ -449,7 +457,9 @@ fn alloc_struct(
         .as_ref()
         .map(|variant_decl| match variant_decl {
             AVariantDecl::Const(_) => vec![],
-            AVariantDecl::Record(decl) => convert_ty_params(&decl.ty_params, doc, decl_id, ast),
+            AVariantDecl::Record(decl) => {
+                convert_ty_params(&decl.ty_params, doc, decl_id, ast, name_symbols)
+            }
         })
         .unwrap_or_default();
     let k_struct = alloc_variant(
@@ -489,7 +499,7 @@ fn alloc_outline(
                 KModSymbol::StaticVar(static_var)
             }
             ADecl::Fn(fn_decl) => {
-                let k_fn = alloc_fn(decl_id, fn_decl, doc, ast, mod_outline);
+                let k_fn = alloc_fn(decl_id, fn_decl, doc, ast, name_symbols, mod_outline);
                 KModSymbol::Fn(k_fn)
             }
             ADecl::ExternFn(extern_fn_decl) => {
@@ -503,11 +513,18 @@ fn alloc_outline(
                 }
             }
             ADecl::Struct(struct_decl) => {
-                let k_struct =
-                    match alloc_struct(decl_id, struct_decl, doc, ast, mod_outline, logger) {
-                        Some(it) => it,
-                        None => continue,
-                    };
+                let k_struct = match alloc_struct(
+                    decl_id,
+                    struct_decl,
+                    doc,
+                    ast,
+                    name_symbols,
+                    mod_outline,
+                    logger,
+                ) {
+                    Some(it) => it,
+                    None => continue,
+                };
                 KModSymbol::Struct(k_struct)
             }
             ADecl::Use(use_decl) => {
@@ -528,7 +545,7 @@ fn alloc_outline(
         };
         if let Some(name) = name_opt {
             debug_assert_eq!(name_referents.get(&name), Some(&BaseReferent::Def));
-            name_symbols.insert(name, symbol);
+            name_symbols.insert(name, NameSymbol::ModSymbol(symbol));
             // log::trace!(
             //     "outline name {}#{} -> {:?}",
             //     name.of(&ast.names()).base(),

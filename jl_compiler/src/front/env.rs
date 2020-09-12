@@ -25,6 +25,7 @@ impl Env {
         self.value_env.pop();
     }
 
+    // #[allow(unused)]
     pub(crate) fn find_ty<'a>(&'a self, name: &str) -> Option<&'a KTy> {
         self.ty_env.get(name)
     }

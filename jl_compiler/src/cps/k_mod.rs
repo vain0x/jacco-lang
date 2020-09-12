@@ -92,6 +92,21 @@ impl KModSymbol {
             KModSymbolRef::Field(_, field_outline) => &field_outline.name,
         }
     }
+
+    pub(crate) fn as_ty(self) -> Option<KTy> {
+        let ty = match self {
+            KModSymbol::Alias(alias) => KTy::Alias(alias),
+            KModSymbol::Const(_)
+            | KModSymbol::StaticVar(_)
+            | KModSymbol::Fn(_)
+            | KModSymbol::ExternFn(_)
+            | KModSymbol::Field(_) => return None,
+            KModSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
+            KModSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
+            KModSymbol::Struct(k_struct) => KTy::Struct(k_struct),
+        };
+        Some(ty)
+    }
 }
 
 /// モジュール内で定義されるシンボルのアウトラインの参照

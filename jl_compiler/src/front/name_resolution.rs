@@ -122,6 +122,16 @@ pub(crate) enum BuiltInTy {
     Number(KNumberTy),
 }
 
+impl BuiltInTy {
+    pub(crate) fn to_ty(self) -> KTy {
+        match self {
+            BuiltInTy::Unknown => KTy::Unknown,
+            BuiltInTy::Never => KTy::Never,
+            BuiltInTy::Number(ty) => KTy::Number(ty),
+        }
+    }
+}
+
 fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
     KNumberTy::parse(text)
         .map(BuiltInTy::Number)
@@ -132,6 +142,7 @@ fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
         })
 }
 
+#[allow(unused)]
 fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
     KNumberTy::parse(name)
         .map(KTy::Number)
@@ -143,17 +154,36 @@ fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
 }
 
 pub(crate) fn resolve_ty_name(
-    name: &str,
+    name: ANameId,
+    name_text: &str,
     key: ANameKey,
     #[allow(unused)] env: &Env,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
     listener: &mut dyn NameResolutionListener,
 ) -> Option<KTy> {
-    let ty_opt = env
-        .find_ty(name)
+    let ty_opt_expected = env
+        .find_ty(name_text)
         .cloned()
-        .or_else(|| resolve_builtin_ty_name(name));
+        .or_else(|| resolve_builtin_ty_name(name_text));
+
+    let ty_opt = name_referents.get(&name).and_then(|referent| {
+        let ty = match referent {
+            BaseReferent::BeforeProcess | BaseReferent::Deferred | BaseReferent::Unresolved => {
+                return None;
+            }
+            BaseReferent::Def => name_symbols.get(&name)?.as_ty()?,
+            BaseReferent::Name(def_name) => name_symbols.get(&def_name)?.as_ty()?,
+            BaseReferent::BuiltInTy(ty) => ty.to_ty(),
+        };
+        Some(ty)
+    });
+    assert_eq!(
+        ty_opt,
+        ty_opt_expected,
+        "referent={:?}",
+        name_referents.get(&name)
+    );
 
     if let Some(ty) = &ty_opt {
         listener.ty_did_resolve(PLoc::Name(key), ty);
@@ -205,6 +235,7 @@ pub(crate) fn resolve_ty_path(
         Some(it) => it,
         None => {
             return resolve_ty_name(
+                name,
                 name.of(ast.names()).text(),
                 key,
                 env,
@@ -223,6 +254,7 @@ pub(crate) fn resolve_ty_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let ty = match resolve_ty_name(
+        name,
         head.text(tokens),
         key,
         env,
@@ -286,6 +318,7 @@ pub(crate) fn resolve_value_path(
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let value = match resolve_ty_name(
+        name,
         head.text(tokens),
         key,
         env,
@@ -370,7 +403,24 @@ pub(crate) enum BaseReferent {
 
 pub(crate) type NameReferents = HashMap<ANameId, BaseReferent>;
 
-pub(crate) type NameSymbols = HashMap<ANameId, KModSymbol>;
+pub(crate) type NameSymbols = HashMap<ANameId, NameSymbol>;
+
+pub(crate) enum NameSymbol {
+    TyParam(KTyParam),
+    ModSymbol(KModSymbol),
+}
+
+impl NameSymbol {
+    fn as_ty(&self) -> Option<KTy> {
+        match self {
+            NameSymbol::TyParam(ty_param) => Some(KTy::Var(KTyVar {
+                name: ty_param.name.to_string(),
+                loc: ty_param.loc,
+            })),
+            NameSymbol::ModSymbol(symbol) => symbol.as_ty(),
+        }
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct NameResolver {
