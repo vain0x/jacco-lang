@@ -356,6 +356,8 @@ pub(crate) fn alloc_record_pat(
 
     let name = px.alloc_name(name);
 
+    name_resolution::v3::on_record_pat(name, &px.ast, &mut px.name_resolver);
+
     (
         APat::Record(ARecordPat {
             left: name,

@@ -616,6 +616,10 @@ pub(crate) mod v3 {
         v3_core::on_name_def_stacked(name, ImportKind::Value, base, resolver);
     }
 
+    pub(crate) fn on_record_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
+        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).base(), resolver);
+    }
+
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_expr {}#{}",
