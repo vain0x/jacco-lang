@@ -252,6 +252,8 @@ pub(crate) fn alloc_app_ty(
     let name = px.alloc_name(name);
     let ty_args = px.alloc_tys(ty_args);
 
+    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
+
     (ATy::App(name, ty_args), event.end(PElementKind::AppTy, px))
 }
 
