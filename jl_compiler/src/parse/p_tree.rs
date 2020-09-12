@@ -88,8 +88,8 @@ impl PTree {
                     name_opt: Some(name),
                     ..
                 }) => {
-                    let base = name.of(self.ast.names()).base();
-                    mod_names.push(base.to_string())
+                    let head = name.of(self.ast.names()).head();
+                    mod_names.push(head.to_string())
                 }
                 _ => {}
             }

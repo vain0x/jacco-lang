@@ -28,7 +28,7 @@ pub(crate) struct AName {
 
     /// パスの先頭の識別子 (非修飾なら text と一致)
     // 先頭がないケース (`::name` など) はパーサ側で対処している。
-    pub(crate) base: String,
+    pub(crate) head: String,
 
     /// パスの末尾の識別子 (非修飾なら text と一致)
     // 末尾がないケース (`name::` など) はパーサ側で対処している。
@@ -36,8 +36,8 @@ pub(crate) struct AName {
 }
 
 impl AName {
-    pub(crate) fn base(&self) -> &str {
-        &self.base
+    pub(crate) fn head(&self) -> &str {
+        &self.head
     }
 
     pub(crate) fn text(&self) -> &str {

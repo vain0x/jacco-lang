@@ -504,12 +504,6 @@ fn alloc_outline(
         if let Some(name) = decl.name_opt() {
             debug_assert_eq!(name_referents.get(&name), Some(&BaseReferent::Def));
             name_symbols.insert(name, NameSymbol::ModSymbol(symbol));
-            // log::trace!(
-            //     "outline name {}#{} -> {:?}",
-            //     name.of(&ast.names()).base(),
-            //     name.to_index(),
-            //     symbol
-            // );
         }
     }
 }

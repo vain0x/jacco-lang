@@ -544,39 +544,39 @@ pub(crate) mod v3 {
     pub(crate) fn on_name_ty(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_ty {}#{}",
-            name.of(ast.names()).base(),
+            name.of(ast.names()).head(),
             name.to_index()
         );
 
-        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).base(), resolver);
+        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).head(), resolver);
     }
 
     pub(crate) fn on_name_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         let name_data = name.of(ast.names());
-        let base = name.of(ast.names()).base();
+        let head = name.of(ast.names()).head();
 
         // いまのところパス式の末尾以外は型名。
         if name_data.is_qualified() {
-            return v3_core::on_name_use(name, FindKind::Ty, base, resolver);
+            return v3_core::on_name_use(name, FindKind::Ty, head, resolver);
         }
 
         // FIXME: const/unit-like struct の可能性もある?
-        v3_core::on_name_def_stacked(name, ImportKind::Value, base, resolver);
+        v3_core::on_name_def_stacked(name, ImportKind::Value, head, resolver);
     }
 
     pub(crate) fn on_record_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
-        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).base(), resolver);
+        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).head(), resolver);
     }
 
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         log::trace!(
             "on_name_expr {}#{}",
-            name.of(ast.names()).base(),
+            name.of(ast.names()).head(),
             name.to_index()
         );
 
         let name_data = name.of(ast.names());
-        let base = name.of(ast.names()).base();
+        let head = name.of(ast.names()).head();
 
         // いまのところパス式の末尾以外は型名。
         let kind = if name_data.is_qualified() {
@@ -585,7 +585,7 @@ pub(crate) mod v3 {
             FindKind::Value
         };
 
-        v3_core::on_name_use(name, kind, base, resolver);
+        v3_core::on_name_use(name, kind, head, resolver);
     }
 
     pub(crate) fn enter_arm(resolver: &mut NameResolver) {

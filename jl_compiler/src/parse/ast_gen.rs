@@ -81,8 +81,8 @@ pub(crate) fn alloc_name(
     token: PToken,
     px: &mut Px,
 ) -> AfterQualifiableName {
-    // base/text を参照する箇所に tokens を渡すのがめんどくさいので、ここで文字列にしておく。文字列は intern される予定なのでコピーのコストは考えなくてよい。
-    let base = quals
+    // head/text を参照する箇所に tokens を渡すのがめんどくさいので、ここで文字列にしておく。文字列は intern される予定なのでコピーのコストは考えなくてよい。
+    let head = quals
         .first()
         .map(|token| *token)
         .unwrap_or(token)
@@ -95,7 +95,7 @@ pub(crate) fn alloc_name(
         AName {
             quals,
             token,
-            base,
+            head,
             text,
         },
         event.end(PElementKind::Name, px),
@@ -111,7 +111,7 @@ pub(crate) fn alloc_name_from_underscore(
         AName {
             quals: vec![],
             token,
-            base: "_".to_string(),
+            head: "_".to_string(),
             text: "_".to_string(),
         },
         event.end(PElementKind::Name, px),
