@@ -559,7 +559,7 @@ fn resolve_outline(
     mod_outline: &mut KModOutline,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
-    decl_symbols: &DeclSymbols,
+    _decl_symbols: &DeclSymbols,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) {
@@ -573,8 +573,11 @@ fn resolve_outline(
         logger,
     };
 
-    for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter()) {
-        let symbol = match decl_symbol_opt {
+    for (decl_id, decl) in ast.decls().enumerate() {
+        let symbol = match decl
+            .name_opt()
+            .and_then(|name| name_symbols.get(&name).cloned())
+        {
             Some(it) => it,
             None => continue,
         };
@@ -583,21 +586,21 @@ fn resolve_outline(
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
             ADecl::Const(const_decl) => {
                 let k_const = match symbol {
-                    KModSymbol::Const(it) => it,
+                    NameSymbol::ModSymbol(KModSymbol::Const(it)) => it,
                     _ => unreachable!(),
                 };
-                resolve_const_decl(const_decl, *k_const, ty_resolver, mod_outline);
+                resolve_const_decl(const_decl, k_const, ty_resolver, mod_outline);
             }
             ADecl::Static(static_decl) => {
                 let static_var = match symbol {
-                    KModSymbol::StaticVar(it) => it,
+                    NameSymbol::ModSymbol(KModSymbol::StaticVar(it)) => it,
                     _ => unreachable!(),
                 };
-                resolve_static_decl(static_decl, *static_var, ty_resolver, mod_outline);
+                resolve_static_decl(static_decl, static_var, ty_resolver, mod_outline);
             }
             ADecl::Fn(fn_decl) => {
                 let k_fn = match symbol {
-                    KModSymbol::Fn(it) => it,
+                    NameSymbol::ModSymbol(KModSymbol::Fn(it)) => it,
                     _ => unreachable!(),
                 };
 
@@ -615,7 +618,7 @@ fn resolve_outline(
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = match symbol {
-                    KModSymbol::ExternFn(it) => it,
+                    NameSymbol::ModSymbol(KModSymbol::ExternFn(it)) => it,
                     _ => unreachable!(),
                 };
 
@@ -627,17 +630,19 @@ fn resolve_outline(
                 extern_fn_data.result_ty = result_ty;
             }
             ADecl::Enum(decl) => match symbol {
-                KModSymbol::ConstEnum(const_enum) => {
-                    resolve_const_enum_decl(decl, *const_enum, ty_resolver, mod_outline)
+                NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum)) => {
+                    resolve_const_enum_decl(decl, const_enum, ty_resolver, mod_outline)
                 }
-                KModSymbol::StructEnum(struct_enum) => resolve_struct_enum_decl(
-                    decl_id,
-                    decl,
-                    *struct_enum,
-                    doc,
-                    ty_resolver,
-                    mod_outline,
-                ),
+                NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum)) => {
+                    resolve_struct_enum_decl(
+                        decl_id,
+                        decl,
+                        struct_enum,
+                        doc,
+                        ty_resolver,
+                        mod_outline,
+                    )
+                }
                 _ => unreachable!(),
             },
             ADecl::Struct(decl) => {
@@ -645,8 +650,8 @@ fn resolve_outline(
                     Some(it) => it,
                     None => continue,
                 };
-                let k_struct = match *symbol {
-                    KModSymbol::Struct(it) => it,
+                let k_struct = match symbol {
+                    NameSymbol::ModSymbol(KModSymbol::Struct(it)) => it,
                     _ => continue,
                 };
                 resolve_variant_decl(
