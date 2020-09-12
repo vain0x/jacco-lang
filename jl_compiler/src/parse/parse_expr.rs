@@ -353,8 +353,11 @@ pub(crate) fn parse_block(px: &mut Px) -> Option<AfterBlock> {
 }
 
 fn parse_block_expr(event: ExprStart, left_brace: PToken, px: &mut Px) -> AfterExpr {
+    before_block(px);
+
     let semi = parse_semi(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
+
     alloc_block_expr(event, left_brace, semi, right_brace_opt, px)
 }
 

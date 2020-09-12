@@ -616,6 +616,8 @@ pub(crate) fn alloc_block_expr(
 
     let a_decls = px.alloc_decls(semi);
 
+    name_resolution::v3::leave_block(&mut px.name_resolver);
+
     (
         AExpr::Block(ABlockExpr { decls: a_decls }),
         event.end(PElementKind::BlockExpr, px),
