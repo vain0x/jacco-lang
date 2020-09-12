@@ -352,7 +352,7 @@ impl Hash for KTyCause {
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct KTyParam {
     pub(crate) name: String,
     pub(crate) loc: Loc,

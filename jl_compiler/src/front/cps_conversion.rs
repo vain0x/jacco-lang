@@ -1773,7 +1773,9 @@ fn convert_struct_enum_decl(_enum: KStructEnum, _decl: &AEnumDecl, _loc: Loc, _x
 }
 
 fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>, xx: &mut Xx) {
-    let symbol_opt = *decl_id.of(xx.decl_symbols);
+    let symbol_opt = decl
+        .name_opt()
+        .and_then(|name| xx.name_symbols.get(&name).cloned());
     let loc = Loc::new(xx.doc, PLoc::Decl(decl_id));
 
     match decl {
@@ -1787,37 +1789,37 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
         }
         ADecl::Const(decl) => {
             let k_const = match symbol_opt {
-                Some(KModSymbol::Const(it)) => it,
+                Some(NameSymbol::ModSymbol(KModSymbol::Const(it))) => it,
                 _ => return,
             };
             convert_const_decl(k_const, decl, loc, xx)
         }
         ADecl::Static(decl) => {
             let static_var = match symbol_opt {
-                Some(KModSymbol::StaticVar(it)) => it,
+                Some(NameSymbol::ModSymbol(KModSymbol::StaticVar(it))) => it,
                 _ => return,
             };
             convert_static_decl(static_var, decl, loc, xx)
         }
         ADecl::Fn(fn_decl) => {
             let k_fn = match symbol_opt {
-                Some(KModSymbol::Fn(it)) => it,
+                Some(NameSymbol::ModSymbol(KModSymbol::Fn(it))) => it,
                 _ => return,
             };
             convert_fn_decl(decl_id, k_fn, fn_decl, loc, xx);
         }
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
-                Some(KModSymbol::ExternFn(it)) => it,
+                Some(NameSymbol::ModSymbol(KModSymbol::ExternFn(it))) => it,
                 _ => return,
             };
             convert_extern_fn_decl(decl_id, extern_fn, extern_fn_decl, xx);
         }
         ADecl::Enum(enum_decl) => match symbol_opt {
-            Some(KModSymbol::ConstEnum(const_enum)) => {
+            Some(NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum))) => {
                 convert_const_enum_decl(const_enum, enum_decl, loc, xx)
             }
-            Some(KModSymbol::StructEnum(struct_enum)) => {
+            Some(NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum))) => {
                 convert_struct_enum_decl(struct_enum, enum_decl, loc, xx)
             }
             _ => return,

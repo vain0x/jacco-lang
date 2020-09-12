@@ -436,6 +436,7 @@ pub(crate) type NameReferents = HashMap<ANameId, BaseReferent>;
 
 pub(crate) type NameSymbols = HashMap<ANameId, NameSymbol>;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum NameSymbol {
     TyParam(KTyParam),
     LocalVar(KLocalVar),
