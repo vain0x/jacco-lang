@@ -115,9 +115,9 @@ pub(crate) fn add_decl_to_local_env(
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BuiltInTy {
-    Number(KNumberTy),
     Unknown,
     Never,
+    Number(KNumberTy),
 }
 
 fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
