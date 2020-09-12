@@ -1,7 +1,6 @@
 //! 名前解決の処理
 
-use crate::{cps::*, front::*};
-use env::map_stack::MapStack;
+use crate::{cps::*, front::*, utils::MapStack};
 use std::collections::HashMap;
 
 pub(crate) trait NameResolutionListener {
