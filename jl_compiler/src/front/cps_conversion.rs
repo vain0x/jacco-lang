@@ -2,7 +2,7 @@
 
 use crate::{
     cps::*,
-    front::{env::Env, name_resolution::*},
+    front::name_resolution::*,
     logs::DocLogger,
     parse::*,
     source::{Doc, Loc},
@@ -122,7 +122,6 @@ struct KLabelConstruction {
 /// CPS 変換の文脈
 struct Xx<'a> {
     // state
-    env: Env,
     mod_data: KModData,
     label: KLabel,
     nodes: Vec<KNode>,
@@ -176,7 +175,6 @@ impl<'a> Xx<'a> {
             ty_env: KTyEnv::new(),
             fn_opt: None,
             loop_opt: None,
-            env: Env::new(),
             mod_data: KModData::default(),
             // read:
             doc,
@@ -215,9 +213,7 @@ impl<'a> Xx<'a> {
     }
 
     fn do_in_scope(&mut self, f: impl FnOnce(&mut Xx)) {
-        self.env.enter_scope();
         f(self);
-        self.env.leave_scope();
     }
 }
 
@@ -462,9 +458,6 @@ fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: 
         _ => return,
     };
 
-    let name = symbol.local_var.name(&xx.local_vars).to_string();
-    xx.env
-        .insert_value(name, KLocalValue::LocalVar(symbol.local_var));
     xx.name_symbols
         .insert(name_id, NameSymbol::LocalVar(symbol.local_var));
 
@@ -1573,9 +1566,6 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
 
     xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
 
-    if let Some(name) = name_opt {
-        xx.env.insert_value(name, KLocalValue::LocalVar(local_var));
-    }
     if let Some(name) = decl.name_opt {
         xx.name_symbols
             .insert(name, NameSymbol::LocalVar(local_var));
@@ -1633,7 +1623,6 @@ fn convert_param_decls(
     decl_id: ADeclId,
     ast: &ATree,
     local_vars: &mut KLocalVarArena,
-    env: &mut Env,
     name_symbols: &mut NameSymbols,
 ) -> Vec<KSymbol> {
     assert_eq!(param_decls.len(), param_tys.len());
@@ -1647,7 +1636,6 @@ fn convert_param_decls(
             let loc = Loc::new(doc, PLoc::Name(name_key));
             let name = param_decl.name.of(ast.names()).text.to_string();
             let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
-            env.insert_value(name, KLocalValue::LocalVar(local_var));
             name_symbols.insert(param_decl.name, NameSymbol::LocalVar(local_var));
             KSymbol {
                 local_var,
@@ -1667,20 +1655,12 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         decl_id,
         xx.ast,
         &mut local_vars,
-        &mut xx.env,
         xx.name_symbols,
     );
 
     let fn_data = xx.do_out_fn(|xx| {
         xx.fn_opt = Some(k_fn);
         xx.local_vars = local_vars;
-
-        for ty_param in &fn_decl.ty_params {
-            let name = ty_param.name.of(xx.ast.names()).text().to_string();
-            let loc = Loc::new(xx.doc, PLoc::Name(ANameKey::TyParam(decl_id)));
-            xx.env
-                .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
-        }
 
         // 関数の本体を格納しておくラベル
         xx.label = xx.labels.alloc(KLabelConstruction::default());
@@ -1736,7 +1716,6 @@ fn convert_extern_fn_decl(
         decl_id,
         xx.ast,
         &mut local_vars,
-        &mut xx.env,
         xx.name_symbols,
     );
 

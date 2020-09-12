@@ -1,39 +1,3 @@
-use self::map_stack::MapStack;
-use crate::cps::{KLocalValue, KTy};
-
-#[derive(Default)]
-pub(crate) struct Env {
-    ty_env: MapStack<KTy>,
-    value_env: MapStack<KLocalValue>,
-}
-
-impl Env {
-    pub(crate) const fn new() -> Self {
-        Env {
-            ty_env: MapStack::new(),
-            value_env: MapStack::new(),
-        }
-    }
-
-    pub(crate) fn enter_scope(&mut self) {
-        self.ty_env.push();
-        self.value_env.push();
-    }
-
-    pub(crate) fn leave_scope(&mut self) {
-        self.ty_env.pop();
-        self.value_env.pop();
-    }
-
-    pub(crate) fn insert_ty(&mut self, name: String, ty: KTy) {
-        self.ty_env.insert(name, ty);
-    }
-
-    pub(crate) fn insert_value(&mut self, name: String, value: KLocalValue) {
-        self.value_env.insert(name, value);
-    }
-}
-
 pub(crate) mod map_stack {
     use std::collections::HashMap;
 
