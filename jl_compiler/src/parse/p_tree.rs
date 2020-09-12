@@ -1,8 +1,12 @@
 use crate::{
+    front::name_resolution::BaseReferent,
     parse::*,
     utils::{DebugWith, DebugWithContext},
 };
-use std::fmt::{self, Debug, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{self, Debug, Formatter},
+};
 
 /// 構文木
 pub(crate) struct PTree {
@@ -21,6 +25,7 @@ pub(crate) struct PTree {
     pub(crate) elements: PElementArena,
     /// 型つき抽象構文木
     pub(crate) ast: ATree,
+    pub(crate) name_referents: HashMap<ANameId, BaseReferent>,
 }
 
 impl PTree {

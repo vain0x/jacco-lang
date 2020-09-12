@@ -114,7 +114,7 @@ pub(crate) fn add_decl_to_local_env(
 // -----------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum BuiltInTy {
+pub(crate) enum BuiltInTy {
     Unknown,
     Never,
     Number(KNumberTy),
@@ -328,7 +328,7 @@ impl ScopePos {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum BaseReferent {
+pub(crate) enum BaseReferent {
     #[allow(unused)]
     BeforeProcess,
     Deferred,
@@ -347,7 +347,7 @@ pub(crate) struct NameResolver {
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
     defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopePos)>>,
-    name_referents: HashMap<ANameId, BaseReferent>,
+    pub(crate) name_referents: HashMap<ANameId, BaseReferent>,
 }
 
 impl<'a> NameResolver {

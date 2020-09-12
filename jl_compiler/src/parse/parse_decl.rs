@@ -1,5 +1,7 @@
 //! 宣言の構文解析ルール
 
+use std::mem::take;
+
 use super::*;
 use crate::{cps::KVis, logs::DocLogger};
 use parse_expr::parse_unqualifiable_name;
@@ -478,6 +480,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
     let decls = parse_root(&mut px);
     let a_decls = px.alloc_decls(decls);
     crate::front::name_resolution::v3::finish(&px.name_resolver, &px.ast);
+    let name_referents = take(&mut px.name_resolver.name_referents);
     let (eof, skipped, tokens, mut elements, mut ast, builder) = px.finish();
 
     let (root, events) = builder.finish(&mut elements, &logger);
@@ -497,6 +500,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
         skipped,
         tokens,
         ast,
+        name_referents,
         root,
     }
 }

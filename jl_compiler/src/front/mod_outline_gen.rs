@@ -1,6 +1,7 @@
 use super::{
     cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
     env::Env,
+    name_resolution::BaseReferent,
     name_resolution::{do_add_ty_symbol_to_local_env, DeclSymbols, NameResolutionListener},
 };
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     parse::*,
     source::{Doc, Loc},
 };
-use std::iter::once;
+use std::{collections::HashMap, iter::once};
 
 fn resolve_modifiers(modifiers: &ADeclModifiers) -> Option<KVis> {
     modifiers.vis_opt
@@ -470,9 +471,11 @@ fn alloc_outline(
     decl_symbols: &mut DeclSymbols,
     env: &mut Env,
     mod_outline: &mut KModOutline,
+    name_symbols: &mut HashMap<ANameId, KModSymbol>,
     logger: &DocLogger,
 ) {
     let ast = &tree.ast;
+    let name_referents = &tree.name_referents;
 
     for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter_mut()) {
         let loc = Loc::new(doc, PLoc::Decl(decl_id));
@@ -513,6 +516,27 @@ fn alloc_outline(
                 KModSymbol::Alias(alias)
             }
         };
+
+        let name_opt = match decl {
+            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => None,
+            ADecl::Const(decl) => decl.name_opt,
+            ADecl::Static(decl) => decl.name_opt,
+            ADecl::Fn(decl) => decl.name_opt,
+            ADecl::ExternFn(decl) => decl.name_opt,
+            ADecl::Enum(decl) => decl.name_opt,
+            ADecl::Struct(decl) => decl.name_opt(),
+            ADecl::Use(decl) => decl.name_opt,
+        };
+        if let Some(name) = name_opt {
+            debug_assert_eq!(name_referents.get(&name), Some(&BaseReferent::Def));
+            name_symbols.insert(name, symbol);
+            // log::trace!(
+            //     "outline name {}#{} -> {:?}",
+            //     name.of(&ast.names()).base(),
+            //     name.to_index(),
+            //     symbol
+            // );
+        }
 
         *decl_symbol_opt = Some(symbol);
 
@@ -638,6 +662,7 @@ pub(crate) fn generate_outline(
     let mut decl_symbols = tree.ast.decls().slice().map_with_value(None);
     let mut env = Env::new();
     let mut mod_outline = KModOutline::default();
+    let mut name_symbols = HashMap::new();
 
     env.enter_scope();
     alloc_outline(
@@ -646,6 +671,7 @@ pub(crate) fn generate_outline(
         &mut decl_symbols,
         &mut env,
         &mut mod_outline,
+        &mut name_symbols,
         logger,
     );
     resolve_outline(

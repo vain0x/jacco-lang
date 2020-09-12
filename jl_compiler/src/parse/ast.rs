@@ -425,6 +425,12 @@ pub(crate) struct AStructDecl {
     pub(crate) variant_opt: Option<AVariantDecl>,
 }
 
+impl AStructDecl {
+    pub(crate) fn name_opt(&self) -> Option<ANameId> {
+        self.variant_opt.as_ref()?.name_opt()
+    }
+}
+
 pub(crate) struct AUseDecl {
     pub(crate) modifiers: ADeclModifiers,
     pub(crate) name_opt: Option<ANameId>,
