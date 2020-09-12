@@ -46,7 +46,6 @@ fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
 
 pub(crate) fn resolve_ty_name(
     name: ANameId,
-    _key: ANameKey,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
 ) -> Option<KTy> {
@@ -86,11 +85,7 @@ fn find_struct_variant(
         .find(|k_struct| k_struct.name(&mod_outline.structs) == name)
 }
 
-pub(crate) fn resolve_ty_path(
-    name: ANameId,
-    key: ANameKey,
-    context: PathResolutionContext<'_>,
-) -> Option<KTy2> {
+pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>) -> Option<KTy2> {
     let PathResolutionContext {
         tokens,
         ast,
@@ -104,7 +99,7 @@ pub(crate) fn resolve_ty_path(
     let (_, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(name, key, name_referents, name_symbols)
+            return resolve_ty_name(name, name_referents, name_symbols)
                 .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
@@ -115,7 +110,7 @@ pub(crate) fn resolve_ty_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let ty = match resolve_ty_name(name, key, name_referents, name_symbols)? {
+    let ty = match resolve_ty_name(name, name_referents, name_symbols)? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = name.of(ast.names()).token.text(tokens);
@@ -164,7 +159,6 @@ fn resolve_value_name(
 
 pub(crate) fn resolve_value_path(
     name: ANameId,
-    key: ANameKey,
     context: PathResolutionContext<'_>,
 ) -> Option<KProjectValue> {
     let PathResolutionContext {
@@ -191,7 +185,7 @@ pub(crate) fn resolve_value_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let value = match resolve_ty_name(name, key, name_referents, name_symbols)? {
+    let value = match resolve_ty_name(name, name_referents, name_symbols)? {
         KTy::Alias(alias) => {
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
@@ -311,9 +305,8 @@ enum FindKind {
 }
 
 mod v3_core {
-    use std::mem::replace;
-
     use super::*;
+    use std::mem::replace;
 
     fn scope_breads_list(resolver: &NameResolver) -> String {
         let mut ancestors = vec![];

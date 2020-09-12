@@ -312,7 +312,7 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyRes
         error_unsupported_path_ty(loc, xx.logger);
     }
 
-    match resolve_ty_name(name, key, xx.name_referents, xx.name_symbols) {
+    match resolve_ty_name(name, xx.name_referents, xx.name_symbols) {
         Some(ty) => ty,
         None => {
             error_unresolved_ty(loc, xx.logger);
@@ -416,11 +416,11 @@ fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
 
 fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let KProjectValue { k_mod, value } =
-        match resolve_value_path(name, key, path_resolution_context(xx)) {
-            Some(it) => it,
-            None => return emit_default_branch(name, key, xx),
-        };
+    let KProjectValue { k_mod, value } = match resolve_value_path(name, path_resolution_context(xx))
+    {
+        Some(it) => it,
+        None => return emit_default_branch(name, key, xx),
+    };
 
     match value {
         KLocalValue::Alias(alias) => {
@@ -455,14 +455,8 @@ fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: 
         .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
 }
 
-fn convert_record_pat_as_cond(
-    pat_id: APatId,
-    pat: &ARecordPat,
-    loc: Loc,
-    xx: &mut Xx,
-) -> AfterRval {
-    let key = ANameKey::Pat(pat_id);
-    let (k_mod, k_struct) = match resolve_ty_path(pat.left, key, path_resolution_context(xx)) {
+fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> AfterRval {
+    let (k_mod, k_struct) = match resolve_ty_path(pat.left, path_resolution_context(xx)) {
         Some(KTy2::Struct(KProjectStruct(k_mod, k_struct))) => (k_mod, k_struct),
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -488,7 +482,7 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         APat::Wildcard(token) => return convert_wildcard_pat_as_cond(*token, xx),
         APat::Name(name) => return convert_name_pat_as_cond(*name, ANameKey::Pat(pat_id), xx),
-        APat::Record(record_pat) => convert_record_pat_as_cond(pat_id, record_pat, loc, xx),
+        APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
     };
     Branch::Case(term)
 }
@@ -722,14 +716,14 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let KProjectValue { k_mod, value } =
-        match resolve_value_path(name, key, path_resolution_context(xx)) {
-            Some(it) => it,
-            None => {
-                error_unresolved_value(PLoc::from_loc(loc), xx.logger);
-                return new_error_term(loc);
-            }
-        };
+    let KProjectValue { k_mod, value } = match resolve_value_path(name, path_resolution_context(xx))
+    {
+        Some(it) => it,
+        None => {
+            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+            return new_error_term(loc);
+        }
+    };
 
     match value {
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
@@ -763,7 +757,7 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> 
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
     let KProjectValue { k_mod: _, value } =
-        match resolve_value_path(name, key, path_resolution_context(xx)) {
+        match resolve_value_path(name, path_resolution_context(xx)) {
             Some(it) => it,
             None => {
                 error_unresolved_value(PLoc::Name(key), xx.logger);
@@ -896,14 +890,8 @@ fn report_record_expr_errors(
     }
 }
 
-fn do_convert_record_expr(
-    expr_id: AExprId,
-    expr: &ARecordExpr,
-    loc: Loc,
-    xx: &mut Xx,
-) -> Option<KSymbol> {
-    let key = ANameKey::Expr(expr_id);
-    let k_struct = match resolve_ty_path(expr.left, key, path_resolution_context(xx)) {
+fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KSymbol> {
+    let k_struct = match resolve_ty_path(expr.left, path_resolution_context(xx)) {
         Some(KTy2::Struct(k_struct)) => k_struct,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
@@ -951,16 +939,16 @@ fn do_convert_record_expr(
     Some(result)
 }
 
-fn convert_record_expr(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
-    match do_convert_record_expr(expr_id, expr, loc, xx) {
+fn convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
+    match do_convert_record_expr(expr, loc, xx) {
         Some(result) => KTerm::Name(result),
         None => new_error_term(loc),
     }
 }
 
 // `&A { .. }`
-fn convert_record_lval(expr_id: AExprId, expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
-    let arg = match do_convert_record_expr(expr_id, expr, loc, xx) {
+fn convert_record_lval(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
+    let arg = match do_convert_record_expr(expr, loc, xx) {
         Some(it) => it,
         None => return new_error_term(loc),
     };
@@ -1434,7 +1422,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         AExpr::Name(name) => convert_name_expr(*name, ANameKey::Expr(expr_id), xx),
-        AExpr::Record(record_expr) => convert_record_expr(expr_id, record_expr, loc, xx),
+        AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),
         AExpr::Index(index_expr) => convert_index_expr(index_expr, ty_expect, loc, xx),
@@ -1466,7 +1454,7 @@ fn do_convert_lval(
 
     match expr {
         AExpr::Name(name) => convert_name_lval(*name, k_mut, ANameKey::Expr(expr_id), xx),
-        AExpr::Record(expr) => convert_record_lval(expr_id, expr, loc, xx),
+        AExpr::Record(expr) => convert_record_lval(expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_lval(field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, ty_expect, loc, xx),
         AExpr::UnaryOp(unary_op_expr) => convert_unary_op_lval(unary_op_expr, ty_expect, loc, xx),
