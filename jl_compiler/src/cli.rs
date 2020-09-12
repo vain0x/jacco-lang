@@ -137,7 +137,6 @@ impl Project {
         let logs = Logs::new();
 
         let mut listener = NullNameResolutionListener;
-        let mut decl_symbolss = vec![];
         let mut name_symbols_vec = vec![];
 
         // アウトライン生成
@@ -147,7 +146,7 @@ impl Project {
             let doc_logs = take(&mut syntax.logs);
 
             let k_mod = self.mod_docs.alloc(doc);
-            let (mut mod_outline, decl_symbols, name_symbols) = super::front::generate_outline(
+            let (mut mod_outline, name_symbols) = super::front::generate_outline(
                 doc,
                 &syntax.tree,
                 &mut listener,
@@ -158,7 +157,6 @@ impl Project {
             assert_eq!(k_mod, k_mod2);
 
             syntax.logs = doc_logs;
-            decl_symbolss.push(decl_symbols);
             name_symbols_vec.push(name_symbols);
         }
 
@@ -185,7 +183,6 @@ impl Project {
                 k_mod,
                 &syntax.tree,
                 &mut name_symbols_vec[i],
-                &decl_symbolss[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,
                 &mut listener,

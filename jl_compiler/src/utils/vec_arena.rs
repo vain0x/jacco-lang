@@ -387,6 +387,7 @@ impl<Tag> VecArenaSlice<Tag> {
         VecArena::from_vec(inner)
     }
 
+    #[allow(unused)]
     pub(crate) fn map_with_value<T: Clone>(&self, value: T) -> VecArena<Tag, T> {
         let mut inner = Vec::with_capacity(self.len());
         inner.resize(self.len(), value);

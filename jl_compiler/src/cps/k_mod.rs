@@ -51,6 +51,7 @@ pub(crate) enum KModSymbol {
 }
 
 impl KModSymbol {
+    #[cfg(unused)]
     pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModSymbolRef<'_> {
         match self {
             KModSymbol::Alias(alias) => KModSymbolRef::Alias(alias, alias.of(&mod_outline.aliases)),
@@ -79,6 +80,7 @@ impl KModSymbol {
         }
     }
 
+    #[cfg(unused)]
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
             KModSymbolRef::Alias(_, alias_data) => alias_data.name(),
@@ -131,6 +133,7 @@ impl KModSymbol {
 }
 
 /// モジュール内で定義されるシンボルのアウトラインの参照
+#[allow(unused)]
 #[derive(Copy, Clone)]
 pub(crate) enum KModSymbolRef<'a> {
     Alias(KAlias, &'a KAliasOutline),

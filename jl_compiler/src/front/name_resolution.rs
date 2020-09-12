@@ -1,6 +1,6 @@
 //! 名前解決の処理
 
-use crate::{cps::*, front::env::Env, front::*, utils::VecArena};
+use crate::{cps::*, front::*};
 use env::map_stack::MapStack;
 use std::collections::HashMap;
 
@@ -14,8 +14,6 @@ impl NameResolutionListener for NullNameResolutionListener {
     fn ty_did_resolve(&mut self, _loc: PLoc, _ty: &KTy) {}
 }
 
-pub(crate) type DeclSymbols = VecArena<ADeclTag, Option<KModSymbol>>;
-
 pub(crate) struct PathResolutionContext<'a> {
     pub(super) tokens: &'a PTokens,
     pub(super) ast: &'a ATree,
@@ -24,91 +22,7 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
-    pub(super) env: &'a Env,
     pub(super) listener: &'a mut dyn NameResolutionListener,
-}
-
-pub(crate) fn decl_allows_forward_reference(decl: &ADecl) -> bool {
-    match decl {
-        ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) | ADecl::Const(_) | ADecl::Static(_) => false,
-        ADecl::Fn(_) | ADecl::ExternFn(_) | ADecl::Struct(_) | ADecl::Enum(_) | ADecl::Use(_) => {
-            true
-        }
-    }
-}
-
-fn decl_to_name_symbol_pair(
-    decl_id: ADeclId,
-    decl_symbols: &DeclSymbols,
-    mod_outline: &KModOutline,
-) -> Option<(String, KModSymbol)> {
-    let symbol = decl_symbols.get(decl_id).copied().flatten()?;
-    let name = symbol.name(mod_outline);
-    Some((name.to_string(), symbol))
-}
-
-pub(crate) fn do_add_ty_symbol_to_local_env(name: &str, symbol: KModSymbol, env: &mut Env) {
-    let ty = match symbol {
-        KModSymbol::Alias(alias) => KTy::Alias(alias),
-        KModSymbol::Const(_)
-        | KModSymbol::StaticVar(_)
-        | KModSymbol::Fn(_)
-        | KModSymbol::ExternFn(_)
-        | KModSymbol::Field(_) => return,
-        KModSymbol::ConstEnum(const_enum) => KTy::ConstEnum(const_enum),
-        KModSymbol::StructEnum(struct_enum) => KTy::StructEnum(struct_enum),
-        KModSymbol::Struct(k_struct) => KTy::Struct(k_struct),
-    };
-
-    env.insert_ty(name.to_string(), ty);
-}
-
-fn do_add_value_symbol_to_local_env(
-    name: &str,
-    symbol: KModSymbol,
-    mod_outline: &KModOutline,
-    env: &mut Env,
-) {
-    let value = match symbol {
-        KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
-        KModSymbol::Const(k_const) => KLocalValue::Const(k_const),
-        KModSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
-        KModSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
-        KModSymbol::ExternFn(extern_fn) => KLocalValue::ExternFn(extern_fn),
-        KModSymbol::Struct(k_struct) if k_struct.of(&mod_outline.structs).is_unit_like() => {
-            KLocalValue::UnitLikeStruct(k_struct)
-        }
-        KModSymbol::ConstEnum(_)
-        | KModSymbol::StructEnum(_)
-        | KModSymbol::Struct(_)
-        | KModSymbol::Field(_) => return,
-    };
-
-    env.insert_value(name.to_string(), value)
-}
-
-fn add_symbol_to_local_env(
-    name: &str,
-    symbol: KModSymbol,
-    mod_outline: &KModOutline,
-    env: &mut Env,
-) {
-    do_add_ty_symbol_to_local_env(name, symbol, env);
-    do_add_value_symbol_to_local_env(name, symbol, mod_outline, env);
-}
-
-pub(crate) fn add_decl_to_local_env(
-    decl_id: ADeclId,
-    _decl: &ADecl,
-    decl_symbols: &DeclSymbols,
-    mod_outline: &KModOutline,
-    env: &mut Env,
-) {
-    // FIXME: let は decl_symbols に登録されていないので、ここでは環境に登録されない。
-
-    if let Some((name, symbol)) = decl_to_name_symbol_pair(decl_id, &decl_symbols, mod_outline) {
-        add_symbol_to_local_env(&name, symbol, mod_outline, env);
-    }
 }
 
 // -----------------------------------------------
@@ -142,31 +56,13 @@ fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
         })
 }
 
-#[allow(unused)]
-fn resolve_builtin_ty_name(name: &str) -> Option<KTy> {
-    KNumberTy::parse(name)
-        .map(KTy::Number)
-        .or_else(|| match name {
-            "unknown" => Some(KTy::Unknown),
-            "never" => Some(KTy::Never),
-            _ => None,
-        })
-}
-
 pub(crate) fn resolve_ty_name(
     name: ANameId,
-    name_text: &str,
     key: ANameKey,
-    #[allow(unused)] env: &Env,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
     listener: &mut dyn NameResolutionListener,
 ) -> Option<KTy> {
-    let ty_opt_expected = env
-        .find_ty(name_text)
-        .cloned()
-        .or_else(|| resolve_builtin_ty_name(name_text));
-
     let ty_opt = name_referents.get(&name).and_then(|referent| {
         let ty = match referent {
             BaseReferent::BeforeProcess | BaseReferent::Deferred | BaseReferent::Unresolved => {
@@ -178,12 +74,6 @@ pub(crate) fn resolve_ty_name(
         };
         Some(ty)
     });
-    assert_eq!(
-        ty_opt,
-        ty_opt_expected,
-        "referent={:?}",
-        name_referents.get(&name)
-    );
 
     if let Some(ty) = &ty_opt {
         listener.ty_did_resolve(PLoc::Name(key), ty);
@@ -227,23 +117,14 @@ pub(crate) fn resolve_ty_path(
         k_mod,
         mod_outline,
         mod_outlines,
-        env,
         listener,
     } = context;
 
-    let (head, tail) = match name.of(ast.names()).quals.split_first() {
+    let (_, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            return resolve_ty_name(
-                name,
-                name.of(ast.names()).text(),
-                key,
-                env,
-                name_referents,
-                name_symbols,
-                listener,
-            )
-            .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
+            return resolve_ty_name(name, key, name_referents, name_symbols, listener)
+                .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
         }
     };
 
@@ -253,15 +134,7 @@ pub(crate) fn resolve_ty_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let ty = match resolve_ty_name(
-        name,
-        head.text(tokens),
-        key,
-        env,
-        name_referents,
-        name_symbols,
-        listener,
-    )? {
+    let ty = match resolve_ty_name(name, key, name_referents, name_symbols, listener)? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
             Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
                 let name = name.of(ast.names()).token.text(tokens);
@@ -284,15 +157,11 @@ pub(crate) fn resolve_ty_path(
 
 fn resolve_value_name(
     name: ANameId,
-    text: &str,
-    env: &Env,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
     mod_outline: &KModOutline,
 ) -> Option<KLocalValue> {
-    let name_opt_expected = env.find_value(text);
-
-    let name_opt = name_referents
+    name_referents
         .get(&name)
         .and_then(|referent| match referent {
             BaseReferent::BeforeProcess
@@ -309,19 +178,7 @@ fn resolve_value_name(
                 NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
                 NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
             },
-        });
-
-    // assert_eq だとコンパイルエラーを期待するテストがクラッシュしてしまう (tests/edges/scope_hoisted_no_leak_to_sibling/scope_hoisted_no_leak_to_sibling.jacco)
-    if name_opt != name_opt_expected {
-        log::error!(
-            "name_opt={:?} expected={:?} referent={:?}",
-            name_opt,
-            name_opt_expected,
-            name_referents.get(&name)
-        );
-    }
-
-    name_opt
+        })
 }
 
 pub(crate) fn resolve_value_path(
@@ -337,21 +194,13 @@ pub(crate) fn resolve_value_path(
         k_mod,
         mod_outline,
         mod_outlines,
-        env,
         listener,
     } = context;
 
-    let (head, tail) = match name.of(ast.names()).quals.split_first() {
+    let (_, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            let value = resolve_value_name(
-                name,
-                &name.of(ast.names()).text,
-                env,
-                name_referents,
-                name_symbols,
-                mod_outline,
-            )?;
+            let value = resolve_value_name(name, name_referents, name_symbols, mod_outline)?;
             return Some(KProjectValue::new(k_mod, value));
         }
     };
@@ -362,15 +211,7 @@ pub(crate) fn resolve_value_path(
     }
 
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
-    let value = match resolve_ty_name(
-        name,
-        head.text(tokens),
-        key,
-        env,
-        name_referents,
-        name_symbols,
-        listener,
-    )? {
+    let value = match resolve_ty_name(name, key, name_referents, name_symbols, listener)? {
         KTy::Alias(alias) => {
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {

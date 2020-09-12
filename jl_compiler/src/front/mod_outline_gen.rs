@@ -1,6 +1,5 @@
 use super::{
     cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
-    env::Env,
     name_resolution::*,
 };
 use crate::{
@@ -27,21 +26,6 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
     match ty_opt {
         Some(ty) => convert_ty(ty, ty_resolver),
         None => KTy::Unit,
-    }
-}
-
-fn add_ty_params_to_env(
-    ty_params: &[ATyParamDecl],
-    doc: Doc,
-    decl_id: ADeclId,
-    ty_resolver: &mut TyResolver,
-) {
-    for ty_param in ty_params {
-        let name = ty_param.name.of(ty_resolver.ast.names()).text().to_string();
-        let loc = Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id)));
-        ty_resolver
-            .env
-            .insert_ty(name.to_string(), KTy::Var(KTyVar { name, loc }));
     }
 }
 
@@ -318,20 +302,15 @@ fn alloc_variant(
 }
 
 fn resolve_variant_decl(
-    decl_id: ADeclId,
     variant_decl: &AVariantDecl,
     k_struct: KStruct,
-    doc: Doc,
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     match variant_decl {
         AVariantDecl::Const(_) => {}
         AVariantDecl::Record(decl) => {
-            ty_resolver.env.enter_scope();
-            add_ty_params_to_env(&decl.ty_params, doc, decl_id, ty_resolver);
             resolve_record_variant_decl(decl, k_struct, ty_resolver, mod_outline);
-            ty_resolver.env.leave_scope();
         }
     }
 }
@@ -418,23 +397,14 @@ fn resolve_const_enum_decl(
 }
 
 fn resolve_struct_enum_decl(
-    decl_id: ADeclId,
     decl: &AEnumDecl,
     struct_enum: KStructEnum,
-    doc: Doc,
     ty_resolver: &mut TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let variants = struct_enum.variants(&mod_outline.struct_enums).to_owned();
     for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
-        resolve_variant_decl(
-            decl_id,
-            variant_decl,
-            k_struct,
-            doc,
-            ty_resolver,
-            mod_outline,
-        );
+        resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
 }
 
@@ -477,8 +447,6 @@ fn alloc_struct(
 fn alloc_outline(
     doc: Doc,
     tree: &PTree,
-    decl_symbols: &mut DeclSymbols,
-    env: &mut Env,
     mod_outline: &mut KModOutline,
     name_symbols: &mut NameSymbols,
     logger: &DocLogger,
@@ -486,7 +454,7 @@ fn alloc_outline(
     let ast = &tree.ast;
     let name_referents = &tree.name_referents;
 
-    for ((decl_id, decl), decl_symbol_opt) in ast.decls().enumerate().zip(decl_symbols.iter_mut()) {
+    for (decl_id, decl) in ast.decls().enumerate() {
         let loc = Loc::new(doc, PLoc::Decl(decl_id));
         let symbol = match decl {
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
@@ -543,29 +511,19 @@ fn alloc_outline(
             //     symbol
             // );
         }
-
-        *decl_symbol_opt = Some(symbol);
-
-        // FIXME: スコープを無視している
-        let name = symbol.name(&mod_outline);
-        do_add_ty_symbol_to_local_env(name, symbol, env);
     }
 }
 
 fn resolve_outline(
-    doc: Doc,
     tree: &PTree,
-    env: &mut Env,
     mod_outline: &mut KModOutline,
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
-    _decl_symbols: &DeclSymbols,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
 ) {
     let ast = &tree.ast;
     let ty_resolver = &mut TyResolver {
-        env,
         ast,
         name_referents,
         name_symbols,
@@ -573,7 +531,7 @@ fn resolve_outline(
         logger,
     };
 
-    for (decl_id, decl) in ast.decls().enumerate() {
+    for decl in ast.decls().iter() {
         let symbol = match decl
             .name_opt()
             .and_then(|name| name_symbols.get(&name).cloned())
@@ -604,17 +562,12 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
-                ty_resolver.env.enter_scope();
-                add_ty_params_to_env(&fn_decl.ty_params, doc, decl_id, ty_resolver);
-
                 let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);
                 let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, ty_resolver);
 
                 let fn_data = k_fn.of_mut(&mut mod_outline.fns);
                 fn_data.param_tys = param_tys;
                 fn_data.result_ty = result_ty;
-
-                ty_resolver.env.leave_scope();
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = match symbol {
@@ -634,14 +587,7 @@ fn resolve_outline(
                     resolve_const_enum_decl(decl, const_enum, ty_resolver, mod_outline)
                 }
                 NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum)) => {
-                    resolve_struct_enum_decl(
-                        decl_id,
-                        decl,
-                        struct_enum,
-                        doc,
-                        ty_resolver,
-                        mod_outline,
-                    )
+                    resolve_struct_enum_decl(decl, struct_enum, ty_resolver, mod_outline)
                 }
                 _ => unreachable!(),
             },
@@ -654,14 +600,7 @@ fn resolve_outline(
                     NameSymbol::ModSymbol(KModSymbol::Struct(it)) => it,
                     _ => continue,
                 };
-                resolve_variant_decl(
-                    decl_id,
-                    variant_decl,
-                    k_struct,
-                    doc,
-                    ty_resolver,
-                    mod_outline,
-                );
+                resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
             }
             ADecl::Use(_) => {}
         }
@@ -673,34 +612,19 @@ pub(crate) fn generate_outline(
     tree: &PTree,
     listener: &mut dyn NameResolutionListener,
     logger: &DocLogger,
-) -> (KModOutline, DeclSymbols, NameSymbols) {
-    let mut decl_symbols = tree.ast.decls().slice().map_with_value(None);
-    let mut env = Env::new();
+) -> (KModOutline, NameSymbols) {
     let mut mod_outline = KModOutline::default();
     let mut name_symbols = HashMap::new();
 
-    env.enter_scope();
-    alloc_outline(
-        doc,
-        tree,
-        &mut decl_symbols,
-        &mut env,
-        &mut mod_outline,
-        &mut name_symbols,
-        logger,
-    );
+    alloc_outline(doc, tree, &mut mod_outline, &mut name_symbols, logger);
     resolve_outline(
-        doc,
         tree,
-        &mut env,
         &mut mod_outline,
         &tree.name_referents,
         &name_symbols,
-        &decl_symbols,
         listener,
         logger,
     );
-    env.leave_scope();
 
-    (mod_outline, decl_symbols, name_symbols)
+    (mod_outline, name_symbols)
 }

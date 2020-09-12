@@ -4,10 +4,9 @@ use crate::{
     cps::*,
     front::{self, name_resolution::*, NameResolutionListener},
     logs::{DocLogs, Logs},
-    parse::{self, ADeclTag, PLoc, PTree},
+    parse::{self, PLoc, PTree},
     source::{Doc, TRange},
     token,
-    utils::VecArena,
 };
 use std::{mem::take, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -20,7 +19,6 @@ pub(super) struct Syntax {
 
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
-    pub(super) decl_symbols: VecArena<ADeclTag, Option<KModSymbol>>,
     pub(super) name_symbols: NameSymbols,
     pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
@@ -135,7 +133,7 @@ impl AnalysisCache {
             let syntax = self.request_syntax();
 
             let doc_logs = DocLogs::new();
-            let (mod_outline, decl_symbols, name_symbols) =
+            let (mod_outline, name_symbols) =
                 front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
 
             let errors = {
@@ -146,7 +144,6 @@ impl AnalysisCache {
 
             Symbols {
                 mod_outline,
-                decl_symbols,
                 name_symbols,
                 ty_use_sites: listener.ty_use_sites,
                 errors,
@@ -196,7 +193,6 @@ impl AnalysisCache {
             k_mod,
             &syntax.tree,
             &mut symbols.name_symbols,
-            &symbols.decl_symbols,
             &mod_outlines[k_mod],
             mod_outlines,
             &mut listener,

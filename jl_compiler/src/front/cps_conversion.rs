@@ -141,7 +141,6 @@ struct Xx<'a> {
     ast: &'a ATree,
     name_referents: &'a NameReferents,
     name_symbols: &'a mut NameSymbols,
-    decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
     listener: &'a mut dyn NameResolutionListener,
@@ -156,7 +155,6 @@ impl<'a> Xx<'a> {
         ast: &'a ATree,
         name_referents: &'a NameReferents,
         name_symbols: &'a mut NameSymbols,
-        decl_symbols: &'a DeclSymbols,
         mod_outline: &'a KModOutline,
         mod_outlines: &'a KModOutlines,
         listener: &'a mut dyn NameResolutionListener,
@@ -187,7 +185,6 @@ impl<'a> Xx<'a> {
             ast,
             name_referents,
             name_symbols,
-            decl_symbols,
             mod_outline,
             mod_outlines,
             listener,
@@ -233,7 +230,6 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
-        env: &xx.env,
         listener: &mut *xx.listener,
     }
 }
@@ -306,7 +302,6 @@ fn error_empty_match(loc: PLoc, logger: &DocLogger) {
 // -----------------------------------------------
 
 pub(crate) struct TyResolver<'a> {
-    pub(crate) env: &'a mut Env,
     pub(crate) ast: &'a ATree,
     pub(crate) name_referents: &'a NameReferents,
     pub(crate) name_symbols: &'a NameSymbols,
@@ -316,7 +311,6 @@ pub(crate) struct TyResolver<'a> {
 
 fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     TyResolver {
-        env: &mut xx.env,
         ast: xx.ast,
         name_referents: xx.name_referents,
         name_symbols: xx.name_symbols,
@@ -332,15 +326,7 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, key: ANameKey, xx: &mut TyRes
         error_unsupported_path_ty(loc, xx.logger);
     }
 
-    match resolve_ty_name(
-        name,
-        name.of(xx.ast.names()).text(),
-        key,
-        &xx.env,
-        xx.name_referents,
-        xx.name_symbols,
-        xx.listener,
-    ) {
+    match resolve_ty_name(name, key, xx.name_referents, xx.name_symbols, xx.listener) {
         Some(ty) => ty,
         None => {
             error_unresolved_ty(loc, xx.logger);
@@ -1829,21 +1815,12 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
 }
 
 fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
-    for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
-        if decl_allows_forward_reference(decl) {
-            add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
-        }
-    }
-
     let mut last_opt = None;
     for (decl_id, decl) in decls.enumerate(xx.ast.decls()) {
         let mut term_opt = None;
 
         do_convert_decl(decl_id, decl, &mut term_opt, xx);
 
-        if !decl_allows_forward_reference(decl) {
-            add_decl_to_local_env(decl_id, decl, xx.decl_symbols, xx.mod_outline, &mut xx.env);
-        }
         last_opt = term_opt;
     }
     last_opt
@@ -1854,7 +1831,6 @@ pub(crate) fn convert_to_cps(
     k_mod: KMod,
     tree: &PTree,
     name_symbols: &mut NameSymbols,
-    decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
     mod_outlines: &KModOutlines,
     listener: &mut dyn NameResolutionListener,
@@ -1867,7 +1843,6 @@ pub(crate) fn convert_to_cps(
         &tree.ast,
         &tree.name_referents,
         name_symbols,
-        decl_symbols,
         mod_outline,
         mod_outlines,
         listener,
