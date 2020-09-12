@@ -372,22 +372,8 @@ pub(crate) fn resolve_value_path(
 // V3
 // =============================================================================
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
-struct ScopePos {
-    /// スコープの深さ (親スコープの個数)
-    depth: usize,
-    /// スコープの深さごとのインデックス (前方にある同じ深さのスコープの個数)
-    index: usize,
-}
-
-impl ScopePos {
-    /// この位置のスコープから `def_pos` のスコープに含まれる定義が見えるか？ (定義は hoist されるものとする。定義が後方にあるケースにしか使わない。)
-    // FIXME: この判定だと `{{ f(); }} { fn f() {} }` が通ってしまう。定義が使用の祖先になっているかみる必要がある
-    pub(crate) fn can_see(self, def_pos: ScopePos) -> bool {
-        // 定義がより浅いブロックにあるか、同一のブロックにあるなら OK.
-        def_pos.depth < self.depth || def_pos == self
-    }
-}
+/// ルートスコープは 0
+type ScopeId = usize;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum BaseReferent {
@@ -424,19 +410,18 @@ impl NameSymbol {
 
 #[derive(Default)]
 pub(crate) struct NameResolver {
-    pos: ScopePos,
-    /// `depth_counts[d]`: 深さ d のスコープの個数
-    depth_counts: Vec<usize>,
+    scope_id: ScopeId,
+    scope_parents: Vec<ScopeId>,
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
-    defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopePos)>>,
+    defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopeId)>>,
     pub(crate) name_referents: NameReferents,
 }
 
 impl<'a> NameResolver {
     pub(crate) fn new() -> Self {
         let mut resolver = Self::default();
-        resolver.depth_counts = vec![0; 8];
+        resolver.scope_parents = vec![0];
         resolver.ty_env.push();
         resolver.value_env.push();
         resolver
@@ -457,35 +442,58 @@ enum FindKind {
 }
 
 mod v3_core {
+    use std::mem::replace;
+
     use super::*;
 
-    fn inc_pos(resolver: &mut NameResolver) {
-        let d = resolver.pos.depth + 1;
-        if d >= resolver.depth_counts.len() {
-            resolver.depth_counts.push(0);
+    fn scope_breads_list(resolver: &NameResolver) -> String {
+        let mut ancestors = vec![];
+        let mut scope_id = resolver.scope_id;
+        while scope_id != 0 {
+            ancestors.push(scope_id.to_string());
+            scope_id = resolver.scope_parents[scope_id];
         }
-        resolver.depth_counts[d] += 1;
-
-        resolver.pos.depth = d;
-        resolver.pos.index = resolver.depth_counts[d];
+        ancestors.push("0".into());
+        ancestors.reverse();
+        ancestors.join(" > ")
     }
 
-    fn dec_pos(resolver: &mut NameResolver) {
-        resolver.pos.depth -= 1;
+    fn is_descendant(mut scope_id: ScopeId, resolver: &NameResolver) -> bool {
+        loop {
+            if scope_id == resolver.scope_id {
+                return true;
+            }
+
+            if scope_id == 0 {
+                return false;
+            }
+
+            scope_id = resolver.scope_parents[scope_id];
+        }
     }
 
     pub(super) fn enter_scope(resolver: &mut NameResolver) {
+        let parent = replace(&mut resolver.scope_id, resolver.scope_parents.len());
+        resolver.scope_parents.push(parent);
+
         resolver.ty_env.push();
         resolver.value_env.push();
-        inc_pos(resolver);
-        log::trace!("enter_scope pos={:?}", resolver.pos);
+        log::trace!(
+            "enter_scope #{} {:?}",
+            resolver.scope_id,
+            scope_breads_list(resolver)
+        );
     }
 
     pub(super) fn leave_scope(resolver: &mut NameResolver) {
-        log::trace!("leave_scope pos={:?}", resolver.pos);
+        log::trace!(
+            "leave_scope #{} {:?}",
+            resolver.scope_id,
+            scope_breads_list(resolver)
+        );
+        resolver.scope_id = resolver.scope_parents[resolver.scope_id];
         resolver.ty_env.pop();
         resolver.value_env.pop();
-        dec_pos(resolver);
     }
 
     fn bind_name(
@@ -560,7 +568,6 @@ mod v3_core {
         resolver: &mut NameResolver,
     ) {
         let referent = BaseReferent::Name(name);
-        let def_pos = resolver.pos;
 
         let mut aux = |kind: FindKind| {
             // この定義がみえる位置にある前方参照を解決する。
@@ -571,7 +578,9 @@ mod v3_core {
             };
 
             vec.retain(|&(name, pos)| {
-                if !pos.can_see(def_pos) {
+                let can_see = is_descendant(pos, resolver);
+                if !can_see {
+                    // pos からこの定義が見えない。(`{ f(); } { fn f() {} }` のようなケース)
                     return true;
                 }
 
@@ -611,7 +620,7 @@ mod v3_core {
                     .defer_map
                     .entry((text.to_string(), kind))
                     .or_insert(vec![])
-                    .push((name, resolver.pos));
+                    .push((name, resolver.scope_id));
                 BaseReferent::Deferred
             }
         };
