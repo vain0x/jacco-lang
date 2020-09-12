@@ -211,10 +211,6 @@ impl<'a> Xx<'a> {
 
         result
     }
-
-    fn do_in_scope(&mut self, f: impl FnOnce(&mut Xx)) {
-        f(self);
-    }
 }
 
 fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
@@ -1254,13 +1250,7 @@ fn convert_binary_op_expr(
 }
 
 fn convert_block_expr(decls: ADeclIds, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let mut last_opt = None;
-
-    xx.do_in_scope(|xx| {
-        last_opt = convert_decls(decls.clone(), xx);
-    });
-
-    last_opt.unwrap_or(KTerm::Unit { loc })
+    convert_decls(decls.clone(), xx).unwrap_or_else(|| KTerm::Unit { loc })
 }
 
 fn convert_break_expr(expr: &AJumpExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterJump {
@@ -1387,12 +1377,10 @@ fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mu
 
         for (arm, term) in arms {
             do_in_branch(xx, |xx| {
-                xx.do_in_scope(|xx| {
-                    convert_pat_opt_as_assign(arm.pat_opt, &cond, term, xx);
-                    let body = convert_expr_opt(arm.body_opt, TyExpect::Todo, loc, xx);
-                    let node = new_jump_tail(break_label, vec![body], loc);
-                    xx.nodes.push(node);
-                });
+                convert_pat_opt_as_assign(arm.pat_opt, &cond, term, xx);
+                let body = convert_expr_opt(arm.body_opt, TyExpect::Todo, loc, xx);
+                let node = new_jump_tail(break_label, vec![body], loc);
+                xx.nodes.push(node);
             });
         }
     })
@@ -1838,9 +1826,7 @@ pub(crate) fn convert_to_cps(
         fns: mod_outline.fns.slice().map_with(Default::default),
     };
 
-    xx.do_in_scope(|xx| {
-        convert_decls(tree.ast.root_decls(), xx);
-    });
+    convert_decls(tree.ast.root_decls(), &mut xx);
 
     xx.mod_data
 }
