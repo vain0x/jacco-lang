@@ -60,6 +60,7 @@ pub(crate) enum ANameKey {
     Param(AParamDeclKey),
     Field(AFieldDeclKey),
     Variant(AVariantDeclKey),
+    Id(ANameId),
 }
 
 impl ANameKey {
@@ -73,6 +74,7 @@ impl ANameKey {
             ANameKey::Param(key) => key.element(tree),
             ANameKey::Field(key) => key.element(tree),
             ANameKey::Variant(key) => key.element(tree),
+            ANameKey::Id(key) => key.element(tree),
         };
         parent
             .of(&tree.elements)
@@ -475,6 +477,21 @@ impl ADecl {
 // -----------------------------------------------
 // 構文要素
 // -----------------------------------------------
+
+impl ANameId {
+    pub(crate) fn element(self, tree: &PTree) -> PElement {
+        let event_id = self.of(&tree.ast.name_events).id();
+        event_id.of(&tree.ast.events).unwrap()
+    }
+
+    pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
+        self.element(tree).of(&tree.elements)
+    }
+
+    pub(crate) fn loc(self) -> PLoc {
+        PLoc::Name(ANameKey::Id(self))
+    }
+}
 
 impl ATyId {
     pub(crate) fn element(self, tree: &PTree) -> PElement {

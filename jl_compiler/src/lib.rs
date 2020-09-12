@@ -108,9 +108,7 @@ mod front {
 
     pub(crate) use cps_conversion::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;
-    pub(crate) use name_resolution::{
-        NameResolutionListener, NameResolver, NullNameResolutionListener,
-    };
+    pub(crate) use name_resolution::{NameResolver, NullNameResolutionListener};
 
     use crate::parse::*;
 }

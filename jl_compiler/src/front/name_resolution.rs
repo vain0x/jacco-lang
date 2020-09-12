@@ -284,7 +284,7 @@ pub(crate) enum NameSymbol {
 }
 
 impl NameSymbol {
-    fn as_ty(&self) -> Option<KTy> {
+    pub(crate) fn as_ty(&self) -> Option<KTy> {
         match self {
             NameSymbol::TyParam(ty_param) => Some(KTy::Var(KTyVar {
                 name: ty_param.name.to_string(),

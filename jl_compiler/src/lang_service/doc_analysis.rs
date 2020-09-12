@@ -2,7 +2,7 @@
 
 use crate::{
     cps::*,
-    front::{self, name_resolution::*, NameResolutionListener},
+    front::{self, name_resolution::*},
     logs::{DocLogs, Logs},
     parse::{self, PLoc, PTree},
     source::{Doc, TRange},
@@ -51,17 +51,6 @@ pub(super) struct AnalysisCache {
     pub(super) cps_opt: Option<Cps>,
     pub(super) type_resolution_is_done: bool,
     pub(super) mod_opt: Option<KMod>,
-}
-
-#[derive(Default)]
-struct ImplNameResolutionListener {
-    ty_use_sites: TyUseSites,
-}
-
-impl NameResolutionListener for ImplNameResolutionListener {
-    fn ty_did_resolve(&mut self, loc: PLoc, ty: &KTy) {
-        self.ty_use_sites.push((ty.clone(), loc));
-    }
 }
 
 impl AnalysisCache {
@@ -127,28 +116,47 @@ impl AnalysisCache {
         }
 
         let doc = self.doc;
-        let mut listener = ImplNameResolutionListener::default();
+        let mut listener = NullNameResolutionListener;
 
-        let symbols = {
-            let syntax = self.request_syntax();
+        let symbols =
+            {
+                let syntax = self.request_syntax();
 
-            let doc_logs = DocLogs::new();
-            let (mod_outline, name_symbols) =
-                front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
+                let doc_logs = DocLogs::new();
+                let (mod_outline, name_symbols) =
+                    front::generate_outline(doc, &syntax.tree, &mut listener, &doc_logs.logger());
 
-            let errors = {
-                let logs = Logs::new();
-                logs.logger().extend_from_doc_logs(doc, doc_logs);
-                logs_into_errors(logs, &syntax.tree)
+                let errors = {
+                    let logs = Logs::new();
+                    logs.logger().extend_from_doc_logs(doc, doc_logs);
+                    logs_into_errors(logs, &syntax.tree)
+                };
+
+                let ty_use_sites =
+                    {
+                        let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
+                        let use_names = syntax.tree.name_referents.iter().filter_map(
+                            |(&use_name, referent)| match *referent {
+                                BaseReferent::Name(def_name) => Some((def_name, use_name.loc())),
+                                _ => None,
+                            },
+                        );
+                        def_names
+                            .chain(use_names)
+                            .filter_map(|(def_name, loc)| {
+                                let ty = name_symbols.get(&def_name)?.as_ty()?;
+                                Some((ty, loc))
+                            })
+                            .collect()
+                    };
+
+                Symbols {
+                    mod_outline,
+                    name_symbols,
+                    ty_use_sites,
+                    errors,
+                }
             };
-
-            Symbols {
-                mod_outline,
-                name_symbols,
-                ty_use_sites: listener.ty_use_sites,
-                errors,
-            }
-        };
 
         self.symbols_opt = Some(symbols);
 
@@ -178,7 +186,7 @@ impl AnalysisCache {
         let k_mod = self.mod_opt.unwrap();
         let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols();
 
-        let mut listener = ImplNameResolutionListener::default();
+        let mut listener = NullNameResolutionListener;
         let doc_logs = DocLogs::new();
         let logs = Logs::new();
 
@@ -205,7 +213,7 @@ impl AnalysisCache {
 
         self.cps_opt = Some(Cps {
             mod_data,
-            ty_use_sites: listener.ty_use_sites,
+            ty_use_sites: vec![],
             errors,
         });
 
