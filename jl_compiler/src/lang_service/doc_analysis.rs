@@ -195,7 +195,7 @@ impl AnalysisCache {
             doc,
             k_mod,
             &syntax.tree,
-            &symbols.name_symbols,
+            &mut symbols.name_symbols,
             &symbols.decl_symbols,
             &mod_outlines[k_mod],
             mod_outlines,

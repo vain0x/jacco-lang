@@ -184,7 +184,7 @@ impl Project {
                 doc,
                 k_mod,
                 &syntax.tree,
-                &name_symbols_vec[i],
+                &mut name_symbols_vec[i],
                 &decl_symbolss[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,

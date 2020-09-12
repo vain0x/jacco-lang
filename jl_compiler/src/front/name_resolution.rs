@@ -282,8 +282,46 @@ pub(crate) fn resolve_ty_path(
     Some(ty)
 }
 
-fn resolve_value_name(name: &str, env: &Env) -> Option<KLocalValue> {
-    env.find_value(name)
+fn resolve_value_name(
+    name: ANameId,
+    text: &str,
+    env: &Env,
+    name_referents: &NameReferents,
+    name_symbols: &NameSymbols,
+    mod_outline: &KModOutline,
+) -> Option<KLocalValue> {
+    let name_opt_expected = env.find_value(text);
+
+    let name_opt = name_referents
+        .get(&name)
+        .and_then(|referent| match referent {
+            BaseReferent::BeforeProcess
+            | BaseReferent::Deferred
+            | BaseReferent::Unresolved
+            | BaseReferent::BuiltInTy(_) => None,
+            BaseReferent::Def => match name_symbols.get(&name)? {
+                NameSymbol::TyParam(_) => None,
+                NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
+                NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
+            },
+            BaseReferent::Name(def_name) => match name_symbols.get(&def_name)? {
+                NameSymbol::TyParam(_) => None,
+                NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
+                NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
+            },
+        });
+
+    // assert_eq だとコンパイルエラーを期待するテストがクラッシュしてしまう (tests/edges/scope_hoisted_no_leak_to_sibling/scope_hoisted_no_leak_to_sibling.jacco)
+    if name_opt != name_opt_expected {
+        log::error!(
+            "name_opt={:?} expected={:?} referent={:?}",
+            name_opt,
+            name_opt_expected,
+            name_referents.get(&name)
+        );
+    }
+
+    name_opt
 }
 
 pub(crate) fn resolve_value_path(
@@ -306,7 +344,14 @@ pub(crate) fn resolve_value_path(
     let (head, tail) = match name.of(ast.names()).quals.split_first() {
         Some(it) => it,
         None => {
-            let value = resolve_value_name(&name.of(ast.names()).text, env)?;
+            let value = resolve_value_name(
+                name,
+                &name.of(ast.names()).text,
+                env,
+                name_referents,
+                name_symbols,
+                mod_outline,
+            )?;
             return Some(KProjectValue::new(k_mod, value));
         }
     };
@@ -393,6 +438,7 @@ pub(crate) type NameSymbols = HashMap<ANameId, NameSymbol>;
 
 pub(crate) enum NameSymbol {
     TyParam(KTyParam),
+    LocalVar(KLocalVar),
     ModSymbol(KModSymbol),
 }
 
@@ -403,6 +449,7 @@ impl NameSymbol {
                 name: ty_param.name.to_string(),
                 loc: ty_param.loc,
             })),
+            NameSymbol::LocalVar(_) => None,
             NameSymbol::ModSymbol(symbol) => symbol.as_ty(),
         }
     }

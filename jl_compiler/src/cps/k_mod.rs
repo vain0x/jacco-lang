@@ -107,6 +107,27 @@ impl KModSymbol {
         };
         Some(ty)
     }
+
+    pub(crate) fn as_value(self, mod_outline: &KModOutline) -> Option<KLocalValue> {
+        let value = match self {
+            KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
+            KModSymbol::Const(k_const) => KLocalValue::Const(k_const),
+            KModSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
+            KModSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
+            KModSymbol::ExternFn(extern_fn) => KLocalValue::ExternFn(extern_fn),
+            KModSymbol::ConstEnum(_) | KModSymbol::StructEnum(_) | KModSymbol::Field(_) => {
+                return None
+            }
+            KModSymbol::Struct(k_struct) => {
+                if k_struct.of(&mod_outline.structs).is_unit_like() {
+                    KLocalValue::UnitLikeStruct(k_struct)
+                } else {
+                    return None;
+                }
+            }
+        };
+        Some(value)
+    }
 }
 
 /// モジュール内で定義されるシンボルのアウトラインの参照

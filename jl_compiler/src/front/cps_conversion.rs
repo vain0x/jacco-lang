@@ -140,7 +140,7 @@ struct Xx<'a> {
     tokens: &'a PTokens,
     ast: &'a ATree,
     name_referents: &'a NameReferents,
-    name_symbols: &'a NameSymbols,
+    name_symbols: &'a mut NameSymbols,
     decl_symbols: &'a DeclSymbols,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
@@ -155,7 +155,7 @@ impl<'a> Xx<'a> {
         tokens: &'a PTokens,
         ast: &'a ATree,
         name_referents: &'a NameReferents,
-        name_symbols: &'a NameSymbols,
+        name_symbols: &'a mut NameSymbols,
         decl_symbols: &'a DeclSymbols,
         mod_outline: &'a KModOutline,
         mod_outlines: &'a KModOutlines,
@@ -469,7 +469,7 @@ fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch
     }
 }
 
-fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
+fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
     let symbol = match term {
         KTerm::Name(symbol) if symbol.local_var.name(&xx.local_vars) == "_" => return,
         KTerm::Name(it) => it,
@@ -479,6 +479,8 @@ fn convert_name_pat_as_assign(cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) 
     let name = symbol.local_var.name(&xx.local_vars).to_string();
     xx.env
         .insert_value(name, KLocalValue::LocalVar(symbol.local_var));
+    xx.name_symbols
+        .insert(name_id, NameSymbol::LocalVar(symbol.local_var));
 
     xx.nodes
         .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
@@ -524,7 +526,7 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
 
 fn do_convert_pat_as_assign(pat: &APat, cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
     match pat {
-        APat::Name(_) => convert_name_pat_as_assign(cond, term, loc, xx),
+        APat::Name(name) => convert_name_pat_as_assign(*name, cond, term, loc, xx),
         _ => {}
     }
 }
@@ -1588,6 +1590,10 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
     if let Some(name) = name_opt {
         xx.env.insert_value(name, KLocalValue::LocalVar(local_var));
     }
+    if let Some(name) = decl.name_opt {
+        xx.name_symbols
+            .insert(name, NameSymbol::LocalVar(local_var));
+    }
 }
 
 fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
@@ -1642,6 +1648,7 @@ fn convert_param_decls(
     ast: &ATree,
     local_vars: &mut KLocalVarArena,
     env: &mut Env,
+    name_symbols: &mut NameSymbols,
 ) -> Vec<KSymbol> {
     assert_eq!(param_decls.len(), param_tys.len());
 
@@ -1655,6 +1662,7 @@ fn convert_param_decls(
             let name = param_decl.name.of(ast.names()).text.to_string();
             let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
             env.insert_value(name, KLocalValue::LocalVar(local_var));
+            name_symbols.insert(param_decl.name, NameSymbol::LocalVar(local_var));
             KSymbol {
                 local_var,
                 cause: KSymbolCause::NameDef(doc, name_key),
@@ -1674,6 +1682,7 @@ fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc,
         xx.ast,
         &mut local_vars,
         &mut xx.env,
+        xx.name_symbols,
     );
 
     let fn_data = xx.do_out_fn(|xx| {
@@ -1742,6 +1751,7 @@ fn convert_extern_fn_decl(
         xx.ast,
         &mut local_vars,
         &mut xx.env,
+        xx.name_symbols,
     );
 
     *extern_fn.of_mut(&mut xx.mod_data.extern_fns) = KExternFnData { params, local_vars };
@@ -1841,7 +1851,7 @@ pub(crate) fn convert_to_cps(
     doc: Doc,
     k_mod: KMod,
     tree: &PTree,
-    name_symbols: &NameSymbols,
+    name_symbols: &mut NameSymbols,
     decl_symbols: &DeclSymbols,
     mod_outline: &KModOutline,
     mod_outlines: &KModOutlines,
