@@ -587,7 +587,17 @@ pub(crate) mod v3 {
             name.to_index()
         );
 
-        v3_core::on_name_use(name, FindKind::Value, name.of(ast.names()).base(), resolver);
+        let name_data = name.of(ast.names());
+        let base = name.of(ast.names()).base();
+
+        // いまのところパス式の末尾以外は型名。
+        let kind = if name_data.is_qualified() {
+            FindKind::Ty
+        } else {
+            FindKind::Value
+        };
+
+        v3_core::on_name_use(name, kind, base, resolver);
     }
 
     pub(crate) fn enter_arm(resolver: &mut NameResolver) {
