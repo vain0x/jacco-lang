@@ -456,6 +456,22 @@ pub(crate) enum ADecl {
     Use(AUseDecl),
 }
 
+impl ADecl {
+    pub(crate) fn name_opt(&self) -> Option<ANameId> {
+        match self {
+            ADecl::Attr | ADecl::Expr(_) => None,
+            ADecl::Let(decl) => decl.name_opt,
+            ADecl::Const(decl) => decl.name_opt,
+            ADecl::Static(decl) => decl.name_opt,
+            ADecl::Fn(decl) => decl.name_opt,
+            ADecl::ExternFn(decl) => decl.name_opt,
+            ADecl::Enum(decl) => decl.name_opt,
+            ADecl::Struct(decl) => decl.name_opt(),
+            ADecl::Use(decl) => decl.name_opt,
+        }
+    }
+}
+
 // -----------------------------------------------
 // 構文要素
 // -----------------------------------------------

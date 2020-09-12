@@ -533,17 +533,7 @@ fn alloc_outline(
             }
         };
 
-        let name_opt = match decl {
-            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => None,
-            ADecl::Const(decl) => decl.name_opt,
-            ADecl::Static(decl) => decl.name_opt,
-            ADecl::Fn(decl) => decl.name_opt,
-            ADecl::ExternFn(decl) => decl.name_opt,
-            ADecl::Enum(decl) => decl.name_opt,
-            ADecl::Struct(decl) => decl.name_opt(),
-            ADecl::Use(decl) => decl.name_opt,
-        };
-        if let Some(name) = name_opt {
+        if let Some(name) = decl.name_opt() {
             debug_assert_eq!(name_referents.get(&name), Some(&BaseReferent::Def));
             name_symbols.insert(name, NameSymbol::ModSymbol(symbol));
             // log::trace!(
