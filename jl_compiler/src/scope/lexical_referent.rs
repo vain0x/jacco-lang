@@ -1,6 +1,7 @@
 use crate::{front::name_resolution::BuiltInTy, parse::ANameId};
 
 /// 識別子やパスの先頭が構文的に指しているもの。
+/// (スコープ解決の結果として割り当てられる。)
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum LexicalReferent {
     Unresolved,

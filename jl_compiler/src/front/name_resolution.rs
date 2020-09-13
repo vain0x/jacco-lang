@@ -1,11 +1,7 @@
 //! 名前解決の処理
 
 use crate::{
-    cps::*,
-    front::*,
-    scope::lexical_referent::LexicalReferent,
-    scope::scope_walker::{ScopeId, ScopeWalker},
-    utils::MapStack,
+    cps::*, front::*, scope::lexical_referent::LexicalReferent, scope::scope_system::ScopeSystem,
 };
 use std::collections::HashMap;
 
@@ -40,7 +36,7 @@ impl BuiltInTy {
     }
 }
 
-fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
+pub(crate) fn resolve_builtin_ty(text: &str) -> Option<BuiltInTy> {
     KNumberTy::parse(text)
         .map(BuiltInTy::Number)
         .or_else(|| match text {
@@ -259,233 +255,30 @@ impl NameSymbol {
     }
 }
 
-pub(crate) struct NameResolver {
-    scope_walker: ScopeWalker,
-    value_env: MapStack<ANameId>,
-    ty_env: MapStack<ANameId>,
-    defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopeId)>>,
-    pub(crate) name_referents: NameReferents,
-}
-
-impl<'a> NameResolver {
-    pub(crate) fn new() -> Self {
-        let mut resolver = Self {
-            scope_walker: ScopeWalker::new(),
-            value_env: MapStack::new(),
-            ty_env: MapStack::new(),
-            defer_map: HashMap::new(),
-            name_referents: NameReferents::new(),
-        };
-
-        resolver.ty_env.push();
-        resolver.value_env.push();
-        resolver
-    }
-}
-
-#[derive(Copy, Clone)]
-enum ImportKind {
-    Value,
-    Ty,
-    Both,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-enum FindKind {
-    Value,
-    Ty,
-}
-
-mod v3_core {
-    use super::*;
-
-    pub(super) fn enter_scope(resolver: &mut NameResolver) {
-        // FIXME: hint をつける
-        resolver.scope_walker.enter("");
-        resolver.ty_env.push();
-        resolver.value_env.push();
-        log::trace!("enter_scope {}", resolver.scope_walker.breadcrumbs());
-    }
-
-    pub(super) fn leave_scope(resolver: &mut NameResolver) {
-        log::trace!("leave_scope {}", resolver.scope_walker.breadcrumbs());
-        resolver.scope_walker.leave();
-        resolver.ty_env.pop();
-        resolver.value_env.pop();
-    }
-
-    fn bind_name(
-        hint: &str,
-        name_id: ANameId,
-        #[allow(unused)] text_opt: Option<&str>,
-        referent: LexicalReferent,
-        expected: Option<LexicalReferent>,
-        resolver: &mut NameResolver,
-    ) {
-        log::trace!(
-            "bind_name({}) {}#{} ({:?} -> {:?})",
-            hint,
-            text_opt.unwrap_or(""),
-            name_id.to_index(),
-            expected,
-            referent
-        );
-
-        let old = resolver.name_referents.insert(name_id, referent);
-        assert_eq!(old, expected);
-    }
-
-    fn import_name(name_id: ANameId, kind: ImportKind, text: &str, resolver: &mut NameResolver) {
-        match kind {
-            ImportKind::Value => {
-                log::trace!("import value {} -> {}", text, name_id.to_index());
-                resolver.value_env.insert(text.to_string(), name_id);
-            }
-            ImportKind::Ty => {
-                log::trace!("import ty {} -> {}", text, name_id.to_index());
-                resolver.ty_env.insert(text.to_string(), name_id);
-            }
-            ImportKind::Both => {
-                log::trace!("import ty/value {} -> {}", text, name_id.to_index());
-                resolver.value_env.insert(text.to_string(), name_id);
-                resolver.ty_env.insert(text.to_string(), name_id);
-            }
-        }
-    }
-
-    fn find_name(
-        kind: FindKind,
-        text: &str,
-        resolver: &mut NameResolver,
-    ) -> Option<LexicalReferent> {
-        match kind {
-            FindKind::Value => resolver
-                .value_env
-                .get(text)
-                .map(|&name| LexicalReferent::Name(name)),
-            FindKind::Ty => resolver
-                .ty_env
-                .get(text)
-                .map(|&name| LexicalReferent::Name(name))
-                .or_else(|| resolve_builtin_ty(text).map(|ty| LexicalReferent::BuiltInTy(ty))),
-        }
-    }
-
-    /// 前方参照を許さない名前が追加される。
-    pub(super) fn on_name_def_stacked(
-        name: ANameId,
-        kind: ImportKind,
-        text: &str,
-        resolver: &mut NameResolver,
-    ) {
-        import_name(name, kind, text, resolver);
-        bind_name(
-            "stack",
-            name,
-            Some(text),
-            LexicalReferent::Def,
-            None,
-            resolver,
-        )
-    }
-
-    /// 前方参照を許す値の名前を追加する。
-    pub(super) fn on_name_def_hoisted(
-        name: ANameId,
-        kind: ImportKind,
-        text: &str,
-        resolver: &mut NameResolver,
-    ) {
-        let referent = LexicalReferent::Name(name);
-
-        let mut aux = |kind: FindKind| {
-            // この定義がみえる位置にある前方参照を解決する。
-            let key = (text.to_string(), kind);
-            let mut vec = match resolver.defer_map.remove(&key) {
-                Some(it) => it,
-                None => return,
-            };
-
-            vec.retain(|&(name, use_scope)| {
-                let can_see = resolver.scope_walker.is_descendant(use_scope);
-                if !can_see {
-                    // use_scope からこの定義が見えない。(`{ f(); } { fn f() {} }` のようなケース)
-                    return true;
-                }
-
-                let expected = Some(LexicalReferent::Unresolved);
-                bind_name("hoist", name, None, referent, expected, resolver);
-                false
-            });
-
-            if !vec.is_empty() {
-                resolver.defer_map.insert(key, vec);
-            }
-        };
-
-        match kind {
-            ImportKind::Value => aux(FindKind::Value),
-            ImportKind::Ty => aux(FindKind::Ty),
-            ImportKind::Both => {
-                aux(FindKind::Value);
-                aux(FindKind::Ty);
-            }
-        }
-
-        import_name(name, kind, text, resolver);
-        bind_name(
-            "hoist",
-            name,
-            Some(text),
-            LexicalReferent::Def,
-            None,
-            resolver,
-        );
-    }
-
-    pub(super) fn on_name_use(
-        name: ANameId,
-        kind: FindKind,
-        text: &str,
-        resolver: &mut NameResolver,
-    ) {
-        let referent = match find_name(kind, text, resolver) {
-            Some(it) => it,
-            None => {
-                resolver
-                    .defer_map
-                    .entry((text.to_string(), kind))
-                    .or_insert(vec![])
-                    .push((name, resolver.scope_walker.current()));
-                LexicalReferent::Unresolved
-            }
-        };
-
-        bind_name("use", name, Some(text), referent, None, resolver);
-    }
-}
+pub(crate) type NameResolver = ScopeSystem;
 
 pub(crate) mod v3 {
     use super::*;
+    use crate::scope::scope_system::{FindKind, ImportKind};
 
     pub(crate) fn enter_block(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_block(resolver: &mut NameResolver) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
     }
 
     pub(crate) fn on_ty_param_decl(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         // FIXME: 型パラメータの名前の重複はエラーにする
         let text = name.of(ast.names()).text();
-        v3_core::on_name_def_stacked(name, ImportKind::Ty, text, resolver);
+        resolver.on_name_def_stacked(name, ImportKind::Ty, text);
     }
 
     pub(crate) fn on_param_decl(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
         // FIXME: パラメータの名前の重複はエラーにする
         let text = name.of(ast.names()).text();
-        v3_core::on_name_def_stacked(name, ImportKind::Value, text, resolver);
+        resolver.on_name_def_stacked(name, ImportKind::Value, text);
     }
 
     pub(crate) fn on_name_ty(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
@@ -495,7 +288,7 @@ pub(crate) mod v3 {
             name.to_index()
         );
 
-        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).head(), resolver);
+        resolver.on_name_use(name, FindKind::Ty, &name.of(ast.names()).head);
     }
 
     pub(crate) fn on_name_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
@@ -504,15 +297,15 @@ pub(crate) mod v3 {
 
         // いまのところパス式の末尾以外は型名。
         if name_data.is_qualified() {
-            return v3_core::on_name_use(name, FindKind::Ty, head, resolver);
+            return resolver.on_name_use(name, FindKind::Ty, head);
         }
 
         // FIXME: const/unit-like struct の可能性もある?
-        v3_core::on_name_def_stacked(name, ImportKind::Value, head, resolver);
+        resolver.on_name_def_stacked(name, ImportKind::Value, head);
     }
 
     pub(crate) fn on_record_pat(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
-        v3_core::on_name_use(name, FindKind::Ty, name.of(ast.names()).head(), resolver);
+        resolver.on_name_use(name, FindKind::Ty, &name.of(ast.names()).head);
     }
 
     pub(crate) fn on_name_expr(name: ANameId, ast: &ATree, resolver: &mut NameResolver) {
@@ -532,15 +325,15 @@ pub(crate) mod v3 {
             FindKind::Value
         };
 
-        v3_core::on_name_use(name, kind, head, resolver);
+        resolver.on_name_use(name, kind, head);
     }
 
     pub(crate) fn enter_arm(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_arm(resolver: &mut NameResolver) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
     }
 
     fn leave_stacked_value_decl(
@@ -559,12 +352,7 @@ pub(crate) mod v3 {
             ))
         );
         if let Some(name) = name_opt {
-            v3_core::on_name_def_stacked(
-                name,
-                ImportKind::Value,
-                name.of(ast.names()).text(),
-                resolver,
-            );
+            resolver.on_name_def_stacked(name, ImportKind::Value, name.of(ast.names()).text());
         }
     }
 
@@ -609,12 +397,12 @@ pub(crate) mod v3 {
             ))
         );
         if let Some(name) = name_opt {
-            v3_core::on_name_def_hoisted(name, kind, name.of(ast.names()).text(), resolver);
+            resolver.on_name_def_hoisted(name, kind, &name.of(ast.names()).text);
         }
     }
 
     pub(crate) fn enter_fn_decl(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_fn_decl(
@@ -622,12 +410,12 @@ pub(crate) mod v3 {
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
         leave_hoisted_decl("fn", name_opt, ImportKind::Value, ast, resolver);
     }
 
     pub(crate) fn enter_extern_fn_decl(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_extern_fn_decl(
@@ -635,12 +423,12 @@ pub(crate) mod v3 {
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
         leave_hoisted_decl("extern fn", name_opt, ImportKind::Value, ast, resolver);
     }
 
     pub(crate) fn enter_enum_decl(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_enum_decl(
@@ -648,12 +436,12 @@ pub(crate) mod v3 {
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
         leave_hoisted_decl("enum", name_opt, ImportKind::Ty, ast, resolver);
     }
 
     pub(crate) fn enter_struct_decl(resolver: &mut NameResolver) {
-        v3_core::enter_scope(resolver);
+        resolver.enter_scope();
     }
 
     pub(crate) fn leave_struct_decl(
@@ -662,7 +450,7 @@ pub(crate) mod v3 {
         ast: &ATree,
         resolver: &mut NameResolver,
     ) {
-        v3_core::leave_scope(resolver);
+        resolver.leave_scope();
 
         // unit-like 構造体は値としても参照できる。
         let kind = if is_unit_like {

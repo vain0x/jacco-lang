@@ -191,6 +191,7 @@ mod parse {
 
 mod scope {
     pub(crate) mod lexical_referent;
+    pub(crate) mod scope_system;
     pub(crate) mod scope_walker;
 }
 
