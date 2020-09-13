@@ -401,7 +401,8 @@ fn write_root(root: &CRoot, dx: &mut Dx<impl Write>) -> io::Result<()> {
 }
 
 pub(crate) fn clang_dump(mod_outlines: &KModOutlines, mods: &KModArena) -> String {
-    let c_root = clang_gen::gen(mod_outlines, mods);
+    let bump = bumpalo::Bump::new();
+    let c_root = clang_gen::gen(mod_outlines, mods, &bump);
 
     let text = {
         let out = {

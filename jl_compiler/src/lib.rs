@@ -32,7 +32,6 @@ mod clang {
     pub(crate) use clang_dump::clang_dump;
 
     use crate::cps::*;
-    use crate::utils::IdProvider;
     use log::error;
 }
 
@@ -253,4 +252,11 @@ mod utils {
     pub(crate) use id_provider::IdProvider;
     pub(crate) use map_stack::MapStack;
     pub(crate) use vec_arena::{RawId, VecArena, VecArenaId, VecArenaSlice};
+
+    #[allow(unused)]
+    pub(crate) use bumpalo::{
+        boxed::Box as BumpBox,
+        collections::{String as BumpString, Vec as BumpVec},
+        vec as bump_vec, Bump,
+    };
 }

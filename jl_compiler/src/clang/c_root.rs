@@ -1,5 +1,6 @@
 use super::CStmt;
+use crate::utils::*;
 
-pub(crate) struct CRoot {
-    pub(crate) decls: Vec<CStmt>,
+pub(crate) struct CRoot<'a> {
+    pub(crate) decls: BumpVec<'a, CStmt>,
 }

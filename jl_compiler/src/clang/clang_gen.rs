@@ -1,7 +1,8 @@
 //! CPS 中間表現をC言語のコードに変換する処理
 
 use super::*;
-use crate::{token::eval_number, utils::VecArena};
+use crate::{token::eval_number, utils::*};
+use bumpalo::Bump;
 use c_stmt::CStorageModifier;
 use std::{
     collections::HashMap,
@@ -11,10 +12,14 @@ use std::{
 type IdentMap = HashMap<String, IdProvider>;
 
 /// C code generation context.
+///
+/// 'a: Cコード生成処理のライフタイム
 struct Cx<'a> {
     k_mod: KMod,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
+    #[allow(unused)]
+    bump: &'a Bump,
     fn_ptr_id: usize,
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
@@ -27,11 +32,16 @@ struct Cx<'a> {
     label_param_lists: VecArena<KLabelTag, Vec<KSymbol>>,
     label_ident_ids: Vec<Option<usize>>,
     stmts: Vec<CStmt>,
-    decls: Vec<CStmt>,
+    decls: BumpVec<'a, CStmt>,
 }
 
 impl<'a> Cx<'a> {
-    fn new(k_mod: KMod, mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
+    fn new(
+        k_mod: KMod,
+        mod_outline: &'a KModOutline,
+        mod_outlines: &'a KModOutlines,
+        bump: &'a Bump,
+    ) -> Self {
         Self {
             k_mod,
             mod_outline,
@@ -48,7 +58,8 @@ impl<'a> Cx<'a> {
             label_param_lists: Default::default(),
             label_ident_ids: Default::default(),
             stmts: Default::default(),
-            decls: Default::default(),
+            decls: bump_vec!(in bump),
+            bump,
         }
     }
 
@@ -957,15 +968,15 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(mod_outlines: &KModOutlines, mods: &KModArena) -> CRoot {
-    let mut decls = vec![];
+pub(crate) fn gen<'a>(mod_outlines: &KModOutlines, mods: &KModArena, bump: &'a Bump) -> CRoot<'a> {
+    let mut decls = bump_vec!(in bump);
 
     // 宣言
     let cxx = mod_outlines
         .enumerate()
         .zip(mods.iter())
         .map(|((k_mod, mod_outline), mod_data)| {
-            let mut cx = Cx::new(k_mod, mod_outline, mod_outlines);
+            let mut cx = Cx::new(k_mod, mod_outline, mod_outlines, &bump);
             gen_root_for_decls(mod_data, &mut cx);
             decls.extend(cx.decls.drain(..));
             (mod_outline, mod_data, cx)
