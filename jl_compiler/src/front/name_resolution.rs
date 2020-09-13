@@ -51,7 +51,7 @@ pub(crate) fn resolve_ty_name(
 ) -> Option<KTy> {
     name_referents.get(&name).and_then(|referent| {
         let ty = match referent {
-            BaseReferent::BeforeProcess | BaseReferent::Deferred | BaseReferent::Unresolved => {
+            BaseReferent::Unresolved => {
                 return None;
             }
             BaseReferent::Def => name_symbols.get(&name)?.as_ty()?,
@@ -140,10 +140,7 @@ fn resolve_value_name(
     name_referents
         .get(&name)
         .and_then(|referent| match referent {
-            BaseReferent::BeforeProcess
-            | BaseReferent::Deferred
-            | BaseReferent::Unresolved
-            | BaseReferent::BuiltInTy(_) => None,
+            BaseReferent::Unresolved | BaseReferent::BuiltInTy(_) => None,
             BaseReferent::Def => match name_symbols.get(&name)? {
                 NameSymbol::TyParam(_) => None,
                 NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
@@ -237,10 +234,6 @@ type ScopeId = usize;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum BaseReferent {
-    #[allow(unused)]
-    BeforeProcess,
-    Deferred,
-    #[allow(unused)]
     Unresolved,
     Def,
     Name(ANameId),
@@ -446,7 +439,7 @@ mod v3_core {
                     return true;
                 }
 
-                let expected = Some(BaseReferent::Deferred);
+                let expected = Some(BaseReferent::Unresolved);
                 bind_name("hoist", name, None, referent, expected, resolver);
                 false
             });
@@ -483,7 +476,7 @@ mod v3_core {
                     .entry((text.to_string(), kind))
                     .or_insert(vec![])
                     .push((name, resolver.scope_id));
-                BaseReferent::Deferred
+                BaseReferent::Unresolved
             }
         };
 
