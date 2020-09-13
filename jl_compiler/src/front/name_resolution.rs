@@ -3,6 +3,7 @@
 use crate::{
     cps::*,
     front::*,
+    scope::lexical_referent::LexicalReferent,
     scope::scope_walker::{ScopeId, ScopeWalker},
     utils::MapStack,
 };
@@ -56,12 +57,12 @@ pub(crate) fn resolve_ty_name(
 ) -> Option<KTy> {
     name_referents.get(&name).and_then(|referent| {
         let ty = match referent {
-            BaseReferent::Unresolved => {
+            LexicalReferent::Unresolved => {
                 return None;
             }
-            BaseReferent::Def => name_symbols.get(&name)?.as_ty()?,
-            BaseReferent::Name(def_name) => name_symbols.get(&def_name)?.as_ty()?,
-            BaseReferent::BuiltInTy(ty) => ty.to_ty(),
+            LexicalReferent::Def => name_symbols.get(&name)?.as_ty()?,
+            LexicalReferent::Name(def_name) => name_symbols.get(&def_name)?.as_ty()?,
+            LexicalReferent::BuiltInTy(ty) => ty.to_ty(),
         };
         Some(ty)
     })
@@ -145,13 +146,13 @@ fn resolve_value_name(
     name_referents
         .get(&name)
         .and_then(|referent| match referent {
-            BaseReferent::Unresolved | BaseReferent::BuiltInTy(_) => None,
-            BaseReferent::Def => match name_symbols.get(&name)? {
+            LexicalReferent::Unresolved | LexicalReferent::BuiltInTy(_) => None,
+            LexicalReferent::Def => match name_symbols.get(&name)? {
                 NameSymbol::TyParam(_) => None,
                 NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
                 NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
             },
-            BaseReferent::Name(def_name) => match name_symbols.get(&def_name)? {
+            LexicalReferent::Name(def_name) => match name_symbols.get(&def_name)? {
                 NameSymbol::TyParam(_) => None,
                 NameSymbol::LocalVar(local_var) => Some(KLocalValue::LocalVar(*local_var)),
                 NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
@@ -234,15 +235,7 @@ pub(crate) fn resolve_value_path(
 // V3
 // =============================================================================
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum BaseReferent {
-    Unresolved,
-    Def,
-    Name(ANameId),
-    BuiltInTy(BuiltInTy),
-}
-
-pub(crate) type NameReferents = HashMap<ANameId, BaseReferent>;
+pub(crate) type NameReferents = HashMap<ANameId, LexicalReferent>;
 
 pub(crate) type NameSymbols = HashMap<ANameId, NameSymbol>;
 
@@ -325,8 +318,8 @@ mod v3_core {
         hint: &str,
         name_id: ANameId,
         #[allow(unused)] text_opt: Option<&str>,
-        referent: BaseReferent,
-        expected: Option<BaseReferent>,
+        referent: LexicalReferent,
+        expected: Option<LexicalReferent>,
         resolver: &mut NameResolver,
     ) {
         log::trace!(
@@ -360,17 +353,21 @@ mod v3_core {
         }
     }
 
-    fn find_name(kind: FindKind, text: &str, resolver: &mut NameResolver) -> Option<BaseReferent> {
+    fn find_name(
+        kind: FindKind,
+        text: &str,
+        resolver: &mut NameResolver,
+    ) -> Option<LexicalReferent> {
         match kind {
             FindKind::Value => resolver
                 .value_env
                 .get(text)
-                .map(|&name| BaseReferent::Name(name)),
+                .map(|&name| LexicalReferent::Name(name)),
             FindKind::Ty => resolver
                 .ty_env
                 .get(text)
-                .map(|&name| BaseReferent::Name(name))
-                .or_else(|| resolve_builtin_ty(text).map(|ty| BaseReferent::BuiltInTy(ty))),
+                .map(|&name| LexicalReferent::Name(name))
+                .or_else(|| resolve_builtin_ty(text).map(|ty| LexicalReferent::BuiltInTy(ty))),
         }
     }
 
@@ -382,7 +379,14 @@ mod v3_core {
         resolver: &mut NameResolver,
     ) {
         import_name(name, kind, text, resolver);
-        bind_name("stack", name, Some(text), BaseReferent::Def, None, resolver)
+        bind_name(
+            "stack",
+            name,
+            Some(text),
+            LexicalReferent::Def,
+            None,
+            resolver,
+        )
     }
 
     /// 前方参照を許す値の名前を追加する。
@@ -392,7 +396,7 @@ mod v3_core {
         text: &str,
         resolver: &mut NameResolver,
     ) {
-        let referent = BaseReferent::Name(name);
+        let referent = LexicalReferent::Name(name);
 
         let mut aux = |kind: FindKind| {
             // この定義がみえる位置にある前方参照を解決する。
@@ -409,7 +413,7 @@ mod v3_core {
                     return true;
                 }
 
-                let expected = Some(BaseReferent::Unresolved);
+                let expected = Some(LexicalReferent::Unresolved);
                 bind_name("hoist", name, None, referent, expected, resolver);
                 false
             });
@@ -429,7 +433,14 @@ mod v3_core {
         }
 
         import_name(name, kind, text, resolver);
-        bind_name("hoist", name, Some(text), BaseReferent::Def, None, resolver);
+        bind_name(
+            "hoist",
+            name,
+            Some(text),
+            LexicalReferent::Def,
+            None,
+            resolver,
+        );
     }
 
     pub(super) fn on_name_use(
@@ -446,7 +457,7 @@ mod v3_core {
                     .entry((text.to_string(), kind))
                     .or_insert(vec![])
                     .push((name, resolver.scope_walker.current()));
-                BaseReferent::Unresolved
+                LexicalReferent::Unresolved
             }
         };
 

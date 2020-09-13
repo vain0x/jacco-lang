@@ -5,6 +5,7 @@ use crate::{
     front::{self, name_resolution::*},
     logs::{DocLogs, Logs},
     parse::{self, PLoc, PTree},
+    scope::lexical_referent::LexicalReferent,
     source::{Doc, TRange},
     token,
 };
@@ -136,7 +137,7 @@ impl AnalysisCache {
                         let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
                         let use_names = syntax.tree.name_referents.iter().filter_map(
                             |(&use_name, referent)| match *referent {
-                                BaseReferent::Name(def_name) => Some((def_name, use_name.loc())),
+                                LexicalReferent::Name(def_name) => Some((def_name, use_name.loc())),
                                 _ => None,
                             },
                         );

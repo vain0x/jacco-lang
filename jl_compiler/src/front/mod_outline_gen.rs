@@ -6,6 +6,7 @@ use crate::{
     cps::*,
     logs::DocLogger,
     parse::*,
+    scope::lexical_referent::LexicalReferent,
     source::{Doc, Loc},
 };
 use std::{collections::HashMap, iter::once};
@@ -502,7 +503,7 @@ fn alloc_outline(
         };
 
         if let Some(name) = decl.name_opt() {
-            debug_assert_eq!(name_referents.get(&name), Some(&BaseReferent::Def));
+            debug_assert_eq!(name_referents.get(&name), Some(&LexicalReferent::Def));
             name_symbols.insert(name, NameSymbol::ModSymbol(symbol));
         }
     }
