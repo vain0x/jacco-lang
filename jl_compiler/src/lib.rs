@@ -189,6 +189,10 @@ mod parse {
     pub(crate) type PVis = (KVis, PToken);
 }
 
+mod scope {
+    pub(crate) mod scope_walker;
+}
+
 mod source {
     //! ソースファイル
 

@@ -1,6 +1,11 @@
 //! 名前解決の処理
 
-use crate::{cps::*, front::*, utils::MapStack};
+use crate::{
+    cps::*,
+    front::*,
+    scope::scope_walker::{ScopeId, ScopeWalker},
+    utils::MapStack,
+};
 use std::collections::HashMap;
 
 pub(crate) struct PathResolutionContext<'a> {
@@ -229,9 +234,6 @@ pub(crate) fn resolve_value_path(
 // V3
 // =============================================================================
 
-/// ルートスコープは 0
-type ScopeId = usize;
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum BaseReferent {
     Unresolved,
@@ -264,10 +266,8 @@ impl NameSymbol {
     }
 }
 
-#[derive(Default)]
 pub(crate) struct NameResolver {
-    scope_id: ScopeId,
-    scope_parents: Vec<ScopeId>,
+    scope_walker: ScopeWalker,
     value_env: MapStack<ANameId>,
     ty_env: MapStack<ANameId>,
     defer_map: HashMap<(String, FindKind), Vec<(ANameId, ScopeId)>>,
@@ -276,8 +276,14 @@ pub(crate) struct NameResolver {
 
 impl<'a> NameResolver {
     pub(crate) fn new() -> Self {
-        let mut resolver = Self::default();
-        resolver.scope_parents = vec![0];
+        let mut resolver = Self {
+            scope_walker: ScopeWalker::new(),
+            value_env: MapStack::new(),
+            ty_env: MapStack::new(),
+            defer_map: HashMap::new(),
+            name_referents: NameReferents::new(),
+        };
+
         resolver.ty_env.push();
         resolver.value_env.push();
         resolver
@@ -299,54 +305,18 @@ enum FindKind {
 
 mod v3_core {
     use super::*;
-    use std::mem::replace;
-
-    fn scope_breads_list(resolver: &NameResolver) -> String {
-        let mut ancestors = vec![];
-        let mut scope_id = resolver.scope_id;
-        while scope_id != 0 {
-            ancestors.push(scope_id.to_string());
-            scope_id = resolver.scope_parents[scope_id];
-        }
-        ancestors.push("0".into());
-        ancestors.reverse();
-        ancestors.join(" > ")
-    }
-
-    fn is_descendant(mut scope_id: ScopeId, resolver: &NameResolver) -> bool {
-        loop {
-            if scope_id == resolver.scope_id {
-                return true;
-            }
-
-            if scope_id == 0 {
-                return false;
-            }
-
-            scope_id = resolver.scope_parents[scope_id];
-        }
-    }
 
     pub(super) fn enter_scope(resolver: &mut NameResolver) {
-        let parent = replace(&mut resolver.scope_id, resolver.scope_parents.len());
-        resolver.scope_parents.push(parent);
-
+        // FIXME: hint をつける
+        resolver.scope_walker.enter("");
         resolver.ty_env.push();
         resolver.value_env.push();
-        log::trace!(
-            "enter_scope #{} {:?}",
-            resolver.scope_id,
-            scope_breads_list(resolver)
-        );
+        log::trace!("enter_scope {}", resolver.scope_walker.breadcrumbs());
     }
 
     pub(super) fn leave_scope(resolver: &mut NameResolver) {
-        log::trace!(
-            "leave_scope #{} {:?}",
-            resolver.scope_id,
-            scope_breads_list(resolver)
-        );
-        resolver.scope_id = resolver.scope_parents[resolver.scope_id];
+        log::trace!("leave_scope {}", resolver.scope_walker.breadcrumbs());
+        resolver.scope_walker.leave();
         resolver.ty_env.pop();
         resolver.value_env.pop();
     }
@@ -432,10 +402,10 @@ mod v3_core {
                 None => return,
             };
 
-            vec.retain(|&(name, pos)| {
-                let can_see = is_descendant(pos, resolver);
+            vec.retain(|&(name, use_scope)| {
+                let can_see = resolver.scope_walker.is_descendant(use_scope);
                 if !can_see {
-                    // pos からこの定義が見えない。(`{ f(); } { fn f() {} }` のようなケース)
+                    // use_scope からこの定義が見えない。(`{ f(); } { fn f() {} }` のようなケース)
                     return true;
                 }
 
@@ -475,7 +445,7 @@ mod v3_core {
                     .defer_map
                     .entry((text.to_string(), kind))
                     .or_insert(vec![])
-                    .push((name, resolver.scope_id));
+                    .push((name, resolver.scope_walker.current()));
                 BaseReferent::Unresolved
             }
         };
