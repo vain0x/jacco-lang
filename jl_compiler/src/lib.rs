@@ -108,7 +108,6 @@ mod front {
 
     pub(crate) use cps_conversion::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;
-    pub(crate) use name_resolution::NameResolver;
 
     use crate::parse::*;
 }
@@ -193,6 +192,7 @@ mod scope {
     pub(crate) mod lexical_referent;
     pub(crate) mod scope_system;
     pub(crate) mod scope_walker;
+    pub(crate) mod syntax_scopes;
 }
 
 mod source {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{front::NameResolver, logs::DocLogger};
+use crate::{logs::DocLogger, scope::syntax_scopes::SyntaxScopes};
 
 /// Parsing context. 構文解析の文脈
 pub(crate) struct Px {
@@ -9,7 +9,7 @@ pub(crate) struct Px {
     skipped: Vec<PToken>,
     pub(crate) ast: ATree,
     pub(crate) builder: PTreeBuilder,
-    pub(crate) name_resolver: NameResolver,
+    pub(crate) syntax_scopes: SyntaxScopes,
     logger: DocLogger,
 }
 
@@ -21,7 +21,7 @@ impl Px {
             elements: PElementArena::new(),
             builder: PTreeBuilder::new(),
             ast: ATree::default(),
-            name_resolver: NameResolver::new(),
+            syntax_scopes: SyntaxScopes::new(),
             skipped: vec![],
             logger,
         }

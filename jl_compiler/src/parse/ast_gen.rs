@@ -132,7 +132,7 @@ pub(crate) fn alloc_ty_param(
 
     let name = px.alloc_name(name);
 
-    name_resolution::v3::on_ty_param_decl(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_ty_param_decl(name, &px.ast);
 
     (
         ATyParamDecl { name },
@@ -208,7 +208,7 @@ pub(crate) fn alloc_param(
     let name = px.alloc_name(name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
-    name_resolution::v3::on_param_decl(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_param_decl(name, &px.ast);
 
     (
         AParamDecl {
@@ -238,7 +238,7 @@ pub(crate) fn alloc_param_list(
 pub(crate) fn alloc_name_ty(event: TyStart, name: AfterQualifiableName, px: &mut Px) -> AfterTy {
     let name = px.alloc_name(name);
 
-    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_name_ty(name, &px.ast);
 
     (ATy::Name(name), event.end(PElementKind::NameTy, px))
 }
@@ -252,7 +252,7 @@ pub(crate) fn alloc_app_ty(
     let name = px.alloc_name(name);
     let ty_args = px.alloc_tys(ty_args);
 
-    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_name_ty(name, &px.ast);
 
     (ATy::App(name, ty_args), event.end(PElementKind::AppTy, px))
 }
@@ -342,7 +342,7 @@ pub(crate) fn alloc_wildcard_pat(event: PatStart, token: PToken, px: &mut Px) ->
 pub(crate) fn alloc_name_pat(event: PatStart, name: AfterQualifiableName, px: &mut Px) -> AfterPat {
     let name = px.alloc_name(name);
 
-    name_resolution::v3::on_name_pat(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_name_pat(name, &px.ast);
 
     (APat::Name(name), event.end(PElementKind::NamePat, px))
 }
@@ -358,7 +358,7 @@ pub(crate) fn alloc_record_pat(
 
     let name = px.alloc_name(name);
 
-    name_resolution::v3::on_record_pat(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_record_pat(name, &px.ast);
 
     (
         APat::Record(ARecordPat {
@@ -434,7 +434,7 @@ pub(crate) fn alloc_name_expr(
 ) -> AfterExpr {
     let name = px.alloc_name(name);
 
-    name_resolution::v3::on_name_expr(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_name_expr(name, &px.ast);
 
     (AExpr::Name(name), event.end(PElementKind::NameExpr, px))
 }
@@ -455,7 +455,7 @@ pub(crate) fn alloc_record_expr(
         .map(|(field_expr, _)| field_expr)
         .collect();
 
-    name_resolution::v3::on_name_ty(name, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_name_ty(name, &px.ast);
 
     (
         AExpr::Record(ARecordExpr {
@@ -588,7 +588,7 @@ fn do_alloc_block_expr(event: ExprEnd, decls: Vec<(ADecl, DeclEnd)>, px: &mut Px
 }
 
 pub(crate) fn before_block(px: &mut Px) {
-    name_resolution::v3::enter_block(&mut px.name_resolver);
+    px.syntax_scopes.enter_block();
 }
 
 pub(crate) fn alloc_block(
@@ -600,7 +600,7 @@ pub(crate) fn alloc_block(
 ) -> AfterBlock {
     let a_decls = semi;
 
-    name_resolution::v3::leave_block(&mut px.name_resolver);
+    px.syntax_scopes.leave_block();
 
     (a_decls, event.end(PElementKind::BlockExpr, px))
 }
@@ -616,7 +616,7 @@ pub(crate) fn alloc_block_expr(
 
     let a_decls = px.alloc_decls(semi);
 
-    name_resolution::v3::leave_block(&mut px.name_resolver);
+    px.syntax_scopes.leave_block();
 
     (
         AExpr::Block(ABlockExpr { decls: a_decls }),
@@ -689,7 +689,7 @@ pub(crate) fn alloc_if_expr(
 }
 
 pub(crate) fn before_arm(px: &mut Px) {
-    name_resolution::v3::enter_arm(&mut px.name_resolver);
+    px.syntax_scopes.enter_arm();
 }
 
 // opt の少なくとも1つは Some
@@ -723,7 +723,7 @@ pub(crate) fn alloc_arm(
         (None, None, None, Some(comma)) => PLoc::Token(comma),
     };
 
-    name_resolution::v3::leave_arm(&mut px.name_resolver);
+    px.syntax_scopes.leave_arm();
 
     (
         AArm {
@@ -739,7 +739,7 @@ pub(crate) fn alloc_arm(
 /// (アームの始まりはキーワードではなくパターンなので、ここだけこういうことが起こりうる。
 ///  パターンの FIRST 集合をみてから alloc_arm を呼ぶ実装にすれば回避できる。)
 pub(crate) fn abandon_arm(event: ParseStart, px: &mut Px) {
-    name_resolution::v3::leave_arm(&mut px.name_resolver);
+    px.syntax_scopes.leave_arm();
 }
 
 pub(crate) fn alloc_match_expr(
@@ -915,7 +915,7 @@ pub(crate) fn alloc_let_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    name_resolution::v3::leave_let_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_let_decl(name_opt, &px.ast);
 
     (
         ADecl::Let(AFieldLikeDecl {
@@ -957,7 +957,7 @@ pub(crate) fn alloc_const_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    name_resolution::v3::leave_const_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_const_decl(name_opt, &px.ast);
 
     (
         ADecl::Const(AFieldLikeDecl {
@@ -999,7 +999,7 @@ pub(crate) fn alloc_static_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    name_resolution::v3::leave_static_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_static_decl(name_opt, &px.ast);
 
     (
         ADecl::Static(AFieldLikeDecl {
@@ -1013,7 +1013,7 @@ pub(crate) fn alloc_static_decl(
 }
 
 pub(crate) fn before_fn_decl(px: &mut Px) {
-    name_resolution::v3::enter_fn_decl(&mut px.name_resolver);
+    px.syntax_scopes.enter_fn_decl();
 }
 
 pub(crate) fn alloc_fn_decl(
@@ -1051,7 +1051,7 @@ pub(crate) fn alloc_fn_decl(
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
     let body_opt = block_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
 
-    name_resolution::v3::leave_fn_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_fn_decl(name_opt, &px.ast);
 
     (
         ADecl::Fn(AFnLikeDecl {
@@ -1067,7 +1067,7 @@ pub(crate) fn alloc_fn_decl(
 }
 
 pub(crate) fn before_extern_fn_decl(px: &mut Px) {
-    name_resolution::v3::enter_extern_fn_decl(&mut px.name_resolver);
+    px.syntax_scopes.enter_extern_fn_decl();
 }
 
 pub(crate) fn alloc_extern_fn_decl(
@@ -1103,7 +1103,7 @@ pub(crate) fn alloc_extern_fn_decl(
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
 
-    name_resolution::v3::leave_extern_fn_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_extern_fn_decl(name_opt, &px.ast);
 
     (
         ADecl::ExternFn(AFnLikeDecl {
@@ -1204,7 +1204,7 @@ pub(crate) fn alloc_variants(variants: Vec<AfterVariantDecl>, _px: &mut Px) -> A
 }
 
 pub(crate) fn before_enum_decl(px: &mut Px) {
-    name_resolution::v3::enter_enum_decl(&mut px.name_resolver);
+    px.syntax_scopes.enter_enum_decl();
 }
 
 pub(crate) fn alloc_enum_decl(
@@ -1230,7 +1230,7 @@ pub(crate) fn alloc_enum_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
-    name_resolution::v3::leave_enum_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.leave_enum_decl(name_opt, &px.ast);
 
     (
         ADecl::Enum(AEnumDecl {
@@ -1243,7 +1243,7 @@ pub(crate) fn alloc_enum_decl(
 }
 
 pub(crate) fn before_struct_decl(px: &mut Px) {
-    name_resolution::v3::enter_struct_decl(&mut px.name_resolver);
+    px.syntax_scopes.enter_struct_decl();
 }
 
 pub(crate) fn alloc_struct_decl(
@@ -1263,7 +1263,8 @@ pub(crate) fn alloc_struct_decl(
         .as_ref()
         .map_or(false, |variant| variant.is_unit_like());
 
-    name_resolution::v3::leave_struct_decl(name_opt, is_unit_like, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes
+        .leave_struct_decl(name_opt, is_unit_like, &px.ast);
 
     (
         ADecl::Struct(AStructDecl {
@@ -1293,7 +1294,7 @@ pub(crate) fn alloc_use_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
-    name_resolution::v3::on_use_decl(name_opt, &px.ast, &mut px.name_resolver);
+    px.syntax_scopes.on_use_decl(name_opt, &px.ast);
 
     (
         ADecl::Use(AUseDecl {
