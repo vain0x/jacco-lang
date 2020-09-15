@@ -140,6 +140,22 @@ impl<'a> OutlineGenerator<'a> {
 
         self.bind_symbol(name, KModSymbol::Fn(k_fn));
     }
+
+    fn add_extern_fn(&mut self, decl: &AFnLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let extern_fn = self.mod_outline.extern_fns.alloc(KExternFnOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            param_tys: vec![],
+            result_ty: KTy::init_later(loc),
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::ExternFn(extern_fn));
+    }
 }
 
 fn alloc_alias(
@@ -266,21 +282,21 @@ fn alloc_fn(
 }
 
 fn alloc_extern_fn(
-    decl_id: ADeclId,
     decl: &AFnLikeDecl,
-    doc: Doc,
+    loc: Loc,
+    tokens: &PTokens,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
-) -> KExternFn {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    mod_outline.extern_fns.alloc(KExternFnOutline {
-        name,
-        param_tys: vec![],
-        result_ty: KTy::init_later(loc),
-        loc,
-    })
+) {
+    OutlineGenerator {
+        doc: loc.doc().unwrap(),
+        tokens,
+        ast,
+        name_symbols,
+        mod_outline,
+    }
+    .add_extern_fn(decl, loc);
 }
 
 fn new_const_outline_from_variant(
@@ -567,9 +583,9 @@ fn alloc_outline(
                 alloc_fn(decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
                 continue;
             }
-            ADecl::ExternFn(extern_fn_decl) => {
-                let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, ast, mod_outline);
-                KModSymbol::ExternFn(extern_fn)
+            ADecl::ExternFn(decl) => {
+                alloc_extern_fn(decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
+                continue;
             }
             ADecl::Enum(enum_decl) => {
                 match alloc_enum(decl_id, enum_decl, doc, ast, mod_outline, logger) {
