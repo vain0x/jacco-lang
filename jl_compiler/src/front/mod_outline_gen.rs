@@ -84,6 +84,22 @@ impl<'a> OutlineGenerator<'a> {
 
         self.bind_symbol(name, KModSymbol::Const(k_const));
     }
+
+    fn add_static_var(&mut self, decl: &AFieldLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let static_var = self.mod_outline.static_vars.alloc(KStaticVarOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            ty: KTy::init_later(loc),
+            value_opt: None,
+            loc: Loc::new(self.doc, PLoc::Name(ANameKey::Id(name))),
+        });
+
+        self.bind_symbol(name, KModSymbol::StaticVar(static_var));
+    }
 }
 
 fn alloc_alias(
@@ -133,20 +149,21 @@ fn resolve_const_decl(
 }
 
 fn alloc_static(
-    decl_id: ADeclId,
     decl: &AFieldLikeDecl,
-    doc: Doc,
+    loc: Loc,
+    tokens: &PTokens,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
-) -> KStaticVar {
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    mod_outline.static_vars.alloc(KStaticVarOutline {
-        name,
-        ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
-        value_opt: None,
-        loc: Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id))),
-    })
+) {
+    OutlineGenerator {
+        doc: loc.doc().unwrap(),
+        tokens,
+        ast,
+        name_symbols,
+        mod_outline,
+    }
+    .add_static_var(decl, loc);
 }
 
 fn resolve_static_decl(
@@ -504,20 +521,13 @@ fn alloc_outline(
         let loc = Loc::new(doc, PLoc::Decl(decl_id));
         let symbol = match decl {
             ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
-            ADecl::Const(const_decl) => {
-                alloc_const(
-                    &const_decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                );
+            ADecl::Const(decl) => {
+                alloc_const(&decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
                 continue;
             }
-            ADecl::Static(static_decl) => {
-                let static_var = alloc_static(decl_id, &static_decl, doc, ast, mod_outline);
-                KModSymbol::StaticVar(static_var)
+            ADecl::Static(decl) => {
+                alloc_static(&decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
+                continue;
             }
             ADecl::Fn(fn_decl) => {
                 let k_fn = alloc_fn(decl_id, fn_decl, doc, ast, name_symbols, mod_outline);
