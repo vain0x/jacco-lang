@@ -30,51 +30,337 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
     }
 }
 
-fn alloc_alias(
-    decl: &AUseDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-) -> KAlias {
-    let (name, path) = match &decl.name_opt {
-        Some(name) => {
-            let AName { quals, text, .. } = name.of(ast.names());
-            (
-                text.to_string(),
-                quals
-                    .iter()
-                    .map(|token| token.text(tokens))
-                    .chain(once(text.as_str()))
-                    .map(|text| text.to_string())
-                    .collect(),
-            )
-        }
-        None => Default::default(),
-    };
-
-    mod_outline
-        .aliases
-        .alloc(KAliasOutline::new(name, path, loc))
+struct OutlineGenerator<'a> {
+    doc: Doc,
+    tokens: &'a PTokens,
+    ast: &'a ATree,
+    name_referents: &'a NameReferents,
+    name_symbols: &'a mut NameSymbols,
+    mod_outline: &'a mut KModOutline,
+    logger: &'a DocLogger,
 }
 
-fn alloc_const(
-    decl_id: ADeclId,
-    decl: &AFieldLikeDecl,
-    doc: Doc,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-) -> KConst {
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
+impl<'a> OutlineGenerator<'a> {
+    fn do_bind_symbol(&mut self, name: ANameId, symbol: NameSymbol) {
+        assert_eq!(self.name_referents[&name], LexicalReferent::Def);
 
-    let k_const = mod_outline.consts.alloc(KConstOutline {
-        name,
-        value_ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
-        value_opt: None,
-        parent_opt: None,
-        loc: Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id))),
-    });
-    k_const
+        let old = self.name_symbols.insert(name, symbol);
+        assert!(old.is_none());
+    }
+
+    fn bind_symbol(&mut self, name: ANameId, symbol: KModSymbol) {
+        self.do_bind_symbol(name, NameSymbol::ModSymbol(symbol));
+    }
+
+    fn on_ty_params(&mut self, ty_params: &[ATyParamDecl]) -> Vec<KTyParam> {
+        ty_params
+            .iter()
+            .map(|ty_param| {
+                let name = ty_param.name;
+                let ty_param = KTyParam {
+                    name: name.of(self.ast.names()).text().to_string(),
+                    loc: name.loc().to_loc(self.doc),
+                };
+
+                self.do_bind_symbol(name, NameSymbol::TyParam(ty_param.clone()));
+                ty_param
+            })
+            .collect()
+    }
+
+    fn add_alias(&mut self, decl: &AUseDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let AName { quals, text, .. } = name.of(self.ast.names());
+        let text = text.to_string();
+        let path = quals
+            .iter()
+            .map(|token| token.text(self.tokens))
+            .chain(once(text.as_str()))
+            .map(|text| text.to_string())
+            .collect();
+
+        let k_alias = self
+            .mod_outline
+            .aliases
+            .alloc(KAliasOutline::new(text, path, loc));
+
+        self.bind_symbol(name, KModSymbol::Alias(k_alias));
+    }
+
+    fn add_const(&mut self, decl: &AFieldLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let k_const = self.mod_outline.consts.alloc(KConstOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            value_ty: KTy::init_later(loc),
+            value_opt: None,
+            parent_opt: None,
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::Const(k_const));
+    }
+
+    fn add_static_var(&mut self, decl: &AFieldLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let static_var = self.mod_outline.static_vars.alloc(KStaticVarOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            ty: KTy::init_later(loc),
+            value_opt: None,
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::StaticVar(static_var));
+    }
+
+    fn add_fn(&mut self, decl: &AFnLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let vis_opt = resolve_modifiers(&decl.modifiers);
+        let ty_params = self.on_ty_params(&decl.ty_params);
+
+        let k_fn = self.mod_outline.fns.alloc(KFnOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            vis_opt,
+            ty_params,
+            param_tys: vec![],
+            result_ty: KTy::init_later(loc),
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::Fn(k_fn));
+    }
+
+    fn add_extern_fn(&mut self, decl: &AFnLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let extern_fn = self.mod_outline.extern_fns.alloc(KExternFnOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            param_tys: vec![],
+            result_ty: KTy::init_later(loc),
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::ExternFn(extern_fn));
+    }
+
+    fn add_const_enum_variant(
+        &mut self,
+        const_enum: KConstEnum,
+        variant_decls: &[&AFieldLikeDecl],
+        loc: Loc,
+    ) -> KConsts {
+        let (doc, ast) = (self.doc, self.ast);
+        self.mod_outline
+            .consts
+            .alloc_slice(variant_decls.iter().map(|variant_decl| {
+                let name_opt = variant_decl.name_opt;
+                let loc = match name_opt {
+                    Some(name) => name.loc().to_loc(doc),
+                    None => loc,
+                };
+
+                KConstOutline {
+                    name: resolve_name_opt(name_opt.map(|name| name.of(ast.names()))),
+                    value_ty: KTy::init_later(loc),
+                    value_opt: None,
+                    parent_opt: Some(const_enum),
+                    loc,
+                }
+            }))
+    }
+
+    fn add_const_enum(&mut self, decl: &AEnumDecl, variant_decls: &[&AFieldLikeDecl], loc: Loc) {
+        let name_opt = decl.name_opt;
+
+        let const_enum = self.mod_outline.const_enums.alloc(KConstEnumOutline {
+            name: resolve_name_opt(name_opt.map(|name| name.of(self.ast.names()))),
+            loc: match name_opt {
+                Some(name) => name.loc().to_loc(self.doc),
+                None => loc,
+            },
+
+            // FIXME: どう決定する?
+            repr_ty: KTy::USIZE,
+
+            // 後で設定する。
+            variants: Default::default(),
+        });
+
+        let variants = self.add_const_enum_variant(const_enum, variant_decls, loc);
+        const_enum
+            .of_mut(&mut self.mod_outline.const_enums)
+            .variants = variants;
+
+        if let Some(name) = decl.name_opt {
+            self.bind_symbol(name, KModSymbol::ConstEnum(const_enum));
+        }
+    }
+
+    fn add_unit_like_variant(
+        &mut self,
+        decl: &AFieldLikeDecl,
+        parent: KStructParent,
+        key: AVariantDeclKey,
+    ) -> KStruct {
+        if let Some(ty) = decl.ty_opt {
+            self.logger.error(PLoc::Ty(ty), "この enum 宣言には定数でないバリアントが含まれるので、バリアントに型注釈を書くことはできません。");
+        } else if let Some(init) = decl.value_opt {
+            self.logger.error(PLoc::Expr(init), "この enum 宣言には定数でないバリアントが含まれるので、バリアントに初期化式を書くことはできません。");
+        }
+
+        self.mod_outline.structs.alloc(KStructOutline {
+            name: resolve_name_opt(decl.name_opt.map(|name| name.of(self.ast.names()))),
+            fields: vec![],
+            parent,
+            loc: match decl.name_opt {
+                Some(name) => name.loc().to_loc(self.doc),
+                None => new_struct_loc(self.doc, key),
+            },
+        })
+    }
+
+    fn add_record_variant(
+        &mut self,
+        decl: &ARecordVariantDecl,
+        parent: KStructParent,
+        key: AVariantDeclKey,
+    ) -> KStruct {
+        let (doc, ast) = (self.doc, self.ast);
+        let fields = {
+            let fields = decl.fields.iter().enumerate().map(|(index, field_decl)| {
+                let name_opt = field_decl.name_opt;
+                let loc = new_field_loc(doc, key, index);
+                KFieldOutline {
+                    name: resolve_name_opt(name_opt.map(|name| name.of(ast.names()))),
+                    ty: KTy::init_later(loc),
+                    loc,
+                }
+            });
+            self.mod_outline.fields.alloc_slice(fields).iter().collect()
+        };
+
+        self.mod_outline.structs.alloc(KStructOutline {
+            name: decl.name.of(self.ast.names()).text.to_string(),
+            fields,
+            parent,
+            loc: new_struct_loc(self.doc, key),
+        })
+    }
+
+    fn add_struct_variant(
+        &mut self,
+        decl: &AVariantDecl,
+        parent: KStructParent,
+        key: AVariantDeclKey,
+    ) -> KStruct {
+        match decl {
+            AVariantDecl::Const(decl) => self.add_unit_like_variant(decl, parent, key),
+            AVariantDecl::Record(decl) => self.add_record_variant(decl, parent, key),
+        }
+    }
+
+    fn add_struct_enum(&mut self, decl_id: ADeclId, decl: &AEnumDecl, loc: Loc) {
+        let loc = match decl.name_opt {
+            Some(name) => name.loc().to_loc(self.doc),
+            None => loc,
+        };
+
+        let struct_enum = self.mod_outline.struct_enums.alloc(KStructEnumOutline {
+            name: resolve_name_opt(decl.name_opt.map(|name| name.of(self.ast.names()))),
+            loc,
+
+            // 後で設定する。
+            variants: vec![],
+        });
+
+        let variants = decl
+            .variants
+            .iter()
+            .enumerate()
+            .map(|(index, variant)| {
+                let key = AVariantDeclKey::Enum(decl_id, index);
+                let parent = KStructParent::new_enum(struct_enum, index);
+                self.add_struct_variant(variant, parent, key)
+            })
+            .collect();
+
+        struct_enum
+            .of_mut(&mut self.mod_outline.struct_enums)
+            .variants = variants;
+
+        if let Some(name) = decl.name_opt {
+            self.bind_symbol(name, KModSymbol::StructEnum(struct_enum));
+        }
+    }
+
+    fn add_enum(&mut self, decl_id: ADeclId, decl: &AEnumDecl, loc: PLoc) {
+        if decl.variants.is_empty() {
+            self.logger
+                .error(loc, "enum には少なくとも1つのバリアントが必要です。");
+            return;
+        }
+
+        if let Some(variants) = decl.as_const_enum() {
+            self.add_const_enum(decl, &variants, loc.to_loc(self.doc));
+            return;
+        }
+
+        self.add_struct_enum(decl_id, decl, loc.to_loc(self.doc));
+    }
+
+    fn add_struct(&mut self, decl_id: ADeclId, decl: &AStructDecl) {
+        let key = AVariantDeclKey::Struct(decl_id);
+
+        let decl = match &decl.variant_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let ty_params = match decl {
+            AVariantDecl::Const(_) => vec![],
+            AVariantDecl::Record(decl) => self.on_ty_params(&decl.ty_params),
+        };
+
+        let k_struct = self.add_struct_variant(decl, KStructParent::Struct { ty_params }, key);
+
+        if let Some(name) = decl.name_opt() {
+            self.bind_symbol(name, KModSymbol::Struct(k_struct));
+        }
+    }
+
+    fn generate_all(&mut self) {
+        for (decl_id, decl) in self.ast.decls().enumerate() {
+            let loc = Loc::new(self.doc, PLoc::Decl(decl_id));
+            match decl {
+                ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
+                ADecl::Const(decl) => self.add_const(&decl, loc),
+                ADecl::Static(decl) => self.add_static_var(&decl, loc),
+                ADecl::Fn(decl) => self.add_fn(decl, loc),
+                ADecl::ExternFn(decl) => self.add_extern_fn(decl, loc),
+                ADecl::Enum(enum_decl) => self.add_enum(decl_id, enum_decl, PLoc::Decl(decl_id)),
+                ADecl::Struct(struct_decl) => self.add_struct(decl_id, struct_decl),
+                ADecl::Use(use_decl) => self.add_alias(use_decl, loc),
+            }
+        }
+    }
 }
 
 fn resolve_const_decl(
@@ -87,23 +373,6 @@ fn resolve_const_decl(
     k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
 }
 
-fn alloc_static(
-    decl_id: ADeclId,
-    decl: &AFieldLikeDecl,
-    doc: Doc,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-) -> KStaticVar {
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    mod_outline.static_vars.alloc(KStaticVarOutline {
-        name,
-        ty: KTy::init_later(Loc::new(doc, PLoc::Decl(decl_id))),
-        value_opt: None,
-        loc: Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id))),
-    })
-}
-
 fn resolve_static_decl(
     static_decl: &AFieldLikeDecl,
     static_var: KStaticVar,
@@ -114,30 +383,6 @@ fn resolve_static_decl(
     static_var.of_mut(&mut mod_outline.static_vars).ty = value_ty;
 }
 
-fn convert_ty_params(
-    ty_params: &[ATyParamDecl],
-    doc: Doc,
-    decl_id: ADeclId,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-) -> Vec<KTyParam> {
-    ty_params
-        .iter()
-        .map(|ty_param| {
-            let name_id = ty_param.name;
-
-            let name = resolve_name_opt(Some(ty_param.name.of(ast.names())));
-            let ty_param = KTyParam {
-                name,
-                loc: Loc::new(doc, PLoc::Name(ANameKey::TyParam(decl_id))),
-            };
-
-            name_symbols.insert(name_id, NameSymbol::TyParam(ty_param.clone()));
-            ty_param
-        })
-        .collect()
-}
-
 fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -> Vec<KTy> {
     param_decls
         .iter()
@@ -145,129 +390,8 @@ fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -
         .collect()
 }
 
-fn alloc_fn(
-    decl_id: ADeclId,
-    decl: &AFnLikeDecl,
-    doc: Doc,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-) -> KFn {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-
-    let vis_opt = resolve_modifiers(&decl.modifiers);
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-    let ty_params = convert_ty_params(&decl.ty_params, doc, decl_id, ast, name_symbols);
-
-    mod_outline.fns.alloc(KFnOutline {
-        name,
-        vis_opt,
-        ty_params,
-        param_tys: vec![],
-        result_ty: KTy::init_later(loc),
-        loc,
-    })
-}
-
-fn alloc_extern_fn(
-    decl_id: ADeclId,
-    decl: &AFnLikeDecl,
-    doc: Doc,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-) -> KExternFn {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    mod_outline.extern_fns.alloc(KExternFnOutline {
-        name,
-        param_tys: vec![],
-        result_ty: KTy::init_later(loc),
-        loc,
-    })
-}
-
-fn new_const_outline_from_variant(
-    decl: &AFieldLikeDecl,
-    parent_opt: Option<KConstEnum>,
-    doc: Doc,
-    key: AVariantDeclKey,
-    ast: &ATree,
-) -> KConstOutline {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    KConstOutline {
-        name,
-        value_ty: KTy::init_later(loc),
-        value_opt: None,
-        parent_opt,
-        loc,
-    }
-}
-
 fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
     Loc::new(doc, PLoc::FieldDecl(AFieldDeclKey::new(parent, index)))
-}
-
-fn resolve_field_decl(decl: &AFieldLikeDecl, loc: Loc, ast: &ATree) -> KFieldOutline {
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    KFieldOutline {
-        name,
-        ty: KTy::init_later(loc),
-        loc,
-    }
-}
-
-fn alloc_unit_like_variant(
-    decl: &AFieldLikeDecl,
-    parent: KStructParent,
-    doc: Doc,
-    key: AVariantDeclKey,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) -> KStruct {
-    if let Some(ty) = decl.ty_opt {
-        logger.error(PLoc::Ty(ty), "この enum 宣言には定数でないバリアントが含まれるので、バリアントに型注釈を書くことはできません。");
-    } else if let Some(init) = decl.value_opt {
-        logger.error(PLoc::Expr(init), "この enum 宣言には定数でないバリアントが含まれるので、バリアントに初期化式を書くことはできません。");
-    }
-
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    mod_outline.structs.alloc(KStructOutline {
-        name,
-        fields: vec![],
-        parent,
-        loc: new_struct_loc(doc, key),
-    })
-}
-
-fn alloc_record_variant(
-    decl: &ARecordVariantDecl,
-    parent: KStructParent,
-    doc: Doc,
-    key: AVariantDeclKey,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-) -> KStruct {
-    let name = decl.name.of(ast.names()).text.to_string();
-
-    let fields = {
-        let fields = decl.fields.iter().enumerate().map(|(index, field_decl)| {
-            resolve_field_decl(field_decl, new_field_loc(doc, key, index), ast)
-        });
-        mod_outline.fields.alloc_slice(fields).iter().collect()
-    };
-
-    mod_outline.structs.alloc(KStructOutline {
-        name,
-        fields,
-        parent,
-        loc: new_struct_loc(doc, key),
-    })
 }
 
 fn resolve_record_variant_decl(
@@ -283,25 +407,6 @@ fn resolve_record_variant_decl(
     }
 }
 
-fn alloc_variant(
-    variant_decl: &AVariantDecl,
-    parent: KStructParent,
-    doc: Doc,
-    key: AVariantDeclKey,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) -> KStruct {
-    match variant_decl {
-        AVariantDecl::Const(decl) => {
-            alloc_unit_like_variant(decl, parent, doc, key, ast, mod_outline, logger)
-        }
-        AVariantDecl::Record(decl) => {
-            alloc_record_variant(decl, parent, doc, key, ast, mod_outline)
-        }
-    }
-}
-
 fn resolve_variant_decl(
     variant_decl: &AVariantDecl,
     k_struct: KStruct,
@@ -314,73 +419,6 @@ fn resolve_variant_decl(
             resolve_record_variant_decl(decl, k_struct, ty_resolver, mod_outline);
         }
     }
-}
-
-enum KEnumLike {
-    StructEnum(KStructEnum),
-    ConstEnum(KConstEnum),
-}
-
-fn alloc_enum(
-    decl_id: ADeclId,
-    decl: &AEnumDecl,
-    doc: Doc,
-    ast: &ATree,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) -> KEnumLike {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    if decl.variants.is_empty() {
-        logger.error(
-            PLoc::Decl(decl_id),
-            "enum には少なくとも1つのバリアントが必要です。",
-        );
-    }
-
-    if let Some(variants) = decl.as_const_enum() {
-        let const_enum = mod_outline.const_enums.alloc(KConstEnumOutline {
-            name,
-            loc,
-
-            // FIXME: どう決定する?
-            repr_ty: KTy::USIZE,
-
-            // 後で設定する。
-            variants: Default::default(),
-        });
-
-        let variants = mod_outline
-            .consts
-            .alloc_slice(variants.iter().enumerate().map(|(index, variant_decl)| {
-                let key = AVariantDeclKey::Enum(decl_id, index);
-                new_const_outline_from_variant(variant_decl, Some(const_enum), doc, key, ast)
-            }));
-
-        const_enum.of_mut(&mut mod_outline.const_enums).variants = variants;
-        return KEnumLike::ConstEnum(const_enum);
-    }
-
-    let struct_enum = mod_outline.struct_enums.alloc(KStructEnumOutline {
-        name,
-        variants: vec![],
-        loc,
-    });
-
-    let variants = decl
-        .variants
-        .iter()
-        .enumerate()
-        .map(|(index, variant)| {
-            let key = AVariantDeclKey::Enum(decl_id, index);
-            let parent = KStructParent::new_enum(struct_enum, index);
-            alloc_variant(variant, parent, doc, key, ast, mod_outline, logger)
-        })
-        .collect();
-
-    struct_enum.of_mut(&mut mod_outline.struct_enums).variants = variants;
-    KEnumLike::StructEnum(struct_enum)
 }
 
 fn resolve_const_enum_decl(
@@ -411,102 +449,6 @@ fn resolve_struct_enum_decl(
 
 fn new_struct_loc(doc: Doc, key: AVariantDeclKey) -> Loc {
     Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
-}
-
-fn alloc_struct(
-    decl_id: ADeclId,
-    decl: &AStructDecl,
-    doc: Doc,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) -> Option<KStruct> {
-    let key = AVariantDeclKey::Struct(decl_id);
-    let ty_params = decl
-        .variant_opt
-        .as_ref()
-        .map(|variant_decl| match variant_decl {
-            AVariantDecl::Const(_) => vec![],
-            AVariantDecl::Record(decl) => {
-                convert_ty_params(&decl.ty_params, doc, decl_id, ast, name_symbols)
-            }
-        })
-        .unwrap_or_default();
-    let k_struct = alloc_variant(
-        decl.variant_opt.as_ref()?,
-        KStructParent::Struct { ty_params },
-        doc,
-        key,
-        ast,
-        mod_outline,
-        logger,
-    );
-    Some(k_struct)
-}
-
-fn alloc_outline(
-    doc: Doc,
-    tree: &PTree,
-    mod_outline: &mut KModOutline,
-    name_symbols: &mut NameSymbols,
-    logger: &DocLogger,
-) {
-    let ast = &tree.ast;
-    let name_referents = &tree.name_referents;
-
-    for (decl_id, decl) in ast.decls().enumerate() {
-        let loc = Loc::new(doc, PLoc::Decl(decl_id));
-        let symbol = match decl {
-            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
-            ADecl::Const(const_decl) => {
-                let k_const = alloc_const(decl_id, &const_decl, doc, ast, mod_outline);
-                KModSymbol::Const(k_const)
-            }
-            ADecl::Static(static_decl) => {
-                let static_var = alloc_static(decl_id, &static_decl, doc, ast, mod_outline);
-                KModSymbol::StaticVar(static_var)
-            }
-            ADecl::Fn(fn_decl) => {
-                let k_fn = alloc_fn(decl_id, fn_decl, doc, ast, name_symbols, mod_outline);
-                KModSymbol::Fn(k_fn)
-            }
-            ADecl::ExternFn(extern_fn_decl) => {
-                let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, ast, mod_outline);
-                KModSymbol::ExternFn(extern_fn)
-            }
-            ADecl::Enum(enum_decl) => {
-                match alloc_enum(decl_id, enum_decl, doc, ast, mod_outline, logger) {
-                    KEnumLike::ConstEnum(const_enum) => KModSymbol::ConstEnum(const_enum),
-                    KEnumLike::StructEnum(struct_enum) => KModSymbol::StructEnum(struct_enum),
-                }
-            }
-            ADecl::Struct(struct_decl) => {
-                let k_struct = match alloc_struct(
-                    decl_id,
-                    struct_decl,
-                    doc,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                ) {
-                    Some(it) => it,
-                    None => continue,
-                };
-                KModSymbol::Struct(k_struct)
-            }
-            ADecl::Use(use_decl) => {
-                let alias = alloc_alias(use_decl, loc, &tree.tokens, ast, mod_outline);
-                KModSymbol::Alias(alias)
-            }
-        };
-
-        if let Some(name) = decl.name_opt() {
-            debug_assert_eq!(name_referents.get(&name), Some(&LexicalReferent::Def));
-            name_symbols.insert(name, NameSymbol::ModSymbol(symbol));
-        }
-    }
 }
 
 fn resolve_outline(
@@ -608,7 +550,17 @@ pub(crate) fn generate_outline(
     let mut mod_outline = KModOutline::default();
     let mut name_symbols = HashMap::new();
 
-    alloc_outline(doc, tree, &mut mod_outline, &mut name_symbols, logger);
+    OutlineGenerator {
+        doc,
+        tokens: &tree.tokens,
+        ast: &tree.ast,
+        name_referents: &tree.name_referents,
+        name_symbols: &mut name_symbols,
+        mod_outline: &mut mod_outline,
+        logger,
+    }
+    .generate_all();
+
     resolve_outline(
         tree,
         &mut mod_outline,
