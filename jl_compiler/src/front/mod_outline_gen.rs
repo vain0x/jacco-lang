@@ -299,25 +299,6 @@ fn alloc_extern_fn(
     .add_extern_fn(decl, loc);
 }
 
-fn new_const_outline_from_variant(
-    decl: &AFieldLikeDecl,
-    parent_opt: Option<KConstEnum>,
-    doc: Doc,
-    key: AVariantDeclKey,
-    ast: &ATree,
-) -> KConstOutline {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Variant(key)));
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-
-    KConstOutline {
-        name,
-        value_ty: KTy::init_later(loc),
-        value_opt: None,
-        parent_opt,
-        loc,
-    }
-}
-
 fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
     Loc::new(doc, PLoc::FieldDecl(AFieldDeclKey::new(parent, index)))
 }
@@ -466,8 +447,19 @@ fn alloc_enum(
         let variants = mod_outline
             .consts
             .alloc_slice(variants.iter().enumerate().map(|(index, variant_decl)| {
-                let key = AVariantDeclKey::Enum(decl_id, index);
-                new_const_outline_from_variant(variant_decl, Some(const_enum), doc, key, ast)
+                let loc = {
+                    let key = AVariantDeclKey::Enum(decl_id, index);
+                    Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
+                };
+                let name = resolve_name_opt(variant_decl.name_opt.map(|name| name.of(ast.names())));
+
+                KConstOutline {
+                    name,
+                    value_ty: KTy::init_later(loc),
+                    value_opt: None,
+                    parent_opt: Some(const_enum),
+                    loc,
+                }
             }));
 
         const_enum.of_mut(&mut mod_outline.const_enums).variants = variants;
