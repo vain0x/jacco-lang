@@ -40,9 +40,28 @@ struct OutlineGenerator<'a> {
 }
 
 impl<'a> OutlineGenerator<'a> {
+    fn do_bind_symbol(&mut self, name: ANameId, symbol: NameSymbol) {
+        self.name_symbols.insert(name, symbol);
+    }
+
     fn bind_symbol(&mut self, name: ANameId, symbol: KModSymbol) {
-        self.name_symbols
-            .insert(name, NameSymbol::ModSymbol(symbol));
+        self.do_bind_symbol(name, NameSymbol::ModSymbol(symbol));
+    }
+
+    fn on_ty_params(&mut self, ty_params: &[ATyParamDecl]) -> Vec<KTyParam> {
+        ty_params
+            .iter()
+            .map(|ty_param| {
+                let name = ty_param.name;
+                let ty_param = KTyParam {
+                    name: name.of(self.ast.names()).text().to_string(),
+                    loc: name.loc().to_loc(self.doc),
+                };
+
+                self.do_bind_symbol(name, NameSymbol::TyParam(ty_param.clone()));
+                ty_param
+            })
+            .collect()
     }
 
     fn add_alias(&mut self, decl: &AUseDecl, loc: Loc) {
@@ -79,7 +98,7 @@ impl<'a> OutlineGenerator<'a> {
             value_ty: KTy::init_later(loc),
             value_opt: None,
             parent_opt: None,
-            loc: Loc::new(self.doc, PLoc::Name(ANameKey::Id(name))),
+            loc: name.loc().to_loc(self.doc),
         });
 
         self.bind_symbol(name, KModSymbol::Const(k_const));
@@ -95,10 +114,31 @@ impl<'a> OutlineGenerator<'a> {
             name: name.of(self.ast.names()).text().to_string(),
             ty: KTy::init_later(loc),
             value_opt: None,
-            loc: Loc::new(self.doc, PLoc::Name(ANameKey::Id(name))),
+            loc: name.loc().to_loc(self.doc),
         });
 
         self.bind_symbol(name, KModSymbol::StaticVar(static_var));
+    }
+
+    fn add_fn(&mut self, decl: &AFnLikeDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let vis_opt = resolve_modifiers(&decl.modifiers);
+        let ty_params = self.on_ty_params(&decl.ty_params);
+
+        let k_fn = self.mod_outline.fns.alloc(KFnOutline {
+            name: name.of(self.ast.names()).text().to_string(),
+            vis_opt,
+            ty_params,
+            param_tys: vec![],
+            result_ty: KTy::init_later(loc),
+            loc: name.loc().to_loc(self.doc),
+        });
+
+        self.bind_symbol(name, KModSymbol::Fn(k_fn));
     }
 }
 
@@ -208,27 +248,21 @@ fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -
 }
 
 fn alloc_fn(
-    decl_id: ADeclId,
     decl: &AFnLikeDecl,
-    doc: Doc,
+    loc: Loc,
+    tokens: &PTokens,
     ast: &ATree,
     name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
-) -> KFn {
-    let loc = Loc::new(doc, PLoc::Name(ANameKey::Decl(decl_id)));
-
-    let vis_opt = resolve_modifiers(&decl.modifiers);
-    let name = resolve_name_opt(decl.name_opt.map(|name| name.of(ast.names())));
-    let ty_params = convert_ty_params(&decl.ty_params, doc, decl_id, ast, name_symbols);
-
-    mod_outline.fns.alloc(KFnOutline {
-        name,
-        vis_opt,
-        ty_params,
-        param_tys: vec![],
-        result_ty: KTy::init_later(loc),
-        loc,
-    })
+) {
+    OutlineGenerator {
+        doc: loc.doc().unwrap(),
+        tokens,
+        ast,
+        name_symbols,
+        mod_outline,
+    }
+    .add_fn(decl, loc);
 }
 
 fn alloc_extern_fn(
@@ -529,9 +563,9 @@ fn alloc_outline(
                 alloc_static(&decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
                 continue;
             }
-            ADecl::Fn(fn_decl) => {
-                let k_fn = alloc_fn(decl_id, fn_decl, doc, ast, name_symbols, mod_outline);
-                KModSymbol::Fn(k_fn)
+            ADecl::Fn(decl) => {
+                alloc_fn(decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
+                continue;
             }
             ADecl::ExternFn(extern_fn_decl) => {
                 let extern_fn = alloc_extern_fn(decl_id, extern_fn_decl, doc, ast, mod_outline);
