@@ -156,6 +156,59 @@ impl<'a> OutlineGenerator<'a> {
 
         self.bind_symbol(name, KModSymbol::ExternFn(extern_fn));
     }
+
+    fn add_const_enum_variant(
+        &mut self,
+        const_enum: KConstEnum,
+        variant_decls: &[&AFieldLikeDecl],
+        loc: Loc,
+    ) -> KConsts {
+        let (doc, ast) = (self.doc, self.ast);
+        self.mod_outline
+            .consts
+            .alloc_slice(variant_decls.iter().map(|variant_decl| {
+                let name_opt = variant_decl.name_opt;
+                let loc = match name_opt {
+                    Some(name) => name.loc().to_loc(doc),
+                    None => loc,
+                };
+
+                KConstOutline {
+                    name: resolve_name_opt(name_opt.map(|name| name.of(ast.names()))),
+                    value_ty: KTy::init_later(loc),
+                    value_opt: None,
+                    parent_opt: Some(const_enum),
+                    loc,
+                }
+            }))
+    }
+
+    fn add_const_enum(
+        &mut self,
+        decl: &AEnumDecl,
+        variant_decls: &[&AFieldLikeDecl],
+        loc: Loc,
+    ) -> KConstEnum {
+        let name_opt = decl.name_opt;
+
+        let const_enum = self.mod_outline.const_enums.alloc(KConstEnumOutline {
+            name: resolve_name_opt(name_opt.map(|name| name.of(self.ast.names()))),
+            loc,
+
+            // FIXME: どう決定する?
+            repr_ty: KTy::USIZE,
+
+            // 後で設定する。
+            variants: Default::default(),
+        });
+
+        let variants = self.add_const_enum_variant(const_enum, variant_decls, loc);
+        const_enum
+            .of_mut(&mut self.mod_outline.const_enums)
+            .variants = variants;
+
+        const_enum
+    }
 }
 
 fn alloc_alias(
@@ -418,7 +471,9 @@ fn alloc_enum(
     decl_id: ADeclId,
     decl: &AEnumDecl,
     doc: Doc,
+    tokens: &PTokens,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
     logger: &DocLogger,
 ) -> KEnumLike {
@@ -433,36 +488,14 @@ fn alloc_enum(
     }
 
     if let Some(variants) = decl.as_const_enum() {
-        let const_enum = mod_outline.const_enums.alloc(KConstEnumOutline {
-            name,
-            loc,
-
-            // FIXME: どう決定する?
-            repr_ty: KTy::USIZE,
-
-            // 後で設定する。
-            variants: Default::default(),
-        });
-
-        let variants = mod_outline
-            .consts
-            .alloc_slice(variants.iter().enumerate().map(|(index, variant_decl)| {
-                let loc = {
-                    let key = AVariantDeclKey::Enum(decl_id, index);
-                    Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
-                };
-                let name = resolve_name_opt(variant_decl.name_opt.map(|name| name.of(ast.names())));
-
-                KConstOutline {
-                    name,
-                    value_ty: KTy::init_later(loc),
-                    value_opt: None,
-                    parent_opt: Some(const_enum),
-                    loc,
-                }
-            }));
-
-        const_enum.of_mut(&mut mod_outline.const_enums).variants = variants;
+        let const_enum = OutlineGenerator {
+            doc,
+            tokens,
+            ast,
+            name_symbols,
+            mod_outline,
+        }
+        .add_const_enum(decl, &variants, loc);
         return KEnumLike::ConstEnum(const_enum);
     }
 
@@ -580,7 +613,16 @@ fn alloc_outline(
                 continue;
             }
             ADecl::Enum(enum_decl) => {
-                match alloc_enum(decl_id, enum_decl, doc, ast, mod_outline, logger) {
+                match alloc_enum(
+                    decl_id,
+                    enum_decl,
+                    doc,
+                    &tree.tokens,
+                    ast,
+                    name_symbols,
+                    mod_outline,
+                    logger,
+                ) {
                     KEnumLike::ConstEnum(const_enum) => KModSymbol::ConstEnum(const_enum),
                     KEnumLike::StructEnum(struct_enum) => KModSymbol::StructEnum(struct_enum),
                 }
