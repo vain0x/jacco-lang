@@ -30,32 +30,61 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
     }
 }
 
+struct OutlineGenerator<'a> {
+    #[allow(unused)]
+    doc: Doc,
+    tokens: &'a PTokens,
+    ast: &'a ATree,
+    name_symbols: &'a mut NameSymbols,
+    mod_outline: &'a mut KModOutline,
+}
+
+impl<'a> OutlineGenerator<'a> {
+    fn bind_symbol(&mut self, name: ANameId, symbol: KModSymbol) {
+        self.name_symbols
+            .insert(name, NameSymbol::ModSymbol(symbol));
+    }
+
+    fn add_alias(&mut self, decl: &AUseDecl, loc: Loc) {
+        let name = match decl.name_opt {
+            Some(it) => it,
+            None => return,
+        };
+
+        let AName { quals, text, .. } = name.of(self.ast.names());
+        let text = text.to_string();
+        let path = quals
+            .iter()
+            .map(|token| token.text(self.tokens))
+            .chain(once(text.as_str()))
+            .map(|text| text.to_string())
+            .collect();
+
+        let k_alias = self
+            .mod_outline
+            .aliases
+            .alloc(KAliasOutline::new(text, path, loc));
+
+        self.bind_symbol(name, KModSymbol::Alias(k_alias));
+    }
+}
+
 fn alloc_alias(
     decl: &AUseDecl,
     loc: Loc,
     tokens: &PTokens,
     ast: &ATree,
+    name_symbols: &mut NameSymbols,
     mod_outline: &mut KModOutline,
-) -> KAlias {
-    let (name, path) = match &decl.name_opt {
-        Some(name) => {
-            let AName { quals, text, .. } = name.of(ast.names());
-            (
-                text.to_string(),
-                quals
-                    .iter()
-                    .map(|token| token.text(tokens))
-                    .chain(once(text.as_str()))
-                    .map(|text| text.to_string())
-                    .collect(),
-            )
-        }
-        None => Default::default(),
-    };
-
-    mod_outline
-        .aliases
-        .alloc(KAliasOutline::new(name, path, loc))
+) {
+    OutlineGenerator {
+        doc: loc.doc().unwrap(),
+        tokens,
+        ast,
+        name_symbols,
+        mod_outline,
+    }
+    .add_alias(decl, loc);
 }
 
 fn alloc_const(
@@ -497,8 +526,8 @@ fn alloc_outline(
                 KModSymbol::Struct(k_struct)
             }
             ADecl::Use(use_decl) => {
-                let alias = alloc_alias(use_decl, loc, &tree.tokens, ast, mod_outline);
-                KModSymbol::Alias(alias)
+                alloc_alias(use_decl, loc, &tree.tokens, ast, name_symbols, mod_outline);
+                continue;
             }
         };
 

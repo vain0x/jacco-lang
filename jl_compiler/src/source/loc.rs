@@ -20,6 +20,10 @@ impl Loc {
     pub(crate) fn inner(self) -> Result<(Doc, PLoc), &'static str> {
         self.0
     }
+
+    pub(crate) fn doc(self) -> Result<Doc, &'static str> {
+        self.0.map(|(doc, _)| doc)
+    }
 }
 
 impl Default for Loc {
