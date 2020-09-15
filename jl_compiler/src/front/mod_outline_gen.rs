@@ -6,6 +6,7 @@ use crate::{
     cps::*,
     logs::DocLogger,
     parse::*,
+    scope::lexical_referent::LexicalReferent,
     source::{Doc, Loc},
 };
 use std::{collections::HashMap, iter::once};
@@ -33,6 +34,7 @@ struct OutlineGenerator<'a> {
     doc: Doc,
     tokens: &'a PTokens,
     ast: &'a ATree,
+    name_referents: &'a NameReferents,
     name_symbols: &'a mut NameSymbols,
     mod_outline: &'a mut KModOutline,
     logger: &'a DocLogger,
@@ -40,7 +42,10 @@ struct OutlineGenerator<'a> {
 
 impl<'a> OutlineGenerator<'a> {
     fn do_bind_symbol(&mut self, name: ANameId, symbol: NameSymbol) {
-        self.name_symbols.insert(name, symbol);
+        assert_eq!(self.name_referents[&name], LexicalReferent::Def);
+
+        let old = self.name_symbols.insert(name, symbol);
+        assert!(old.is_none());
     }
 
     fn bind_symbol(&mut self, name: ANameId, symbol: KModSymbol) {
@@ -549,6 +554,7 @@ pub(crate) fn generate_outline(
         doc,
         tokens: &tree.tokens,
         ast: &tree.ast,
+        name_referents: &tree.name_referents,
         name_symbols: &mut name_symbols,
         mod_outline: &mut mod_outline,
         logger,
