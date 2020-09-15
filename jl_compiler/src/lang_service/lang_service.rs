@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn test_references_enum_name() {
         let text = r#"
-            enum <[A]> {}
+            enum <[A]> { A }
 
             fn get_a() -> <$cursor|><[A]> {
                 loop {}
