@@ -30,7 +30,6 @@ fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KT
 }
 
 struct OutlineGenerator<'a> {
-    #[allow(unused)]
     doc: Doc,
     tokens: &'a PTokens,
     ast: &'a ATree,
@@ -341,46 +340,22 @@ impl<'a> OutlineGenerator<'a> {
             self.bind_symbol(name, KModSymbol::Struct(k_struct));
         }
     }
-}
 
-fn alloc_alias(
-    decl: &AUseDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc: loc.doc().unwrap(),
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
+    fn generate_all(&mut self) {
+        for (decl_id, decl) in self.ast.decls().enumerate() {
+            let loc = Loc::new(self.doc, PLoc::Decl(decl_id));
+            match decl {
+                ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
+                ADecl::Const(decl) => self.add_const(&decl, loc),
+                ADecl::Static(decl) => self.add_static_var(&decl, loc),
+                ADecl::Fn(decl) => self.add_fn(decl, loc),
+                ADecl::ExternFn(decl) => self.add_extern_fn(decl, loc),
+                ADecl::Enum(enum_decl) => self.add_enum(decl_id, enum_decl, PLoc::Decl(decl_id)),
+                ADecl::Struct(struct_decl) => self.add_struct(decl_id, struct_decl),
+                ADecl::Use(use_decl) => self.add_alias(use_decl, loc),
+            }
+        }
     }
-    .add_alias(decl, loc);
-}
-
-fn alloc_const(
-    decl: &AFieldLikeDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc: loc.doc().unwrap(),
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_const(decl, loc);
 }
 
 fn resolve_const_decl(
@@ -391,26 +366,6 @@ fn resolve_const_decl(
 ) {
     let value_ty = resolve_ty_opt(const_decl.ty_opt, ty_resolver);
     k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
-}
-
-fn alloc_static(
-    decl: &AFieldLikeDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc: loc.doc().unwrap(),
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_static_var(decl, loc);
 }
 
 fn resolve_static_decl(
@@ -428,46 +383,6 @@ fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -
         .iter()
         .map(|param_decl| resolve_ty_opt(param_decl.ty_opt, ty_resolver))
         .collect()
-}
-
-fn alloc_fn(
-    decl: &AFnLikeDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc: loc.doc().unwrap(),
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_fn(decl, loc);
-}
-
-fn alloc_extern_fn(
-    decl: &AFnLikeDecl,
-    loc: Loc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc: loc.doc().unwrap(),
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_extern_fn(decl, loc);
 }
 
 fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
@@ -501,27 +416,6 @@ fn resolve_variant_decl(
     }
 }
 
-fn alloc_enum(
-    decl_id: ADeclId,
-    decl: &AEnumDecl,
-    doc: Doc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc,
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_enum(decl_id, decl, PLoc::Decl(decl_id));
-}
-
 fn resolve_const_enum_decl(
     decl: &AEnumDecl,
     const_enum: KConstEnum,
@@ -550,130 +444,6 @@ fn resolve_struct_enum_decl(
 
 fn new_struct_loc(doc: Doc, key: AVariantDeclKey) -> Loc {
     Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
-}
-
-fn alloc_struct(
-    decl_id: ADeclId,
-    decl: &AStructDecl,
-    doc: Doc,
-    tokens: &PTokens,
-    ast: &ATree,
-    name_symbols: &mut NameSymbols,
-    mod_outline: &mut KModOutline,
-    logger: &DocLogger,
-) {
-    OutlineGenerator {
-        doc,
-        tokens,
-        ast,
-        name_symbols,
-        mod_outline,
-        logger,
-    }
-    .add_struct(decl_id, decl);
-}
-
-fn alloc_outline(
-    doc: Doc,
-    tree: &PTree,
-    mod_outline: &mut KModOutline,
-    name_symbols: &mut NameSymbols,
-    logger: &DocLogger,
-) {
-    let ast = &tree.ast;
-
-    for (decl_id, decl) in ast.decls().enumerate() {
-        let loc = Loc::new(doc, PLoc::Decl(decl_id));
-        match decl {
-            ADecl::Attr | ADecl::Expr(_) | ADecl::Let(_) => continue,
-            ADecl::Const(decl) => {
-                alloc_const(
-                    &decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::Static(decl) => {
-                alloc_static(
-                    &decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::Fn(decl) => {
-                alloc_fn(
-                    decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::ExternFn(decl) => {
-                alloc_extern_fn(
-                    decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::Enum(enum_decl) => {
-                alloc_enum(
-                    decl_id,
-                    enum_decl,
-                    doc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::Struct(struct_decl) => {
-                alloc_struct(
-                    decl_id,
-                    struct_decl,
-                    doc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-            ADecl::Use(use_decl) => {
-                alloc_alias(
-                    use_decl,
-                    loc,
-                    &tree.tokens,
-                    ast,
-                    name_symbols,
-                    mod_outline,
-                    logger,
-                );
-                continue;
-            }
-        }
-    }
 }
 
 fn resolve_outline(
@@ -775,7 +545,16 @@ pub(crate) fn generate_outline(
     let mut mod_outline = KModOutline::default();
     let mut name_symbols = HashMap::new();
 
-    alloc_outline(doc, tree, &mut mod_outline, &mut name_symbols, logger);
+    OutlineGenerator {
+        doc,
+        tokens: &tree.tokens,
+        ast: &tree.ast,
+        name_symbols: &mut name_symbols,
+        mod_outline: &mut mod_outline,
+        logger,
+    }
+    .generate_all();
+
     resolve_outline(
         tree,
         &mut mod_outline,
