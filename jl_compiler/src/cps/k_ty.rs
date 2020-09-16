@@ -43,7 +43,7 @@ pub(crate) enum KTy2 {
         result_ty: Box<KTy2>,
     },
     ConstEnum(KProjectConstEnum),
-    StructEnum(KProjectStructEnum),
+    StructEnum(KStructEnum),
     Struct(KStruct),
     App {
         k_struct: KStruct,
@@ -184,16 +184,14 @@ impl KTy2 {
 
     pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::StructEnum(KProjectStructEnum(_, struct_enum)) => {
-                Some(KEnumOrStruct::Enum(struct_enum))
-            }
+            KTy2::StructEnum(struct_enum) => Some(KEnumOrStruct::Enum(struct_enum)),
             KTy2::Struct(k_struct) => Some(KEnumOrStruct::Struct(k_struct)),
             KTy2::App { k_struct, .. } => Some(KEnumOrStruct::Struct(k_struct)),
             _ => None,
         })
     }
 
-    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KProjectStructEnum> {
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KStructEnum> {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::StructEnum(struct_enum) => Some(struct_enum),
             _ => None,
@@ -272,7 +270,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
                 "enum(const) {}",
                 &const_enum.of(&mod_outline.const_enums).name
             ),
-            KTy2::StructEnum(KProjectStructEnum(_, struct_enum)) => write!(
+            KTy2::StructEnum(struct_enum) => write!(
                 f,
                 "enum(struct) {}",
                 &struct_enum.of(&mod_outline.struct_enums).name
@@ -679,7 +677,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             }
         },
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
-        KTy::StructEnum(struct_enum) => KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)),
+        KTy::StructEnum(struct_enum) => KTy2::StructEnum(struct_enum),
         KTy::Struct(k_struct) => KTy2::Struct(k_struct),
         KTy::StructGeneric {
             k_struct,

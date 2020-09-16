@@ -218,7 +218,6 @@ impl AnalysisCache {
             &syntax.tree,
             &mut symbols.name_symbols,
             &mod_outlines[MOD],
-            mod_outlines,
             &mut mods[MOD],
             &doc_logs.logger(),
         );

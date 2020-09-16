@@ -140,7 +140,6 @@ struct Xx<'a> {
     name_referents: &'a NameReferents,
     name_symbols: &'a mut NameSymbols,
     mod_outline: &'a KModOutline,
-    mod_outlines: &'a KModOutlines,
     logger: &'a DocLogger,
 }
 
@@ -152,7 +151,6 @@ impl<'a> Xx<'a> {
         name_referents: &'a NameReferents,
         name_symbols: &'a mut NameSymbols,
         mod_outline: &'a KModOutline,
-        mod_outlines: &'a KModOutlines,
         logger: &'a DocLogger,
     ) -> Self {
         let mut labels = VecArena::new();
@@ -179,7 +177,6 @@ impl<'a> Xx<'a> {
             name_referents,
             name_symbols,
             mod_outline,
-            mod_outlines,
             logger,
         }
     }
@@ -214,7 +211,6 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         name_referents: xx.name_referents,
         name_symbols: xx.name_symbols,
         mod_outline: xx.mod_outline,
-        mod_outlines: xx.mod_outlines,
     }
 }
 
@@ -1760,7 +1756,6 @@ pub(crate) fn convert_to_cps(
     tree: &PTree,
     name_symbols: &mut NameSymbols,
     mod_outline: &KModOutline,
-    mod_outlines: &KModOutlines,
     mod_data: &mut KModData,
     logger: &DocLogger,
 ) {
@@ -1771,7 +1766,6 @@ pub(crate) fn convert_to_cps(
         &tree.name_referents,
         name_symbols,
         mod_outline,
-        mod_outlines,
         logger,
     );
 

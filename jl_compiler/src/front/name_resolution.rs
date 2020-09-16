@@ -9,7 +9,6 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) name_referents: &'a NameReferents,
     pub(super) name_symbols: &'a NameSymbols,
     pub(super) mod_outline: &'a KModOutline,
-    pub(super) mod_outlines: &'a KModOutlines,
 }
 
 // -----------------------------------------------
@@ -91,7 +90,6 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
         name_referents,
         name_symbols,
         mod_outline,
-        mod_outlines,
     } = context;
 
     let (_, tail) = match name.of(ast.names()).quals.split_first() {
@@ -110,9 +108,9 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
     // モジュール名を含むパスは未実装なので <enum名>::<バリアント> の形しかない。
     let ty = match resolve_ty_name(name, name_referents, name_symbols)? {
         KTy::Alias(alias) => match alias.of(&mod_outline.aliases).referent_as_ty() {
-            Some(KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))) => {
+            Some(KTy2::StructEnum(struct_enum)) => {
                 let name = name.of(ast.names()).token.text(tokens);
-                let k_struct = find_struct_variant(struct_enum, name, k_mod.of(&mod_outlines))?;
+                let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
                 KTy2::Struct(k_struct)
             }
@@ -162,7 +160,6 @@ pub(crate) fn resolve_value_path(
         name_referents,
         name_symbols,
         mod_outline,
-        mod_outlines,
     } = context;
 
     let (_, tail) = match name.of(ast.names()).quals.split_first() {
@@ -184,16 +181,14 @@ pub(crate) fn resolve_value_path(
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
                 KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, const_enum)) => {
-                    let mod_outline = k_mod.of(mod_outlines);
                     let k_const = find_const_variant(const_enum, name, mod_outline)?;
                     KProjectValue::new(k_mod, KLocalValue::Const(k_const))
                 }
-                KProjectSymbol::StructEnum(KProjectStructEnum(k_mod, struct_enum)) => {
-                    let mod_outline = k_mod.of(mod_outlines);
+                KProjectSymbol::StructEnum(struct_enum) => {
                     let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
                     if k_struct.of(&mod_outline.structs).is_unit_like() {
-                        KProjectValue::new(k_mod, KLocalValue::UnitLikeStruct(k_struct))
+                        KProjectValue::new(MOD, KLocalValue::UnitLikeStruct(k_struct))
                     } else {
                         return None;
                     }

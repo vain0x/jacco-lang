@@ -173,7 +173,6 @@ impl Project {
                 &syntax.tree,
                 name_symbols_vec.get_mut(&doc).unwrap(),
                 &self.mod_outlines[MOD],
-                &self.mod_outlines,
                 &mut mod_data,
                 &doc_logs.logger(),
             );

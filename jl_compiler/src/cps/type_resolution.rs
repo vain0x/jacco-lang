@@ -464,9 +464,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 }
 
                 let result_ty = match k_struct.of(&tx.mod_outline.structs).parent {
-                    KStructParent::Enum { struct_enum, .. } => {
-                        KTy2::StructEnum(KProjectStructEnum(MOD, struct_enum))
-                    }
+                    KStructParent::Enum { struct_enum, .. } => KTy2::StructEnum(struct_enum),
                     KStructParent::Struct { .. } => ty.clone(),
                 };
                 resolve_symbol_def2(result, Some(&result_ty), tx);

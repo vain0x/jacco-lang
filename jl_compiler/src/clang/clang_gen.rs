@@ -193,9 +193,12 @@ fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
     }
 }
 
-fn gen_struct_enum_ty(struct_enum: KProjectStructEnum, cx: &mut Cx) -> CTy {
+fn gen_struct_enum_ty(struct_enum: KStructEnum, cx: &mut Cx) -> CTy {
     // FIXME: unique_enum_name を事前に計算しておく
-    let name = struct_enum.of(cx.mod_outlines).name.to_string();
+    let name = struct_enum
+        .of(&cx.mod_outline.struct_enums)
+        .name
+        .to_string();
     CTy::Struct(name)
 }
 
