@@ -70,18 +70,15 @@ impl Content {
 #[derive(Default)]
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
-    pub(super) mod_outlines: KModOutlines,
-    pub(super) mods: KModArena,
+    pub(super) mod_outline: KModOutline,
+    pub(super) mod_data: KModData,
     dirty_sources: HashSet<Doc>,
     epoch: usize,
 }
 
 impl LangService {
     pub fn new() -> Self {
-        let mut ls = LangService::default();
-        ls.mod_outlines.alloc(KModOutline::default());
-        ls.mods.alloc(KModData::default());
-        ls
+        LangService::default()
     }
 
     pub fn did_initialize(&mut self) {}
@@ -185,7 +182,7 @@ impl LangService {
         // シンボルが少なければ GC しない。
         let threshold = {
             let mut lost = 0;
-            let mut total = self.mod_outlines[MOD].symbol_count();
+            let mut total = self.mod_outline.symbol_count();
 
             for doc_data in self.docs.values() {
                 lost += doc_data.lost_symbol_count;
@@ -306,8 +303,8 @@ fn collect_symbols(
     doc: Doc,
     symbols: &Symbols,
     cps: &Cps,
-    mod_outlines: &KModOutlines,
-    mods: &KModArena,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
     sites: &mut Sites,
 ) {
     fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
@@ -342,11 +339,7 @@ fn collect_symbols(
                 return;
             }
             KTerm::Alias { alias, loc } => (KModSymbol::Alias(alias), loc),
-            KTerm::Const {
-                k_mod: _,
-                k_const,
-                loc,
-            } => {
+            KTerm::Const { k_const, loc } => {
                 // FIXME: 外部のモジュールの定数である可能性もある
                 (KModSymbol::Const(k_const), loc)
             }
@@ -373,8 +366,6 @@ fn collect_symbols(
         }
     }
 
-    let mod_outline = &mod_outlines[MOD];
-    let mod_data = &mods[MOD];
     for (k_const, const_outline) in mod_outline.consts.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::Const(k_const)),
@@ -471,11 +462,11 @@ pub(super) fn hit_test(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
-    mod_outlines: &KModOutlines,
-    mods: &KModArena,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
 ) -> Option<(SymbolOccurrence, Location)> {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, mod_outlines, mods, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     sites.iter().find_map(|&(symbol, _, loc)| {
         let range = loc_to_range(loc, &syntax.tree)?;
@@ -493,12 +484,12 @@ pub(super) fn collect_def_sites(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
-    mod_outlines: &KModOutlines,
-    mods: &KModArena,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, mod_outlines, mods, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
@@ -519,12 +510,12 @@ pub(super) fn collect_use_sites(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
-    mod_outlines: &KModOutlines,
-    mods: &KModArena,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, mod_outlines, mods, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {

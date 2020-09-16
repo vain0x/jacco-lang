@@ -10,11 +10,9 @@ use crate::{
 };
 
 struct FieldOccurrenceInFnCollector<'a> {
-    k_mod: KMod,
     mod_outline: &'a KModOutline,
-    mod_outlines: &'a KModOutlines,
     fn_data: &'a KFnData,
-    occurrences: &'a mut Vec<(KMod, KField, Loc)>,
+    occurrences: &'a mut Vec<(KField, Loc)>,
 }
 
 impl FieldOccurrenceInFnCollector<'_> {
@@ -51,7 +49,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             _ => return,
         };
 
-        self.occurrences.push((MOD, field, loc));
+        self.occurrences.push((field, loc));
     }
 
     fn on_node(&mut self, node: &KNode) {
@@ -66,24 +64,19 @@ impl FieldOccurrenceInFnCollector<'_> {
 fn collect_field_occurrences(
     only_doc: Option<Doc>,
     ls: &mut LangService,
-    occurrences: &mut Vec<(KMod, KField, Loc)>,
+    occurrences: &mut Vec<(KField, Loc)>,
 ) {
     ls.request_types();
 
-    for mod_data in ls.mods.iter() {
-        for fn_data in mod_data.fns.iter() {
-            let mut collector = FieldOccurrenceInFnCollector {
-                k_mod: MOD,
-                mod_outline: &ls.mod_outlines[MOD],
-                // FIXME: 正しい mod_outlines を渡す
-                mod_outlines: &ls.mod_outlines,
-                fn_data,
-                occurrences,
-            };
+    for fn_data in ls.mod_data.fns.iter() {
+        let mut collector = FieldOccurrenceInFnCollector {
+            mod_outline: &ls.mod_outline,
+            fn_data,
+            occurrences,
+        };
 
-            for label_data in fn_data.labels.iter() {
-                collector.on_node(&label_data.body);
-            }
+        for label_data in fn_data.labels.iter() {
+            collector.on_node(&label_data.body);
         }
     }
 }
@@ -123,9 +116,9 @@ fn document_highlight_of_fields(
     let syntax = ls.request_syntax(doc)?;
     let range = token.range(&syntax.tree.tokens);
 
-    let pair = occurrences.iter().find_map(|&(the_mod, k_field, loc)| {
+    let fields = occurrences.iter().find_map(|&(k_field, loc)| {
         let (the_doc, loc) = loc.inner().ok()?;
-        if the_mod != MOD || the_doc != doc {
+        if the_doc != doc {
             return None;
         }
 
@@ -134,13 +127,13 @@ fn document_highlight_of_fields(
             return None;
         }
 
-        Some((MOD, k_field))
+        Some(k_field)
     })?;
 
     let locations = occurrences
         .iter()
-        .filter(|&&(the_mod, the_field, _)| (the_mod, the_field) == pair)
-        .map(|&(_, _, loc)| loc)
+        .filter(|&&(the_field, _)| the_field == fields)
+        .map(|&(_, loc)| loc)
         .filter_map(|loc| loc_to_range(loc, &syntax.tree))
         .collect();
 

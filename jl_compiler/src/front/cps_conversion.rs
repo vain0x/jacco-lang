@@ -408,8 +408,7 @@ fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
 
 fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let KProjectValue { k_mod, value } = match resolve_value_path(name, path_resolution_context(xx))
-    {
+    let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
         None => return emit_default_branch(name, key, xx),
     };
@@ -419,11 +418,7 @@ fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch
             // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
             Branch::Case(KTerm::Alias { alias, loc })
         }
-        KLocalValue::Const(k_const) => Branch::Case(KTerm::Const {
-            k_mod,
-            k_const,
-            loc,
-        }),
+        KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
         KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag { k_struct, loc }),
         _ => emit_default_branch(name, key, xx),
     }
@@ -699,8 +694,7 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let KProjectValue { k_mod, value } = match resolve_value_path(name, path_resolution_context(xx))
-    {
+    let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
         None => {
             error_unresolved_value(PLoc::from_loc(loc), xx.logger);
@@ -711,11 +705,7 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     match value {
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
         KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
-        KLocalValue::Const(k_const) => KTerm::Const {
-            k_mod,
-            k_const,
-            loc,
-        },
+        KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Fn(k_fn) => KTerm::Fn {
             k_fn,
@@ -737,14 +727,13 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> 
     let loc = Loc::new(xx.doc, PLoc::Name(key));
     let cause = KSymbolCause::NameUse(xx.doc, key);
 
-    let KProjectValue { k_mod: _, value } =
-        match resolve_value_path(name, path_resolution_context(xx)) {
-            Some(it) => it,
-            None => {
-                error_unresolved_value(PLoc::Name(key), xx.logger);
-                return new_error_term(loc);
-            }
-        };
+    let value = match resolve_value_path(name, path_resolution_context(xx)) {
+        Some(it) => it,
+        None => {
+            error_unresolved_value(PLoc::Name(key), xx.logger);
+            return new_error_term(loc);
+        }
+    };
 
     let term = match value {
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },

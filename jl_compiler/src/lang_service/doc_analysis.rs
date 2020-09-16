@@ -118,7 +118,7 @@ impl AnalysisCache {
 
     pub(super) fn request_symbols(
         &mut self,
-        mod_outlines: &mut KModOutlines,
+        mod_outline: &mut KModOutline,
     ) -> DocSymbolAnalysisMut {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() {
             return DocSymbolAnalysisMut {
@@ -134,14 +134,10 @@ impl AnalysisCache {
                 let syntax = self.request_syntax();
 
                 let doc_logs = DocLogs::new();
-                let base_symbol_count = mod_outlines[MOD].symbol_count();
-                let name_symbols = front::generate_outline(
-                    doc,
-                    &syntax.tree,
-                    &mut mod_outlines[MOD],
-                    &doc_logs.logger(),
-                );
-                let symbol_count = mod_outlines[MOD].symbol_count() - base_symbol_count;
+                let base_symbol_count = mod_outline.symbol_count();
+                let name_symbols =
+                    front::generate_outline(doc, &syntax.tree, mod_outline, &doc_logs.logger());
+                let symbol_count = mod_outline.symbol_count() - base_symbol_count;
 
                 let errors = {
                     let logs = Logs::new();
@@ -194,31 +190,31 @@ impl AnalysisCache {
 
     pub(super) fn request_cps(
         &mut self,
-        mod_outlines: &mut KModOutlines,
-        mods: &mut KModArena,
+        mod_outline: &mut KModOutline,
+        mod_data: &mut KModData,
     ) -> DocContentAnalysisMut<'_> {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
             return self.doc_content_analysis_mut().unwrap();
         }
 
         let doc = self.doc;
-        let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols(mod_outlines);
+        let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols(mod_outline);
 
         let doc_logs = DocLogs::new();
         let logs = Logs::new();
 
         {
-            let mut aliases = take(&mut MOD.of_mut(mod_outlines).aliases);
-            crate::cps::resolve_aliases(&mut aliases, &mod_outlines[MOD], logs.logger());
-            MOD.of_mut(mod_outlines).aliases = aliases;
+            let mut aliases = take(&mut mod_outline.aliases);
+            crate::cps::resolve_aliases(&mut aliases, mod_outline, logs.logger());
+            mod_outline.aliases = aliases;
         }
 
         front::convert_to_cps(
             doc,
             &syntax.tree,
             &mut symbols.name_symbols,
-            &mod_outlines[MOD],
-            &mut mods[MOD],
+            mod_outline,
+            mod_data,
             &doc_logs.logger(),
         );
         let errors = {
@@ -234,16 +230,16 @@ impl AnalysisCache {
         self.doc_content_analysis_mut().unwrap()
     }
 
-    pub(super) fn resolve_types(&mut self, mod_outlines: &mut KModOutlines, mods: &mut KModArena) {
+    pub(super) fn resolve_types(&mut self, mod_outline: &mut KModOutline, mod_data: &mut KModData) {
         if self.type_resolution_is_done {
             return;
         }
 
-        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outlines, mods);
+        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outline, mod_data);
 
         let logs = Logs::new();
 
-        resolve_types(MOD.of(mod_outlines), &mut mods[MOD], logs.logger());
+        resolve_types(mod_outline, mod_data, logs.logger());
         cps.errors.extend(logs_into_errors(logs, &syntax.tree));
         self.type_resolution_is_done = true;
     }

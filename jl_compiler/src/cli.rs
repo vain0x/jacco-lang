@@ -38,16 +38,13 @@ pub struct Project {
     docs: DocArena,
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
-    mod_outlines: VecArena<KModTag, KModOutline>,
-    mods: VecArena<KModTag, KModData>,
+    mod_outline: KModOutline,
+    mod_data: KModData,
 }
 
 impl Project {
     pub fn new() -> Self {
-        let mut project = Project::default();
-        project.mod_outlines.alloc(KModOutline::default());
-        project.mods.alloc(KModData::default());
-        project
+        Project::default()
     }
 
     /// プロジェクトにドキュメントを追加する。同名のドキュメントを複数追加することはできない。
@@ -145,35 +142,34 @@ impl Project {
             let doc_name = self.docs[id].name.to_string();
             let doc_logs = take(&mut syntax.logs);
 
-            let mod_outline = &mut self.mod_outlines[MOD];
-            let name_symbols =
-                super::front::generate_outline(doc, &syntax.tree, mod_outline, &doc_logs.logger());
-            mod_outline.name = doc_name;
+            let name_symbols = super::front::generate_outline(
+                doc,
+                &syntax.tree,
+                &mut self.mod_outline,
+                &doc_logs.logger(),
+            );
+            self.mod_outline.name = doc_name;
 
             syntax.logs = doc_logs;
             name_symbols_vec.insert(doc, name_symbols);
         }
 
         // エイリアス解決
-        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
-        for &k_mod in &mod_ids {
-            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
-            resolve_aliases(&mut aliases, &self.mod_outlines[MOD], logs.logger());
-            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
-        }
+        let mut aliases = take(&mut self.mod_outline.aliases);
+        resolve_aliases(&mut aliases, &self.mod_outline, logs.logger());
+        self.mod_outline.aliases = aliases;
 
         // CPS 変換
         for (id, syntax) in self.syntaxes.enumerate_mut() {
             let doc = Doc::from(id.to_index());
             let doc_logs = take(&mut syntax.logs);
 
-            let mut mod_data = &mut self.mods[MOD];
             super::front::convert_to_cps(
                 doc,
                 &syntax.tree,
                 name_symbols_vec.get_mut(&doc).unwrap(),
-                &self.mod_outlines[MOD],
-                &mut mod_data,
+                &self.mod_outline,
+                &mut self.mod_data,
                 &doc_logs.logger(),
             );
 
@@ -186,17 +182,11 @@ impl Project {
             return Err(errors);
         }
 
-        let mut mods = take(&mut self.mods);
-        for (mod_outline, ref mut mod_data) in self.mod_outlines.iter().zip(mods.iter_mut()) {
-            resolve_types(mod_outline, *mod_data, logs.logger());
-        }
-        self.mods = mods;
+        let mut mod_data = take(&mut self.mod_data);
+        resolve_types(&self.mod_outline, &mut mod_data, logs.logger());
+        self.mod_data = mod_data;
 
-        super::cps::eval_cps(
-            &mut self.mod_outlines[MOD],
-            &mut self.mods[MOD],
-            &logs.logger(),
-        );
+        super::cps::eval_cps(&mut self.mod_outline, &mut self.mod_data, &logs.logger());
 
         if logs.is_fatal() {
             let mut errors = vec![];
@@ -204,13 +194,14 @@ impl Project {
             return Err(errors);
         }
 
-        for (mod_outline, mod_data) in self.mod_outlines.iter_mut().zip(self.mods.iter_mut()) {
-            KConstEnumOutline::determine_tags(&mut mod_outline.consts, &mod_outline.const_enums);
+        KConstEnumOutline::determine_tags(
+            &mut self.mod_outline.consts,
+            &self.mod_outline.const_enums,
+        );
 
-            eliminate_unit(mod_outline, mod_data);
-        }
+        eliminate_unit(&mut self.mod_outline, &mut self.mod_data);
 
-        Ok(clang_dump(&self.mod_outlines[MOD], &self.mods[MOD]))
+        Ok(clang_dump(&self.mod_outline, &self.mod_data))
     }
 }
 

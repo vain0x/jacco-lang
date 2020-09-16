@@ -153,7 +153,7 @@ fn resolve_value_name(
 pub(crate) fn resolve_value_path(
     name: ANameId,
     context: PathResolutionContext<'_>,
-) -> Option<KProjectValue> {
+) -> Option<KLocalValue> {
     let PathResolutionContext {
         tokens,
         ast,
@@ -166,7 +166,7 @@ pub(crate) fn resolve_value_path(
         Some(it) => it,
         None => {
             let value = resolve_value_name(name, name_referents, name_symbols, mod_outline)?;
-            return Some(KProjectValue::new(MOD, value));
+            return Some(value);
         }
     };
 
@@ -182,13 +182,13 @@ pub(crate) fn resolve_value_path(
             let value = match alias.of(&mod_outline.aliases).referent()? {
                 KModSymbol::ConstEnum(const_enum) => {
                     let k_const = find_const_variant(const_enum, name, mod_outline)?;
-                    KProjectValue::new(MOD, KLocalValue::Const(k_const))
+                    KLocalValue::Const(k_const)
                 }
                 KModSymbol::StructEnum(struct_enum) => {
                     let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
                     if k_struct.of(&mod_outline.structs).is_unit_like() {
-                        KProjectValue::new(MOD, KLocalValue::UnitLikeStruct(k_struct))
+                        KLocalValue::UnitLikeStruct(k_struct)
                     } else {
                         return None;
                     }
@@ -214,7 +214,7 @@ pub(crate) fn resolve_value_path(
         }
         _ => return None,
     };
-    Some(KProjectValue::new(MOD, value))
+    Some(value)
 }
 
 // =============================================================================

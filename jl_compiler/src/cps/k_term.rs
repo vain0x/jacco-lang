@@ -57,7 +57,6 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     Const {
-        k_mod: KMod,
         k_const: KConst,
         loc: Loc,
     },
@@ -192,9 +191,7 @@ impl<'a>
                 None => write!(f, "symbol({:?})", symbol.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
-            KTerm::Const {
-                k_mod: _, k_const, ..
-            } => write!(f, "const#{:?}", k_const),
+            KTerm::Const { k_const, .. } => write!(f, "const#{:?}", k_const),
             KTerm::StaticVar { static_var, .. } => {
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }

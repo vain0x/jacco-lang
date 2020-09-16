@@ -1,18 +1,5 @@
 use super::*;
-use crate::{
-    logs::Logger,
-    utils::{VecArena, VecArenaId},
-};
-
-pub(crate) struct KModTag;
-
-pub(crate) type KMod = VecArenaId<KModTag>;
-
-pub(crate) type KModOutlines = VecArena<KModTag, KModOutline>;
-
-pub(crate) type KModArena = VecArena<KModTag, KModData>;
-
-pub(crate) const MOD: KMod = KMod::from_index(0);
+use crate::logs::Logger;
 
 #[derive(Default)]
 pub(crate) struct KModOutline {
@@ -147,7 +134,6 @@ impl KModSymbol {
 }
 
 /// モジュール内で定義されるシンボルのアウトラインの参照
-#[allow(unused)]
 #[derive(Copy, Clone)]
 pub(crate) enum KModSymbolRef<'a> {
     Alias(KAlias, &'a KAliasOutline),

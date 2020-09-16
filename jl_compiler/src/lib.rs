@@ -91,7 +91,7 @@ mod cps {
     pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
     pub(crate) use k_ty::*;
-    pub(crate) use k_value::{KLocalValue, KProjectValue};
+    pub(crate) use k_value::KLocalValue;
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 
