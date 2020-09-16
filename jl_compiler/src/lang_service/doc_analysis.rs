@@ -246,7 +246,6 @@ impl AnalysisCache {
         let logs = Logs::new();
 
         resolve_types(
-            MOD,
             MOD.of(mod_outlines),
             &mut mods[MOD],
             mod_outlines,

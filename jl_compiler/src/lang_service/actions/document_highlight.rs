@@ -30,7 +30,6 @@ impl FieldOccurrenceInFnCollector<'_> {
         };
 
         let ty = record.ty(
-            self.k_mod,
             self.mod_outline,
             &self.fn_data.label_sigs,
             &self.fn_data.local_vars,

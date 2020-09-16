@@ -100,7 +100,7 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
         Some(it) => it,
         None => {
             return resolve_ty_name(name, name_referents, name_symbols)
-                .map(|ty| ty.to_ty2_poly(k_mod, mod_outlines));
+                .map(|ty| ty.to_ty2_poly(mod_outline));
         }
     };
 

@@ -467,38 +467,28 @@ impl KTy {
     }
 
     /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
-    pub(crate) fn to_ty2(
-        &self,
-        k_mod: KMod,
-        mod_outlines: &KModOutlines,
-        ty_env: &mut KTyEnv,
-    ) -> KTy2 {
+    pub(crate) fn to_ty2(&self, mod_outline: &KModOutline, ty_env: &mut KTyEnv) -> KTy2 {
         do_instantiate(
             self,
             &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
+                mod_outline,
                 TySchemeConversionMode::Instantiate(ty_env),
             ),
         )
     }
 
-    pub(crate) fn to_ty2_poly(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
+    pub(crate) fn to_ty2_poly(&self, mod_outline: &KModOutline) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
-                TySchemeConversionMode::Preserve,
-            ),
+            &mut TySchemeInstantiationFn::new(mod_outline, TySchemeConversionMode::Preserve),
         )
     }
 
     /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
-    pub(crate) fn erasure(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
+    pub(crate) fn erasure(&self, mod_outline: &KModOutline) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, mod_outlines, TySchemeConversionMode::Erasure),
+            &mut TySchemeInstantiationFn::new(mod_outline, TySchemeConversionMode::Erasure),
         )
     }
 
@@ -525,15 +515,13 @@ impl KTy {
 
     pub(crate) fn substitute(
         &self,
-        k_mod: KMod,
-        mod_outlines: &KModOutlines,
+        mod_outline: &KModOutline,
         ty_args: &HashMap<String, KTy2>,
     ) -> KTy2 {
         do_instantiate(
             self,
             &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
+                mod_outline,
                 TySchemeConversionMode::Substitute(ty_args),
             ),
         )
@@ -624,8 +612,7 @@ enum TySchemeConversionMode<'a> {
 }
 
 struct TySchemeInstantiationFn<'a> {
-    k_mod: KMod,
-    mod_outlines: &'a KModOutlines,
+    mod_outline: &'a KModOutline,
     /// Some なら型変数をインスタンス化する。
     /// None なら型変数は消去して unit に落とす。
     mode: TySchemeConversionMode<'a>,
@@ -633,10 +620,9 @@ struct TySchemeInstantiationFn<'a> {
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, mod_outlines: &'a KModOutlines, mode: TySchemeConversionMode<'a>) -> Self {
+    fn new(mod_outline: &'a KModOutline, mode: TySchemeConversionMode<'a>) -> Self {
         Self {
-            k_mod,
-            mod_outlines,
+            mod_outline,
             mode,
             env: HashMap::new(),
         }
@@ -645,7 +631,7 @@ impl<'a> TySchemeInstantiationFn<'a> {
 
 /// シンボルのための型スキームを式のための型に変換する処理
 fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
-    let k_mod = context.k_mod;
+    let k_mod = MOD;
 
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
@@ -688,10 +674,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 do_instantiate(&result_ty, context),
             )
         }
-        KTy::Alias(alias) => match alias
-            .of(&k_mod.of(context.mod_outlines).aliases)
-            .referent_as_ty()
-        {
+        KTy::Alias(alias) => match alias.of(&context.mod_outline.aliases).referent_as_ty() {
             Some(it) => it,
             None => {
                 log::error!(
@@ -737,8 +720,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             ref ty_args,
         } => match **ty {
             KTy::Struct(k_struct) => {
-                let k_struct = KProjectStruct(k_mod, k_struct);
-                let ty_params = k_struct.of(context.mod_outlines).ty_params();
+                let ty_params = k_struct.of(&context.mod_outline.structs).ty_params();
                 // FIXME: 型引数の個数が違ったらエラーにする
                 let ty_args = ty_args
                     .iter()
@@ -752,7 +734,10 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                         (name, ty)
                     })
                     .collect();
-                KTy2::App { k_struct, ty_args }
+                KTy2::App {
+                    k_struct: KProjectStruct(MOD, k_struct),
+                    ty_args,
+                }
             }
             _ => KTy2::Unresolved {
                 cause: KTyCause::Default,

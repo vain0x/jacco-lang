@@ -94,7 +94,6 @@ impl KTerm {
     // いまのところ CPS 変換からしか呼ばれていないので多相型をインスンタンス化する必要はなくて、型環境は受け取っていない
     pub(crate) fn ty<'a>(
         &self,
-        k_mod: KMod,
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         local_vars: &KLocalVarArena,
@@ -116,25 +115,23 @@ impl KTerm {
             }
             KTerm::Const { k_mod, k_const, .. } => k_const
                 .ty(&k_mod.of(mod_outlines).consts)
-                .erasure(*k_mod, mod_outlines),
-            KTerm::StaticVar { static_var, .. } => static_var
-                .ty(&mod_outline.static_vars)
-                .erasure(k_mod, mod_outlines),
+                .erasure(mod_outline),
+            KTerm::StaticVar { static_var, .. } => {
+                static_var.ty(&mod_outline.static_vars).erasure(mod_outline)
+            }
             KTerm::Fn { ty, .. } => ty.clone(),
             KTerm::Label { label, .. } => label.ty(labels),
-            KTerm::Return { k_fn, .. } => k_fn
-                .return_ty(&mod_outline.fns)
-                .erasure(k_mod, mod_outlines),
-            KTerm::ExternFn { extern_fn, .. } => extern_fn
-                .ty(&mod_outline.extern_fns)
-                .erasure(k_mod, mod_outlines),
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).erasure(mod_outline),
+            KTerm::ExternFn { extern_fn, .. } => {
+                extern_fn.ty(&mod_outline.extern_fns).erasure(mod_outline)
+            }
             KTerm::RecordTag {
                 k_mod, k_struct, ..
             } => {
                 let mod_outline = k_mod.of(mod_outlines);
                 k_struct
                     .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                    .erasure(*k_mod, mod_outlines)
+                    .erasure(mod_outline)
             }
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);

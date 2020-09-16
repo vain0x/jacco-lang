@@ -736,11 +736,9 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Fn(k_fn) => KTerm::Fn {
             k_fn,
-            ty: k_fn.ty(&k_mod.of(&xx.mod_outlines).fns).to_ty2(
-                k_mod,
-                xx.mod_outlines,
-                &mut xx.ty_env,
-            ),
+            ty: k_fn
+                .ty(&k_mod.of(&xx.mod_outlines).fns)
+                .to_ty2(xx.mod_outline, &mut xx.ty_env),
             loc,
         },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
@@ -1058,8 +1056,7 @@ fn convert_index_lval(
 }
 
 fn convert_cast_expr(expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx))
-        .to_ty2_poly(xx.k_mod, xx.mod_outlines);
+    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
     let result = fresh_symbol("cast", loc, xx);
@@ -1522,8 +1519,7 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
         .map(|name| name.of(xx.ast.names()).text.to_string());
 
     let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx))
-        .to_ty2_poly(xx.k_mod, xx.mod_outlines);
+    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
 
     let local_var = xx.local_vars.alloc(
         KLocalVarData::new(

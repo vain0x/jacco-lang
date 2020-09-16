@@ -234,7 +234,7 @@ fn gen_record_tag(k_struct: KStruct, structs: &KStructArena) -> CExpr {
 }
 
 fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
-    gen_ty2(&ty.erasure(cx.k_mod, cx.mod_outlines), ty_env, cx)
+    gen_ty2(&ty.erasure(cx.mod_outline), ty_env, cx)
 }
 
 fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
@@ -643,7 +643,6 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 // FIXME: label_sigs
                 let is_enum = cond
                     .ty(
-                        cx.k_mod,
                         &cx.mod_outline,
                         &KLabelSigArena::default(),
                         &cx.local_vars,
@@ -693,7 +692,6 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [arg] => {
                 let op = if arg
                     .ty(
-                        cx.k_mod,
                         &cx.mod_outline,
                         &VecArena::default(),
                         &cx.local_vars,
