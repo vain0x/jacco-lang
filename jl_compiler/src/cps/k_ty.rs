@@ -224,8 +224,8 @@ impl KTy2 {
         })
     }
 
-    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outlines: &KModOutlines) -> String {
-        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outlines)))
+    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
+        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outline)))
     }
 }
 
@@ -237,9 +237,9 @@ impl Default for KTy2 {
     }
 }
 
-impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
-    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutlines), f: &mut Formatter<'_>) -> fmt::Result {
-        let (ty_env, mod_outlines) = context;
+impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
+    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutline), f: &mut Formatter<'_>) -> fmt::Result {
+        let (ty_env, mod_outline) = context;
 
         match self {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
@@ -275,13 +275,19 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 }
                 Ok(())
             }
-            KTy2::ConstEnum(const_enum) => {
-                write!(f, "enum(const) {}", &const_enum.of(mod_outlines).name)
+            KTy2::ConstEnum(KProjectConstEnum(_, const_enum)) => write!(
+                f,
+                "enum(const) {}",
+                &const_enum.of(&mod_outline.const_enums).name
+            ),
+            KTy2::StructEnum(KProjectStructEnum(_, struct_enum)) => write!(
+                f,
+                "enum(struct) {}",
+                &struct_enum.of(&mod_outline.struct_enums).name
+            ),
+            KTy2::Struct(KProjectStruct(_, k_struct)) => {
+                write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)
             }
-            KTy2::StructEnum(struct_enum) => {
-                write!(f, "enum(struct) {}", &struct_enum.of(mod_outlines).name)
-            }
-            KTy2::Struct(k_struct) => write!(f, "struct {}", &k_struct.of(mod_outlines).name),
             KTy2::App { .. } => write!(f, "app"),
         }
     }

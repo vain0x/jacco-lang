@@ -52,22 +52,17 @@ struct UnificationContext<'a> {
     variance: Variance,
     loc: Loc,
     ty_env: &'a KTyEnv,
-    mod_outlines: &'a KModOutlines,
+    mod_outline: &'a KModOutline,
     logger: &'a Logger,
 }
 
 impl<'a> UnificationContext<'a> {
-    fn new(
-        loc: Loc,
-        ty_env: &'a KTyEnv,
-        mod_outlines: &'a KModOutlines,
-        logger: &'a Logger,
-    ) -> Self {
+    fn new(loc: Loc, ty_env: &'a KTyEnv, mod_outline: &'a KModOutline, logger: &'a Logger) -> Self {
         Self {
             variance: Variance::Co,
             loc,
             ty_env,
-            mod_outlines,
+            mod_outline,
             logger,
         }
     }
@@ -87,7 +82,7 @@ impl<'a> UnificationContext<'a> {
     fn bug_unresolved(&self, other: &KTy2, cause: KTyCause) {
         log::error!(
             "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?}, cause={:?})",
-            other.display(self.ty_env, self.mod_outlines),
+            other.display(self.ty_env, self.mod_outline),
             self.loc,cause
         );
     }
@@ -104,8 +99,8 @@ impl<'a> UnificationContext<'a> {
             format!(
                 "型引数の個数が一致しません {:?}",
                 (
-                    left.display(self.ty_env, self.mod_outlines),
-                    right.display(self.ty_env, self.mod_outlines),
+                    left.display(self.ty_env, self.mod_outline),
+                    right.display(self.ty_env, self.mod_outline),
                 )
             ),
         );
@@ -116,8 +111,8 @@ impl<'a> UnificationContext<'a> {
             self.loc,
             format!(
                 "型が一致しません ({} <- {})",
-                left.display(self.ty_env, self.mod_outlines),
-                right.display(self.ty_env, self.mod_outlines),
+                left.display(self.ty_env, self.mod_outline),
+                right.display(self.ty_env, self.mod_outline),
             ),
         );
     }
@@ -266,7 +261,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
 fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
-    let mut ux = UnificationContext::new(loc, &tx.ty_env, tx.mod_outlines, &tx.logger);
+    let mut ux = UnificationContext::new(loc, &tx.ty_env, tx.mod_outline, &tx.logger);
     do_unify2(&left, &right, &mut ux);
 }
 
@@ -578,7 +573,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 .unwrap_or_else(|| {
                     log::error!(
                         "KPrim::GetField left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outlines)
+                        left_ty.display(&tx.ty_env, tx.mod_outline)
                     );
                     tx.logger.error(loc, "bad type");
                     KTy2::Never
@@ -650,7 +645,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 .unwrap_or_else(|| {
                     log::error!(
                         "GetFieldMut left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outlines)
+                        left_ty.display(&tx.ty_env, tx.mod_outline)
                     );
                     tx.logger.error(loc, "bad type");
                     KTy2::Never
@@ -850,7 +845,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         None => {
                             log::error!(
                                 "AddAssign etc. left={}",
-                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                                left_ty.display(&tx.ty_env, &tx.mod_outline)
                             );
                             (
                                 KMut::Mut,
@@ -894,7 +889,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         None => {
                             log::error!(
                                 "MulAssign etc. left={}",
-                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                                left_ty.display(&tx.ty_env, &tx.mod_outline)
                             );
                             (
                                 KMut::Mut,
