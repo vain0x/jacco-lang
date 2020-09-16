@@ -170,7 +170,7 @@ pub(crate) enum KProjectSymbol {
     Mod(KMod),
     StaticVar(KStaticVar),
     Const(KConst),
-    Fn(KProjectFn),
+    Fn(KFn),
     ExternFn(KProjectExternFn),
     ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
@@ -187,7 +187,7 @@ impl KProjectSymbol {
             KProjectSymbol::StaticVar(static_var) => {
                 KProjectSymbolRef::StaticVar(static_var.of(&mod_outlines[MOD].static_vars))
             }
-            KProjectSymbol::Fn(k_fn) => KProjectSymbolRef::Fn(k_fn.k_mod(), k_fn.of(mod_outlines)),
+            KProjectSymbol::Fn(k_fn) => KProjectSymbolRef::Fn(k_fn.of(&mod_outlines[MOD].fns)),
             KProjectSymbol::ExternFn(extern_fn) => {
                 KProjectSymbolRef::ExternFn(extern_fn.k_mod(), extern_fn.of(mod_outlines))
             }
@@ -209,7 +209,7 @@ pub(crate) enum KProjectSymbolRef<'a> {
     Mod(KMod, &'a KModOutline),
     Const(&'a KConstOutline),
     StaticVar(&'a KStaticVarOutline),
-    Fn(KMod, &'a KFnOutline),
+    Fn(&'a KFnOutline),
     ExternFn(KMod, &'a KExternFnOutline),
     ConstEnum(&'a KConstEnumOutline),
     StructEnum(&'a KStructEnumOutline),
@@ -266,12 +266,12 @@ pub(crate) fn resolve_aliases(
                     .chain(mod_outline.static_vars.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KProjectSymbol::StaticVar(id))
                     }))
-                    .chain(mod_outline.fns.enumerate().map(|(id, outline)| {
-                        (
-                            outline.name.as_str(),
-                            KProjectSymbol::Fn(KProjectFn(k_mod, id)),
-                        )
-                    }))
+                    .chain(
+                        mod_outline
+                            .fns
+                            .enumerate()
+                            .map(|(id, outline)| (outline.name.as_str(), KProjectSymbol::Fn(id))),
+                    )
                     .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
                         (
                             outline.name.as_str(),

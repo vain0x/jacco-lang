@@ -43,20 +43,6 @@ impl KFn {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectFn(pub(crate) KMod, pub(crate) KFn);
-
-impl KProjectFn {
-    pub(crate) fn k_mod(self) -> KMod {
-        self.0
-    }
-
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KFnOutline {
-        let KProjectFn(k_mod, k_fn) = self;
-        k_fn.of(&k_mod.of(mod_outlines).fns)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
