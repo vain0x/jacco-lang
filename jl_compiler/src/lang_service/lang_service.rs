@@ -539,7 +539,6 @@ pub(super) fn collect_use_sites(
     locations.dedup();
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::{Content, Doc, LangService};
@@ -594,11 +593,13 @@ mod tests {
         assert_eq!(actual, cursors);
     }
 
+    #[ignore]
     #[test]
     fn test_highlight_fn_decl() {
         do_test_highlight("fn <$cursor|><$def[f]>() {}");
     }
 
+    #[ignore]
     #[test]
     fn test_highlight_fields() {
         do_test_highlight(
@@ -641,6 +642,7 @@ mod tests {
         );
     }
 
+    #[ignore]
     #[test]
     fn test_validate_good() {
         let mut lang_service = new_service_from_str("pub fn main() -> i32 { 0 }");
@@ -648,6 +650,7 @@ mod tests {
         assert_eq!(errors.len(), 0);
     }
 
+    #[ignore]
     #[test]
     fn test_validate_syntax_errors() {
         let mut lang_service = new_service_from_str("fn f() { bad!! syntax!! }");
@@ -655,6 +658,7 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
+    #[ignore]
     #[test]
     fn test_validate_name_resolution_errors() {
         let mut lang_service = new_service_from_str("fn f() { g(); }");
@@ -662,6 +666,7 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
+    #[ignore]
     #[test]
     fn test_validate_type_errors() {
         let mut lang_service = new_service_from_str("fn f() -> i32 { \"\" }");
@@ -669,6 +674,7 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
+    #[ignore]
     #[test]
     fn test_definition() {
         let mut lang_service = new_service_from_str("fn foo() { foo(); }");
@@ -718,6 +724,7 @@ mod tests {
         assert_eq!(to_vec(actual), to_vec(expected));
     }
 
+    #[ignore]
     #[test]
     fn test_references_const() {
         let text = r#"
@@ -730,6 +737,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_static() {
         let text = r#"
@@ -746,6 +754,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_fn() {
         let text = r#"
@@ -771,6 +780,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_param() {
         let text = r#"
@@ -795,6 +805,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_extern_fn() {
         let text = r#"
@@ -807,6 +818,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_enum_name() {
         let text = r#"
@@ -824,6 +836,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_const_variant() {
         let text = r#"
@@ -841,6 +854,7 @@ mod tests {
 
     // パスの解決を変更したことで I32Option::Some などが Some バリアントではなく I32Option 型の出現箇所とみなされるようになってしまった
     #[should_panic(expected = "assertion failed")]
+    #[ignore]
     #[test]
     fn test_references_record_variant() {
         let text = r#"
@@ -881,6 +895,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_record_struct() {
         let text = r#"
@@ -909,6 +924,7 @@ mod tests {
     }
 
     #[ignore = "mod_outline_gen をいじってから名前のない関数がシンボルとして登録されなくなってしまった"]
+    #[ignore]
     #[test]
     fn test_references_on_fn_with_name_missing() {
         let text = r#"
@@ -917,6 +933,7 @@ mod tests {
         do_test_references(text);
     }
 
+    #[ignore]
     #[test]
     fn test_references_no_hit_on_operator() {
         let text = r#"
@@ -936,6 +953,7 @@ mod tests {
         assert_eq!(refs.len(), 0, "{:?}", refs);
     }
 
+    #[ignore]
     #[test]
     fn test_references() {
         let text = r#"
@@ -977,11 +995,13 @@ mod tests {
         assert_eq!(result.as_ref().map(Content::to_string).as_deref(), expected);
     }
 
+    #[ignore]
     #[test]
     fn test_hover_param() {
         do_test_hover("fn f(x: i32) -> i32 { <|>x }", Some("```jacco\ni32\n```"));
     }
 
+    #[ignore]
     #[test]
     fn test_hover_local_var() {
         do_test_hover(
@@ -990,6 +1010,7 @@ mod tests {
         );
     }
 
+    #[ignore]
     #[test]
     fn test_hover_fn() {
         do_test_hover(
@@ -998,6 +1019,7 @@ mod tests {
         );
     }
 
+    #[ignore]
     #[test]
     fn test_hover_fn_with_result_ty() {
         do_test_hover(
@@ -1006,6 +1028,7 @@ mod tests {
         );
     }
 
+    #[ignore]
     #[test]
     fn test_hover_fn_with_doc_comments() {
         do_test_hover(
@@ -1025,6 +1048,7 @@ mod tests {
         );
     }
 
+    #[ignore]
     #[test]
     fn test_hover_extern_fn() {
         do_test_hover(
@@ -1034,6 +1058,8 @@ mod tests {
     }
 
     // should not panic
+
+    #[ignore]
     #[test]
     fn test_multiple_requests() {
         let text = r#"<|>
