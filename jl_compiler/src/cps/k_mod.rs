@@ -66,7 +66,6 @@ pub(crate) enum KModSymbol {
 }
 
 impl KModSymbol {
-    #[cfg(unused)]
     pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModSymbolRef<'_> {
         match self {
             KModSymbol::Alias(alias) => KModSymbolRef::Alias(alias, alias.of(&mod_outline.aliases)),
@@ -162,65 +161,12 @@ pub(crate) enum KModSymbolRef<'a> {
     Field(KField, &'a KFieldOutline),
 }
 
-/// プロジェクト内で定義されるシンボルの名前。それが属するプロジェクトを基準としている。
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum KProjectSymbol {
-    #[allow(unused)]
-    Mod(KMod),
-    StaticVar(KStaticVar),
-    Const(KConst),
-    Fn(KFn),
-    ExternFn(KExternFn),
-    ConstEnum(KConstEnum),
-    StructEnum(KStructEnum),
-    Struct(KStruct),
-}
-
-impl KProjectSymbol {
-    pub(crate) fn outline<'a>(self, mod_outlines: &'a KModOutlines) -> KProjectSymbolRef<'a> {
-        match self {
-            KProjectSymbol::Mod(k_mod) => KProjectSymbolRef::Mod(k_mod, k_mod.of(mod_outlines)),
-            KProjectSymbol::Const(k_const) => {
-                KProjectSymbolRef::Const(k_const.of(&mod_outlines[MOD].consts))
-            }
-            KProjectSymbol::StaticVar(static_var) => {
-                KProjectSymbolRef::StaticVar(static_var.of(&mod_outlines[MOD].static_vars))
-            }
-            KProjectSymbol::Fn(k_fn) => KProjectSymbolRef::Fn(k_fn.of(&mod_outlines[MOD].fns)),
-            KProjectSymbol::ExternFn(extern_fn) => {
-                KProjectSymbolRef::ExternFn(extern_fn.of(&mod_outlines[MOD].extern_fns))
-            }
-            KProjectSymbol::ConstEnum(const_enum) => {
-                KProjectSymbolRef::ConstEnum(const_enum.of(&mod_outlines[MOD].const_enums))
-            }
-            KProjectSymbol::StructEnum(struct_enum) => {
-                KProjectSymbolRef::StructEnum(struct_enum.of(&mod_outlines[MOD].struct_enums))
-            }
-            KProjectSymbol::Struct(k_struct) => {
-                KProjectSymbolRef::Struct(k_struct.of(&mod_outlines[MOD].structs))
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub(crate) enum KProjectSymbolRef<'a> {
-    Mod(KMod, &'a KModOutline),
-    Const(&'a KConstOutline),
-    StaticVar(&'a KStaticVarOutline),
-    Fn(&'a KFnOutline),
-    ExternFn(&'a KExternFnOutline),
-    ConstEnum(&'a KConstEnumOutline),
-    StructEnum(&'a KStructEnumOutline),
-    Struct(&'a KStructOutline),
-}
-
 impl KAliasOutline {
     pub(crate) fn referent_outline<'a>(
         &self,
-        mod_outlines: &'a KModOutlines,
-    ) -> Option<KProjectSymbolRef<'a>> {
-        self.referent().map(|symbol| symbol.outline(mod_outlines))
+        mod_outline: &'a KModOutline,
+    ) -> Option<KModSymbolRef<'a>> {
+        self.referent().map(|symbol| symbol.outline(mod_outline))
     }
 }
 
@@ -244,35 +190,43 @@ pub(crate) fn resolve_aliases(
         };
 
         let lookup =
-            |name: &str| -> Option<KProjectSymbol> {
+            |name: &str| -> Option<KModSymbol> {
                 mod_outline
                     .consts
                     .enumerate()
-                    .map(|(id, outline)| (outline.name.as_str(), KProjectSymbol::Const(id)))
-                    .chain(mod_outline.static_vars.enumerate().map(|(id, outline)| {
-                        (outline.name.as_str(), KProjectSymbol::StaticVar(id))
-                    }))
+                    .map(|(id, outline)| (outline.name.as_str(), KModSymbol::Const(id)))
+                    .chain(
+                        mod_outline.static_vars.enumerate().map(|(id, outline)| {
+                            (outline.name.as_str(), KModSymbol::StaticVar(id))
+                        }),
+                    )
                     .chain(
                         mod_outline
                             .fns
                             .enumerate()
-                            .map(|(id, outline)| (outline.name.as_str(), KProjectSymbol::Fn(id))),
+                            .map(|(id, outline)| (outline.name.as_str(), KModSymbol::Fn(id))),
                     )
                     .chain(
-                        mod_outline.extern_fns.enumerate().map(|(id, outline)| {
-                            (outline.name.as_str(), KProjectSymbol::ExternFn(id))
+                        mod_outline
+                            .extern_fns
+                            .enumerate()
+                            .map(|(id, outline)| (outline.name.as_str(), KModSymbol::ExternFn(id))),
+                    )
+                    .chain(
+                        mod_outline.const_enums.enumerate().map(|(id, outline)| {
+                            (outline.name.as_str(), KModSymbol::ConstEnum(id))
                         }),
                     )
-                    .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
-                        (outline.name.as_str(), KProjectSymbol::ConstEnum(id))
-                    }))
-                    .chain(mod_outline.struct_enums.enumerate().map(|(id, outline)| {
-                        (outline.name.as_str(), KProjectSymbol::StructEnum(id))
-                    }))
                     .chain(
-                        mod_outline.structs.enumerate().map(|(id, outline)| {
-                            (outline.name.as_str(), KProjectSymbol::Struct(id))
+                        mod_outline.struct_enums.enumerate().map(|(id, outline)| {
+                            (outline.name.as_str(), KModSymbol::StructEnum(id))
                         }),
+                    )
+                    .chain(
+                        mod_outline
+                            .structs
+                            .enumerate()
+                            .map(|(id, outline)| (outline.name.as_str(), KModSymbol::Struct(id))),
                     )
                     .find_map(
                         |(the_name, symbol)| {

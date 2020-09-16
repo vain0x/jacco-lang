@@ -1,10 +1,13 @@
 //! 型推論・型検査
 
 use super::*;
-use crate::{source::HaveLoc, source::Loc};
-use k_meta_ty::KMetaTyData;
-use k_mod::KProjectSymbolRef;
-use k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance};
+use crate::{
+    cps::{
+        k_meta_ty::KMetaTyData,
+        k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance},
+    },
+    source::{HaveLoc, Loc},
+};
 use std::{
     cell::RefCell,
     mem::{replace, swap, take},
@@ -22,20 +25,17 @@ struct Tx<'a> {
     return_ty_opt: Option<KTy>,
     /// 検査対象のモジュールのアウトライン
     mod_outline: &'a KModOutline,
-    /// プロジェクト内のモジュールのアウトライン
-    mod_outlines: &'a KModOutlines,
     logger: Logger,
 }
 
 impl<'a> Tx<'a> {
-    fn new(mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines, logger: Logger) -> Self {
+    fn new(mod_outline: &'a KModOutline, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             local_vars: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
             mod_outline,
-            mod_outlines,
             logger,
         }
     }
@@ -318,7 +318,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
 fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     let outline = match alias
         .of(&tx.mod_outline.aliases)
-        .referent_outline(&tx.mod_outlines)
+        .referent_outline(&tx.mod_outline)
     {
         Some(outline) => outline,
         None => {
@@ -333,30 +333,24 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     };
 
     match outline {
-        KProjectSymbolRef::Mod(..) => {
-            tx.logger.error(
-                loc,
-                "モジュールを指すエイリアスを値として使うことはできません",
-            );
-            KTy2::Never
-        }
-        KProjectSymbolRef::Const(const_outline) => const_outline
+        KModSymbolRef::Const(_, const_outline) => const_outline
             .value_ty
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KProjectSymbolRef::StaticVar(static_var_outline) => {
+        KModSymbolRef::StaticVar(_, static_var_outline) => {
             static_var_outline.ty.to_ty2(tx.mod_outline, &mut tx.ty_env)
         }
-        KProjectSymbolRef::Fn(fn_outline) => fn_outline.ty().to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KProjectSymbolRef::ExternFn(extern_fn_outline) => extern_fn_outline
+        KModSymbolRef::Fn(_, fn_outline) => fn_outline.ty().to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KModSymbolRef::ExternFn(_, extern_fn_outline) => extern_fn_outline
             .ty()
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KProjectSymbolRef::ConstEnum(..)
-        | KProjectSymbolRef::StructEnum(..)
-        | KProjectSymbolRef::Struct(_) => {
+        KModSymbolRef::ConstEnum(..)
+        | KModSymbolRef::StructEnum(..)
+        | KModSymbolRef::Struct(..) => {
             tx.logger
                 .unimpl(loc, "インポートされた型の型検査は未実装です");
             KTy2::Never
         }
+        KModSymbolRef::Alias(_, _) | KModSymbolRef::Field(_, _) => unreachable!(),
     }
 }
 
@@ -959,12 +953,7 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(
-    mod_outline: &KModOutline,
-    mod_data: &mut KModData,
-    mod_outlines: &KModOutlines,
-    logger: Logger,
-) {
-    let mut tx = Tx::new(mod_outline, mod_outlines, logger);
+pub(crate) fn resolve_types(mod_outline: &KModOutline, mod_data: &mut KModData, logger: Logger) {
+    let mut tx = Tx::new(mod_outline, logger);
     resolve_root(mod_data, &mut tx);
 }

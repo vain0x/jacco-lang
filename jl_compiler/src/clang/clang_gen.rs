@@ -381,25 +381,23 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         KTerm::True { .. } => CExpr::BoolLit("1"),
         KTerm::False { .. } => CExpr::BoolLit("0"),
         KTerm::Alias { alias, loc } => match alias.of(&cx.mod_outline.aliases).referent() {
-            Some(KProjectSymbol::Const(k_const)) => gen_const(k_const.of(&cx.mod_outline.consts)),
-            Some(KProjectSymbol::StaticVar(static_var)) => gen_static_var_term(static_var, cx),
-            Some(KProjectSymbol::Fn(k_fn)) => {
+            Some(KModSymbol::Const(k_const)) => gen_const(k_const.of(&cx.mod_outline.consts)),
+            Some(KModSymbol::StaticVar(static_var)) => gen_static_var_term(static_var, cx),
+            Some(KModSymbol::Fn(k_fn)) => {
                 let fn_name = k_fn.of(&cx.mod_outline.fns).name.to_string();
                 CExpr::Name(fn_name)
             }
-            Some(KProjectSymbol::ExternFn(extern_fn)) => {
+            Some(KModSymbol::ExternFn(extern_fn)) => {
                 let extern_fn_name = extern_fn.of(&cx.mod_outline.extern_fns).name.to_string();
                 CExpr::Name(extern_fn_name)
             }
-            Some(KProjectSymbol::ConstEnum(..))
-            | Some(KProjectSymbol::StructEnum(..))
-            | Some(KProjectSymbol::Struct(..)) => {
+            Some(KModSymbol::Alias(..))
+            | Some(KModSymbol::ConstEnum(..))
+            | Some(KModSymbol::StructEnum(..))
+            | Some(KModSymbol::Struct(..))
+            | Some(KModSymbol::Field(..)) => {
                 error!("別名の参照先が不正です {:?}", (term, loc));
                 CExpr::Other("/* error: invalid alias term ")
-            }
-            Some(KProjectSymbol::Mod(_)) => {
-                error!("モジュールを指す別名はCの式になりません {:?}", loc);
-                CExpr::Other("/* error: mod alias */")
             }
             None => {
                 error!("未解決の別名をCの式にしようとしました {:?}", loc);

@@ -188,7 +188,7 @@ impl Project {
 
         let mut mods = take(&mut self.mods);
         for (mod_outline, ref mut mod_data) in self.mod_outlines.iter().zip(mods.iter_mut()) {
-            resolve_types(mod_outline, *mod_data, &self.mod_outlines, logs.logger());
+            resolve_types(mod_outline, *mod_data, logs.logger());
         }
         self.mods = mods;
 

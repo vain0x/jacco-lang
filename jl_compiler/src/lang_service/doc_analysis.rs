@@ -243,12 +243,7 @@ impl AnalysisCache {
 
         let logs = Logs::new();
 
-        resolve_types(
-            MOD.of(mod_outlines),
-            &mut mods[MOD],
-            mod_outlines,
-            logs.logger(),
-        );
+        resolve_types(MOD.of(mod_outlines), &mut mods[MOD], logs.logger());
         cps.errors.extend(logs_into_errors(logs, &syntax.tree));
         self.type_resolution_is_done = true;
     }
