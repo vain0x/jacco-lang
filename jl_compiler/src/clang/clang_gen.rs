@@ -13,7 +13,6 @@ type IdentMap = HashMap<String, IdProvider>;
 /// C code generation context.
 struct Cx<'a> {
     mod_outline: &'a KModOutline,
-    mod_outlines: &'a KModOutlines,
     fn_ptr_id: usize,
     ident_map: HashMap<String, IdProvider>,
     static_var_ident_ids: Vec<Option<usize>>,
@@ -30,10 +29,9 @@ struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
+    fn new(mod_outline: &'a KModOutline) -> Self {
         Self {
             mod_outline,
-            mod_outlines,
             fn_ptr_id: 0,
             ident_map: Default::default(),
             static_var_ident_ids: Default::default(),
@@ -631,12 +629,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             [cond, pats @ ..] => {
                 // FIXME: label_sigs
                 let is_enum = cond
-                    .ty(
-                        &cx.mod_outline,
-                        &KLabelSigArena::default(),
-                        &cx.local_vars,
-                        cx.mod_outlines,
-                    )
+                    .ty(&cx.mod_outline, &KLabelSigArena::default(), &cx.local_vars)
                     .as_enum(ty_env)
                     .is_some();
 
@@ -680,12 +673,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Not => match args {
             [arg] => {
                 let op = if arg
-                    .ty(
-                        &cx.mod_outline,
-                        &VecArena::default(),
-                        &cx.local_vars,
-                        cx.mod_outlines,
-                    )
+                    .ty(&cx.mod_outline, &VecArena::default(), &cx.local_vars)
                     .is_bool(ty_env)
                 {
                     CUnaryOp::LogNot
@@ -944,26 +932,17 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
     }
 }
 
-pub(crate) fn gen(mod_outlines: &KModOutlines, mods: &KModArena) -> CRoot {
+pub(crate) fn gen(mod_outline: &KModOutline, mod_data: &KModData) -> CRoot {
     let mut decls = vec![];
 
     // 宣言
-    let cxx = mod_outlines
-        .iter()
-        .zip(mods.iter())
-        .map(|(mod_outline, mod_data)| {
-            let mut cx = Cx::new(mod_outline, mod_outlines);
-            gen_root_for_decls(mod_data, &mut cx);
-            decls.extend(cx.decls.drain(..));
-            (mod_outline, mod_data, cx)
-        })
-        .collect::<Vec<_>>();
+    let mut cx = Cx::new(mod_outline);
+    gen_root_for_decls(mod_data, &mut cx);
+    decls.extend(cx.decls.drain(..));
 
     // 定義
-    for (_, mod_data, mut cx) in cxx {
-        gen_root_for_defs(mod_data, &mut cx);
-        decls.extend(cx.decls.drain(..));
-    }
+    gen_root_for_defs(mod_data, &mut cx);
+    decls.extend(cx.decls.drain(..));
 
     CRoot { decls }
 }

@@ -96,7 +96,6 @@ impl KTerm {
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         local_vars: &KLocalVarArena,
-        mod_outlines: &KModOutlines,
     ) -> KTy2 {
         match self {
             KTerm::Unit { .. } => KTy2::Unit,
@@ -112,9 +111,7 @@ impl KTerm {
                     cause: KTyCause::Alias,
                 }
             }
-            KTerm::Const { k_mod, k_const, .. } => k_const
-                .ty(&k_mod.of(mod_outlines).consts)
-                .erasure(mod_outline),
+            KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).erasure(mod_outline),
             KTerm::StaticVar { static_var, .. } => {
                 static_var.ty(&mod_outline.static_vars).erasure(mod_outline)
             }

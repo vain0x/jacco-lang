@@ -33,7 +33,6 @@ impl FieldOccurrenceInFnCollector<'_> {
             self.mod_outline,
             &self.fn_data.label_sigs,
             &self.fn_data.local_vars,
-            self.mod_outlines,
         );
 
         let k_struct = match ty.as_struct_by_deref(&self.fn_data.ty_env) {

@@ -210,7 +210,7 @@ impl Project {
             eliminate_unit(mod_outline, mod_data);
         }
 
-        Ok(clang_dump(&self.mod_outlines, &self.mods))
+        Ok(clang_dump(&self.mod_outlines[MOD], &self.mods[MOD]))
     }
 }
 
