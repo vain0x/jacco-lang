@@ -13,6 +13,8 @@ pub(crate) type KModOutlines = VecArena<KModTag, KModOutline>;
 
 pub(crate) type KModArena = VecArena<KModTag, KModData>;
 
+pub(crate) const MOD: KMod = KMod::from_index(0);
+
 #[derive(Default)]
 pub(crate) struct KModOutline {
     pub(crate) name: String,

@@ -7,19 +7,20 @@ pub(crate) fn references(
     include_definition: bool,
     ls: &mut LangService,
 ) -> Option<Vec<Location>> {
-    let DocContentAnalysisMut {
-        syntax,
-        symbols,
-        cps,
-    } = ls.request_cps(doc)?;
+    // let DocContentAnalysisMut {
+    //     syntax,
+    //     symbols,
+    //     cps,
+    // } = ls.request_cps(doc)?;
 
-    let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
-    let mut ref_sites = vec![];
+    // let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
+    // let mut ref_sites = vec![];
 
-    if include_definition {
-        collect_def_sites(doc, name, syntax, symbols, cps, &mut ref_sites);
-    }
-    collect_use_sites(doc, name, syntax, symbols, cps, &mut ref_sites);
+    // if include_definition {
+    //     collect_def_sites(doc, name, syntax, symbols, cps, &mut ref_sites);
+    // }
+    // collect_use_sites(doc, name, syntax, symbols, cps, &mut ref_sites);
 
-    Some(ref_sites)
+    // Some(ref_sites)
+    None
 }

@@ -38,14 +38,16 @@ pub struct Project {
     docs: DocArena,
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
-    mod_docs: VecArena<KModTag, Doc>,
     mod_outlines: VecArena<KModTag, KModOutline>,
     mods: VecArena<KModTag, KModData>,
 }
 
 impl Project {
     pub fn new() -> Self {
-        Project::default()
+        let mut project = Project::default();
+        project.mod_outlines.alloc(KModOutline::default());
+        project.mods.alloc(KModData::default());
+        project
     }
 
     /// プロジェクトにドキュメントを追加する。同名のドキュメントを複数追加することはできない。
@@ -135,7 +137,7 @@ impl Project {
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let logs = Logs::new();
 
-        let mut name_symbols_vec = vec![];
+        let mut name_symbols_vec = HashMap::new();
 
         // アウトライン生成
         for (id, syntax) in self.syntaxes.enumerate_mut() {
@@ -143,20 +145,13 @@ impl Project {
             let doc_name = self.docs[id].name.to_string();
             let doc_logs = take(&mut syntax.logs);
 
-            let k_mod = self.mod_docs.alloc(doc);
-            let mut mod_outline = KModOutline::default();
-            let name_symbols = super::front::generate_outline(
-                doc,
-                &syntax.tree,
-                &mut mod_outline,
-                &doc_logs.logger(),
-            );
+            let mod_outline = &mut self.mod_outlines[MOD];
+            let name_symbols =
+                super::front::generate_outline(doc, &syntax.tree, mod_outline, &doc_logs.logger());
             mod_outline.name = doc_name;
-            let k_mod2 = self.mod_outlines.alloc(mod_outline);
-            assert_eq!(k_mod, k_mod2);
 
             syntax.logs = doc_logs;
-            name_symbols_vec.push(name_symbols);
+            name_symbols_vec.insert(doc, name_symbols);
         }
 
         // エイリアス解決
@@ -168,28 +163,21 @@ impl Project {
         }
 
         // CPS 変換
-        for ((i, k_mod), syntax) in mod_ids
-            .iter()
-            .copied()
-            .enumerate()
-            .zip(self.syntaxes.iter_mut())
-        {
-            let doc = self.mod_docs[k_mod];
+        for (id, syntax) in self.syntaxes.enumerate_mut() {
+            let doc = Doc::from(id.to_index());
             let doc_logs = take(&mut syntax.logs);
 
-            let mut mod_data = KModData::default();
+            let mut mod_data = &mut self.mods[MOD];
             super::front::convert_to_cps(
                 doc,
-                k_mod,
+                MOD,
                 &syntax.tree,
-                &mut name_symbols_vec[i],
-                k_mod.of(&self.mod_outlines),
+                name_symbols_vec.get_mut(&doc).unwrap(),
+                &self.mod_outlines[MOD],
                 &self.mod_outlines,
                 &mut mod_data,
                 &doc_logs.logger(),
             );
-            let k_mod3 = self.mods.alloc(mod_data);
-            assert_eq!(k_mod, k_mod3);
 
             logs.logger().extend_from_doc_logs(doc, doc_logs);
         }

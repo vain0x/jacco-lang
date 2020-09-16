@@ -19,7 +19,6 @@ pub(super) struct Syntax {
 }
 
 pub(super) struct Symbols {
-    pub(super) mod_outline: KModOutline,
     pub(super) symbol_count: usize,
     pub(super) name_symbols: NameSymbols,
     pub(super) ty_use_sites: TyUseSites,
@@ -27,7 +26,6 @@ pub(super) struct Symbols {
 }
 
 pub(crate) struct Cps {
-    pub(super) mod_data: KModData,
     pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
 }
@@ -52,7 +50,6 @@ pub(super) struct AnalysisCache {
     pub(super) symbols_opt: Option<Symbols>,
     pub(super) cps_opt: Option<Cps>,
     pub(super) type_resolution_is_done: bool,
-    pub(super) mod_opt: Option<KMod>,
     pub(super) lost_symbol_count: usize,
 }
 
@@ -67,7 +64,6 @@ impl AnalysisCache {
             symbols_opt: Default::default(),
             cps_opt: Default::default(),
             type_resolution_is_done: Default::default(),
-            mod_opt: Default::default(),
             lost_symbol_count: 0,
         }
     }
@@ -120,7 +116,10 @@ impl AnalysisCache {
         self.syntax_opt.as_mut().unwrap()
     }
 
-    pub(super) fn request_symbols(&mut self) -> DocSymbolAnalysisMut {
+    pub(super) fn request_symbols(
+        &mut self,
+        mod_outlines: &mut KModOutlines,
+    ) -> DocSymbolAnalysisMut {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() {
             return DocSymbolAnalysisMut {
                 syntax: self.syntax_opt.as_mut().unwrap(),
@@ -130,49 +129,51 @@ impl AnalysisCache {
 
         let doc = self.doc;
 
-        let symbols = {
-            let syntax = self.request_syntax();
+        let symbols =
+            {
+                let syntax = self.request_syntax();
 
-            let doc_logs = DocLogs::new();
-            let mut mod_outline = KModOutline::default();
-            let name_symbols =
-                front::generate_outline(doc, &syntax.tree, &mut mod_outline, &doc_logs.logger());
-            let symbol_count = mod_outline.symbol_count();
+                let doc_logs = DocLogs::new();
+                let base_symbol_count = mod_outlines[MOD].symbol_count();
+                let name_symbols = front::generate_outline(
+                    doc,
+                    &syntax.tree,
+                    &mut mod_outlines[MOD],
+                    &doc_logs.logger(),
+                );
+                let symbol_count = mod_outlines[MOD].symbol_count() - base_symbol_count;
 
-            let errors = {
-                let logs = Logs::new();
-                logs.logger().extend_from_doc_logs(doc, doc_logs);
-                logs_into_errors(logs, &syntax.tree)
+                let errors = {
+                    let logs = Logs::new();
+                    logs.logger().extend_from_doc_logs(doc, doc_logs);
+                    logs_into_errors(logs, &syntax.tree)
+                };
+
+                let ty_use_sites =
+                    {
+                        let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
+                        let use_names = syntax.tree.name_referents.iter().filter_map(
+                            |(&use_name, referent)| match *referent {
+                                LexicalReferent::Name(def_name) => Some((def_name, use_name.loc())),
+                                _ => None,
+                            },
+                        );
+                        def_names
+                            .chain(use_names)
+                            .filter_map(|(def_name, loc)| {
+                                let ty = name_symbols.get(&def_name)?.as_ty()?;
+                                Some((ty, loc))
+                            })
+                            .collect()
+                    };
+
+                Symbols {
+                    symbol_count,
+                    name_symbols,
+                    ty_use_sites,
+                    errors,
+                }
             };
-
-            let ty_use_sites = {
-                let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
-                let use_names =
-                    syntax
-                        .tree
-                        .name_referents
-                        .iter()
-                        .filter_map(|(&use_name, referent)| match *referent {
-                            LexicalReferent::Name(def_name) => Some((def_name, use_name.loc())),
-                            _ => None,
-                        });
-                def_names
-                    .chain(use_names)
-                    .filter_map(|(def_name, loc)| {
-                        let ty = name_symbols.get(&def_name)?.as_ty()?;
-                        Some((ty, loc))
-                    })
-                    .collect()
-            };
-
-            Symbols {
-                mod_outline,
-                symbol_count,
-                name_symbols,
-                ty_use_sites,
-                errors,
-            }
-        };
 
         let old = self.symbols_opt.replace(symbols);
         assert!(old.is_none());
@@ -194,33 +195,32 @@ impl AnalysisCache {
     pub(super) fn request_cps(
         &mut self,
         mod_outlines: &mut KModOutlines,
+        mods: &mut KModArena,
     ) -> DocContentAnalysisMut<'_> {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
             return self.doc_content_analysis_mut().unwrap();
         }
 
         let doc = self.doc;
-        let k_mod = self.mod_opt.unwrap();
-        let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols();
+        let DocSymbolAnalysisMut { syntax, symbols } = self.request_symbols(mod_outlines);
 
         let doc_logs = DocLogs::new();
         let logs = Logs::new();
 
         {
-            let mut aliases = take(&mut k_mod.of_mut(mod_outlines).aliases);
+            let mut aliases = take(&mut MOD.of_mut(mod_outlines).aliases);
             crate::cps::resolve_aliases(&mut aliases, mod_outlines, logs.logger());
-            k_mod.of_mut(mod_outlines).aliases = aliases;
+            MOD.of_mut(mod_outlines).aliases = aliases;
         }
 
-        let mut mod_data = KModData::default();
         front::convert_to_cps(
             doc,
-            k_mod,
+            MOD,
             &syntax.tree,
             &mut symbols.name_symbols,
-            &mod_outlines[k_mod],
+            &mod_outlines[MOD],
             mod_outlines,
-            &mut mod_data,
+            &mut mods[MOD],
             &doc_logs.logger(),
         );
         let errors = {
@@ -229,7 +229,6 @@ impl AnalysisCache {
         };
 
         self.cps_opt = Some(Cps {
-            mod_data,
             ty_use_sites: vec![],
             errors,
         });
@@ -237,20 +236,19 @@ impl AnalysisCache {
         self.doc_content_analysis_mut().unwrap()
     }
 
-    pub(super) fn resolve_types(&mut self, mod_outlines: &mut KModOutlines) {
+    pub(super) fn resolve_types(&mut self, mod_outlines: &mut KModOutlines, mods: &mut KModArena) {
         if self.type_resolution_is_done {
             return;
         }
 
-        let k_mod = self.mod_opt.unwrap();
-        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outlines);
+        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outlines, mods);
 
         let logs = Logs::new();
 
         resolve_types(
-            k_mod,
-            k_mod.of(mod_outlines),
-            &mut cps.mod_data,
+            MOD,
+            MOD.of(mod_outlines),
+            &mut mods[MOD],
             mod_outlines,
             logs.logger(),
         );

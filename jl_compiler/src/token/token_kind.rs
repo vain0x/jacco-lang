@@ -163,6 +163,7 @@ pub(crate) enum TokenKind {
 }
 
 impl TokenKind {
+    #[allow(unused)]
     pub(crate) fn is_leading_trivia(self) -> bool {
         match self {
             TokenKind::Space | TokenKind::Comment | TokenKind::Other => true,

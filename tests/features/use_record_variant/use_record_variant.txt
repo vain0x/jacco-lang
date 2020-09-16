@@ -1,9 +1,3 @@
-void assert(int cond_1);
-
-int strcmp(unsigned char const* first_1, unsigned char const* second_1);
-
-int main();
-
 struct Ok {
 };
 
@@ -20,6 +14,12 @@ struct Response {
         struct Err Err;
     };
 };
+
+void assert(int cond_1);
+
+int strcmp(unsigned char const* first_1, unsigned char const* second_1);
+
+int main();
 
 int main() {
     int match_result_1;

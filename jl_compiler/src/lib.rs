@@ -115,6 +115,8 @@ mod front {
 mod lang_service {
     //! 入力支援機能 (LSP サーバーの内部実装)
 
+    #![allow(unused)]
+
     mod doc_analysis;
     mod actions {
         mod completion;
