@@ -390,7 +390,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Name(fn_name)
             }
             Some(KProjectSymbol::ExternFn(extern_fn)) => {
-                let extern_fn_name = extern_fn.of(cx.mod_outlines).name.to_string();
+                let extern_fn_name = extern_fn.of(&cx.mod_outline.extern_fns).name.to_string();
                 CExpr::Name(extern_fn_name)
             }
             Some(KProjectSymbol::ConstEnum(..))

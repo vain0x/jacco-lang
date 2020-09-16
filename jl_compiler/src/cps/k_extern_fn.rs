@@ -30,20 +30,6 @@ impl KExternFn {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectExternFn(pub(crate) KMod, pub(crate) KExternFn);
-
-impl KProjectExternFn {
-    pub(crate) fn k_mod(self) -> KMod {
-        self.0
-    }
-
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KExternFnOutline {
-        let KProjectExternFn(k_mod, extern_fn) = self;
-        extern_fn.of(&k_mod.of(mod_outlines).extern_fns)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KExternFnOutline {
     pub(crate) name: String,

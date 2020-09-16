@@ -171,7 +171,7 @@ pub(crate) enum KProjectSymbol {
     StaticVar(KStaticVar),
     Const(KConst),
     Fn(KFn),
-    ExternFn(KProjectExternFn),
+    ExternFn(KExternFn),
     ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
     Struct(KStruct),
@@ -189,7 +189,7 @@ impl KProjectSymbol {
             }
             KProjectSymbol::Fn(k_fn) => KProjectSymbolRef::Fn(k_fn.of(&mod_outlines[MOD].fns)),
             KProjectSymbol::ExternFn(extern_fn) => {
-                KProjectSymbolRef::ExternFn(extern_fn.k_mod(), extern_fn.of(mod_outlines))
+                KProjectSymbolRef::ExternFn(extern_fn.of(&mod_outlines[MOD].extern_fns))
             }
             KProjectSymbol::ConstEnum(const_enum) => {
                 KProjectSymbolRef::ConstEnum(const_enum.of(&mod_outlines[MOD].const_enums))
@@ -210,7 +210,7 @@ pub(crate) enum KProjectSymbolRef<'a> {
     Const(&'a KConstOutline),
     StaticVar(&'a KStaticVarOutline),
     Fn(&'a KFnOutline),
-    ExternFn(KMod, &'a KExternFnOutline),
+    ExternFn(&'a KExternFnOutline),
     ConstEnum(&'a KConstEnumOutline),
     StructEnum(&'a KStructEnumOutline),
     Struct(&'a KStructOutline),
@@ -272,12 +272,11 @@ pub(crate) fn resolve_aliases(
                             .enumerate()
                             .map(|(id, outline)| (outline.name.as_str(), KProjectSymbol::Fn(id))),
                     )
-                    .chain(mod_outline.extern_fns.enumerate().map(|(id, outline)| {
-                        (
-                            outline.name.as_str(),
-                            KProjectSymbol::ExternFn(KProjectExternFn(k_mod, id)),
-                        )
-                    }))
+                    .chain(
+                        mod_outline.extern_fns.enumerate().map(|(id, outline)| {
+                            (outline.name.as_str(), KProjectSymbol::ExternFn(id))
+                        }),
+                    )
                     .chain(mod_outline.const_enums.enumerate().map(|(id, outline)| {
                         (outline.name.as_str(), KProjectSymbol::ConstEnum(id))
                     }))
