@@ -265,20 +265,10 @@ fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
 
 fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 {
     match struct_ty {
-        KTy2::Struct(k_struct) => {
-            let KProjectStruct(k_mod, _) = *k_struct;
-            field
-                .ty(&k_mod.of(tx.mod_outlines).fields)
-                .to_ty2_poly(tx.mod_outline)
-        }
-        KTy2::App {
-            k_struct, ty_args, ..
-        } => {
-            let KProjectStruct(k_mod, _) = *k_struct;
-            field
-                .ty(&k_mod.of(tx.mod_outlines).fields)
-                .substitute(tx.mod_outline, ty_args)
-        }
+        KTy2::Struct(_) => field.ty(&tx.mod_outline.fields).to_ty2_poly(tx.mod_outline),
+        KTy2::App { ty_args, .. } => field
+            .ty(&tx.mod_outline.fields)
+            .substitute(tx.mod_outline, ty_args),
         _ => {
             tx.logger.error(loc, "レコード型が必要です");
             KTy2::Unresolved {
@@ -381,8 +371,8 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
         KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
-        KTerm::Const { k_mod, k_const, .. } => k_const
-            .ty(&k_mod.of(&tx.mod_outlines).consts)
+        KTerm::Const { k_const, .. } => k_const
+            .ty(&tx.mod_outline.consts)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::StaticVar { static_var, .. } => static_var
             .ty(&tx.mod_outline.static_vars)
@@ -398,14 +388,9 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             .ty(&tx.mod_outline.extern_fns)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::RecordTag {
-            k_mod, k_struct, ..
-        } => {
-            let mod_outline = k_mod.of(&tx.mod_outlines);
-            k_struct
-                .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                .to_ty2(tx.mod_outline, &mut tx.ty_env)
-        }
+        KTerm::RecordTag { k_struct, .. } => k_struct
+            .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.struct_enums)
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::FieldTag(_) => unreachable!(),
     }
 }
@@ -463,13 +448,11 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let (k_mod, k_struct) = ty.as_struct(&tx.ty_env).unwrap();
-                let mod_outline = k_mod.of(&tx.mod_outlines);
-
+                let k_struct = ty.as_struct(&tx.ty_env).unwrap();
                 for (arg, field) in node
                     .args
                     .iter_mut()
-                    .zip(k_struct.fields(&mod_outline.structs))
+                    .zip(k_struct.fields(&tx.mod_outline.structs))
                 {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
@@ -480,9 +463,9 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     );
                 }
 
-                let result_ty = match k_struct.of(&k_mod.of(&tx.mod_outlines).structs).parent {
+                let result_ty = match k_struct.of(&tx.mod_outline.structs).parent {
                     KStructParent::Enum { struct_enum, .. } => {
-                        KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))
+                        KTy2::StructEnum(KProjectStructEnum(MOD, struct_enum))
                     }
                     KStructParent::Struct { .. } => ty.clone(),
                 };
@@ -510,39 +493,33 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // ジェネリック構造体のケース
                     if let KTy2::App { k_struct, .. } = ty {
-                        let KProjectStruct(k_mod, _) = k_struct;
                         return k_struct
-                            .of(tx.mod_outlines)
+                            .of(&tx.mod_outline.structs)
                             .fields
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|&field| get_field_ty(&ty, field, *loc, tx))
                             .map(|ty| ty.into_ptr(KMut::Const));
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
+                        KEnumOrStruct::Enum(struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
-                                {
-                                    Some(KTy2::Struct(KProjectStruct(k_mod, k_struct)))
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_struct))
                                 } else {
                                     None
                                 }
                             })?,
-                        KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&k_mod.of(&tx.mod_outlines).structs)
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|field| {
                                 field
-                                    .ty(&k_mod.of(&tx.mod_outlines).fields)
+                                    .ty(&tx.mod_outline.fields)
                                     .to_ty2(tx.mod_outline, &mut tx.ty_env)
                             })?,
                     };
@@ -579,40 +556,34 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // ジェネリック構造体のケース
                     if let KTy2::App { k_struct, .. } = ty {
-                        let KProjectStruct(k_mod, _) = k_struct;
                         return k_struct
-                            .of(tx.mod_outlines)
+                            .of(&tx.mod_outline.structs)
                             .fields
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|&field| get_field_ty(&ty, field, *loc, tx))
                             .map(|ty| ty.into_ptr(KMut::Mut));
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
+                        KEnumOrStruct::Enum(struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
-                                {
-                                    Some(KTy2::Struct(KProjectStruct(k_mod, k_struct)))
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_struct))
                                 } else {
                                     None
                                 }
                             })?,
-                        KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&k_mod.of(&tx.mod_outlines).structs)
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|field| {
                                 // FIXME: フィールドの型には型変数が束縛されずに出現する(ようにみえる)ので、インスタンス化の実装がパニックしてしまう
                                 field
-                                    .ty(&k_mod.of(&tx.mod_outlines).fields)
+                                    .ty(&tx.mod_outline.fields)
                                     .to_ty2(tx.mod_outline, &mut tx.ty_env)
                             })?,
                     };

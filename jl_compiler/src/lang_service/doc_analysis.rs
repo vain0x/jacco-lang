@@ -215,7 +215,6 @@ impl AnalysisCache {
 
         front::convert_to_cps(
             doc,
-            MOD,
             &syntax.tree,
             &mut symbols.name_symbols,
             &mod_outlines[MOD],

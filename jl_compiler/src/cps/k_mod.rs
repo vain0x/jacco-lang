@@ -174,7 +174,7 @@ pub(crate) enum KProjectSymbol {
     ExternFn(KProjectExternFn),
     ConstEnum(KProjectConstEnum),
     StructEnum(KProjectStructEnum),
-    Struct(KProjectStruct),
+    Struct(KStruct),
 }
 
 impl KProjectSymbol {
@@ -198,7 +198,7 @@ impl KProjectSymbol {
                 KProjectSymbolRef::StructEnum(struct_enum.of(mod_outlines))
             }
             KProjectSymbol::Struct(k_struct) => {
-                KProjectSymbolRef::Struct(k_struct.of(mod_outlines))
+                KProjectSymbolRef::Struct(k_struct.of(&mod_outlines[MOD].structs))
             }
         }
     }
@@ -297,12 +297,12 @@ pub(crate) fn resolve_aliases(
                         KProjectSymbol::StructEnum(KProjectStructEnum(k_mod, id)),
                     )
                 }))
-                .chain(mod_outline.structs.enumerate().map(|(id, outline)| {
-                    (
-                        outline.name.as_str(),
-                        KProjectSymbol::Struct(KProjectStruct(k_mod, id)),
-                    )
-                }))
+                .chain(
+                    mod_outline
+                        .structs
+                        .enumerate()
+                        .map(|(id, outline)| (outline.name.as_str(), KProjectSymbol::Struct(id))),
+                )
                 .find_map(
                     |(the_name, symbol)| {
                         if the_name == name {

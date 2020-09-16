@@ -60,16 +60,6 @@ impl KStruct {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectStruct(pub(crate) KMod, pub(crate) KStruct);
-
-impl KProjectStruct {
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KStructOutline {
-        let KProjectStruct(k_mod, k_struct) = self;
-        k_struct.of(&k_mod.of(mod_outlines).structs)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,

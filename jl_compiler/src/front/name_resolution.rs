@@ -8,7 +8,6 @@ pub(crate) struct PathResolutionContext<'a> {
     pub(super) ast: &'a ATree,
     pub(super) name_referents: &'a NameReferents,
     pub(super) name_symbols: &'a NameSymbols,
-    pub(super) k_mod: KMod,
     pub(super) mod_outline: &'a KModOutline,
     pub(super) mod_outlines: &'a KModOutlines,
 }
@@ -91,7 +90,6 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
         ast,
         name_referents,
         name_symbols,
-        k_mod,
         mod_outline,
         mod_outlines,
     } = context;
@@ -116,7 +114,7 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
                 let name = name.of(ast.names()).token.text(tokens);
                 let k_struct = find_struct_variant(struct_enum, name, k_mod.of(&mod_outlines))?;
 
-                KTy2::Struct(KProjectStruct(k_mod, k_struct))
+                KTy2::Struct(k_struct)
             }
             _ => return None,
         },
@@ -124,7 +122,7 @@ pub(crate) fn resolve_ty_path(name: ANameId, context: PathResolutionContext<'_>)
             let name = name.of(ast.names()).token.text(tokens);
             let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
 
-            KTy2::Struct(KProjectStruct(k_mod, k_struct))
+            KTy2::Struct(k_struct)
         }
         _ => return None,
     };
@@ -163,7 +161,6 @@ pub(crate) fn resolve_value_path(
         ast,
         name_referents,
         name_symbols,
-        k_mod,
         mod_outline,
         mod_outlines,
     } = context;
@@ -172,7 +169,7 @@ pub(crate) fn resolve_value_path(
         Some(it) => it,
         None => {
             let value = resolve_value_name(name, name_referents, name_symbols, mod_outline)?;
-            return Some(KProjectValue::new(k_mod, value));
+            return Some(KProjectValue::new(MOD, value));
         }
     };
 
@@ -222,7 +219,7 @@ pub(crate) fn resolve_value_path(
         }
         _ => return None,
     };
-    Some(KProjectValue::new(k_mod, value))
+    Some(KProjectValue::new(MOD, value))
 }
 
 // =============================================================================

@@ -127,10 +127,8 @@ fn unique_struct_enum_name(struct_enum: KStructEnum, cx: &mut Cx) -> String {
     struct_enum.name(&cx.mod_outline.struct_enums).to_string()
 }
 
-fn unique_struct_name(k_mod: KMod, k_struct: KStruct, cx: &mut Cx) -> String {
-    k_struct
-        .name(&k_mod.of(&cx.mod_outlines).structs)
-        .to_string()
+fn unique_struct_name(k_struct: KStruct, cx: &mut Cx) -> String {
+    k_struct.name(&cx.mod_outline.structs).to_string()
     // do_unique_name(
     //     k_struct.to_index(),
     //     &cx.mod_outline.structs[k_struct].name,
@@ -287,11 +285,11 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
         &KTy2::StructEnum(struct_enum) => gen_struct_enum_ty(struct_enum, cx),
         KTy2::Struct(k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく
-            let name = k_struct.of(cx.mod_outlines).name.to_string();
+            let name = k_struct.of(&cx.mod_outline.structs).name.to_string();
             CTy::Struct(name)
         }
         KTy2::App { k_struct, .. } => {
-            let name = &k_struct.of(cx.mod_outlines).name;
+            let name = &k_struct.of(&cx.mod_outline.structs).name;
             CTy::Struct(name.to_string())
         }
     }
@@ -410,9 +408,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
                 CExpr::Other("/* error: unresolved alias */")
             }
         },
-        KTerm::Const { k_mod, k_const, .. } => {
-            gen_const((*k_const).of(&k_mod.of(cx.mod_outlines).consts))
-        }
+        KTerm::Const { k_const, .. } => gen_const((*k_const).of(&cx.mod_outline.consts)),
         KTerm::StaticVar { static_var, .. } => {
             gen_static_var_term(KProjectStaticVar(cx.k_mod, *static_var), cx)
         }
@@ -424,9 +420,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
         }
         KTerm::ExternFn { extern_fn, .. } => gen_extern_fn_term(*extern_fn, cx),
         KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
-        KTerm::RecordTag {
-            k_mod, k_struct, ..
-        } => gen_record_tag(*k_struct, &k_mod.of(&cx.mod_outlines).structs),
+        KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.mod_outline.structs),
         KTerm::FieldTag(KFieldTag { name, loc }) => {
             error!("can't gen field term to c {} ({:?})", name, loc);
             CExpr::Other("/* error */ 0")
@@ -571,7 +565,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Record => match (tys, results, conts) {
             ([ty], [result], [cont]) => {
-                let (k_mod, k_struct) = ty.as_struct(ty_env).unwrap();
+                let k_struct = ty.as_struct(ty_env).unwrap();
 
                 let (name, ty) = gen_param(result, ty_env, cx);
                 cx.stmts.push(CStmt::VarDecl {
@@ -581,27 +575,24 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     init_opt: None,
                 });
 
-                let self_name = match k_struct.ty(&k_mod.of(cx.mod_outlines).structs) {
+                let self_name = match k_struct.ty(&cx.mod_outline.structs) {
                     KTy::Struct(_) | KTy::StructGeneric { .. } => CExpr::Name(name.clone()),
                     KTy::StructEnum(_) => {
                         // タグを設定する。
                         let left = CExpr::Name(name.clone()).into_dot("tag_");
-                        let right = gen_record_tag(k_struct, &k_mod.of(cx.mod_outlines).structs);
+                        let right = gen_record_tag(k_struct, &cx.mod_outline.structs);
                         cx.stmts
                             .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
 
-                        CExpr::Name(name.clone()).into_dot(unique_struct_name(k_mod, k_struct, cx))
+                        CExpr::Name(name.clone()).into_dot(unique_struct_name(k_struct, cx))
                     }
                     _ => unreachable!(),
                 };
 
-                for (arg, field) in args
-                    .iter()
-                    .zip(k_struct.fields(&k_mod.of(cx.mod_outlines).structs))
-                {
+                for (arg, field) in args.iter().zip(k_struct.fields(&cx.mod_outline.structs)) {
                     let left = self_name
                         .clone()
-                        .into_dot(field.name(&k_mod.of(cx.mod_outlines).fields));
+                        .into_dot(field.name(&cx.mod_outline.fields));
                     let right = gen_term(arg, cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
@@ -798,7 +789,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         .resize(cx.mod_outline.structs.len(), None);
 
     for (k_struct, struct_data) in cx.mod_outline.structs.enumerate() {
-        let name = unique_struct_name(cx.k_mod, k_struct, cx);
+        let name = unique_struct_name(k_struct, cx);
         let fields = struct_data
             .fields
             .iter()
@@ -827,7 +818,7 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
             .variants
             .iter()
             .filter_map(|&k_struct| {
-                let name = unique_struct_name(cx.k_mod, k_struct, cx);
+                let name = unique_struct_name(k_struct, cx);
                 let ty = CTy::Struct(name.to_string());
                 Some((name, ty))
             })

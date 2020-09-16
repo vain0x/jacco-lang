@@ -36,7 +36,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             self.mod_outlines,
         );
 
-        let (k_mod, k_struct) = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
+        let k_struct = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
             Some(it) => it,
             None => return,
         };
@@ -52,7 +52,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             _ => return,
         };
 
-        self.occurrences.push((k_mod, field, loc));
+        self.occurrences.push((MOD, field, loc));
     }
 
     fn on_node(&mut self, node: &KNode) {

@@ -170,7 +170,6 @@ impl Project {
             let mut mod_data = &mut self.mods[MOD];
             super::front::convert_to_cps(
                 doc,
-                MOD,
                 &syntax.tree,
                 name_symbols_vec.get_mut(&doc).unwrap(),
                 &self.mod_outlines[MOD],

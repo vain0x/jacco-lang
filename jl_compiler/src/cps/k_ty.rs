@@ -13,8 +13,8 @@ use std::{
 };
 
 pub(crate) enum KEnumOrStruct {
-    Enum(KMod, KStructEnum),
-    Struct(KMod, KStruct),
+    Enum(KStructEnum),
+    Struct(KStruct),
 }
 
 /// 型 (その2)
@@ -44,9 +44,9 @@ pub(crate) enum KTy2 {
     },
     ConstEnum(KProjectConstEnum),
     StructEnum(KProjectStructEnum),
-    Struct(KProjectStruct),
+    Struct(KStruct),
     App {
-        k_struct: KProjectStruct,
+        k_struct: KStruct,
         ty_args: HashMap<String, KTy2>,
     },
 }
@@ -184,16 +184,11 @@ impl KTy2 {
 
     pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)) => {
-                Some(KEnumOrStruct::Enum(k_mod, struct_enum))
+            KTy2::StructEnum(KProjectStructEnum(_, struct_enum)) => {
+                Some(KEnumOrStruct::Enum(struct_enum))
             }
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => {
-                Some(KEnumOrStruct::Struct(k_mod, k_struct))
-            }
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ..
-            } => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
+            KTy2::Struct(k_struct) => Some(KEnumOrStruct::Struct(k_struct)),
+            KTy2::App { k_struct, .. } => Some(KEnumOrStruct::Struct(k_struct)),
             _ => None,
         })
     }
@@ -205,20 +200,17 @@ impl KTy2 {
         })
     }
 
-    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => Some((k_mod, k_struct)),
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ..
-            } => Some((k_mod, k_struct)),
+            KTy2::Struct(k_struct) => Some(k_struct),
+            KTy2::App { k_struct, .. } => Some(k_struct),
             _ => None,
         })
     }
 
-    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => Some((k_mod, k_struct)),
+            KTy2::Struct(k_struct) => Some(k_struct),
             KTy2::Ptr { ref base_ty, .. } => base_ty.as_struct_by_deref(ty_env),
             _ => None,
         })
@@ -285,7 +277,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
                 "enum(struct) {}",
                 &struct_enum.of(&mod_outline.struct_enums).name
             ),
-            KTy2::Struct(KProjectStruct(_, k_struct)) => {
+            KTy2::Struct(k_struct) => {
                 write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)
             }
             KTy2::App { .. } => write!(f, "app"),
@@ -688,7 +680,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         },
         KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)),
-        KTy::Struct(k_struct) => KTy2::Struct(KProjectStruct(k_mod, k_struct)),
+        KTy::Struct(k_struct) => KTy2::Struct(k_struct),
         KTy::StructGeneric {
             k_struct,
             ref ty_params,
@@ -710,10 +702,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             };
             context.env = env;
 
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ty_args,
-            }
+            KTy2::App { k_struct, ty_args }
         }
         KTy::App {
             ref ty,
@@ -734,10 +723,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                         (name, ty)
                     })
                     .collect();
-                KTy2::App {
-                    k_struct: KProjectStruct(MOD, k_struct),
-                    ty_args,
-                }
+                KTy2::App { k_struct, ty_args }
             }
             _ => KTy2::Unresolved {
                 cause: KTyCause::Default,

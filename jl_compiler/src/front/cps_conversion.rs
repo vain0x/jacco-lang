@@ -135,7 +135,6 @@ struct Xx<'a> {
 
     // read:
     doc: Doc,
-    k_mod: KMod,
     tokens: &'a PTokens,
     ast: &'a ATree,
     name_referents: &'a NameReferents,
@@ -148,7 +147,6 @@ struct Xx<'a> {
 impl<'a> Xx<'a> {
     fn new(
         doc: Doc,
-        k_mod: KMod,
         tokens: &'a PTokens,
         ast: &'a ATree,
         name_referents: &'a NameReferents,
@@ -176,7 +174,6 @@ impl<'a> Xx<'a> {
             mod_data: KModData::default(),
             // read:
             doc,
-            k_mod,
             tokens,
             ast,
             name_referents,
@@ -216,7 +213,6 @@ fn path_resolution_context<'a>(xx: &'a mut Xx) -> PathResolutionContext<'a> {
         ast: xx.ast,
         name_referents: xx.name_referents,
         name_symbols: xx.name_symbols,
-        k_mod: xx.k_mod,
         mod_outline: xx.mod_outline,
         mod_outlines: xx.mod_outlines,
     }
@@ -432,11 +428,7 @@ fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch
             k_const,
             loc,
         }),
-        KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag {
-            k_mod,
-            k_struct,
-            loc,
-        }),
+        KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag { k_struct, loc }),
         _ => emit_default_branch(name, key, xx),
     }
 }
@@ -456,18 +448,14 @@ fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: 
 }
 
 fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let (k_mod, k_struct) = match resolve_ty_path(pat.left, path_resolution_context(xx)) {
-        Some(KTy2::Struct(KProjectStruct(k_mod, k_struct))) => (k_mod, k_struct),
+    let k_struct = match resolve_ty_path(pat.left, path_resolution_context(xx)) {
+        Some(KTy2::Struct(k_struct)) => k_struct,
         _ => {
             error_expected_record_ty(PLoc::from_loc(loc), xx.logger);
             return new_error_term(loc);
         }
     };
-    KTerm::RecordTag {
-        k_mod,
-        k_struct,
-        loc,
-    }
+    KTerm::RecordTag { k_struct, loc }
 }
 
 fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
@@ -691,13 +679,12 @@ fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> AfterRval {
 }
 
 fn emit_unit_like_struct(
-    k_mod: KMod,
     k_struct: KStruct,
     result: KSymbol,
     loc: Loc,
     nodes: &mut Vec<KNode>,
 ) -> AfterRval {
-    let ty = KTy2::Struct(KProjectStruct(k_mod, k_struct));
+    let ty = KTy2::Struct(k_struct);
 
     nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
     KTerm::Name(result)
@@ -737,15 +724,15 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
         KLocalValue::Fn(k_fn) => KTerm::Fn {
             k_fn,
             ty: k_fn
-                .ty(&k_mod.of(&xx.mod_outlines).fns)
+                .ty(&xx.mod_outline.fns)
                 .to_ty2(xx.mod_outline, &mut xx.ty_env),
             loc,
         },
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
-            let name = k_struct.name(&k_mod.of(&xx.mod_outlines).structs);
+            let name = k_struct.name(&xx.mod_outline.structs);
             let result = fresh_symbol(name, cause, xx);
-            emit_unit_like_struct(k_mod, k_struct, result, loc, &mut xx.nodes)
+            emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)
         }
     }
 }
@@ -897,8 +884,7 @@ fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<K
         }
     };
 
-    let KProjectStruct(k_mod, _) = k_struct;
-    let ty = match &k_struct.of(xx.mod_outlines).parent {
+    let ty = match &k_struct.of(&xx.mod_outline.structs).parent {
         KStructParent::Struct { ty_params } if !ty_params.is_empty() => KTy2::App {
             k_struct,
             ty_args: ty_params
@@ -912,26 +898,24 @@ fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<K
         _ => KTy2::Struct(k_struct),
     };
 
-    let fields = &k_struct.of(xx.mod_outlines).fields;
-    let perm = match calculate_field_ordering(
-        &expr.fields,
-        fields,
-        &k_mod.of(&xx.mod_outlines).fields,
-        |field_expr| &field_expr.field_name.of(xx.ast.names()).text,
-    ) {
-        Ok(it) => it,
-        Err(errors) => {
-            report_record_expr_errors(fields, &errors, loc, k_mod.of(xx.mod_outlines), xx.logger);
-            return None;
-        }
-    };
+    let fields = &k_struct.of(&xx.mod_outline.structs).fields;
+    let perm =
+        match calculate_field_ordering(&expr.fields, fields, &xx.mod_outline.fields, |field_expr| {
+            &field_expr.field_name.of(xx.ast.names()).text
+        }) {
+            Ok(it) => it,
+            Err(errors) => {
+                report_record_expr_errors(fields, &errors, loc, xx.mod_outline, xx.logger);
+                return None;
+            }
+        };
 
     let mut args = vec![KTerm::Unit { loc }; fields.len()];
     for (i, field_expr) in expr.fields.iter().enumerate() {
         args[perm[i]] = convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc, xx);
     }
 
-    let result = fresh_symbol(&k_struct.of(xx.mod_outlines).name, loc, xx);
+    let result = fresh_symbol(&k_struct.of(&xx.mod_outline.structs).name, loc, xx);
     xx.nodes
         .push(new_record_node(ty, args, result, new_cont(), loc));
     Some(result)
@@ -1773,7 +1757,6 @@ fn convert_decls(decls: ADeclIds, xx: &mut Xx) -> Option<KTerm> {
 
 pub(crate) fn convert_to_cps(
     doc: Doc,
-    k_mod: KMod,
     tree: &PTree,
     name_symbols: &mut NameSymbols,
     mod_outline: &KModOutline,
@@ -1783,7 +1766,6 @@ pub(crate) fn convert_to_cps(
 ) {
     let mut xx = Xx::new(
         doc,
-        k_mod,
         &tree.tokens,
         &tree.ast,
         &tree.name_referents,

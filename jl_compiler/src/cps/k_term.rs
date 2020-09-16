@@ -83,7 +83,6 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     RecordTag {
-        k_mod: KMod,
         k_struct: KStruct,
         loc: Loc,
     },
@@ -125,14 +124,9 @@ impl KTerm {
             KTerm::ExternFn { extern_fn, .. } => {
                 extern_fn.ty(&mod_outline.extern_fns).erasure(mod_outline)
             }
-            KTerm::RecordTag {
-                k_mod, k_struct, ..
-            } => {
-                let mod_outline = k_mod.of(mod_outlines);
-                k_struct
-                    .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                    .erasure(mod_outline)
-            }
+            KTerm::RecordTag { k_struct, .. } => k_struct
+                .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
+                .erasure(mod_outline),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
                 KTy2::Unresolved {
