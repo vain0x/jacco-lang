@@ -42,7 +42,7 @@ pub(crate) enum KTy2 {
         param_tys: Vec<KTy2>,
         result_ty: Box<KTy2>,
     },
-    ConstEnum(KProjectConstEnum),
+    ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
     Struct(KStruct),
     App {
@@ -265,7 +265,7 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
                 }
                 Ok(())
             }
-            KTy2::ConstEnum(KProjectConstEnum(_, const_enum)) => write!(
+            KTy2::ConstEnum(const_enum) => write!(
                 f,
                 "enum(const) {}",
                 &const_enum.of(&mod_outline.const_enums).name
@@ -621,8 +621,6 @@ impl<'a> TySchemeInstantiationFn<'a> {
 
 /// シンボルのための型スキームを式のための型に変換する処理
 fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
-    let k_mod = MOD;
-
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
         KTy::Var(ref ty_var) => match context.mode {
@@ -676,7 +674,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 };
             }
         },
-        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
+        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(const_enum),
         KTy::StructEnum(struct_enum) => KTy2::StructEnum(struct_enum),
         KTy::Struct(k_struct) => KTy2::Struct(k_struct),
         KTy::StructGeneric {

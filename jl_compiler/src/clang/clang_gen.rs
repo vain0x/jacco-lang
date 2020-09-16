@@ -284,7 +284,11 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
                 KMut::Mut => base_ty.into_ptr(),
             }
         }
-        KTy2::ConstEnum(const_enum) => gen_ty(&const_enum.of(cx.mod_outlines).repr_ty, ty_env, cx),
+        KTy2::ConstEnum(const_enum) => gen_ty(
+            &const_enum.of(&cx.mod_outline.const_enums).repr_ty,
+            ty_env,
+            cx,
+        ),
         &KTy2::StructEnum(struct_enum) => gen_struct_enum_ty(struct_enum, cx),
         KTy2::Struct(k_struct) => {
             // FIXME: unique_struct_name を事前に計算しておく

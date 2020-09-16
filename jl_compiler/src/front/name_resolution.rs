@@ -180,9 +180,9 @@ pub(crate) fn resolve_value_path(
         KTy::Alias(alias) => {
             let name = name.of(ast.names()).token.text(tokens);
             let value = match alias.of(&mod_outline.aliases).referent()? {
-                KProjectSymbol::ConstEnum(KProjectConstEnum(k_mod, const_enum)) => {
+                KProjectSymbol::ConstEnum(const_enum) => {
                     let k_const = find_const_variant(const_enum, name, mod_outline)?;
-                    KProjectValue::new(k_mod, KLocalValue::Const(k_const))
+                    KProjectValue::new(MOD, KLocalValue::Const(k_const))
                 }
                 KProjectSymbol::StructEnum(struct_enum) => {
                     let k_struct = find_struct_variant(struct_enum, name, mod_outline)?;
