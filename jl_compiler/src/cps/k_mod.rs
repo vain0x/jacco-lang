@@ -3,7 +3,6 @@ use crate::{
     logs::Logger,
     utils::{VecArena, VecArenaId},
 };
-use std::collections::HashMap;
 
 pub(crate) struct KModTag;
 
@@ -227,17 +226,14 @@ impl KAliasOutline {
 
 pub(crate) fn resolve_aliases(
     aliases: &mut KAliasArena,
-    mod_outlines: &KModOutlines,
+    mod_outline: &KModOutline,
     logger: Logger,
 ) {
-    let mod_map = mod_outlines
-        .enumerate()
-        .map(|(k_mod, mod_outline)| (mod_outline.name.to_string(), k_mod))
-        .collect::<HashMap<_, _>>();
+    // FIXME: モジュールの名前を持ち運べていないので、use の先頭は無視する。
 
     for alias_data in aliases.iter_mut() {
-        let (mod_name, entity_name) = match alias_data.path() {
-            [mod_name, entity_name] => (mod_name, entity_name),
+        let entity_name = match alias_data.path() {
+            [_, entity_name] => entity_name,
             _ => {
                 logger.error(
                     alias_data.loc(),
@@ -246,16 +242,6 @@ pub(crate) fn resolve_aliases(
                 continue;
             }
         };
-
-        let k_mod = match mod_map.get(mod_name.as_str()) {
-            Some(k_mod) => *k_mod,
-            None => {
-                logger.error(alias_data.loc(), "モジュール名が不明です");
-                continue;
-            }
-        };
-
-        let mod_outline = k_mod.of(mod_outlines);
 
         let lookup =
             |name: &str| -> Option<KProjectSymbol> {

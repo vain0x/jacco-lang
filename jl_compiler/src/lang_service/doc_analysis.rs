@@ -209,7 +209,7 @@ impl AnalysisCache {
 
         {
             let mut aliases = take(&mut MOD.of_mut(mod_outlines).aliases);
-            crate::cps::resolve_aliases(&mut aliases, mod_outlines, logs.logger());
+            crate::cps::resolve_aliases(&mut aliases, &mod_outlines[MOD], logs.logger());
             MOD.of_mut(mod_outlines).aliases = aliases;
         }
 

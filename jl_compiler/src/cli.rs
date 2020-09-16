@@ -158,7 +158,7 @@ impl Project {
         let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
         for &k_mod in &mod_ids {
             let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
-            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
+            resolve_aliases(&mut aliases, &self.mod_outlines[MOD], logs.logger());
             k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
         }
 
