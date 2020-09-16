@@ -71,6 +71,7 @@ impl Content {
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
     dirty_sources: HashSet<Doc>,
+    epoch: usize,
 }
 
 impl LangService {
@@ -217,6 +218,41 @@ impl LangService {
         });
     }
 
+    // mod_outline が疎になってきたら一度すべて捨てる。(シンボルの ID 空間を再利用していないため。ID 空間の再利用や差分更新などを検討する必要があるかもしれない。バッチコンパイルでは ID 空間の過疎化は問題にならないので、いまのところハッシュマップは使わない予定。)
+    fn gc(&mut self) {
+        // たまにしか実行しない。
+        self.epoch += 1;
+        if self.epoch < 100 {
+            return;
+        }
+        self.epoch = 0;
+
+        // シンボルが少なければ GC しない。
+        let threshold = {
+            let mut lost = 0;
+            let mut total = 0;
+
+            for doc_data in self.docs.values() {
+                lost += doc_data.lost_symbol_count;
+
+                match &doc_data.symbols_opt {
+                    Some(symbols) => total += symbols.mod_outline.symbol_count(),
+                    None => {}
+                }
+            }
+
+            total >= 100_000 && lost >= total / 2
+        };
+        if !threshold {
+            return;
+        }
+
+        // GC.
+        for doc_data in self.docs.values_mut() {
+            doc_data.purge_cache();
+        }
+    }
+
     pub fn open_doc(&mut self, doc: Doc, path: Arc<PathBuf>, version: i64, text: Rc<String>) {
         self.docs
             .insert(doc, AnalysisCache::new(doc, version, text, path));
@@ -227,6 +263,8 @@ impl LangService {
         if let Some(analysis) = self.docs.get_mut(&doc) {
             analysis.set_text(version, text);
             self.dirty_sources.insert(doc);
+
+            self.gc();
         }
     }
 

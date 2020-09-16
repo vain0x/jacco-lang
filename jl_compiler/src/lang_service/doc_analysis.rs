@@ -20,7 +20,6 @@ pub(super) struct Syntax {
 
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
-    #[allow(unused)]
     pub(super) symbol_count: usize,
     pub(super) name_symbols: NameSymbols,
     pub(super) ty_use_sites: TyUseSites,
@@ -54,6 +53,7 @@ pub(super) struct AnalysisCache {
     pub(super) cps_opt: Option<Cps>,
     pub(super) type_resolution_is_done: bool,
     pub(super) mod_opt: Option<KMod>,
+    pub(super) lost_symbol_count: usize,
 }
 
 impl AnalysisCache {
@@ -68,6 +68,7 @@ impl AnalysisCache {
             cps_opt: Default::default(),
             type_resolution_is_done: Default::default(),
             mod_opt: Default::default(),
+            lost_symbol_count: 0,
         }
     }
 
@@ -75,13 +76,22 @@ impl AnalysisCache {
         self.version
     }
 
+    pub(super) fn purge_cache(&mut self) {
+        self.syntax_opt = None;
+        let symbols_opt = self.symbols_opt.take();
+        self.cps_opt = None;
+        self.type_resolution_is_done = false;
+
+        self.lost_symbol_count += match symbols_opt {
+            Some(symbols) => symbols.symbol_count,
+            None => 0,
+        };
+    }
+
     pub(super) fn set_text(&mut self, version: i64, text: Rc<String>) {
         self.version = version;
         self.text = text;
-        self.syntax_opt = None;
-        self.symbols_opt = None;
-        self.cps_opt = None;
-        self.type_resolution_is_done = false;
+        self.purge_cache();
     }
 
     pub(super) fn request_syntax(&mut self) -> &mut Syntax {
@@ -164,7 +174,8 @@ impl AnalysisCache {
             }
         };
 
-        self.symbols_opt = Some(symbols);
+        let old = self.symbols_opt.replace(symbols);
+        assert!(old.is_none());
 
         DocSymbolAnalysisMut {
             syntax: self.syntax_opt.as_mut().unwrap(),
