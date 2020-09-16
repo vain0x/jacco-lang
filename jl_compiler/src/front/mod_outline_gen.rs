@@ -545,9 +545,9 @@ fn resolve_outline(
 pub(crate) fn generate_outline(
     doc: Doc,
     tree: &PTree,
+    mod_outline: &mut KModOutline,
     logger: &DocLogger,
-) -> (KModOutline, NameSymbols) {
-    let mut mod_outline = KModOutline::default();
+) -> NameSymbols {
     let mut name_symbols = HashMap::new();
 
     OutlineGenerator {
@@ -556,18 +556,18 @@ pub(crate) fn generate_outline(
         ast: &tree.ast,
         name_referents: &tree.name_referents,
         name_symbols: &mut name_symbols,
-        mod_outline: &mut mod_outline,
+        mod_outline: mod_outline,
         logger,
     }
     .generate_all();
 
     resolve_outline(
         tree,
-        &mut mod_outline,
+        mod_outline,
         &tree.name_referents,
         &name_symbols,
         logger,
     );
 
-    (mod_outline, name_symbols)
+    name_symbols
 }

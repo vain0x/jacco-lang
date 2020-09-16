@@ -118,45 +118,47 @@ impl AnalysisCache {
 
         let doc = self.doc;
 
-        let symbols =
-            {
-                let syntax = self.request_syntax();
+        let symbols = {
+            let syntax = self.request_syntax();
 
-                let doc_logs = DocLogs::new();
-                let (mod_outline, name_symbols) =
-                    front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
+            let doc_logs = DocLogs::new();
+            let mut mod_outline = KModOutline::default();
+            let name_symbols =
+                front::generate_outline(doc, &syntax.tree, &mut mod_outline, &doc_logs.logger());
 
-                let errors = {
-                    let logs = Logs::new();
-                    logs.logger().extend_from_doc_logs(doc, doc_logs);
-                    logs_into_errors(logs, &syntax.tree)
-                };
-
-                let ty_use_sites =
-                    {
-                        let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
-                        let use_names = syntax.tree.name_referents.iter().filter_map(
-                            |(&use_name, referent)| match *referent {
-                                LexicalReferent::Name(def_name) => Some((def_name, use_name.loc())),
-                                _ => None,
-                            },
-                        );
-                        def_names
-                            .chain(use_names)
-                            .filter_map(|(def_name, loc)| {
-                                let ty = name_symbols.get(&def_name)?.as_ty()?;
-                                Some((ty, loc))
-                            })
-                            .collect()
-                    };
-
-                Symbols {
-                    mod_outline,
-                    name_symbols,
-                    ty_use_sites,
-                    errors,
-                }
+            let errors = {
+                let logs = Logs::new();
+                logs.logger().extend_from_doc_logs(doc, doc_logs);
+                logs_into_errors(logs, &syntax.tree)
             };
+
+            let ty_use_sites = {
+                let def_names = name_symbols.keys().map(|&name| (name, name.loc()));
+                let use_names =
+                    syntax
+                        .tree
+                        .name_referents
+                        .iter()
+                        .filter_map(|(&use_name, referent)| match *referent {
+                            LexicalReferent::Name(def_name) => Some((def_name, use_name.loc())),
+                            _ => None,
+                        });
+                def_names
+                    .chain(use_names)
+                    .filter_map(|(def_name, loc)| {
+                        let ty = name_symbols.get(&def_name)?.as_ty()?;
+                        Some((ty, loc))
+                    })
+                    .collect()
+            };
+
+            Symbols {
+                mod_outline,
+                name_symbols,
+                ty_use_sites,
+                errors,
+            }
+        };
 
         self.symbols_opt = Some(symbols);
 
