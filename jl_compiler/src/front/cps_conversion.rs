@@ -1782,8 +1782,9 @@ pub(crate) fn convert_to_cps(
     name_symbols: &mut NameSymbols,
     mod_outline: &KModOutline,
     mod_outlines: &KModOutlines,
+    mod_data: &mut KModData,
     logger: &DocLogger,
-) -> KModData {
+) {
     let mut xx = Xx::new(
         doc,
         k_mod,
@@ -1796,17 +1797,22 @@ pub(crate) fn convert_to_cps(
         logger,
     );
 
-    xx.mod_data = KModData {
-        consts: mod_outline.consts.slice().map_with(KConstInit::new_empty),
-        static_vars: mod_outline
-            .static_vars
-            .slice()
-            .map_with(KStaticVarInit::new_empty),
-        extern_fns: mod_outline.extern_fns.slice().map_with(Default::default),
-        fns: mod_outline.fns.slice().map_with(Default::default),
-    };
+    {
+        let KModData {
+            consts,
+            static_vars,
+            extern_fns,
+            fns,
+        } = mod_data;
+        consts.extend_with(mod_outline.consts.len(), KConstInit::new_empty);
+        static_vars.extend_with(mod_outline.static_vars.len(), KStaticVarInit::new_empty);
+        extern_fns.extend_with(mod_outline.extern_fns.len(), Default::default);
+        fns.extend_with(mod_outline.fns.len(), Default::default);
+    }
 
-    convert_decls(tree.ast.root_decls(), &mut xx);
-
-    xx.mod_data
+    {
+        xx.mod_data = take(mod_data);
+        convert_decls(tree.ast.root_decls(), &mut xx);
+        *mod_data = xx.mod_data;
+    }
 }

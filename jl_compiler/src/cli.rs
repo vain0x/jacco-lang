@@ -177,13 +177,15 @@ impl Project {
             let doc = self.mod_docs[k_mod];
             let doc_logs = take(&mut syntax.logs);
 
-            let mod_data = super::front::convert_to_cps(
+            let mut mod_data = KModData::default();
+            super::front::convert_to_cps(
                 doc,
                 k_mod,
                 &syntax.tree,
                 &mut name_symbols_vec[i],
                 k_mod.of(&self.mod_outlines),
                 &self.mod_outlines,
+                &mut mod_data,
                 &doc_logs.logger(),
             );
             let k_mod3 = self.mods.alloc(mod_data);

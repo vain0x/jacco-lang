@@ -13,6 +13,7 @@ use std::{
 // ID (NonZeroU32)
 // -----------------------------------------------
 
+#[allow(unused)]
 const ID_MIN: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(1) };
 
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
@@ -56,6 +57,7 @@ pub(crate) struct VecArenaId<Tag> {
 }
 
 impl<Tag> VecArenaId<Tag> {
+    #[allow(unused)]
     const MIN: Self = Self::from_inner(ID_MIN);
 
     #[allow(unused)]
@@ -210,6 +212,7 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.resize_with(new_len, default_fn);
     }
 
+    #[allow(unused)]
     pub(crate) fn slice(&self) -> VecArenaSlice<Tag> {
         let start = VecArenaId::MIN;
         let end = self.next_id();
@@ -261,6 +264,10 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.extend(items.into_iter());
         let end = self.next_id();
         VecArenaSlice(Range { start, end })
+    }
+
+    pub(crate) fn extend_with(&mut self, len: usize, default_fn: impl Fn() -> T) {
+        self.resize_with(len.max(self.len()), default_fn);
     }
 
     pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {

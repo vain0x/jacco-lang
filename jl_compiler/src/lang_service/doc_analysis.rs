@@ -212,13 +212,15 @@ impl AnalysisCache {
             k_mod.of_mut(mod_outlines).aliases = aliases;
         }
 
-        let mod_data = front::convert_to_cps(
+        let mut mod_data = KModData::default();
+        front::convert_to_cps(
             doc,
             k_mod,
             &syntax.tree,
             &mut symbols.name_symbols,
             &mod_outlines[k_mod],
             mod_outlines,
+            &mut mod_data,
             &doc_logs.logger(),
         );
         let errors = {
