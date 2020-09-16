@@ -20,6 +20,8 @@ pub(super) struct Syntax {
 
 pub(super) struct Symbols {
     pub(super) mod_outline: KModOutline,
+    #[allow(unused)]
+    pub(super) symbol_count: usize,
     pub(super) name_symbols: NameSymbols,
     pub(super) ty_use_sites: TyUseSites,
     pub(super) errors: Vec<(TRange, String)>,
@@ -125,6 +127,7 @@ impl AnalysisCache {
             let mut mod_outline = KModOutline::default();
             let name_symbols =
                 front::generate_outline(doc, &syntax.tree, &mut mod_outline, &doc_logs.logger());
+            let symbol_count = mod_outline.symbol_count();
 
             let errors = {
                 let logs = Logs::new();
@@ -154,6 +157,7 @@ impl AnalysisCache {
 
             Symbols {
                 mod_outline,
+                symbol_count,
                 name_symbols,
                 ty_use_sites,
                 errors,

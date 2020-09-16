@@ -27,6 +27,20 @@ pub(crate) struct KModOutline {
     pub(crate) fields: KFieldArena,
 }
 
+impl KModOutline {
+    pub(crate) fn symbol_count(&self) -> usize {
+        self.aliases.len()
+            + self.consts.len()
+            + self.static_vars.len()
+            + self.fns.len()
+            + self.extern_fns.len()
+            + self.const_enums.len()
+            + self.struct_enums.len()
+            + self.structs.len()
+            + self.fields.len()
+    }
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct KModData {
     pub(crate) consts: KConstInits,
