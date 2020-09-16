@@ -12,7 +12,6 @@ type IdentMap = HashMap<String, IdProvider>;
 
 /// C code generation context.
 struct Cx<'a> {
-    k_mod: KMod,
     mod_outline: &'a KModOutline,
     mod_outlines: &'a KModOutlines,
     fn_ptr_id: usize,
@@ -31,9 +30,8 @@ struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    fn new(k_mod: KMod, mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
+    fn new(mod_outline: &'a KModOutline, mod_outlines: &'a KModOutlines) -> Self {
         Self {
-            k_mod,
             mod_outline,
             mod_outlines,
             fn_ptr_id: 0,
@@ -315,12 +313,7 @@ fn gen_const(const_outline: &KConstOutline) -> CExpr {
     }
 }
 
-fn gen_static_var_term(static_var: KProjectStaticVar, cx: &mut Cx) -> CExpr {
-    let KProjectStaticVar(k_mod, static_var) = static_var;
-    if k_mod != cx.k_mod {
-        // 宣言側のモジュールでどのような名前にマングリングされたか分からないので参照できない
-        unimplemented!("use された static 変数の使用は未実装です")
-    }
+fn gen_static_var_term(static_var: KStaticVar, cx: &mut Cx) -> CExpr {
     CExpr::Name(unique_static_var_name(static_var, cx))
 }
 
@@ -416,9 +409,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             }
         },
         KTerm::Const { k_const, .. } => gen_const((*k_const).of(&cx.mod_outline.consts)),
-        KTerm::StaticVar { static_var, .. } => {
-            gen_static_var_term(KProjectStaticVar(cx.k_mod, *static_var), cx)
-        }
+        KTerm::StaticVar { static_var, .. } => gen_static_var_term(*static_var, cx),
         KTerm::Fn { k_fn, .. } => gen_fn_term(*k_fn, cx),
         KTerm::Label { label, .. } => CExpr::Name(unique_label_name(*label, cx)),
         KTerm::Return { k_fn, .. } => {
@@ -958,10 +949,10 @@ pub(crate) fn gen(mod_outlines: &KModOutlines, mods: &KModArena) -> CRoot {
 
     // 宣言
     let cxx = mod_outlines
-        .enumerate()
+        .iter()
         .zip(mods.iter())
-        .map(|((k_mod, mod_outline), mod_data)| {
-            let mut cx = Cx::new(k_mod, mod_outline, mod_outlines);
+        .map(|(mod_outline, mod_data)| {
+            let mut cx = Cx::new(mod_outline, mod_outlines);
             gen_root_for_decls(mod_data, &mut cx);
             decls.extend(cx.decls.drain(..));
             (mod_outline, mod_data, cx)
