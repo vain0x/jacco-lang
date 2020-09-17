@@ -43,20 +43,6 @@ impl KFn {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectFn(pub(crate) KMod, pub(crate) KFn);
-
-impl KProjectFn {
-    pub(crate) fn k_mod(self) -> KMod {
-        self.0
-    }
-
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KFnOutline {
-        let KProjectFn(k_mod, k_fn) = self;
-        k_fn.of(&k_mod.of(mod_outlines).fns)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
@@ -79,7 +65,7 @@ impl KFnOutline {
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct KFnData {
-    pub(crate) params: Vec<KSymbol>,
+    pub(crate) params: Vec<KVarTerm>,
     pub(crate) labels: KLabelArena,
     pub(crate) label_sigs: KLabelSigArena,
     pub(crate) local_vars: KLocalVarArena,
@@ -88,7 +74,7 @@ pub(crate) struct KFnData {
 
 impl KFnData {
     pub(crate) fn new(
-        params: Vec<KSymbol>,
+        params: Vec<KVarTerm>,
         local_vars: KLocalVarArena,
         labels: KLabelArena,
         ty_env: KTyEnv,

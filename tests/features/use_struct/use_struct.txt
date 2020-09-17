@@ -1,13 +1,13 @@
+struct Err {
+    int code;
+    unsigned char const* message;
+};
+
 void assert(int cond_1);
 
 int strcmp(unsigned char const* first_1, unsigned char const* second_1);
 
 int main();
-
-struct Err {
-    int code;
-    unsigned char const* message;
-};
 
 int main() {
     struct Err Err_1;

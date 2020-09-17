@@ -13,8 +13,8 @@ use std::{
 };
 
 pub(crate) enum KEnumOrStruct {
-    Enum(KMod, KStructEnum),
-    Struct(KMod, KStruct),
+    Enum(KStructEnum),
+    Struct(KStruct),
 }
 
 /// 型 (その2)
@@ -42,11 +42,11 @@ pub(crate) enum KTy2 {
         param_tys: Vec<KTy2>,
         result_ty: Box<KTy2>,
     },
-    ConstEnum(KProjectConstEnum),
-    StructEnum(KProjectStructEnum),
-    Struct(KProjectStruct),
+    ConstEnum(KConstEnum),
+    StructEnum(KStructEnum),
+    Struct(KStruct),
     App {
-        k_struct: KProjectStruct,
+        k_struct: KStruct,
         ty_args: HashMap<String, KTy2>,
     },
 }
@@ -184,48 +184,38 @@ impl KTy2 {
 
     pub(crate) fn as_struct_or_enum(&self, ty_env: &KTyEnv) -> Option<KEnumOrStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)) => {
-                Some(KEnumOrStruct::Enum(k_mod, struct_enum))
-            }
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => {
-                Some(KEnumOrStruct::Struct(k_mod, k_struct))
-            }
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ..
-            } => Some(KEnumOrStruct::Struct(k_mod, k_struct)),
+            KTy2::StructEnum(struct_enum) => Some(KEnumOrStruct::Enum(struct_enum)),
+            KTy2::Struct(k_struct) => Some(KEnumOrStruct::Struct(k_struct)),
+            KTy2::App { k_struct, .. } => Some(KEnumOrStruct::Struct(k_struct)),
             _ => None,
         })
     }
 
-    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KProjectStructEnum> {
+    pub(crate) fn as_enum(&self, ty_env: &KTyEnv) -> Option<KStructEnum> {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::StructEnum(struct_enum) => Some(struct_enum),
             _ => None,
         })
     }
 
-    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+    pub(crate) fn as_struct(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => Some((k_mod, k_struct)),
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ..
-            } => Some((k_mod, k_struct)),
+            KTy2::Struct(k_struct) => Some(k_struct),
+            KTy2::App { k_struct, .. } => Some(k_struct),
             _ => None,
         })
     }
 
-    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<(KMod, KStruct)> {
+    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<KStruct> {
         ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Struct(KProjectStruct(k_mod, k_struct)) => Some((k_mod, k_struct)),
+            KTy2::Struct(k_struct) => Some(k_struct),
             KTy2::Ptr { ref base_ty, .. } => base_ty.as_struct_by_deref(ty_env),
             _ => None,
         })
     }
 
-    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outlines: &KModOutlines) -> String {
-        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outlines)))
+    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
+        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outline)))
     }
 }
 
@@ -237,9 +227,9 @@ impl Default for KTy2 {
     }
 }
 
-impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
-    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutlines), f: &mut Formatter<'_>) -> fmt::Result {
-        let (ty_env, mod_outlines) = context;
+impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
+    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutline), f: &mut Formatter<'_>) -> fmt::Result {
+        let (ty_env, mod_outline) = context;
 
         match self {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
@@ -275,13 +265,19 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutlines)> for KTy2 {
                 }
                 Ok(())
             }
-            KTy2::ConstEnum(const_enum) => {
-                write!(f, "enum(const) {}", &const_enum.of(mod_outlines).name)
+            KTy2::ConstEnum(const_enum) => write!(
+                f,
+                "enum(const) {}",
+                &const_enum.of(&mod_outline.const_enums).name
+            ),
+            KTy2::StructEnum(struct_enum) => write!(
+                f,
+                "enum(struct) {}",
+                &struct_enum.of(&mod_outline.struct_enums).name
+            ),
+            KTy2::Struct(k_struct) => {
+                write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)
             }
-            KTy2::StructEnum(struct_enum) => {
-                write!(f, "enum(struct) {}", &struct_enum.of(mod_outlines).name)
-            }
-            KTy2::Struct(k_struct) => write!(f, "struct {}", &k_struct.of(mod_outlines).name),
             KTy2::App { .. } => write!(f, "app"),
         }
     }
@@ -461,38 +457,28 @@ impl KTy {
     }
 
     /// インスタンス化して、式や項のための型を生成する。(型検査などに使う。)
-    pub(crate) fn to_ty2(
-        &self,
-        k_mod: KMod,
-        mod_outlines: &KModOutlines,
-        ty_env: &mut KTyEnv,
-    ) -> KTy2 {
+    pub(crate) fn to_ty2(&self, mod_outline: &KModOutline, ty_env: &mut KTyEnv) -> KTy2 {
         do_instantiate(
             self,
             &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
+                mod_outline,
                 TySchemeConversionMode::Instantiate(ty_env),
             ),
         )
     }
 
-    pub(crate) fn to_ty2_poly(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
+    pub(crate) fn to_ty2_poly(&self, mod_outline: &KModOutline) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
-                TySchemeConversionMode::Preserve,
-            ),
+            &mut TySchemeInstantiationFn::new(mod_outline, TySchemeConversionMode::Preserve),
         )
     }
 
     /// 単相の型を生成する。型変数は除去する。(コード生成などに使う。)
-    pub(crate) fn erasure(&self, k_mod: KMod, mod_outlines: &KModOutlines) -> KTy2 {
+    pub(crate) fn erasure(&self, mod_outline: &KModOutline) -> KTy2 {
         do_instantiate(
             self,
-            &mut TySchemeInstantiationFn::new(k_mod, mod_outlines, TySchemeConversionMode::Erasure),
+            &mut TySchemeInstantiationFn::new(mod_outline, TySchemeConversionMode::Erasure),
         )
     }
 
@@ -519,15 +505,13 @@ impl KTy {
 
     pub(crate) fn substitute(
         &self,
-        k_mod: KMod,
-        mod_outlines: &KModOutlines,
+        mod_outline: &KModOutline,
         ty_args: &HashMap<String, KTy2>,
     ) -> KTy2 {
         do_instantiate(
             self,
             &mut TySchemeInstantiationFn::new(
-                k_mod,
-                mod_outlines,
+                mod_outline,
                 TySchemeConversionMode::Substitute(ty_args),
             ),
         )
@@ -618,8 +602,7 @@ enum TySchemeConversionMode<'a> {
 }
 
 struct TySchemeInstantiationFn<'a> {
-    k_mod: KMod,
-    mod_outlines: &'a KModOutlines,
+    mod_outline: &'a KModOutline,
     /// Some なら型変数をインスタンス化する。
     /// None なら型変数は消去して unit に落とす。
     mode: TySchemeConversionMode<'a>,
@@ -627,10 +610,9 @@ struct TySchemeInstantiationFn<'a> {
 }
 
 impl<'a> TySchemeInstantiationFn<'a> {
-    fn new(k_mod: KMod, mod_outlines: &'a KModOutlines, mode: TySchemeConversionMode<'a>) -> Self {
+    fn new(mod_outline: &'a KModOutline, mode: TySchemeConversionMode<'a>) -> Self {
         Self {
-            k_mod,
-            mod_outlines,
+            mod_outline,
             mode,
             env: HashMap::new(),
         }
@@ -639,8 +621,6 @@ impl<'a> TySchemeInstantiationFn<'a> {
 
 /// シンボルのための型スキームを式のための型に変換する処理
 fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
-    let k_mod = context.k_mod;
-
     match *ty {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
         KTy::Var(ref ty_var) => match context.mode {
@@ -682,10 +662,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 do_instantiate(&result_ty, context),
             )
         }
-        KTy::Alias(alias) => match alias
-            .of(&k_mod.of(context.mod_outlines).aliases)
-            .referent_as_ty()
-        {
+        KTy::Alias(alias) => match alias.of(&context.mod_outline.aliases).referent_as_ty() {
             Some(it) => it,
             None => {
                 log::error!(
@@ -697,9 +674,9 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 };
             }
         },
-        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(KProjectConstEnum(k_mod, const_enum)),
-        KTy::StructEnum(struct_enum) => KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum)),
-        KTy::Struct(k_struct) => KTy2::Struct(KProjectStruct(k_mod, k_struct)),
+        KTy::ConstEnum(const_enum) => KTy2::ConstEnum(const_enum),
+        KTy::StructEnum(struct_enum) => KTy2::StructEnum(struct_enum),
+        KTy::Struct(k_struct) => KTy2::Struct(k_struct),
         KTy::StructGeneric {
             k_struct,
             ref ty_params,
@@ -721,18 +698,14 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             };
             context.env = env;
 
-            KTy2::App {
-                k_struct: KProjectStruct(k_mod, k_struct),
-                ty_args,
-            }
+            KTy2::App { k_struct, ty_args }
         }
         KTy::App {
             ref ty,
             ref ty_args,
         } => match **ty {
             KTy::Struct(k_struct) => {
-                let k_struct = KProjectStruct(k_mod, k_struct);
-                let ty_params = k_struct.of(context.mod_outlines).ty_params();
+                let ty_params = k_struct.of(&context.mod_outline.structs).ty_params();
                 // FIXME: 型引数の個数が違ったらエラーにする
                 let ty_args = ty_args
                     .iter()

@@ -70,7 +70,10 @@ impl Content {
 #[derive(Default)]
 pub struct LangService {
     pub(super) docs: HashMap<Doc, AnalysisCache>,
+    pub(super) mod_outline: KModOutline,
+    pub(super) mod_data: KModData,
     dirty_sources: HashSet<Doc>,
+    epoch: usize,
 }
 
 impl LangService {
@@ -91,107 +94,14 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    #[allow(unused)]
     pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<DocSymbolAnalysisMut<'_>> {
-        self.docs.get_mut(&doc).map(|cache| cache.request_symbols())
+        let analysis = self.docs.get_mut(&doc)?;
+        Some(analysis.request_symbols(&mut self.mod_outline))
     }
 
     pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
-        // fast path
-        // {
-        //     let opt = self.docs.get_mut(&doc).unwrap().doc_content_analysis_mut();
-        //     if opt.is_some() {
-        //         return opt;
-        //     }
-        // }
-
-        self.request_symbols(doc)?;
-
-        self.do_with_mod_outlines(|ls, mod_outlines| {
-            let doc_data = ls.docs.get_mut(&doc).unwrap();
-            doc_data.request_cps(mod_outlines);
-        });
-
-        self.docs.get_mut(&doc)?.doc_content_analysis_mut()
-    }
-
-    pub(super) fn do_with_mod_outlines(
-        &mut self,
-        f: impl FnOnce(&mut LangService, &mut KModOutlines),
-    ) {
-        let doc_len = self.docs.len();
-
-        let mut mod_docs: VecArena<KModTag, Doc> = VecArena::new();
-        let mut mod_outlines = KModOutlines::new();
-
-        mod_docs.reserve(doc_len);
-        mod_outlines.reserve(doc_len);
-
-        // 各ドキュメントのデータをアリーナに移動する。
-        for (&doc, doc_data) in self.docs.iter_mut() {
-            let symbols = doc_data.request_symbols();
-
-            let k_mod = mod_docs.alloc(doc);
-            let mod_outline = take(&mut symbols.symbols.mod_outline);
-
-            let k_mod2 = mod_outlines.alloc(mod_outline);
-            assert_eq!(k_mod, k_mod2);
-
-            doc_data.mod_opt = Some(k_mod);
-        }
-
-        f(self, &mut mod_outlines);
-
-        // アリーナを解体する。
-        for doc_data in self.docs.values_mut() {
-            let k_mod = doc_data.mod_opt.unwrap();
-            let symbols = doc_data.request_symbols();
-
-            symbols.symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
-        }
-    }
-
-    pub(super) fn do_with_mods(
-        &mut self,
-        f: impl FnOnce(&mut LangService, &mut KModOutlines, &mut KModArena),
-    ) {
-        let doc_len = self.docs.len();
-
-        let mut mod_docs: VecArena<KModTag, Doc> = VecArena::new();
-        let mut mod_outlines = KModOutlines::new();
-        let mut mods = KModArena::new();
-
-        mod_docs.reserve(doc_len);
-        mod_outlines.reserve(doc_len);
-        mods.reserve(doc_len);
-
-        // 各ドキュメントのデータをアリーナに移動する。
-        for (&doc, doc_data) in self.docs.iter_mut() {
-            let k_mod = mod_docs.alloc(doc);
-            doc_data.mod_opt = Some(k_mod);
-
-            let DocSymbolAnalysisMut { symbols, .. } = doc_data.request_symbols();
-            let mod_outline = take(&mut symbols.mod_outline);
-            let k_mod2 = mod_outlines.alloc(mod_outline);
-            assert_eq!(k_mod, k_mod2);
-
-            let DocContentAnalysisMut { cps, .. } = doc_data.request_cps(&mut mod_outlines);
-            let mod_data = take(&mut cps.mod_data);
-            let k_mod3 = mods.alloc(mod_data);
-            assert_eq!(k_mod, k_mod3);
-        }
-
-        f(self, &mut mod_outlines, &mut mods);
-
-        // アリーナを解体する。
-        for doc_data in self.docs.values_mut() {
-            let k_mod = doc_data.mod_opt.unwrap();
-            let DocContentAnalysisMut { symbols, cps, .. } =
-                doc_data.doc_content_analysis_mut().unwrap();
-
-            symbols.mod_outline = take(&mut k_mod.of_mut(&mut mod_outlines));
-            cps.mod_data = take(&mut k_mod.of_mut(&mut mods));
-        }
+        let analysis = self.docs.get_mut(&doc)?;
+        Some(analysis.request_cps(&mut self.mod_outline, &mut self.mod_data))
     }
 
     /// 単一のドキュメントを型検査する。
@@ -201,20 +111,52 @@ impl LangService {
             return self.request_cps(doc);
         }
 
-        self.do_with_mod_outlines(|ls, mod_outlines| {
-            ls.docs.get_mut(&doc).unwrap().resolve_types(mod_outlines);
-        });
-        self.request_cps(doc)
+        let analysis = self.docs.get_mut(&doc)?;
+        analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
+
+        let analysis = analysis.doc_content_analysis_mut(&self.mod_outline, &mut self.mod_data);
+        assert!(analysis.is_some());
+        analysis
     }
 
     /// すべてのドキュメントを型検査する。
     pub(super) fn request_types(&mut self) {
         let docs = self.docs.keys().copied().collect::<Vec<_>>();
-        self.do_with_mod_outlines(|ls, mod_outlines| {
-            for &doc in &docs {
-                ls.docs.get_mut(&doc).unwrap().resolve_types(mod_outlines);
+
+        for &doc in &docs {
+            let analysis = self.docs.get_mut(&doc).unwrap();
+            analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
+        }
+    }
+
+    // mod_outline が疎になってきたら一度すべて捨てる。(シンボルの ID 空間を再利用していないため。ID 空間の再利用や差分更新などを検討する必要があるかもしれない。バッチコンパイルでは ID 空間の過疎化は問題にならないので、いまのところハッシュマップは使わない予定。)
+    fn gc(&mut self) {
+        // たまにしか実行しない。
+        self.epoch += 1;
+        if self.epoch < 100 {
+            return;
+        }
+        self.epoch = 0;
+
+        // シンボルが少なければ GC しない。
+        let threshold = {
+            let mut lost = 0;
+            let mut total = self.mod_outline.symbol_count();
+
+            for doc_data in self.docs.values() {
+                lost += doc_data.lost_symbol_count;
             }
-        });
+
+            total >= 100_000 && lost >= total / 2
+        };
+        if !threshold {
+            return;
+        }
+
+        // GC.
+        for doc_data in self.docs.values_mut() {
+            doc_data.purge_cache();
+        }
     }
 
     pub fn open_doc(&mut self, doc: Doc, path: Arc<PathBuf>, version: i64, text: Rc<String>) {
@@ -227,6 +169,8 @@ impl LangService {
         if let Some(analysis) = self.docs.get_mut(&doc) {
             analysis.set_text(version, text);
             self.dirty_sources.insert(doc);
+
+            self.gc();
         }
     }
 
@@ -314,11 +258,18 @@ pub(super) enum SymbolOccurrence {
 
 type Sites = Vec<(SymbolOccurrence, DefOrUse, Loc)>;
 
-fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
-    fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
+fn collect_symbols(
+    doc: Doc,
+    symbols: &Symbols,
+    cps: &Cps,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
+    sites: &mut Sites,
+) {
+    fn on_symbol(symbol: KVarTerm, parent: KLocalVarParent, sites: &mut Sites) {
         let kind = match symbol.cause {
-            KSymbolCause::NameDef(..) => DefOrUse::Def,
-            KSymbolCause::NameUse(..) => DefOrUse::Use,
+            KVarTermCause::NameDef(..) => DefOrUse::Def,
+            KVarTermCause::NameUse(..) => DefOrUse::Use,
             _ => return,
         };
 
@@ -327,7 +278,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         sites.push((symbol, kind, loc));
     }
 
-    fn on_params(params: &[KSymbol], parent: KLocalVarParent, sites: &mut Sites) {
+    fn on_params(params: &[KVarTerm], parent: KLocalVarParent, sites: &mut Sites) {
         for symbol in params {
             on_symbol(*symbol, parent, sites);
         }
@@ -347,11 +298,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
                 return;
             }
             KTerm::Alias { alias, loc } => (KModSymbol::Alias(alias), loc),
-            KTerm::Const {
-                k_mod: _,
-                k_const,
-                loc,
-            } => {
+            KTerm::Const { k_const, loc } => {
                 // FIXME: 外部のモジュールの定数である可能性もある
                 (KModSymbol::Const(k_const), loc)
             }
@@ -378,7 +325,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         }
     }
 
-    for (k_const, const_outline) in symbols.mod_outline.consts.enumerate() {
+    for (k_const, const_outline) in mod_outline.consts.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::Const(k_const)),
             DefOrUse::Def,
@@ -386,7 +333,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         ));
     }
 
-    for (static_var, static_var_outline) in symbols.mod_outline.static_vars.enumerate() {
+    for (static_var, static_var_outline) in mod_outline.static_vars.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::StaticVar(static_var)),
             DefOrUse::Def,
@@ -394,12 +341,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         ));
     }
 
-    for ((k_fn, fn_outline), fn_data) in symbols
-        .mod_outline
-        .fns
-        .enumerate()
-        .zip(cps.mod_data.fns.iter())
-    {
+    for ((k_fn, fn_outline), fn_data) in mod_outline.fns.enumerate().zip(mod_data.fns.iter()) {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::Fn(k_fn)),
             DefOrUse::Def,
@@ -413,11 +355,10 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         }
     }
 
-    for ((extern_fn, outline), data) in symbols
-        .mod_outline
+    for ((extern_fn, outline), data) in mod_outline
         .extern_fns
         .enumerate()
-        .zip(cps.mod_data.extern_fns.iter())
+        .zip(mod_data.extern_fns.iter())
     {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::ExternFn(extern_fn)),
@@ -428,7 +369,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         on_params(&data.params, KLocalVarParent::ExternFn(extern_fn), sites);
     }
 
-    for (const_enum, outline) in symbols.mod_outline.const_enums.enumerate() {
+    for (const_enum, outline) in mod_outline.const_enums.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::ConstEnum(const_enum)),
             DefOrUse::Def,
@@ -438,7 +379,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         // バリアントの定義位置は consts の定義時に収集される。
     }
 
-    for (struct_enum, outline) in symbols.mod_outline.struct_enums.enumerate() {
+    for (struct_enum, outline) in mod_outline.struct_enums.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::StructEnum(struct_enum)),
             DefOrUse::Def,
@@ -448,7 +389,7 @@ fn collect_symbols(doc: Doc, symbols: &Symbols, cps: &Cps, sites: &mut Sites) {
         // バリアントの定義位置は structs の定義時に収集される。
     }
 
-    for (k_struct, outline) in symbols.mod_outline.structs.enumerate() {
+    for (k_struct, outline) in mod_outline.structs.enumerate() {
         sites.push((
             SymbolOccurrence::ModLocal(KModSymbol::Struct(k_struct)),
             DefOrUse::Def,
@@ -480,9 +421,11 @@ pub(super) fn hit_test(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
 ) -> Option<(SymbolOccurrence, Location)> {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     sites.iter().find_map(|&(symbol, _, loc)| {
         let range = loc_to_range(loc, &syntax.tree)?;
@@ -500,10 +443,12 @@ pub(super) fn collect_def_sites(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
@@ -524,10 +469,12 @@ pub(super) fn collect_use_sites(
     syntax: &Syntax,
     symbols: &Symbols,
     cps: &Cps,
+    mod_outline: &KModOutline,
+    mod_data: &KModData,
     locations: &mut Vec<Location>,
 ) {
     let mut sites = vec![];
-    collect_symbols(doc, symbols, cps, &mut sites);
+    collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {
@@ -1035,9 +982,10 @@ mod tests {
         );
     }
 
-    // should not panic
     #[test]
     fn test_multiple_requests() {
+        //! should not panic
+
         let text = r#"<|>
             /// 🐍<|>🐧
             struct <|>A {

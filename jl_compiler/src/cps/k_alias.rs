@@ -15,7 +15,7 @@ pub(crate) struct KAliasOutline {
     name: String,
     path: Vec<String>,
     loc: Loc,
-    referent_opt: Option<KProjectSymbol>,
+    referent_opt: Option<KModSymbol>,
 }
 
 impl KAliasOutline {
@@ -40,21 +40,21 @@ impl KAliasOutline {
         self.loc
     }
 
-    pub(crate) fn referent(&self) -> Option<KProjectSymbol> {
+    pub(crate) fn referent(&self) -> Option<KModSymbol> {
         self.referent_opt
     }
 
     pub(crate) fn referent_as_ty(&self) -> Option<KTy2> {
         let ty = match self.referent() {
-            Some(KProjectSymbol::ConstEnum(const_enum)) => KTy2::ConstEnum(const_enum),
-            Some(KProjectSymbol::StructEnum(struct_enum)) => KTy2::StructEnum(struct_enum),
-            Some(KProjectSymbol::Struct(k_struct)) => KTy2::Struct(k_struct),
+            Some(KModSymbol::ConstEnum(const_enum)) => KTy2::ConstEnum(const_enum),
+            Some(KModSymbol::StructEnum(struct_enum)) => KTy2::StructEnum(struct_enum),
+            Some(KModSymbol::Struct(k_struct)) => KTy2::Struct(k_struct),
             _ => return None,
         };
         Some(ty)
     }
 
-    pub(crate) fn bind(&mut self, referent: KProjectSymbol) {
+    pub(crate) fn bind(&mut self, referent: KModSymbol) {
         let old_referent = self.referent_opt.replace(referent);
         assert_eq!(old_referent, None);
     }

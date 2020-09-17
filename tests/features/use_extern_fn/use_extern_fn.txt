@@ -1,6 +1,6 @@
-int main();
-
 void assert(int cond_1);
+
+int main();
 
 int main() {
     // call_result_1 is killed.

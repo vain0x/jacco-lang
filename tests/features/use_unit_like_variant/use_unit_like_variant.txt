@@ -1,11 +1,3 @@
-void assert(int cond_1);
-
-/* never */ void abort();
-
-int signum_1(struct Signum value);
-
-int main();
-
 struct Positive {
 };
 
@@ -24,6 +16,14 @@ struct Signum {
         struct Negative Negative;
     };
 };
+
+void assert(int cond_1);
+
+/* never */ void abort();
+
+int signum_1(struct Signum value);
+
+int main();
 
 int signum_1(struct Signum value_1) {
     int match_result_1;

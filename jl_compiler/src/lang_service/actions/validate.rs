@@ -1,29 +1,27 @@
 use super::{Doc, LangService, TRange};
+use crate::lang_service::doc_analysis::DocSymbolAnalysisMut;
 
 pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRange, String)>) {
-    let (version_opt, mut errors) = ls
-        .docs
-        .get_mut(&doc)
-        .map(|analysis| {
-            let version_opt = Some(analysis.version());
+    let version_opt = ls.docs.get(&doc).map(|analysis| analysis.version());
 
-            let mut errors = analysis.request_syntax().errors.clone();
-            if errors.is_empty() {
-                errors.extend(analysis.request_symbols().symbols.errors.clone());
-            }
+    // 構文解析などを行ってエラーを収集する。エラーが発生したフェイズで止める。
+    let mut errors = vec![];
+    if let Some(syntax) = ls.request_syntax(doc) {
+        errors.extend(syntax.errors.clone());
+    }
 
-            (version_opt, errors)
-        })
-        .unwrap_or((None, vec![]));
-
-    // CPS 変換のエラーを報告する。
     if errors.is_empty() {
-        if let Some(analysis) = ls.request_cps(doc) {
-            errors.extend(analysis.cps.errors.clone());
+        if let Some(analysis) = ls.request_symbols(doc) {
+            errors.extend_from_slice(&analysis.symbols.errors);
         }
     }
 
-    // 型エラーを報告する。
+    if errors.is_empty() {
+        if let Some(analysis) = ls.request_cps(doc) {
+            errors.extend_from_slice(&analysis.cps.errors);
+        }
+    }
+
     if errors.is_empty() {
         if let Some(analysis) = ls.request_types_for(doc) {
             errors.extend_from_slice(&analysis.cps.errors);

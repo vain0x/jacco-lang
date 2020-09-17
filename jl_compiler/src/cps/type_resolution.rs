@@ -1,10 +1,13 @@
 //! 型推論・型検査
 
 use super::*;
-use crate::{source::HaveLoc, source::Loc};
-use k_meta_ty::KMetaTyData;
-use k_mod::KProjectSymbolRef;
-use k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance};
+use crate::{
+    cps::{
+        k_meta_ty::KMetaTyData,
+        k_ty::{KEnumOrStruct, KTy2, KTyCause, Variance},
+    },
+    source::{HaveLoc, Loc},
+};
 use std::{
     cell::RefCell,
     mem::{replace, swap, take},
@@ -12,7 +15,6 @@ use std::{
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
-    k_mod: KMod,
     /// 現在の関数の型環境
     ty_env: KTyEnv,
     /// 現在の関数に含まれるローカル変数の情報
@@ -23,26 +25,17 @@ struct Tx<'a> {
     return_ty_opt: Option<KTy>,
     /// 検査対象のモジュールのアウトライン
     mod_outline: &'a KModOutline,
-    /// プロジェクト内のモジュールのアウトライン
-    mod_outlines: &'a KModOutlines,
     logger: Logger,
 }
 
 impl<'a> Tx<'a> {
-    fn new(
-        k_mod: KMod,
-        mod_outline: &'a KModOutline,
-        mod_outlines: &'a KModOutlines,
-        logger: Logger,
-    ) -> Self {
+    fn new(mod_outline: &'a KModOutline, logger: Logger) -> Self {
         Self {
             ty_env: KTyEnv::default(),
             local_vars: Default::default(),
             label_sigs: Default::default(),
             return_ty_opt: None,
-            k_mod,
             mod_outline,
-            mod_outlines,
             logger,
         }
     }
@@ -52,22 +45,17 @@ struct UnificationContext<'a> {
     variance: Variance,
     loc: Loc,
     ty_env: &'a KTyEnv,
-    mod_outlines: &'a KModOutlines,
+    mod_outline: &'a KModOutline,
     logger: &'a Logger,
 }
 
 impl<'a> UnificationContext<'a> {
-    fn new(
-        loc: Loc,
-        ty_env: &'a KTyEnv,
-        mod_outlines: &'a KModOutlines,
-        logger: &'a Logger,
-    ) -> Self {
+    fn new(loc: Loc, ty_env: &'a KTyEnv, mod_outline: &'a KModOutline, logger: &'a Logger) -> Self {
         Self {
             variance: Variance::Co,
             loc,
             ty_env,
-            mod_outlines,
+            mod_outline,
             logger,
         }
     }
@@ -87,7 +75,7 @@ impl<'a> UnificationContext<'a> {
     fn bug_unresolved(&self, other: &KTy2, cause: KTyCause) {
         log::error!(
             "unresolved な型は、単一化中に束縛できるように、型検査の前にメタ型変数に置き換えておく必要があります (other={:?}, loc={:?}, cause={:?})",
-            other.display(self.ty_env, self.mod_outlines),
+            other.display(self.ty_env, self.mod_outline),
             self.loc,cause
         );
     }
@@ -104,8 +92,8 @@ impl<'a> UnificationContext<'a> {
             format!(
                 "型引数の個数が一致しません {:?}",
                 (
-                    left.display(self.ty_env, self.mod_outlines),
-                    right.display(self.ty_env, self.mod_outlines),
+                    left.display(self.ty_env, self.mod_outline),
+                    right.display(self.ty_env, self.mod_outline),
                 )
             ),
         );
@@ -116,8 +104,8 @@ impl<'a> UnificationContext<'a> {
             self.loc,
             format!(
                 "型が一致しません ({} <- {})",
-                left.display(self.ty_env, self.mod_outlines),
-                right.display(self.ty_env, self.mod_outlines),
+                left.display(self.ty_env, self.mod_outline),
+                right.display(self.ty_env, self.mod_outline),
             ),
         );
     }
@@ -266,7 +254,7 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
 fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
-    let mut ux = UnificationContext::new(loc, &tx.ty_env, tx.mod_outlines, &tx.logger);
+    let mut ux = UnificationContext::new(loc, &tx.ty_env, tx.mod_outline, &tx.logger);
     do_unify2(&left, &right, &mut ux);
 }
 
@@ -277,20 +265,10 @@ fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
 
 fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 {
     match struct_ty {
-        KTy2::Struct(k_struct) => {
-            let KProjectStruct(k_mod, _) = *k_struct;
-            field
-                .ty(&k_mod.of(tx.mod_outlines).fields)
-                .to_ty2_poly(k_mod, tx.mod_outlines)
-        }
-        KTy2::App {
-            k_struct, ty_args, ..
-        } => {
-            let KProjectStruct(k_mod, _) = *k_struct;
-            field
-                .ty(&k_mod.of(tx.mod_outlines).fields)
-                .substitute(k_mod, tx.mod_outlines, ty_args)
-        }
+        KTy2::Struct(_) => field.ty(&tx.mod_outline.fields).to_ty2_poly(tx.mod_outline),
+        KTy2::App { ty_args, .. } => field
+            .ty(&tx.mod_outline.fields)
+            .substitute(tx.mod_outline, ty_args),
         _ => {
             tx.logger.error(loc, "レコード型が必要です");
             KTy2::Unresolved {
@@ -300,27 +278,27 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
     }
 }
 
-fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
-    if symbol.ty(&tx.local_vars).is_unresolved() {
+fn resolve_var_def(term: &mut KVarTerm, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
+    if term.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(symbol.loc(), tx),
+            None => fresh_meta_ty(term.loc(), tx),
             Some(ty) => ty.clone(),
         };
 
-        *symbol.ty_mut(&mut tx.local_vars) = expected_ty;
+        *term.ty_mut(&mut tx.local_vars) = expected_ty;
         return;
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.ty(&tx.local_vars);
-        unify2(&symbol_ty, expected_ty, symbol.loc(), tx);
+        let term_ty = term.ty(&tx.local_vars);
+        unify2(&term_ty, expected_ty, term.loc(), tx);
     }
 }
 
-fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
-    let current_ty = symbol.ty(&tx.local_vars);
+fn resolve_var_use(term: &mut KVarTerm, tx: &mut Tx) -> KTy2 {
+    let current_ty = term.ty(&tx.local_vars);
     if current_ty.is_unresolved() {
-        error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
+        error!("def_ty is unresolved. symbol is undefined? {:?}", term);
     }
 
     current_ty
@@ -328,8 +306,8 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
 
 fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
     match pat {
-        KTerm::Name(symbol) => {
-            resolve_symbol_def2(symbol, Some(expected_ty), tx);
+        KTerm::Name(term) => {
+            resolve_var_def(term, Some(expected_ty), tx);
         }
         _ => {
             resolve_term(pat, tx);
@@ -340,7 +318,7 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
 fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     let outline = match alias
         .of(&tx.mod_outline.aliases)
-        .referent_outline(&tx.mod_outlines)
+        .referent_outline(&tx.mod_outline)
     {
         Some(outline) => outline,
         None => {
@@ -355,40 +333,24 @@ fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
     };
 
     match outline {
-        KProjectSymbolRef::Mod(..) => {
-            tx.logger.error(
-                loc,
-                "モジュールを指すエイリアスを値として使うことはできません",
-            );
-            KTy2::Never
+        KModSymbolRef::Const(_, const_outline) => const_outline
+            .value_ty
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KModSymbolRef::StaticVar(_, static_var_outline) => {
+            static_var_outline.ty.to_ty2(tx.mod_outline, &mut tx.ty_env)
         }
-        KProjectSymbolRef::Const(k_mod, const_outline) => {
-            const_outline
-                .value_ty
-                .to_ty2(k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
-        KProjectSymbolRef::StaticVar(k_mod, static_var_outline) => {
-            static_var_outline
-                .ty
-                .to_ty2(k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
-        KProjectSymbolRef::Fn(k_mod, fn_outline) => {
-            fn_outline
-                .ty()
-                .to_ty2(k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
-        KProjectSymbolRef::ExternFn(k_mod, extern_fn_outline) => {
-            extern_fn_outline
-                .ty()
-                .to_ty2(k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
-        KProjectSymbolRef::ConstEnum(..)
-        | KProjectSymbolRef::StructEnum(..)
-        | KProjectSymbolRef::Struct(_) => {
+        KModSymbolRef::Fn(_, fn_outline) => fn_outline.ty().to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KModSymbolRef::ExternFn(_, extern_fn_outline) => extern_fn_outline
+            .ty()
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KModSymbolRef::ConstEnum(..)
+        | KModSymbolRef::StructEnum(..)
+        | KModSymbolRef::Struct(..) => {
             tx.logger
                 .unimpl(loc, "インポートされた型の型検査は未実装です");
             KTy2::Never
         }
+        KModSymbolRef::Alias(_, _) | KModSymbolRef::Field(_, _) => unreachable!(),
     }
 }
 
@@ -401,36 +363,26 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
         KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
-        KTerm::Const { k_mod, k_const, .. } => k_const
-            .ty(&k_mod.of(&tx.mod_outlines).consts)
-            .to_ty2(*k_mod, tx.mod_outlines, &mut tx.ty_env),
-        KTerm::StaticVar { static_var, .. } => static_var.ty(&tx.mod_outline.static_vars).to_ty2(
-            tx.k_mod,
-            tx.mod_outlines,
-            &mut tx.ty_env,
-        ),
+        KTerm::Const { k_const, .. } => k_const
+            .ty(&tx.mod_outline.consts)
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KTerm::StaticVar { static_var, .. } => static_var
+            .ty(&tx.mod_outline.static_vars)
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::Fn { ty, .. } => ty.clone(),
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
-        KTerm::Return { .. } => {
-            tx.return_ty_opt
-                .clone()
-                .unwrap()
-                .to_ty2(tx.k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
-        KTerm::ExternFn { extern_fn, .. } => extern_fn.ty(&tx.mod_outline.extern_fns).to_ty2(
-            tx.k_mod,
-            tx.mod_outlines,
-            &mut tx.ty_env,
-        ),
-        KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
-        KTerm::RecordTag {
-            k_mod, k_struct, ..
-        } => {
-            let mod_outline = k_mod.of(&tx.mod_outlines);
-            k_struct
-                .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                .to_ty2(tx.k_mod, tx.mod_outlines, &mut tx.ty_env)
-        }
+        KTerm::Return { .. } => tx
+            .return_ty_opt
+            .clone()
+            .unwrap()
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KTerm::ExternFn { extern_fn, .. } => extern_fn
+            .ty(&tx.mod_outline.extern_fns)
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
+        KTerm::Name(term) => resolve_var_use(term, tx),
+        KTerm::RecordTag { k_struct, .. } => k_struct
+            .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.struct_enums)
+            .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::FieldTag(_) => unreachable!(),
     }
 }
@@ -481,20 +433,18 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
                     unify2(param_ty, arg_ty, node.loc, tx);
                 }
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
                 break;
             },
             _ => unimplemented!(),
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let (k_mod, k_struct) = ty.as_struct(&tx.ty_env).unwrap();
-                let mod_outline = k_mod.of(&tx.mod_outlines);
-
+                let k_struct = ty.as_struct(&tx.ty_env).unwrap();
                 for (arg, field) in node
                     .args
                     .iter_mut()
-                    .zip(k_struct.fields(&mod_outline.structs))
+                    .zip(k_struct.fields(&tx.mod_outline.structs))
                 {
                     let arg_ty = resolve_term(arg, tx);
                     unify2(
@@ -505,13 +455,11 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     );
                 }
 
-                let result_ty = match k_struct.of(&k_mod.of(&tx.mod_outlines).structs).parent {
-                    KStructParent::Enum { struct_enum, .. } => {
-                        KTy2::StructEnum(KProjectStructEnum(k_mod, struct_enum))
-                    }
+                let result_ty = match k_struct.of(&tx.mod_outline.structs).parent {
+                    KStructParent::Enum { struct_enum, .. } => KTy2::StructEnum(struct_enum),
                     KStructParent::Struct { .. } => ty.clone(),
                 };
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
                     tx.logger
@@ -535,42 +483,34 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // ジェネリック構造体のケース
                     if let KTy2::App { k_struct, .. } = ty {
-                        let KProjectStruct(k_mod, _) = k_struct;
                         return k_struct
-                            .of(tx.mod_outlines)
+                            .of(&tx.mod_outline.structs)
                             .fields
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|&field| get_field_ty(&ty, field, *loc, tx))
                             .map(|ty| ty.into_ptr(KMut::Const));
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
+                        KEnumOrStruct::Enum(struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
-                                {
-                                    Some(KTy2::Struct(KProjectStruct(k_mod, k_struct)))
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_struct))
                                 } else {
                                     None
                                 }
                             })?,
-                        KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&k_mod.of(&tx.mod_outlines).structs)
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|field| {
-                                field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(
-                                    k_mod,
-                                    tx.mod_outlines,
-                                    &mut tx.ty_env,
-                                )
+                                field
+                                    .ty(&tx.mod_outline.fields)
+                                    .to_ty2(tx.mod_outline, &mut tx.ty_env)
                             })?,
                     };
                     Some(ty.into_ptr(KMut::Const))
@@ -578,13 +518,13 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 .unwrap_or_else(|| {
                     log::error!(
                         "KPrim::GetField left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outlines)
+                        left_ty.display(&tx.ty_env, tx.mod_outline)
                     );
                     tx.logger.error(loc, "bad type");
                     KTy2::Never
                 });
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -606,43 +546,35 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                     // ジェネリック構造体のケース
                     if let KTy2::App { k_struct, .. } = ty {
-                        let KProjectStruct(k_mod, _) = k_struct;
                         return k_struct
-                            .of(tx.mod_outlines)
+                            .of(&tx.mod_outline.structs)
                             .fields
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|&field| get_field_ty(&ty, field, *loc, tx))
                             .map(|ty| ty.into_ptr(KMut::Mut));
                     }
 
                     let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(k_mod, struct_enum) => struct_enum
-                            .variants(&k_mod.of(&tx.mod_outlines).struct_enums)
+                        KEnumOrStruct::Enum(struct_enum) => struct_enum
+                            .variants(&tx.mod_outline.struct_enums)
                             .iter()
                             .find_map(|&k_struct| {
-                                if k_struct.name(&k_mod.of(&tx.mod_outlines).structs) == field_name
-                                {
-                                    Some(KTy2::Struct(KProjectStruct(k_mod, k_struct)))
+                                if k_struct.name(&tx.mod_outline.structs) == field_name {
+                                    Some(KTy2::Struct(k_struct))
                                 } else {
                                     None
                                 }
                             })?,
-                        KEnumOrStruct::Struct(k_mod, k_struct) => k_struct
-                            .fields(&k_mod.of(&tx.mod_outlines).structs)
+                        KEnumOrStruct::Struct(k_struct) => k_struct
+                            .fields(&tx.mod_outline.structs)
                             .iter()
-                            .find(|field| {
-                                field.name(&k_mod.of(&tx.mod_outlines).fields) == *field_name
-                            })
+                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
                             .map(|field| {
                                 // FIXME: フィールドの型には型変数が束縛されずに出現する(ようにみえる)ので、インスタンス化の実装がパニックしてしまう
-                                field.ty(&k_mod.of(&tx.mod_outlines).fields).to_ty2(
-                                    k_mod,
-                                    tx.mod_outlines,
-                                    &mut tx.ty_env,
-                                )
+                                field
+                                    .ty(&tx.mod_outline.fields)
+                                    .to_ty2(tx.mod_outline, &mut tx.ty_env)
                             })?,
                     };
                     Some(ty.into_ptr(k_mut))
@@ -650,13 +582,13 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 .unwrap_or_else(|| {
                     log::error!(
                         "GetFieldMut left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outlines)
+                        left_ty.display(&tx.ty_env, tx.mod_outline)
                     );
                     tx.logger.error(loc, "bad type");
                     KTy2::Never
                 });
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -695,7 +627,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     }
                 };
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -707,14 +639,14 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 if result_ty_opt.is_none() {
                     tx.logger.error(&result.loc(), "expected a reference");
                 }
-                resolve_symbol_def2(result, result_ty_opt.as_ref(), tx);
+                resolve_var_def(result, result_ty_opt.as_ref(), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Ref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                resolve_symbol_def2(result, Some(&arg_ty.into_ptr(KMut::Const)), tx);
+                resolve_var_def(result, Some(&arg_ty.into_ptr(KMut::Const)), tx);
             }
             _ => unimplemented!(),
         },
@@ -722,7 +654,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::RefMut => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                resolve_symbol_def2(result, Some(&arg_ty.into_ptr(KMut::Mut)), tx);
+                resolve_var_def(result, Some(&arg_ty.into_ptr(KMut::Mut)), tx);
             }
             _ => unimplemented!(),
         },
@@ -734,7 +666,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([ty], [arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 let target_ty = take(ty);
-                resolve_symbol_def2(result, Some(&target_ty), tx);
+                resolve_var_def(result, Some(&target_ty), tx);
 
                 // FIXME: 同じ型へのキャストは警告?
                 if let KTy2::Unresolved { .. } | KTy2::Never = arg_ty {
@@ -755,7 +687,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 // FIXME: bool or iNN
-                resolve_symbol_def2(result, Some(&arg_ty), tx);
+                resolve_var_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -763,7 +695,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 // FIXME: bool or iNN or uNN
-                resolve_symbol_def2(result, Some(&arg_ty), tx);
+                resolve_var_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -779,7 +711,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify2(&left_ty, &right_ty, node.loc, tx);
                 }
 
-                resolve_symbol_def2(result, Some(&left_ty), tx);
+                resolve_var_def(result, Some(&left_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -797,7 +729,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: iNN or uNN
                 unify2(&left_ty, &right_ty, node.loc, tx);
 
-                resolve_symbol_def2(result, Some(&left_ty), tx);
+                resolve_var_def(result, Some(&left_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -814,7 +746,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // FIXME: Eq/Ord only
                     unify2(&left_ty, &right_ty, node.loc, tx);
 
-                    resolve_symbol_def2(result, Some(&KTy2::BOOL), tx);
+                    resolve_var_def(result, Some(&KTy2::BOOL), tx);
                 }
                 _ => unimplemented!(),
             }
@@ -850,7 +782,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         None => {
                             log::error!(
                                 "AddAssign etc. left={}",
-                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                                left_ty.display(&tx.ty_env, &tx.mod_outline)
                             );
                             (
                                 KMut::Mut,
@@ -894,7 +826,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         None => {
                             log::error!(
                                 "MulAssign etc. left={}",
-                                left_ty.display(&tx.ty_env, &tx.mod_outlines)
+                                left_ty.display(&tx.ty_env, &tx.mod_outline)
                             );
                             (
                                 KMut::Mut,
@@ -928,9 +860,8 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
-        let param_ty =
-            &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2_poly(tx.k_mod, tx.mod_outlines);
-        resolve_symbol_def2(param, Some(param_ty), tx);
+        let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2_poly(tx.mod_outline);
+        resolve_var_def(param, Some(param_ty), tx);
     }
 
     // いまから生成するところなので空のはず。
@@ -938,7 +869,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for label_data in fn_data.labels.iter_mut() {
         for param in &mut label_data.params {
-            resolve_symbol_def2(param, None, tx);
+            resolve_var_def(param, None, tx);
         }
 
         let label_sig = {
@@ -961,9 +892,9 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx) {
     for i in 0..data.params.len() {
         let param = &mut data.params[i];
-        let param_ty = &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i]
-            .to_ty2_poly(tx.k_mod, tx.mod_outlines);
-        resolve_symbol_def2(param, Some(&param_ty), tx);
+        let param_ty =
+            &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2_poly(tx.mod_outline);
+        resolve_var_def(param, Some(&param_ty), tx);
     }
 }
 
@@ -1022,13 +953,7 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
     }
 }
 
-pub(crate) fn resolve_types(
-    k_mod: KMod,
-    mod_outline: &KModOutline,
-    mod_data: &mut KModData,
-    mod_outlines: &KModOutlines,
-    logger: Logger,
-) {
-    let mut tx = Tx::new(k_mod, mod_outline, mod_outlines, logger);
+pub(crate) fn resolve_types(mod_outline: &KModOutline, mod_data: &mut KModData, logger: Logger) {
+    let mut tx = Tx::new(mod_outline, logger);
     resolve_root(mod_data, &mut tx);
 }

@@ -59,8 +59,8 @@ mod cps {
     mod k_static_var;
     mod k_struct;
     mod k_struct_enum;
-    mod k_symbol;
     mod k_term;
+    mod k_term_var;
     mod k_ty;
     mod k_value;
     mod k_vis;
@@ -88,10 +88,10 @@ mod cps {
     pub(crate) use k_static_var::*;
     pub(crate) use k_struct::*;
     pub(crate) use k_struct_enum::*;
-    pub(crate) use k_symbol::{KSymbol, KSymbolCause};
     pub(crate) use k_term::{KTerm, KTermCause};
+    pub(crate) use k_term_var::{KVarTerm, KVarTermCause};
     pub(crate) use k_ty::*;
-    pub(crate) use k_value::{KLocalValue, KProjectValue};
+    pub(crate) use k_value::KLocalValue;
     pub(crate) use k_vis::KVis;
     pub(crate) use type_resolution::resolve_types;
 
@@ -114,6 +114,8 @@ mod front {
 
 mod lang_service {
     //! 入力支援機能 (LSP サーバーの内部実装)
+
+    #![allow(unused)]
 
     mod doc_analysis;
     mod actions {

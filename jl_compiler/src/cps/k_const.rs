@@ -22,20 +22,6 @@ impl KConst {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectConst(pub(crate) KMod, pub(crate) KConst);
-
-impl KProjectConst {
-    pub(crate) fn k_mod(self) -> KMod {
-        self.0
-    }
-
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KConstOutline {
-        let KProjectConst(k_mod, k_const) = self;
-        k_const.of(&k_mod.of(mod_outlines).consts)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct KConstOutline {
     pub(crate) name: String,

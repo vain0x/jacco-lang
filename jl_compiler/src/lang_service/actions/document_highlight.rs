@@ -7,15 +7,12 @@ use crate::{
     },
     parse::{AExpr, AFieldExpr, PToken},
     source::Loc,
-    utils::VecArena,
 };
 
 struct FieldOccurrenceInFnCollector<'a> {
-    k_mod: KMod,
     mod_outline: &'a KModOutline,
-    mod_outlines: &'a KModOutlines,
     fn_data: &'a KFnData,
-    occurrences: &'a mut Vec<(KMod, KField, Loc)>,
+    occurrences: &'a mut Vec<(KField, Loc)>,
 }
 
 impl FieldOccurrenceInFnCollector<'_> {
@@ -31,14 +28,12 @@ impl FieldOccurrenceInFnCollector<'_> {
         };
 
         let ty = record.ty(
-            self.k_mod,
             self.mod_outline,
             &self.fn_data.label_sigs,
             &self.fn_data.local_vars,
-            self.mod_outlines,
         );
 
-        let (k_mod, k_struct) = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
+        let k_struct = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
             Some(it) => it,
             None => return,
         };
@@ -54,7 +49,7 @@ impl FieldOccurrenceInFnCollector<'_> {
             _ => return,
         };
 
-        self.occurrences.push((k_mod, field, loc));
+        self.occurrences.push((field, loc));
     }
 
     fn on_node(&mut self, node: &KNode) {
@@ -69,38 +64,19 @@ impl FieldOccurrenceInFnCollector<'_> {
 fn collect_field_occurrences(
     only_doc: Option<Doc>,
     ls: &mut LangService,
-    occurrences: &mut Vec<(KMod, KField, Loc)>,
+    occurrences: &mut Vec<(KField, Loc)>,
 ) {
     ls.request_types();
 
-    let doc_mod_pairs = match only_doc {
-        Some(doc) => {
-            let k_mod = ls.docs[&doc].mod_opt.unwrap();
-            vec![(doc, k_mod)]
-        }
-        None => ls
-            .docs
-            .iter()
-            .map(|(&doc, doc_data)| (doc, doc_data.mod_opt.unwrap()))
-            .collect::<Vec<_>>(),
-    };
+    for fn_data in ls.mod_data.fns.iter() {
+        let mut collector = FieldOccurrenceInFnCollector {
+            mod_outline: &ls.mod_outline,
+            fn_data,
+            occurrences,
+        };
 
-    for (doc, k_mod) in doc_mod_pairs {
-        let DocContentAnalysisMut { symbols, cps, .. } = ls.request_cps(doc).unwrap();
-
-        for fn_data in cps.mod_data.fns.iter() {
-            let mut collector = FieldOccurrenceInFnCollector {
-                k_mod,
-                mod_outline: &symbols.mod_outline,
-                // FIXME: 正しい mod_outlines を渡す
-                mod_outlines: &VecArena::new(),
-                fn_data,
-                occurrences,
-            };
-
-            for label_data in fn_data.labels.iter() {
-                collector.on_node(&label_data.body);
-            }
+        for label_data in fn_data.labels.iter() {
+            collector.on_node(&label_data.body);
         }
     }
 }
@@ -137,13 +113,12 @@ fn document_highlight_of_fields(
     let mut occurrences = vec![];
     collect_field_occurrences(Some(doc), ls, &mut occurrences);
 
-    let k_mod = ls.docs[&doc].mod_opt.unwrap();
     let syntax = ls.request_syntax(doc)?;
     let range = token.range(&syntax.tree.tokens);
 
-    let pair = occurrences.iter().find_map(|&(the_mod, k_field, loc)| {
+    let fields = occurrences.iter().find_map(|&(k_field, loc)| {
         let (the_doc, loc) = loc.inner().ok()?;
-        if the_mod != k_mod || the_doc != doc {
+        if the_doc != doc {
             return None;
         }
 
@@ -152,13 +127,13 @@ fn document_highlight_of_fields(
             return None;
         }
 
-        Some((k_mod, k_field))
+        Some(k_field)
     })?;
 
     let locations = occurrences
         .iter()
-        .filter(|&&(the_mod, the_field, _)| (the_mod, the_field) == pair)
-        .map(|&(_, _, loc)| loc)
+        .filter(|&&(the_field, _)| the_field == fields)
+        .map(|&(_, loc)| loc)
         .filter_map(|loc| loc_to_range(loc, &syntax.tree))
         .collect();
 
@@ -179,18 +154,38 @@ pub(crate) fn document_highlight(
         syntax,
         symbols,
         cps,
+        mod_outline,
+        mod_data,
     } = ls.request_cps(doc)?;
 
-    let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
+    let (name, _) = hit_test(doc, pos, syntax, symbols, cps, mod_outline, mod_data)?;
     let mut locations = vec![];
 
-    collect_def_sites(doc, name, syntax, symbols, cps, &mut locations);
+    collect_def_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
     let def_sites = locations
         .drain(..)
         .map(|location| location.range())
         .collect();
 
-    collect_use_sites(doc, name, syntax, symbols, cps, &mut locations);
+    collect_use_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
     let use_sites = locations
         .drain(..)
         .map(|location| location.range())

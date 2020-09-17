@@ -24,16 +24,6 @@ impl KStructEnum {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectStructEnum(pub(crate) KMod, pub(crate) KStructEnum);
-
-impl KProjectStructEnum {
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KStructEnumOutline {
-        let KProjectStructEnum(k_mod, struct_enum) = self;
-        struct_enum.of(&k_mod.of(mod_outlines).struct_enums)
-    }
-}
-
 #[derive(Clone)]
 pub(crate) struct KStructEnumOutline {
     pub(crate) name: String,

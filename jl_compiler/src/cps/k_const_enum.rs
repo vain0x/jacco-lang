@@ -18,16 +18,6 @@ impl KConstEnum {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct KProjectConstEnum(pub(crate) KMod, pub(crate) KConstEnum);
-
-impl KProjectConstEnum {
-    pub(crate) fn of(self, mod_outlines: &KModOutlines) -> &KConstEnumOutline {
-        let KProjectConstEnum(k_mod, const_enum) = self;
-        const_enum.of(&k_mod.of(mod_outlines).const_enums)
-    }
-}
-
 #[derive(Clone)]
 pub(crate) struct KConstEnumOutline {
     pub(crate) name: String,

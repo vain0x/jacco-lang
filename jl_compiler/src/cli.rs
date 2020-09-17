@@ -1,6 +1,7 @@
 use crate::{
     clang::clang_dump,
     cps::*,
+    front::name_resolution::NameSymbols,
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PTree},
     source::{Doc, TRange},
@@ -33,14 +34,22 @@ struct SyntaxData {
     logs: DocLogs,
 }
 
+type SemanticsArena = VecArena<DocTag, SemanticsData>;
+
+struct SemanticsData {
+    #[allow(unused)]
+    k_mod: KMod,
+    name_symbols: NameSymbols,
+}
+
 #[derive(Default)]
 pub struct Project {
     docs: DocArena,
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
-    mod_docs: VecArena<KModTag, Doc>,
-    mod_outlines: VecArena<KModTag, KModOutline>,
-    mods: VecArena<KModTag, KModData>,
+    semantics: SemanticsArena,
+    mod_outline: KModOutline,
+    mod_data: KModData,
 }
 
 impl Project {
@@ -135,7 +144,7 @@ impl Project {
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let logs = Logs::new();
 
-        let mut name_symbols_vec = vec![];
+        self.semantics.reserve(self.syntaxes.len());
 
         // アウトライン生成
         for (id, syntax) in self.syntaxes.enumerate_mut() {
@@ -143,46 +152,43 @@ impl Project {
             let doc_name = self.docs[id].name.to_string();
             let doc_logs = take(&mut syntax.logs);
 
-            let k_mod = self.mod_docs.alloc(doc);
-            let (mut mod_outline, name_symbols) =
-                super::front::generate_outline(doc, &syntax.tree, &doc_logs.logger());
-            mod_outline.name = doc_name;
-            let k_mod2 = self.mod_outlines.alloc(mod_outline);
-            assert_eq!(k_mod, k_mod2);
+            let k_mod = self.mod_outline.mods.alloc(KModInfo { name: doc_name });
+            let name_symbols = super::front::generate_outline(
+                doc,
+                &syntax.tree,
+                &mut self.mod_outline,
+                &doc_logs.logger(),
+            );
 
             syntax.logs = doc_logs;
-            name_symbols_vec.push(name_symbols);
+
+            let id2 = self.semantics.alloc(SemanticsData {
+                k_mod,
+                name_symbols,
+            });
+            assert_eq!(id2, id);
         }
 
         // エイリアス解決
-        let mod_ids = self.mod_outlines.keys().collect::<Vec<_>>();
-        for &k_mod in &mod_ids {
-            let mut aliases = take(&mut k_mod.of_mut(&mut self.mod_outlines).aliases);
-            resolve_aliases(&mut aliases, &self.mod_outlines, logs.logger());
-            k_mod.of_mut(&mut self.mod_outlines).aliases = aliases;
-        }
+        let mut aliases = take(&mut self.mod_outline.aliases);
+        resolve_aliases(&mut aliases, &self.mod_outline, logs.logger());
+        self.mod_outline.aliases = aliases;
 
         // CPS 変換
-        for ((i, k_mod), syntax) in mod_ids
-            .iter()
-            .copied()
-            .enumerate()
-            .zip(self.syntaxes.iter_mut())
+        for ((id, syntax), semantics) in
+            self.syntaxes.enumerate_mut().zip(self.semantics.iter_mut())
         {
-            let doc = self.mod_docs[k_mod];
+            let doc = Doc::from(id.to_index());
             let doc_logs = take(&mut syntax.logs);
 
-            let mod_data = super::front::convert_to_cps(
+            super::front::convert_to_cps(
                 doc,
-                k_mod,
                 &syntax.tree,
-                &mut name_symbols_vec[i],
-                k_mod.of(&self.mod_outlines),
-                &self.mod_outlines,
+                &mut semantics.name_symbols,
+                &self.mod_outline,
+                &mut self.mod_data,
                 &doc_logs.logger(),
             );
-            let k_mod3 = self.mods.alloc(mod_data);
-            assert_eq!(k_mod, k_mod3);
 
             logs.logger().extend_from_doc_logs(doc, doc_logs);
         }
@@ -193,21 +199,11 @@ impl Project {
             return Err(errors);
         }
 
-        let mut mods = take(&mut self.mods);
-        for ((k_mod, mod_outline), ref mut mod_data) in
-            self.mod_outlines.enumerate().zip(mods.iter_mut())
-        {
-            resolve_types(
-                k_mod,
-                mod_outline,
-                *mod_data,
-                &self.mod_outlines,
-                logs.logger(),
-            );
-        }
-        self.mods = mods;
+        let mut mod_data = take(&mut self.mod_data);
+        resolve_types(&self.mod_outline, &mut mod_data, logs.logger());
+        self.mod_data = mod_data;
 
-        super::cps::eval_cps(&mut self.mod_outlines, &mut self.mods, &logs.logger());
+        super::cps::eval_cps(&mut self.mod_outline, &mut self.mod_data, &logs.logger());
 
         if logs.is_fatal() {
             let mut errors = vec![];
@@ -215,13 +211,14 @@ impl Project {
             return Err(errors);
         }
 
-        for (mod_outline, mod_data) in self.mod_outlines.iter_mut().zip(self.mods.iter_mut()) {
-            KConstEnumOutline::determine_tags(&mut mod_outline.consts, &mod_outline.const_enums);
+        KConstEnumOutline::determine_tags(
+            &mut self.mod_outline.consts,
+            &self.mod_outline.const_enums,
+        );
 
-            eliminate_unit(mod_outline, mod_data);
-        }
+        eliminate_unit(&mut self.mod_outline, &mut self.mod_data);
 
-        Ok(clang_dump(&self.mod_outlines, &self.mods))
+        Ok(clang_dump(&self.mod_outline, &self.mod_data))
     }
 }
 

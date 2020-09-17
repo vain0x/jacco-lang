@@ -51,13 +51,12 @@ pub(crate) enum KTerm {
         text: String,
         loc: Loc,
     },
-    Name(KSymbol),
+    Name(KVarTerm),
     Alias {
         alias: KAlias,
         loc: Loc,
     },
     Const {
-        k_mod: KMod,
         k_const: KConst,
         loc: Loc,
     },
@@ -83,7 +82,6 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     RecordTag {
-        k_mod: KMod,
         k_struct: KStruct,
         loc: Loc,
     },
@@ -94,11 +92,9 @@ impl KTerm {
     // いまのところ CPS 変換からしか呼ばれていないので多相型をインスンタンス化する必要はなくて、型環境は受け取っていない
     pub(crate) fn ty<'a>(
         &self,
-        k_mod: KMod,
         mod_outline: &KModOutline,
         labels: &KLabelSigArena,
         local_vars: &KLocalVarArena,
-        mod_outlines: &KModOutlines,
     ) -> KTy2 {
         match self {
             KTerm::Unit { .. } => KTy2::Unit,
@@ -107,35 +103,26 @@ impl KTerm {
             KTerm::Char { ty, .. } => ty.clone(),
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
-            KTerm::Name(symbol) => symbol.local_var.ty(&local_vars),
+            KTerm::Name(term) => term.local_var.ty(&local_vars),
             KTerm::Alias { .. } => {
                 log::error!("エイリアス項の型は未実装");
                 KTy2::Unresolved {
                     cause: KTyCause::Alias,
                 }
             }
-            KTerm::Const { k_mod, k_const, .. } => k_const
-                .ty(&k_mod.of(mod_outlines).consts)
-                .erasure(*k_mod, mod_outlines),
-            KTerm::StaticVar { static_var, .. } => static_var
-                .ty(&mod_outline.static_vars)
-                .erasure(k_mod, mod_outlines),
+            KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).erasure(mod_outline),
+            KTerm::StaticVar { static_var, .. } => {
+                static_var.ty(&mod_outline.static_vars).erasure(mod_outline)
+            }
             KTerm::Fn { ty, .. } => ty.clone(),
             KTerm::Label { label, .. } => label.ty(labels),
-            KTerm::Return { k_fn, .. } => k_fn
-                .return_ty(&mod_outline.fns)
-                .erasure(k_mod, mod_outlines),
-            KTerm::ExternFn { extern_fn, .. } => extern_fn
-                .ty(&mod_outline.extern_fns)
-                .erasure(k_mod, mod_outlines),
-            KTerm::RecordTag {
-                k_mod, k_struct, ..
-            } => {
-                let mod_outline = k_mod.of(mod_outlines);
-                k_struct
-                    .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
-                    .erasure(*k_mod, mod_outlines)
+            KTerm::Return { k_fn, .. } => k_fn.return_ty(&mod_outline.fns).erasure(mod_outline),
+            KTerm::ExternFn { extern_fn, .. } => {
+                extern_fn.ty(&mod_outline.extern_fns).erasure(mod_outline)
             }
+            KTerm::RecordTag { k_struct, .. } => k_struct
+                .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
+                .erasure(mod_outline),
             KTerm::FieldTag(field_tag) => {
                 error!("don't obtain type of field tag {:?}", field_tag);
                 KTy2::Unresolved {
@@ -148,7 +135,7 @@ impl KTerm {
     pub(crate) fn loc(&self) -> Loc {
         match self {
             KTerm::Int { cause, .. } => cause.loc(),
-            KTerm::Name(KSymbol { cause, .. }) => cause.loc(),
+            KTerm::Name(KVarTerm { cause, .. }) => cause.loc(),
             KTerm::Unit { loc }
             | KTerm::Float { loc, .. }
             | KTerm::Char { loc, .. }
@@ -199,14 +186,12 @@ impl<'a>
             KTerm::Str { text, .. } => write!(f, "{:?}", text),
             KTerm::True { .. } => write!(f, "true"),
             KTerm::False { .. } => write!(f, "false"),
-            KTerm::Name(symbol) => match local_var_opt {
-                Some((local_vars, _)) => write!(f, "{}", symbol.local_var.of(local_vars).name),
-                None => write!(f, "symbol({:?})", symbol.cause),
+            KTerm::Name(term) => match local_var_opt {
+                Some((local_vars, _)) => write!(f, "{}", term.local_var.of(local_vars).name),
+                None => write!(f, "var({:?})", term.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
-            KTerm::Const {
-                k_mod: _, k_const, ..
-            } => write!(f, "const#{:?}", k_const),
+            KTerm::Const { k_const, .. } => write!(f, "const#{:?}", k_const),
             KTerm::StaticVar { static_var, .. } => {
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))
             }

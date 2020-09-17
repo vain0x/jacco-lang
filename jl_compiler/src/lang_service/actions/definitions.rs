@@ -7,11 +7,22 @@ pub(crate) fn definitions(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option
         syntax,
         symbols,
         cps,
+        mod_outline,
+        mod_data,
     } = ls.request_cps(doc)?;
 
-    let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
+    let (name, _) = hit_test(doc, pos, syntax, symbols, cps, mod_outline, mod_data)?;
     let mut def_sites = vec![];
-    collect_def_sites(doc, name, syntax, symbols, cps, &mut def_sites);
+    collect_def_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut def_sites,
+    );
 
     Some(def_sites)
 }

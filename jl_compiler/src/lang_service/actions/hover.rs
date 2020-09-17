@@ -35,10 +35,21 @@ fn collect_doc_comments(
         syntax,
         symbols,
         cps,
+        mod_outline,
+        mod_data,
     } = ls.request_cps(doc)?;
 
     let mut locations = vec![];
-    collect_def_sites(doc, symbol, syntax, symbols, cps, &mut locations);
+    collect_def_sites(
+        doc,
+        symbol,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
 
     let mut comments = vec![];
     for location in locations {
@@ -63,9 +74,9 @@ fn collect_doc_comments(
 
 fn write_param_sig(
     out: &mut impl Write,
-    params: &[KSymbol],
+    params: &[KVarTerm],
     local_vars: &KLocalVarArena,
-    mod_outlines: &KModOutlines,
+    mod_outline: &KModOutline,
 ) -> io::Result<()> {
     for (i, symbol) in params.iter().enumerate() {
         if i != 0 {
@@ -77,7 +88,7 @@ fn write_param_sig(
             out,
             "{}: {}",
             &local_var.name,
-            local_var.ty.display(KTyEnv::EMPTY, mod_outlines)
+            local_var.ty.display(KTyEnv::EMPTY, mod_outline)
         )?;
     }
     write!(out, ")")
@@ -85,14 +96,13 @@ fn write_param_sig(
 
 fn write_result_ty(
     out: &mut impl Write,
-    k_mod: KMod,
     result_ty: &KTy,
-    mod_outlines: &KModOutlines,
+    mod_outline: &KModOutline,
 ) -> io::Result<()> {
     if !result_ty.is_unit() {
         let ty = result_ty
-            .erasure(k_mod, mod_outlines)
-            .display(KTyEnv::EMPTY, mod_outlines);
+            .erasure(mod_outline)
+            .display(KTyEnv::EMPTY, mod_outline);
         write!(out, " -> {}", ty)?;
     }
     Ok(())
@@ -101,87 +111,77 @@ fn write_result_ty(
 pub(crate) fn hover(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<Content> {
     ls.request_types_for(doc);
 
-    let DocContentAnalysisMut {
-        syntax,
-        symbols,
-        cps,
-    } = ls.request_cps(doc)?;
-    let (symbol, _) = hit_test(doc, pos, syntax, symbols, cps)?;
+    let (symbol, comments) = {
+        let DocContentAnalysisMut {
+            syntax,
+            symbols,
+            cps,
+            mod_outline,
+            mod_data,
+        } = ls.request_cps(doc)?;
+        let (symbol, _) = hit_test(doc, pos, syntax, symbols, cps, mod_outline, mod_data)?;
 
-    let comments = collect_doc_comments(doc, symbol, ls).unwrap_or_default();
+        let comments = collect_doc_comments(doc, symbol, ls).unwrap_or_default();
+        (symbol, comments)
+    };
 
-    let mut contents_opt = None;
-    match symbol {
+    let mod_outline = &ls.mod_outline;
+    let mod_data = &ls.mod_data;
+
+    let contents_opt = match symbol {
         SymbolOccurrence::LocalVar(local_var, parent) => {
-            ls.do_with_mods(|ls, mod_outlines, mods| {
-                let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
-                let mod_data = k_mod.of_mut(mods);
+            let ty_env = match parent {
+                KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).ty_env,
+                KLocalVarParent::ExternFn(_) => KTyEnv::EMPTY,
+            };
 
-                let ty_env = match parent {
-                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).ty_env,
-                    KLocalVarParent::ExternFn(_) => KTyEnv::EMPTY,
-                };
+            let local_vars = match parent {
+                KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
+                KLocalVarParent::ExternFn(extern_fn) => {
+                    &extern_fn.of(&mod_data.extern_fns).local_vars
+                }
+            };
 
-                let local_vars = match parent {
-                    KLocalVarParent::Fn(k_fn) => &k_fn.of(&mod_data.fns).local_vars,
-                    KLocalVarParent::ExternFn(extern_fn) => {
-                        &extern_fn.of(&mod_data.extern_fns).local_vars
-                    }
-                };
-
-                contents_opt = Some(Content::JaccoCode(
-                    local_var.ty(local_vars).display(ty_env, mod_outlines),
-                ));
-            });
+            Some(Content::JaccoCode(
+                local_var.ty(local_vars).display(ty_env, mod_outline),
+            ))
         }
-        SymbolOccurrence::ModLocal(KModSymbol::Const(_)) => {}
-        SymbolOccurrence::ModLocal(KModSymbol::StaticVar(_)) => {}
+        SymbolOccurrence::ModLocal(KModSymbol::Const(_))
+        | SymbolOccurrence::ModLocal(KModSymbol::StaticVar(_)) => None,
         SymbolOccurrence::ModLocal(KModSymbol::Fn(k_fn)) => {
             let mut out = Vec::new();
+            let fn_outline = k_fn.of(&mod_outline.fns);
+            let fn_data = k_fn.of(&mod_data.fns);
 
-            ls.do_with_mods(|ls, mod_outlines, mods| {
-                let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
-                let mod_outline = k_mod.of(mod_outlines);
-                let mod_data = k_mod.of(mods);
-                let fn_outline = k_fn.of(&mod_outline.fns);
-                let fn_data = k_fn.of(&mod_data.fns);
+            let text = {
+                write!(out, "fn {}(", &fn_outline.name).unwrap();
+                write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outline)
+                    .unwrap();
+                write_result_ty(&mut out, &fn_outline.result_ty, mod_outline).unwrap();
+                write!(out, ";").unwrap();
+                unsafe { String::from_utf8_unchecked(out) }
+            };
 
-                let text = {
-                    write!(out, "fn {}(", &fn_outline.name).unwrap();
-                    write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outlines)
-                        .unwrap();
-                    write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
-                    write!(out, ";").unwrap();
-                    unsafe { String::from_utf8_unchecked(out) }
-                };
-
-                contents_opt = Some(Content::JaccoCode(text));
-            });
+            Some(Content::JaccoCode(text))
         }
         SymbolOccurrence::ModLocal(KModSymbol::ExternFn(extern_fn)) => {
             let mut out = Vec::new();
+            let fn_outline = extern_fn.of(&mod_outline.extern_fns);
+            let fn_data = extern_fn.of(&mod_data.extern_fns);
 
-            ls.do_with_mods(|ls, mod_outlines, mods| {
-                let k_mod = ls.docs.get(&doc).unwrap().mod_opt.unwrap();
-                let mod_outline = k_mod.of(mod_outlines);
-                let mod_data = k_mod.of(mods);
-                let fn_outline = extern_fn.of(&mod_outline.extern_fns);
-                let fn_data = extern_fn.of(&mod_data.extern_fns);
+            let text = {
+                write!(out, "extern fn {}(", &fn_outline.name).unwrap();
+                write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outline)
+                    .unwrap();
+                write_result_ty(&mut out, &fn_outline.result_ty, mod_outline).unwrap();
+                write!(out, ";").unwrap();
+                unsafe { String::from_utf8_unchecked(out) }
+            };
 
-                let text = {
-                    write!(out, "extern fn {}(", &fn_outline.name).unwrap();
-                    write_param_sig(&mut out, &fn_data.params, &fn_data.local_vars, mod_outlines)
-                        .unwrap();
-                    write_result_ty(&mut out, k_mod, &fn_outline.result_ty, mod_outlines).unwrap();
-                    write!(out, ";").unwrap();
-                    unsafe { String::from_utf8_unchecked(out) }
-                };
-
-                contents_opt = Some(Content::JaccoCode(text));
-            });
+            Some(Content::JaccoCode(text))
         }
-        _ => {}
-    }
+        _ => None,
+    };
 
     let mut contents = vec![];
     if !comments.is_empty() {
