@@ -94,12 +94,10 @@ impl LangService {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
 
-    // #[allow(unused)]
-    // pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<DocSymbolAnalysisMut<'_>> {
-    //     self.docs
-    //         .get_mut(&doc)
-    //         .map(|cache| cache.request_symbols(&mut self.mod_outlines))
-    // }
+    pub(super) fn request_symbols(&mut self, doc: Doc) -> Option<DocSymbolAnalysisMut<'_>> {
+        let analysis = self.docs.get_mut(&doc)?;
+        Some(analysis.request_symbols(&mut self.mod_outline))
+    }
 
     // pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
     //     // fast path
@@ -633,7 +631,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_validate_good() {
         let mut lang_service = new_service_from_str("pub fn main() -> i32 { 0 }");
@@ -641,7 +638,6 @@ mod tests {
         assert_eq!(errors.len(), 0);
     }
 
-    #[ignore]
     #[test]
     fn test_validate_syntax_errors() {
         let mut lang_service = new_service_from_str("fn f() { bad!! syntax!! }");
