@@ -926,13 +926,11 @@ mod tests {
         assert_eq!(result.as_ref().map(Content::to_string).as_deref(), expected);
     }
 
-    #[ignore]
     #[test]
     fn test_hover_param() {
         do_test_hover("fn f(x: i32) -> i32 { <|>x }", Some("```jacco\ni32\n```"));
     }
 
-    #[ignore]
     #[test]
     fn test_hover_local_var() {
         do_test_hover(
@@ -941,7 +939,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_hover_fn() {
         do_test_hover(
@@ -950,7 +947,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_hover_fn_with_result_ty() {
         do_test_hover(
@@ -959,7 +955,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_hover_fn_with_doc_comments() {
         do_test_hover(
@@ -979,7 +974,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_hover_extern_fn() {
         do_test_hover(
@@ -988,11 +982,10 @@ mod tests {
         );
     }
 
-    // should not panic
-
-    #[ignore]
     #[test]
     fn test_multiple_requests() {
+        //! should not panic
+
         let text = r#"<|>
             /// 🐍<|>🐧
             struct <|>A {

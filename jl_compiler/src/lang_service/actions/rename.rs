@@ -11,23 +11,43 @@ pub(crate) fn rename(
     new_name: String,
     ls: &mut LangService,
 ) -> Option<Vec<(Location, i64, String)>> {
-    //     let version = ls.doc_to_version(doc)?;
-    //     let DocContentAnalysisMut {
-    //         syntax,
-    //         symbols,
-    //         cps,
-    //     } = ls.request_cps(doc)?;
+    let version = ls.doc_to_version(doc)?;
 
-    //     let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
+    let DocContentAnalysisMut {
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+    } = ls.request_cps(doc)?;
 
-    //     let mut locations = vec![];
-    //     collect_def_sites(doc, name, syntax, symbols, cps, &mut locations);
-    //     collect_use_sites(doc, name, syntax, symbols, cps, &mut locations);
+    let (name, _) = hit_test(doc, pos, syntax, symbols, cps, mod_outline, mod_data)?;
 
-    //     let edits = locations
-    //         .into_iter()
-    //         .map(|location| (location, version, new_name.to_string()))
-    //         .collect();
-    //     Some(edits)
-    None
+    let mut locations = vec![];
+    collect_def_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
+    collect_use_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
+
+    let edits = locations
+        .into_iter()
+        .map(|location| (location, version, new_name.to_string()))
+        .collect();
+    Some(edits)
 }
