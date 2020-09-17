@@ -99,60 +99,24 @@ impl LangService {
         Some(analysis.request_symbols(&mut self.mod_outline))
     }
 
-    // pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
-    //     // fast path
-    //     // {
-    //     //     let opt = self.docs.get_mut(&doc).unwrap().doc_content_analysis_mut();
-    //     //     if opt.is_some() {
-    //     //         return opt;
-    //     //     }
-    //     // }
-
-    //     self.request_symbols(doc)?;
-
-    //     self.do_with_mod_outlines(|ls, mod_outlines| {
-    //         let doc_data = ls.docs.get_mut(&doc).unwrap();
-    //         doc_data.request_cps(&mut mod_outlines, &mut ls.mods);
-    //     });
-
-    //     self.docs.get_mut(&doc)?.doc_content_analysis_mut()
-    // }
-
-    // pub(super) fn do_with_mod_outlines(
-    //     &mut self,
-    //     f: impl FnOnce(&mut LangService, &mut KModOutlines),
-    // ) {
-    //     let mod_outlines = take(&mut self.mod_outlines);
-    //     f(self, &mut mod_outlines);
-    //     self.mod_outlines = mod_outlines;
-    // }
-
-    // pub(super) fn do_with_mods(
-    //     &mut self,
-    //     f: impl FnOnce(&mut LangService, &mut KModOutlines, &mut KModArena),
-    // ) {
-    //     let mod_outlines = take(&mut self.mod_outlines);
-    //     let mods = take(&mut self.mods);
-    //     f(self, &mut mod_outlines, &mut mods);
-    //     self.mod_outlines = mod_outlines;
-    //     self.mods = mods;
-    // }
+    pub(super) fn request_cps(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
+        let analysis = self.docs.get_mut(&doc)?;
+        Some(analysis.request_cps(&mut self.mod_outline, &mut self.mod_data))
+    }
 
     /// 単一のドキュメントを型検査する。
     pub(super) fn request_types_for(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
-        // let everything_is_unchanged = self.dirty_sources.is_empty();
-        // if everything_is_unchanged {
-        //     return self.request_cps(doc);
-        // }
+        let everything_is_unchanged = self.dirty_sources.is_empty();
+        if everything_is_unchanged {
+            return self.request_cps(doc);
+        }
 
-        // self.do_with_mod_outlines(|ls, mod_outlines| {
-        //     ls.docs
-        //         .get_mut(&doc)
-        //         .unwrap()
-        //         .resolve_types(mod_outlines, &mut ls.mods);
-        // });
-        // self.request_cps(doc)
-        None
+        let analysis = self.docs.get_mut(&doc)?;
+        analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
+
+        let analysis = analysis.doc_content_analysis_mut();
+        assert!(analysis.is_some());
+        analysis
     }
 
     /// すべてのドキュメントを型検査する。
@@ -645,7 +609,6 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
-    #[ignore]
     #[test]
     fn test_validate_name_resolution_errors() {
         let mut lang_service = new_service_from_str("fn f() { g(); }");
@@ -653,7 +616,6 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
-    #[ignore]
     #[test]
     fn test_validate_type_errors() {
         let mut lang_service = new_service_from_str("fn f() -> i32 { \"\" }");

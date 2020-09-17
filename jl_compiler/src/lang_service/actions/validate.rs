@@ -11,24 +11,22 @@ pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRa
     }
 
     if errors.is_empty() {
-        if let Some(DocSymbolAnalysisMut { symbols, .. }) = ls.request_symbols(doc) {
-            errors.extend(symbols.errors.clone());
+        if let Some(analysis) = ls.request_symbols(doc) {
+            errors.extend_from_slice(&analysis.symbols.errors);
         }
     }
 
-    // // CPS 変換のエラーを報告する。
-    // if errors.is_empty() {
-    //     if let Some(analysis) = ls.request_cps(doc) {
-    //         errors.extend(analysis.cps.errors.clone());
-    //     }
-    // }
+    if errors.is_empty() {
+        if let Some(analysis) = ls.request_cps(doc) {
+            errors.extend_from_slice(&analysis.cps.errors);
+        }
+    }
 
-    // // 型エラーを報告する。
-    // if errors.is_empty() {
-    //     if let Some(analysis) = ls.request_types_for(doc) {
-    //         errors.extend_from_slice(&analysis.cps.errors);
-    //     }
-    // }
+    if errors.is_empty() {
+        if let Some(analysis) = ls.request_types_for(doc) {
+            errors.extend_from_slice(&analysis.cps.errors);
+        }
+    }
 
     (version_opt, errors)
 }
