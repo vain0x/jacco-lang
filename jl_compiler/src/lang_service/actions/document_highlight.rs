@@ -146,31 +146,50 @@ pub(crate) fn document_highlight(
     pos: TPos16,
     ls: &mut LangService,
 ) -> Option<(Vec<TRange>, Vec<TRange>)> {
-    // if let Some(token) = hit_test_on_field(doc, pos, ls) {
-    //     return document_highlight_of_fields(doc, token, ls);
-    // }
+    if let Some(token) = hit_test_on_field(doc, pos, ls) {
+        return document_highlight_of_fields(doc, token, ls);
+    }
 
-    // let DocContentAnalysisMut {
-    //     syntax,
-    //     symbols,
-    //     cps,
-    // } = ls.request_cps(doc)?;
+    let DocContentAnalysisMut {
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+    } = ls.request_cps(doc)?;
 
-    // let (name, _) = hit_test(doc, pos, syntax, symbols, cps)?;
-    // let mut locations = vec![];
+    let (name, _) = hit_test(doc, pos, syntax, symbols, cps, mod_outline, mod_data)?;
+    let mut locations = vec![];
 
-    // collect_def_sites(doc, name, syntax, symbols, cps, &mut locations);
-    // let def_sites = locations
-    //     .drain(..)
-    //     .map(|location| location.range())
-    //     .collect();
+    collect_def_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
+    let def_sites = locations
+        .drain(..)
+        .map(|location| location.range())
+        .collect();
 
-    // collect_use_sites(doc, name, syntax, symbols, cps, &mut locations);
-    // let use_sites = locations
-    //     .drain(..)
-    //     .map(|location| location.range())
-    //     .collect();
+    collect_use_sites(
+        doc,
+        name,
+        syntax,
+        symbols,
+        cps,
+        mod_outline,
+        mod_data,
+        &mut locations,
+    );
+    let use_sites = locations
+        .drain(..)
+        .map(|location| location.range())
+        .collect();
 
-    // Some((def_sites, use_sites))
-    None
+    Some((def_sites, use_sites))
 }

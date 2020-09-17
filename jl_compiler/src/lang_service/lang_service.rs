@@ -121,15 +121,12 @@ impl LangService {
 
     /// すべてのドキュメントを型検査する。
     pub(super) fn request_types(&mut self) {
-        // let docs = self.docs.keys().copied().collect::<Vec<_>>();
-        // self.do_with_mod_outlines(|ls, mod_outlines| {
-        //     for &doc in &docs {
-        //         ls.docs
-        //             .get_mut(&doc)
-        //             .unwrap()
-        //             .resolve_types(mod_outlines, &mut ls.mods);
-        //     }
-        // });
+        let docs = self.docs.keys().copied().collect::<Vec<_>>();
+
+        for &doc in &docs {
+            let analysis = self.docs.get_mut(&doc).unwrap();
+            analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
+        }
     }
 
     // mod_outline が疎になってきたら一度すべて捨てる。(シンボルの ID 空間を再利用していないため。ID 空間の再利用や差分更新などを検討する必要があるかもしれない。バッチコンパイルでは ID 空間の過疎化は問題にならないので、いまのところハッシュマップは使わない予定。)
@@ -546,13 +543,11 @@ mod tests {
         assert_eq!(actual, cursors);
     }
 
-    #[ignore]
     #[test]
     fn test_highlight_fn_decl() {
         do_test_highlight("fn <$cursor|><$def[f]>() {}");
     }
 
-    #[ignore]
     #[test]
     fn test_highlight_fields() {
         do_test_highlight(
