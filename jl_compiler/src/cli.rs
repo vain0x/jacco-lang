@@ -1,6 +1,7 @@
 use crate::{
     clang::clang_dump,
     cps::*,
+    front::name_resolution::NameSymbols,
     logs::{DocLogs, Logs},
     parse::{parse_tokens, PTree},
     source::{Doc, TRange},
@@ -33,11 +34,20 @@ struct SyntaxData {
     logs: DocLogs,
 }
 
+type SemanticsArena = VecArena<DocTag, SemanticsData>;
+
+struct SemanticsData {
+    #[allow(unused)]
+    k_mod: KMod,
+    name_symbols: NameSymbols,
+}
+
 #[derive(Default)]
 pub struct Project {
     docs: DocArena,
     doc_name_map: HashMap<String, Doc>,
     syntaxes: SyntaxArena,
+    semantics: SemanticsArena,
     mod_outline: KModOutline,
     mod_data: KModData,
 }
@@ -134,7 +144,7 @@ impl Project {
     pub fn compile_v2(&mut self) -> Result<String, Vec<(Doc, PathBuf, TRange, String)>> {
         let logs = Logs::new();
 
-        let mut name_symbols_vec = HashMap::new();
+        self.semantics.reserve(self.syntaxes.len());
 
         // アウトライン生成
         for (id, syntax) in self.syntaxes.enumerate_mut() {
@@ -142,16 +152,21 @@ impl Project {
             let doc_name = self.docs[id].name.to_string();
             let doc_logs = take(&mut syntax.logs);
 
+            let k_mod = self.mod_outline.mods.alloc(KModInfo { name: doc_name });
             let name_symbols = super::front::generate_outline(
                 doc,
                 &syntax.tree,
                 &mut self.mod_outline,
                 &doc_logs.logger(),
             );
-            self.mod_outline.name = doc_name;
 
             syntax.logs = doc_logs;
-            name_symbols_vec.insert(doc, name_symbols);
+
+            let id2 = self.semantics.alloc(SemanticsData {
+                k_mod,
+                name_symbols,
+            });
+            assert_eq!(id2, id);
         }
 
         // エイリアス解決
@@ -160,14 +175,16 @@ impl Project {
         self.mod_outline.aliases = aliases;
 
         // CPS 変換
-        for (id, syntax) in self.syntaxes.enumerate_mut() {
+        for ((id, syntax), semantics) in
+            self.syntaxes.enumerate_mut().zip(self.semantics.iter_mut())
+        {
             let doc = Doc::from(id.to_index());
             let doc_logs = take(&mut syntax.logs);
 
             super::front::convert_to_cps(
                 doc,
                 &syntax.tree,
-                name_symbols_vec.get_mut(&doc).unwrap(),
+                &mut semantics.name_symbols,
                 &self.mod_outline,
                 &mut self.mod_data,
                 &doc_logs.logger(),

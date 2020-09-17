@@ -1,9 +1,21 @@
 use super::*;
-use crate::logs::Logger;
+use crate::{logs::Logger, utils::VecArena, utils::VecArenaId};
+
+pub(crate) struct KModTag;
+
+pub(crate) type KMod = VecArenaId<KModTag>;
+
+pub(crate) type KModInfoArena = VecArena<KModTag, KModInfo>;
+
+#[allow(unused)]
+#[derive(Default)]
+pub(crate) struct KModInfo {
+    pub(crate) name: String,
+}
 
 #[derive(Default)]
 pub(crate) struct KModOutline {
-    pub(crate) name: String,
+    pub(crate) mods: KModInfoArena,
     pub(crate) aliases: KAliasArena,
     pub(crate) consts: KConstOutlineArena,
     pub(crate) static_vars: KStaticVarOutlineArena,
@@ -17,7 +29,8 @@ pub(crate) struct KModOutline {
 
 impl KModOutline {
     pub(crate) fn symbol_count(&self) -> usize {
-        self.aliases.len()
+        self.mods.len()
+            + self.aliases.len()
             + self.consts.len()
             + self.static_vars.len()
             + self.fns.len()
