@@ -672,7 +672,6 @@ mod tests {
         assert_eq!(to_vec(actual), to_vec(expected));
     }
 
-    #[ignore]
     #[test]
     fn test_references_const() {
         let text = r#"
@@ -685,7 +684,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_static() {
         let text = r#"
@@ -702,7 +700,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_fn() {
         let text = r#"
@@ -728,7 +725,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_param() {
         let text = r#"
@@ -753,7 +749,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_extern_fn() {
         let text = r#"
@@ -766,7 +761,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_enum_name() {
         let text = r#"
@@ -784,7 +778,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_const_variant() {
         let text = r#"
@@ -802,7 +795,6 @@ mod tests {
 
     // パスの解決を変更したことで I32Option::Some などが Some バリアントではなく I32Option 型の出現箇所とみなされるようになってしまった
     #[should_panic(expected = "assertion failed")]
-    #[ignore]
     #[test]
     fn test_references_record_variant() {
         let text = r#"
@@ -843,7 +835,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_record_struct() {
         let text = r#"
@@ -872,7 +863,6 @@ mod tests {
     }
 
     #[ignore = "mod_outline_gen をいじってから名前のない関数がシンボルとして登録されなくなってしまった"]
-    #[ignore]
     #[test]
     fn test_references_on_fn_with_name_missing() {
         let text = r#"
@@ -881,7 +871,6 @@ mod tests {
         do_test_references(text);
     }
 
-    #[ignore]
     #[test]
     fn test_references_no_hit_on_operator() {
         let text = r#"
@@ -901,7 +890,6 @@ mod tests {
         assert_eq!(refs.len(), 0, "{:?}", refs);
     }
 
-    #[ignore]
     #[test]
     fn test_references() {
         let text = r#"
