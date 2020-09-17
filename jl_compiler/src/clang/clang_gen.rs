@@ -22,7 +22,7 @@ struct Cx<'a> {
     local_vars: KLocalVarArena,
     local_var_ident_ids: Vec<Option<usize>>,
     label_raw_names: VecArena<KLabelTag, String>,
-    label_param_lists: VecArena<KLabelTag, Vec<KSymbol>>,
+    label_param_lists: VecArena<KLabelTag, Vec<KVarTerm>>,
     label_ident_ids: Vec<Option<usize>>,
     stmts: Vec<CStmt>,
     decls: Vec<CStmt>,
@@ -87,8 +87,8 @@ fn do_unique_name(
     format_unique_name(raw_name, ident_id)
 }
 
-fn unique_name(symbol: &KSymbol, cx: &mut Cx) -> String {
-    unique_local_var_name(symbol.local_var, cx)
+fn unique_name(term: &KVarTerm, cx: &mut Cx) -> String {
+    unique_local_var_name(term.local_var, cx)
 }
 
 fn unique_static_var_name(static_var: KStaticVar, cx: &mut Cx) -> String {
@@ -151,9 +151,9 @@ fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
     )
 }
 
-fn emit_var_decl(symbol: &KSymbol, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
-    let is_alive = symbol.local_var.of(&cx.local_vars).is_alive;
-    let (name, ty) = gen_param(symbol, ty_env, cx);
+fn emit_var_decl(term: &KVarTerm, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
+    let is_alive = term.local_var.of(&cx.local_vars).is_alive;
+    let (name, ty) = gen_param(term, ty_env, cx);
 
     // 不要な変数なら束縛しない。
     if !is_alive {
@@ -298,7 +298,7 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     }
 }
 
-fn gen_param(param: &KSymbol, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
+fn gen_param(param: &KVarTerm, ty_env: &KTyEnv, cx: &mut Cx) -> (String, CTy) {
     let name = unique_name(param, cx);
     let ty = param.ty(&cx.local_vars);
     (name, gen_ty2(&ty, &ty_env, cx))
@@ -413,7 +413,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             CExpr::Other("/* error */ 0")
         }
         KTerm::ExternFn { extern_fn, .. } => gen_extern_fn_term(*extern_fn, cx),
-        KTerm::Name(symbol) => CExpr::Name(unique_name(&symbol, cx)),
+        KTerm::Name(term) => CExpr::Name(unique_name(&term, cx)),
         KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.mod_outline.structs),
         KTerm::FieldTag(KFieldTag { name, loc }) => {
             error!("can't gen field term to c {} ({:?})", name, loc);
@@ -425,7 +425,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
 fn gen_unary_op(
     op: CUnaryOp,
     args: &[KTerm],
-    results: &[KSymbol],
+    results: &[KVarTerm],
     conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
@@ -444,7 +444,7 @@ fn gen_unary_op(
 fn gen_binary_op(
     op: CBinaryOp,
     args: &[KTerm],
-    results: &[KSymbol],
+    results: &[KVarTerm],
     conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
@@ -464,7 +464,7 @@ fn gen_binary_op(
 fn emit_assign(
     op: CBinaryOp,
     args: &[KTerm],
-    _results: &[KSymbol],
+    _results: &[KVarTerm],
     conts: &[KNode],
     ty_env: &KTyEnv,
     cx: &mut Cx,
@@ -472,10 +472,10 @@ fn emit_assign(
     match (args, conts) {
         ([left, right], [cont]) => {
             match left {
-                KTerm::Name(symbol) if !symbol.local_var.of(&cx.local_vars).is_alive => {
+                KTerm::Name(term) if !term.local_var.of(&cx.local_vars).is_alive => {
                     cx.stmts.push(CStmt::Comment(format!(
                         "assignment to {} is eliminated.",
-                        symbol.local_var.of(&cx.local_vars).name
+                        term.local_var.of(&cx.local_vars).name
                     )));
                 }
                 _ => {
@@ -747,7 +747,7 @@ fn gen_node_as_block(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) -> CBlock {
 }
 
 fn gen_fn_sig(
-    params: &[KSymbol],
+    params: &[KVarTerm],
     result_ty: &KTy,
     ty_env: &KTyEnv,
     cx: &mut Cx,
@@ -858,9 +858,9 @@ fn gen_root_for_decls(root: &KModData, cx: &mut Cx) {
         let params = fn_data
             .params
             .iter()
-            .map(|symbol| {
-                let name = symbol.local_var.name(&fn_data.local_vars).to_string();
-                let ty = gen_ty2(&symbol.local_var.ty(&fn_data.local_vars), &empty_ty_env, cx);
+            .map(|param| {
+                let name = param.local_var.name(&fn_data.local_vars).to_string();
+                let ty = gen_ty2(&param.local_var.ty(&fn_data.local_vars), &empty_ty_env, cx);
                 (name, ty)
             })
             .collect();

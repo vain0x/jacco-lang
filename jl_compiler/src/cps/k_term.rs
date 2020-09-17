@@ -51,7 +51,7 @@ pub(crate) enum KTerm {
         text: String,
         loc: Loc,
     },
-    Name(KSymbol),
+    Name(KVarTerm),
     Alias {
         alias: KAlias,
         loc: Loc,
@@ -103,7 +103,7 @@ impl KTerm {
             KTerm::Char { ty, .. } => ty.clone(),
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
-            KTerm::Name(symbol) => symbol.local_var.ty(&local_vars),
+            KTerm::Name(term) => term.local_var.ty(&local_vars),
             KTerm::Alias { .. } => {
                 log::error!("エイリアス項の型は未実装");
                 KTy2::Unresolved {
@@ -135,7 +135,7 @@ impl KTerm {
     pub(crate) fn loc(&self) -> Loc {
         match self {
             KTerm::Int { cause, .. } => cause.loc(),
-            KTerm::Name(KSymbol { cause, .. }) => cause.loc(),
+            KTerm::Name(KVarTerm { cause, .. }) => cause.loc(),
             KTerm::Unit { loc }
             | KTerm::Float { loc, .. }
             | KTerm::Char { loc, .. }
@@ -186,9 +186,9 @@ impl<'a>
             KTerm::Str { text, .. } => write!(f, "{:?}", text),
             KTerm::True { .. } => write!(f, "true"),
             KTerm::False { .. } => write!(f, "false"),
-            KTerm::Name(symbol) => match local_var_opt {
-                Some((local_vars, _)) => write!(f, "{}", symbol.local_var.of(local_vars).name),
-                None => write!(f, "symbol({:?})", symbol.cause),
+            KTerm::Name(term) => match local_var_opt {
+                Some((local_vars, _)) => write!(f, "{}", term.local_var.of(local_vars).name),
+                None => write!(f, "var({:?})", term.cause),
             },
             KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
             KTerm::Const { k_const, .. } => write!(f, "const#{:?}", k_const),

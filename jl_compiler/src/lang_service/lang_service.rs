@@ -307,10 +307,10 @@ fn collect_symbols(
     mod_data: &KModData,
     sites: &mut Sites,
 ) {
-    fn on_symbol(symbol: KSymbol, parent: KLocalVarParent, sites: &mut Sites) {
+    fn on_symbol(symbol: KVarTerm, parent: KLocalVarParent, sites: &mut Sites) {
         let kind = match symbol.cause {
-            KSymbolCause::NameDef(..) => DefOrUse::Def,
-            KSymbolCause::NameUse(..) => DefOrUse::Use,
+            KVarTermCause::NameDef(..) => DefOrUse::Def,
+            KVarTermCause::NameUse(..) => DefOrUse::Use,
             _ => return,
         };
 
@@ -319,7 +319,7 @@ fn collect_symbols(
         sites.push((symbol, kind, loc));
     }
 
-    fn on_params(params: &[KSymbol], parent: KLocalVarParent, sites: &mut Sites) {
+    fn on_params(params: &[KVarTerm], parent: KLocalVarParent, sites: &mut Sites) {
         for symbol in params {
             on_symbol(*symbol, parent, sites);
         }

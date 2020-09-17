@@ -1,4 +1,4 @@
-use super::{KFieldTag, KFn, KLabel, KMut, KNode, KSymbol, KTerm, KTy2};
+use super::{KFieldTag, KFn, KLabel, KMut, KNode, KTerm, KTy2, KVarTerm};
 use crate::source::Loc;
 use std::iter::once;
 
@@ -90,7 +90,7 @@ pub(crate) fn new_jump_tail(
     }
 }
 
-pub(crate) fn new_call_node(args: Vec<KTerm>, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_call_node(args: Vec<KTerm>, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::CallDirect,
         tys: vec![],
@@ -128,7 +128,7 @@ pub(crate) fn new_return_tail(k_fn: KFn, arg: KTerm, loc: Loc) -> KNode {
 pub(crate) fn new_record_node(
     ty: KTy2,
     args: Vec<KTerm>,
-    result: KSymbol,
+    result: KVarTerm,
     cont: KNode,
     loc: Loc,
 ) -> KNode {
@@ -147,7 +147,7 @@ pub(crate) fn new_field_node(
     right: String,
     right_loc: Loc,
     k_mut: KMut,
-    result: KSymbol,
+    result: KVarTerm,
     cont: KNode,
     loc: Loc,
 ) -> KNode {
@@ -193,7 +193,7 @@ pub(crate) fn new_switch_tail(args: Vec<KTerm>, conts: Vec<KNode>, loc: Loc) -> 
     }
 }
 
-pub(crate) fn new_let_node(init: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_let_node(init: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Let,
         tys: vec![],
@@ -204,7 +204,7 @@ pub(crate) fn new_let_node(init: KTerm, result: KSymbol, cont: KNode, loc: Loc) 
     }
 }
 
-pub(crate) fn new_deref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_deref_node(arg: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Deref,
         tys: vec![],
@@ -215,7 +215,7 @@ pub(crate) fn new_deref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc)
     }
 }
 
-pub(crate) fn new_ref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_ref_node(arg: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Ref,
         tys: vec![],
@@ -226,7 +226,7 @@ pub(crate) fn new_ref_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -
     }
 }
 
-pub(crate) fn new_ref_mut_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_ref_mut_node(arg: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::RefMut,
         tys: vec![],
@@ -237,7 +237,7 @@ pub(crate) fn new_ref_mut_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Lo
     }
 }
 
-pub(crate) fn new_minus_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_minus_node(arg: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Minus,
         tys: vec![],
@@ -248,7 +248,7 @@ pub(crate) fn new_minus_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc)
     }
 }
 
-pub(crate) fn new_not_node(arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_not_node(arg: KTerm, result: KVarTerm, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Not,
         tys: vec![],
@@ -280,7 +280,7 @@ pub(crate) fn new_basic_binary_op_node(
     prim: KPrim,
     left: KTerm,
     right: KTerm,
-    result: KSymbol,
+    result: KVarTerm,
     cont: KNode,
     loc: Loc,
 ) -> KNode {
@@ -297,14 +297,20 @@ pub(crate) fn new_basic_binary_op_node(
 pub(crate) fn new_add_node(
     left: KTerm,
     right: KTerm,
-    result: KSymbol,
+    result: KVarTerm,
     cont: KNode,
     loc: Loc,
 ) -> KNode {
     new_basic_binary_op_node(KPrim::Add, left, right, result, cont, loc)
 }
 
-pub(crate) fn new_cast_node(ty: KTy2, arg: KTerm, result: KSymbol, cont: KNode, loc: Loc) -> KNode {
+pub(crate) fn new_cast_node(
+    ty: KTy2,
+    arg: KTerm,
+    result: KVarTerm,
+    cont: KNode,
+    loc: Loc,
+) -> KNode {
     KNode {
         prim: KPrim::Cast,
         tys: vec![ty],

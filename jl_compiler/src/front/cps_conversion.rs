@@ -115,7 +115,7 @@ fn convert_number_lit(
 #[derive(Default)]
 struct KLabelConstruction {
     name: String,
-    params: Vec<KSymbol>,
+    params: Vec<KVarTerm>,
     body: Vec<KNode>,
 }
 
@@ -383,15 +383,15 @@ pub(crate) fn convert_ty_or_unit(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> 
 // 入れ子のパターンはまだコンパイルできない
 enum Branch {
     Case(KTerm),
-    Default(KSymbol),
+    Default(KVarTerm),
 }
 
 fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
-    let symbol = {
-        let cause = KSymbolCause::WildcardPat(xx.doc, token);
-        fresh_symbol("_", cause, xx)
+    let term = {
+        let cause = KVarTermCause::WildcardPat(xx.doc, token);
+        fresh_var("_", cause, xx)
     };
-    Branch::Default(symbol)
+    Branch::Default(term)
 }
 
 fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
@@ -399,11 +399,11 @@ fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
         error_unresolved_value(PLoc::Name(key), &xx.logger);
     }
 
-    let symbol = {
-        let cause = KSymbolCause::NameDef(xx.doc, key);
-        fresh_symbol(&name.of(xx.ast.names()).text, cause, xx)
+    let term = {
+        let cause = KVarTermCause::NameDef(xx.doc, key);
+        fresh_var(&name.of(xx.ast.names()).text, cause, xx)
     };
-    Branch::Default(symbol)
+    Branch::Default(term)
 }
 
 fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
@@ -544,7 +544,7 @@ fn fold_nodes(mut nodes: Vec<KNode>) -> KNode {
 /// break した後や条件分岐から抜けた後を表すラベル。引数を1個持つ。
 struct BreakLabel {
     label: KLabel,
-    result: KSymbol,
+    result: KVarTerm,
 }
 
 /// continue で戻ってくる先の、ループの先頭を表すラベル。引数を持たない。
@@ -552,7 +552,7 @@ struct ContinueLabel {
     label: KLabel,
 }
 
-fn new_break_label(hint: &str, result: KSymbol, xx: &mut Xx) -> BreakLabel {
+fn new_break_label(hint: &str, result: KVarTerm, xx: &mut Xx) -> BreakLabel {
     let label = xx.labels.alloc(KLabelConstruction {
         name: hint.to_string(),
         params: vec![result],
@@ -632,9 +632,9 @@ fn do_in_loop(
     hint: &str,
     loc: Loc,
     xx: &mut Xx,
-    f: impl FnOnce(&mut Xx, KSymbol, KLabel, KLabel),
+    f: impl FnOnce(&mut Xx, KVarTerm, KLabel, KLabel),
 ) -> AfterRval {
-    let result = fresh_symbol(hint, loc, xx);
+    let result = fresh_var(hint, loc, xx);
 
     // continue → break の順で生成しないと型検査の順番がおかしくなる。
     let continue_label = new_continue_label("continue_", xx);
@@ -671,7 +671,7 @@ fn convert_str_expr(token: PToken, doc: Doc, tokens: &PTokens) -> AfterRval {
 
 fn emit_unit_like_struct(
     k_struct: KStruct,
-    result: KSymbol,
+    result: KVarTerm,
     loc: Loc,
     nodes: &mut Vec<KNode>,
 ) -> AfterRval {
@@ -681,18 +681,18 @@ fn emit_unit_like_struct(
     KTerm::Name(result)
 }
 
-fn fresh_symbol(hint: &str, cause: impl Into<KSymbolCause>, xx: &mut Xx) -> KSymbol {
+fn fresh_var(hint: &str, cause: impl Into<KVarTermCause>, xx: &mut Xx) -> KVarTerm {
     let cause = cause.into();
     let loc = cause.loc();
     let local_var = xx
         .local_vars
         .alloc(KLocalVarData::new(hint.to_string(), loc));
-    KSymbol { local_var, cause }
+    KVarTerm { local_var, cause }
 }
 
 fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let cause = KSymbolCause::NameUse(xx.doc, key);
+    let cause = KVarTermCause::NameUse(xx.doc, key);
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
@@ -704,7 +704,7 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
 
     match value {
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
-        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
+        KLocalValue::LocalVar(local_var) => KTerm::Name(KVarTerm { local_var, cause }),
         KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Fn(k_fn) => KTerm::Fn {
@@ -717,7 +717,7 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
         KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
         KLocalValue::UnitLikeStruct(k_struct) => {
             let name = k_struct.name(&xx.mod_outline.structs);
-            let result = fresh_symbol(name, cause, xx);
+            let result = fresh_var(name, cause, xx);
             emit_unit_like_struct(k_struct, result, loc, &mut xx.nodes)
         }
     }
@@ -725,7 +725,7 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
 
 fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> AfterLval {
     let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let cause = KSymbolCause::NameUse(xx.doc, key);
+    let cause = KVarTermCause::NameUse(xx.doc, key);
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
@@ -737,7 +737,7 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> 
 
     let term = match value {
         KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
-        KLocalValue::LocalVar(local_var) => KTerm::Name(KSymbol { local_var, cause }),
+        KLocalValue::LocalVar(local_var) => KTerm::Name(KVarTerm { local_var, cause }),
         KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
         KLocalValue::Const(_)
         | KLocalValue::Fn(_)
@@ -750,12 +750,12 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> 
 
     match k_mut {
         KMut::Const => {
-            let result = fresh_symbol("ref", cause, xx);
+            let result = fresh_var("ref", cause, xx);
             xx.nodes.push(new_ref_node(term, result, new_cont(), loc));
             KTerm::Name(result)
         }
         KMut::Mut => {
-            let result = fresh_symbol("refmut", cause, xx);
+            let result = fresh_var("refmut", cause, xx);
             xx.nodes
                 .push(new_ref_mut_node(term, result, new_cont(), loc));
             KTerm::Name(result)
@@ -860,7 +860,7 @@ fn report_record_expr_errors(
     }
 }
 
-fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KSymbol> {
+fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<KVarTerm> {
     let k_struct = match resolve_ty_path(expr.left, path_resolution_context(xx)) {
         Some(KTy2::Struct(k_struct)) => k_struct,
         _ => {
@@ -900,7 +900,7 @@ fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<K
         args[perm[i]] = convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc, xx);
     }
 
-    let result = fresh_symbol(&k_struct.of(&xx.mod_outline.structs).name, loc, xx);
+    let result = fresh_var(&k_struct.of(&xx.mod_outline.structs).name, loc, xx);
     xx.nodes
         .push(new_record_node(ty, args, result, new_cont(), loc));
     Some(result)
@@ -920,7 +920,7 @@ fn convert_record_lval(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> AfterLval {
         None => return new_error_term(loc),
     };
 
-    let result = fresh_symbol("ref", loc, xx);
+    let result = fresh_var("ref", loc, xx);
     xx.nodes
         .push(new_ref_node(KTerm::Name(arg), result, new_cont(), loc));
     KTerm::Name(result)
@@ -933,7 +933,7 @@ fn convert_field_expr(expr: &AFieldExpr, loc: Loc, xx: &mut Xx) -> AfterRval {
             Some(token) => token.text(xx.tokens),
             None => "_",
         };
-        fresh_symbol(&name, loc, xx)
+        fresh_var(&name, loc, xx)
     };
 
     let field_ptr = convert_field_lval(expr, KMut::Const, loc, xx);
@@ -952,7 +952,7 @@ fn convert_field_lval(expr: &AFieldExpr, k_mut: KMut, loc: Loc, xx: &mut Xx) -> 
         }
         None => ("_".to_string(), loc),
     };
-    let result = fresh_symbol(&format!("{}_ptr", name), loc, xx);
+    let result = fresh_var(&format!("{}_ptr", name), loc, xx);
 
     let left = convert_lval(expr.left, k_mut, TyExpect::Todo, xx);
     xx.nodes.push(new_field_node(
@@ -973,7 +973,7 @@ fn convert_call_expr(
     loc: Loc,
     xx: &mut Xx,
 ) -> AfterRval {
-    let result = fresh_symbol("call_result", loc, xx);
+    let result = fresh_var("call_result", loc, xx);
     let left = convert_expr(call_expr.left, TyExpect::Todo, xx);
 
     let mut args = Vec::with_capacity(call_expr.args.len() + 1);
@@ -998,7 +998,7 @@ fn convert_index_expr(
 ) -> AfterRval {
     let ptr = convert_index_lval(expr, TyExpect::Todo, loc, xx);
 
-    let result = fresh_symbol("index_result", loc, xx);
+    let result = fresh_var("index_result", loc, xx);
     xx.nodes.push(new_deref_node(ptr, result, new_cont(), loc));
     KTerm::Name(result)
 }
@@ -1018,7 +1018,7 @@ fn convert_index_lval(
         new_error_term(loc)
     };
 
-    let result = fresh_symbol("indexed_ptr", loc, xx);
+    let result = fresh_var("indexed_ptr", loc, xx);
     xx.nodes
         .push(new_add_node(left, right, result, new_cont(), loc));
     KTerm::Name(result)
@@ -1028,7 +1028,7 @@ fn convert_cast_expr(expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut 
     let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
-    let result = fresh_symbol("cast", loc, xx);
+    let result = fresh_var("cast", loc, xx);
     xx.nodes
         .push(new_cast_node(ty, arg, result, new_cont(), loc));
     KTerm::Name(result)
@@ -1043,7 +1043,7 @@ fn convert_unary_op_expr(
     match expr.op {
         PUnaryOp::Deref => {
             let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
-            let result = fresh_symbol("deref", loc, xx);
+            let result = fresh_var("deref", loc, xx);
             xx.nodes.push(new_deref_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
@@ -1053,13 +1053,13 @@ fn convert_unary_op_expr(
         }
         PUnaryOp::Minus => {
             let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
-            let result = fresh_symbol("minus", loc, xx);
+            let result = fresh_var("minus", loc, xx);
             xx.nodes.push(new_minus_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
         PUnaryOp::Not => {
             let arg = convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc, xx);
-            let result = fresh_symbol("not", loc, xx);
+            let result = fresh_var("not", loc, xx);
             xx.nodes.push(new_not_node(arg, result, new_cont(), loc));
             KTerm::Name(result)
         }
@@ -1107,7 +1107,7 @@ fn do_convert_basic_binary_op_expr(
     let left = convert_expr(expr.left, TyExpect::Todo, xx);
     let right = convert_expr_opt(expr.right_opt, TyExpect::Todo, loc, xx);
 
-    let result = fresh_symbol(&prim.hint_str(), loc, xx);
+    let result = fresh_var(&prim.hint_str(), loc, xx);
     xx.nodes.push(new_basic_binary_op_node(
         prim,
         left,
@@ -1259,7 +1259,7 @@ fn do_convert_if_expr(
     loc: Loc,
     xx: &mut Xx,
 ) -> AfterRval {
-    let result = fresh_symbol("if_result", loc, xx);
+    let result = fresh_var("if_result", loc, xx);
     // FIXME: next → if_next
     let next = new_break_label("next", result, xx);
 
@@ -1298,7 +1298,7 @@ fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mu
         return new_error_term(loc);
     }
 
-    let result = fresh_symbol("match_result", loc, xx);
+    let result = fresh_var("match_result", loc, xx);
     let next = new_break_label("match_next", result, xx);
 
     do_with_break(next, xx, |xx, break_label| {
@@ -1308,7 +1308,7 @@ fn convert_match_expr(expr: &AMatchExpr, _ty_expect: TyExpect, loc: Loc, xx: &mu
             .map(|arm| {
                 let term = match convert_pat_opt_as_cond(arm.pat_opt, arm.loc, xx) {
                     Branch::Case(term) => term,
-                    Branch::Default(symbol) => KTerm::Name(symbol),
+                    Branch::Default(term) => KTerm::Name(term),
                 };
                 (arm, term)
             })
@@ -1427,19 +1427,19 @@ fn do_convert_lval(
         _ => {
             // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
 
-            let symbol = match convert_expr(expr_id, ty_expect, xx) {
+            let term = match convert_expr(expr_id, ty_expect, xx) {
                 KTerm::Name(it) => it,
                 term => {
                     // FIXME: リテラルなら static を導入してそのアドレスを取る。
 
-                    let symbol = fresh_symbol("lval", loc, xx);
-                    xx.nodes.push(new_let_node(term, symbol, new_cont(), loc));
-                    symbol
+                    let temp = fresh_var("lval", loc, xx);
+                    xx.nodes.push(new_let_node(term, temp, new_cont(), loc));
+                    temp
                 }
             };
-            let result = fresh_symbol("ref", loc, xx);
+            let result = fresh_var("ref", loc, xx);
             xx.nodes
-                .push(new_ref_node(KTerm::Name(symbol), result, new_cont(), loc));
+                .push(new_ref_node(KTerm::Name(term), result, new_cont(), loc));
             KTerm::Name(result)
         }
     }
@@ -1481,7 +1481,7 @@ fn convert_lval_opt(
 }
 
 fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
-    let cause = KSymbolCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
+    let cause = KVarTermCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
 
     let name_opt = decl
         .name_opt
@@ -1497,9 +1497,10 @@ fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut 
         )
         .with_ty(ty),
     );
-    let symbol = KSymbol { local_var, cause };
+    let var_term = KVarTerm { local_var, cause };
 
-    xx.nodes.push(new_let_node(value, symbol, new_cont(), loc));
+    xx.nodes
+        .push(new_let_node(value, var_term, new_cont(), loc));
 
     if let Some(name) = decl.name_opt {
         xx.name_symbols
@@ -1559,7 +1560,7 @@ fn convert_param_decls(
     ast: &ATree,
     local_vars: &mut KLocalVarArena,
     name_symbols: &mut NameSymbols,
-) -> Vec<KSymbol> {
+) -> Vec<KVarTerm> {
     assert_eq!(param_decls.len(), param_tys.len());
 
     param_decls
@@ -1572,9 +1573,9 @@ fn convert_param_decls(
             let name = param_decl.name.of(ast.names()).text.to_string();
             let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
             name_symbols.insert(param_decl.name, NameSymbol::LocalVar(local_var));
-            KSymbol {
+            KVarTerm {
                 local_var,
-                cause: KSymbolCause::NameDef(doc, name_key),
+                cause: KVarTermCause::NameDef(doc, name_key),
             }
         })
         .collect()

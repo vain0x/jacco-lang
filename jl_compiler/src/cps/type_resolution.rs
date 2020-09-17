@@ -278,27 +278,27 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
     }
 }
 
-fn resolve_symbol_def2(symbol: &mut KSymbol, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
-    if symbol.ty(&tx.local_vars).is_unresolved() {
+fn resolve_var_def(term: &mut KVarTerm, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
+    if term.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(symbol.loc(), tx),
+            None => fresh_meta_ty(term.loc(), tx),
             Some(ty) => ty.clone(),
         };
 
-        *symbol.ty_mut(&mut tx.local_vars) = expected_ty;
+        *term.ty_mut(&mut tx.local_vars) = expected_ty;
         return;
     }
 
     if let Some(expected_ty) = expected_ty_opt {
-        let symbol_ty = symbol.ty(&tx.local_vars);
-        unify2(&symbol_ty, expected_ty, symbol.loc(), tx);
+        let term_ty = term.ty(&tx.local_vars);
+        unify2(&term_ty, expected_ty, term.loc(), tx);
     }
 }
 
-fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
-    let current_ty = symbol.ty(&tx.local_vars);
+fn resolve_var_use(term: &mut KVarTerm, tx: &mut Tx) -> KTy2 {
+    let current_ty = term.ty(&tx.local_vars);
     if current_ty.is_unresolved() {
-        error!("def_ty is unresolved. symbol is undefined? {:?}", symbol);
+        error!("def_ty is unresolved. symbol is undefined? {:?}", term);
     }
 
     current_ty
@@ -306,8 +306,8 @@ fn resolve_symbol_use(symbol: &mut KSymbol, tx: &mut Tx) -> KTy2 {
 
 fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
     match pat {
-        KTerm::Name(symbol) => {
-            resolve_symbol_def2(symbol, Some(expected_ty), tx);
+        KTerm::Name(term) => {
+            resolve_var_def(term, Some(expected_ty), tx);
         }
         _ => {
             resolve_term(pat, tx);
@@ -379,7 +379,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::ExternFn { extern_fn, .. } => extern_fn
             .ty(&tx.mod_outline.extern_fns)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KTerm::Name(symbol) => resolve_symbol_use(symbol, tx),
+        KTerm::Name(term) => resolve_var_use(term, tx),
         KTerm::RecordTag { k_struct, .. } => k_struct
             .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.struct_enums)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
@@ -433,7 +433,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
                     unify2(param_ty, arg_ty, node.loc, tx);
                 }
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
                 break;
             },
             _ => unimplemented!(),
@@ -459,7 +459,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     KStructParent::Enum { struct_enum, .. } => KTy2::StructEnum(struct_enum),
                     KStructParent::Struct { .. } => ty.clone(),
                 };
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
                     tx.logger
@@ -524,7 +524,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     KTy2::Never
                 });
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -588,7 +588,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     KTy2::Never
                 });
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -627,7 +627,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     }
                 };
 
-                resolve_symbol_def2(result, Some(&result_ty), tx);
+                resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -639,14 +639,14 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 if result_ty_opt.is_none() {
                     tx.logger.error(&result.loc(), "expected a reference");
                 }
-                resolve_symbol_def2(result, result_ty_opt.as_ref(), tx);
+                resolve_var_def(result, result_ty_opt.as_ref(), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::Ref => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                resolve_symbol_def2(result, Some(&arg_ty.into_ptr(KMut::Const)), tx);
+                resolve_var_def(result, Some(&arg_ty.into_ptr(KMut::Const)), tx);
             }
             _ => unimplemented!(),
         },
@@ -654,7 +654,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         KPrim::RefMut => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
-                resolve_symbol_def2(result, Some(&arg_ty.into_ptr(KMut::Mut)), tx);
+                resolve_var_def(result, Some(&arg_ty.into_ptr(KMut::Mut)), tx);
             }
             _ => unimplemented!(),
         },
@@ -666,7 +666,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([ty], [arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 let target_ty = take(ty);
-                resolve_symbol_def2(result, Some(&target_ty), tx);
+                resolve_var_def(result, Some(&target_ty), tx);
 
                 // FIXME: 同じ型へのキャストは警告?
                 if let KTy2::Unresolved { .. } | KTy2::Never = arg_ty {
@@ -687,7 +687,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 // FIXME: bool or iNN
-                resolve_symbol_def2(result, Some(&arg_ty), tx);
+                resolve_var_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -695,7 +695,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             ([arg], [result]) => {
                 let arg_ty = resolve_term(arg, tx);
                 // FIXME: bool or iNN or uNN
-                resolve_symbol_def2(result, Some(&arg_ty), tx);
+                resolve_var_def(result, Some(&arg_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -711,7 +711,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     unify2(&left_ty, &right_ty, node.loc, tx);
                 }
 
-                resolve_symbol_def2(result, Some(&left_ty), tx);
+                resolve_var_def(result, Some(&left_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -729,7 +729,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 // FIXME: iNN or uNN
                 unify2(&left_ty, &right_ty, node.loc, tx);
 
-                resolve_symbol_def2(result, Some(&left_ty), tx);
+                resolve_var_def(result, Some(&left_ty), tx);
             }
             _ => unimplemented!(),
         },
@@ -746,7 +746,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     // FIXME: Eq/Ord only
                     unify2(&left_ty, &right_ty, node.loc, tx);
 
-                    resolve_symbol_def2(result, Some(&KTy2::BOOL), tx);
+                    resolve_var_def(result, Some(&KTy2::BOOL), tx);
                 }
                 _ => unimplemented!(),
             }
@@ -861,7 +861,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
     for i in 0..fn_data.params.len() {
         let param = &mut fn_data.params[i];
         let param_ty = &k_fn.param_tys(&tx.mod_outline.fns)[i].to_ty2_poly(tx.mod_outline);
-        resolve_symbol_def2(param, Some(param_ty), tx);
+        resolve_var_def(param, Some(param_ty), tx);
     }
 
     // いまから生成するところなので空のはず。
@@ -869,7 +869,7 @@ fn prepare_fn(k_fn: KFn, fn_data: &mut KFnData, tx: &mut Tx) {
 
     for label_data in fn_data.labels.iter_mut() {
         for param in &mut label_data.params {
-            resolve_symbol_def2(param, None, tx);
+            resolve_var_def(param, None, tx);
         }
 
         let label_sig = {
@@ -894,7 +894,7 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
         let param = &mut data.params[i];
         let param_ty =
             &extern_fn.param_tys(&tx.mod_outline.extern_fns)[i].to_ty2_poly(tx.mod_outline);
-        resolve_symbol_def2(param, Some(&param_ty), tx);
+        resolve_var_def(param, Some(&param_ty), tx);
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{k_ty::KTy2, KNode, KSymbol};
+use super::{k_ty::KTy2, KNode, KVarTerm};
 use crate::utils::{VecArena, VecArenaId};
 
 pub(crate) struct KLabelTag;
@@ -38,6 +38,6 @@ impl KLabelSig {
 #[derive(Clone, Debug)]
 pub(crate) struct KLabelData {
     pub(crate) name: String,
-    pub(crate) params: Vec<KSymbol>,
+    pub(crate) params: Vec<KVarTerm>,
     pub(crate) body: KNode,
 }

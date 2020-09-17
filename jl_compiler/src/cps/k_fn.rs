@@ -65,7 +65,7 @@ impl KFnOutline {
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct KFnData {
-    pub(crate) params: Vec<KSymbol>,
+    pub(crate) params: Vec<KVarTerm>,
     pub(crate) labels: KLabelArena,
     pub(crate) label_sigs: KLabelSigArena,
     pub(crate) local_vars: KLocalVarArena,
@@ -74,7 +74,7 @@ pub(crate) struct KFnData {
 
 impl KFnData {
     pub(crate) fn new(
-        params: Vec<KSymbol>,
+        params: Vec<KVarTerm>,
         local_vars: KLocalVarArena,
         labels: KLabelArena,
         ty_env: KTyEnv,

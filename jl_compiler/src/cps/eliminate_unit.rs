@@ -12,7 +12,7 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     match node.prim {
         KPrim::CallDirect | KPrim::Jump => node.args.retain(|arg| match arg {
             KTerm::Unit { .. } => false,
-            KTerm::Name(symbol) => !symbol.local_var.ty(&ex.local_vars).is_unit(&ex.ty_env),
+            KTerm::Name(term) => !term.local_var.ty(&ex.local_vars).is_unit(&ex.ty_env),
             _ => true,
         }),
         _ => {}
@@ -21,11 +21,11 @@ fn on_node(node: &mut KNode, ex: &mut Ex) {
     for arg in &mut node.args {
         // unit/never 型の変数の参照をリテラルで置き換える。
         // FIXME: never 型の変数は never リテラル (?) に置き換える？
-        if let KTerm::Name(symbol) = arg {
-            let local_var_data = &mut ex.local_vars[symbol.local_var];
+        if let KTerm::Name(term) = arg {
+            let local_var_data = &mut ex.local_vars[term.local_var];
             if local_var_data.ty.is_unit_or_never(&ex.ty_env) {
                 local_var_data.is_alive = false;
-                let loc = symbol.loc();
+                let loc = term.loc();
                 *arg = KTerm::Unit { loc };
             }
         }

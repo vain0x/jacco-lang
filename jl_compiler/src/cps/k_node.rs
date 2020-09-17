@@ -1,4 +1,4 @@
-use super::{KLabelArena, KLocalVarArena, KModOutline, KPrim, KSymbol, KTerm, KTy2};
+use super::{KLabelArena, KLocalVarArena, KModOutline, KPrim, KTerm, KTy2, KVarTerm};
 use crate::{
     source::{HaveLoc, Loc},
     utils::{DebugWith, DebugWithContext},
@@ -10,7 +10,7 @@ pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy2>,
     pub(crate) args: Vec<KTerm>,
-    pub(crate) results: Vec<KSymbol>,
+    pub(crate) results: Vec<KVarTerm>,
     pub(crate) conts: Vec<KNode>,
     pub(crate) loc: Loc,
 }
