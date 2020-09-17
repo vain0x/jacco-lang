@@ -114,7 +114,7 @@ impl LangService {
         let analysis = self.docs.get_mut(&doc)?;
         analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
 
-        let analysis = analysis.doc_content_analysis_mut();
+        let analysis = analysis.doc_content_analysis_mut(&self.mod_outline, &mut self.mod_data);
         assert!(analysis.is_some());
         analysis
     }
@@ -623,7 +623,6 @@ mod tests {
         assert_ne!(errors.len(), 0);
     }
 
-    #[ignore]
     #[test]
     fn test_definition() {
         let mut lang_service = new_service_from_str("fn foo() { foo(); }");

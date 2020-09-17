@@ -37,8 +37,10 @@ pub(super) struct DocSymbolAnalysisMut<'a> {
 
 pub(super) struct DocContentAnalysisMut<'a> {
     pub(crate) syntax: &'a Syntax,
-    pub(crate) symbols: &'a mut Symbols,
+    pub(crate) symbols: &'a Symbols,
     pub(crate) cps: &'a mut Cps,
+    pub(crate) mod_outline: &'a KModOutline,
+    pub(crate) mod_data: &'a mut KModData,
 }
 
 pub(super) struct AnalysisCache {
@@ -180,21 +182,29 @@ impl AnalysisCache {
         }
     }
 
-    pub(super) fn doc_content_analysis_mut(&mut self) -> Option<DocContentAnalysisMut<'_>> {
+    pub(super) fn doc_content_analysis_mut<'a>(
+        &'a mut self,
+        mod_outline: &'a KModOutline,
+        mod_data: &'a mut KModData,
+    ) -> Option<DocContentAnalysisMut<'a>> {
         Some(DocContentAnalysisMut {
             syntax: self.syntax_opt.as_ref()?,
-            symbols: self.symbols_opt.as_mut()?,
+            symbols: self.symbols_opt.as_ref()?,
             cps: self.cps_opt.as_mut()?,
+            mod_outline,
+            mod_data,
         })
     }
 
-    pub(super) fn request_cps(
-        &mut self,
-        mod_outline: &mut KModOutline,
-        mod_data: &mut KModData,
-    ) -> DocContentAnalysisMut<'_> {
+    pub(super) fn request_cps<'a>(
+        &'a mut self,
+        mod_outline: &'a mut KModOutline,
+        mod_data: &'a mut KModData,
+    ) -> DocContentAnalysisMut<'a> {
         if self.syntax_opt.is_some() && self.symbols_opt.is_some() && self.cps_opt.is_some() {
-            return self.doc_content_analysis_mut().unwrap();
+            return self
+                .doc_content_analysis_mut(mod_outline, mod_data)
+                .unwrap();
         }
 
         let doc = self.doc;
@@ -227,7 +237,8 @@ impl AnalysisCache {
             errors,
         });
 
-        self.doc_content_analysis_mut().unwrap()
+        self.doc_content_analysis_mut(mod_outline, mod_data)
+            .unwrap()
     }
 
     pub(super) fn resolve_types(&mut self, mod_outline: &mut KModOutline, mod_data: &mut KModData) {
@@ -235,7 +246,13 @@ impl AnalysisCache {
             return;
         }
 
-        let DocContentAnalysisMut { syntax, cps, .. } = self.request_cps(mod_outline, mod_data);
+        let DocContentAnalysisMut {
+            syntax,
+            cps,
+            mod_outline,
+            mod_data,
+            ..
+        } = self.request_cps(mod_outline, mod_data);
 
         let logs = Logs::new();
 
