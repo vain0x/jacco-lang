@@ -462,11 +462,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 resolve_var_def(result, Some(&result_ty), tx);
 
                 if !ty.is_struct_or_enum(&tx.ty_env) {
+                    // FIXME: DebugWithContext を使う
                     tx.logger
-                        .error(result, format!("struct or enum type required {:?}", ty));
+                        .error(result, format!("struct or enum type required"));
                 }
             }
-            _ => unimplemented!("{:?}", node),
+            _ => unimplemented!(),
         },
         KPrim::GetField => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
             (
@@ -672,12 +673,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 if let KTy2::Unresolved { .. } | KTy2::Never = arg_ty {
                     // Skip.
                 } else if !arg_ty.is_primitive(&tx.ty_env) {
-                    tx.logger.error(
-                        &node,
-                        format!("can't cast from non-primitive type {:?}", arg_ty),
-                    );
+                    // FIXME: DebugWithContext を使う
+                    tx.logger
+                        .error(&node, format!("can't cast from non-primitive type"));
                 } else if !target_ty.is_primitive(&tx.ty_env) {
-                    let msg = format!("can't cast to non-primitive type {:?}", target_ty);
+                    // FIXME: DebugWithContext を使う
+                    let msg = format!("can't cast to non-primitive type");
                     tx.logger.error(&node, msg);
                 }
             }

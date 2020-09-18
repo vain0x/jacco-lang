@@ -20,7 +20,7 @@ impl KStaticVar {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KStaticVarOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
@@ -30,7 +30,7 @@ pub(crate) struct KStaticVarOutline {
 
 pub(crate) type KStaticVarInits = VecArena<KStaticVarTag, KStaticVarInit>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KStaticVarInit {
     pub(crate) init_opt: Option<(KNode, KTerm)>,
 }

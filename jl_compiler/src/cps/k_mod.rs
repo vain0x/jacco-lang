@@ -42,7 +42,7 @@ impl KModOutline {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) struct KModData {
     pub(crate) consts: KConstInits,
     pub(crate) static_vars: KStaticVarInits,

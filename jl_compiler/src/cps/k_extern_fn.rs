@@ -30,7 +30,7 @@ impl KExternFn {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
@@ -48,7 +48,7 @@ impl KExternFnOutline {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub(crate) struct KExternFnData {
     pub(crate) params: Vec<KVarTerm>,
     pub(crate) local_vars: KLocalVarArena,

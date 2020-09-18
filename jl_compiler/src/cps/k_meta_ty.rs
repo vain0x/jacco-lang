@@ -3,11 +3,7 @@ use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
 };
-use std::{
-    cell::RefCell,
-    fmt::{self, Debug, Formatter},
-    mem::replace,
-};
+use std::{cell::RefCell, mem::replace};
 
 pub(crate) struct KMetaTyTag;
 
@@ -60,17 +56,5 @@ impl KMetaTyData {
 
     pub(crate) fn ty(&self) -> &RefCell<KTy2> {
         &self.ty
-    }
-}
-
-impl Debug for KMetaTyData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        // let p = self.ty.as_ptr() as usize;
-        // match &*self.ty.borrow() {
-        //     KTy::Unresolved => write!(f, "?<{}>", p),
-        //     ty => Debug::fmt(ty, f),
-        // }
-        // FIXME: need env
-        Debug::fmt(&self.ty, f)
     }
 }

@@ -236,14 +236,18 @@ fn gen_ty(ty: &KTy, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
 
 fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
     match ty {
-        KTy2::Unresolved { cause } => {
-            error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
+        KTy2::Unresolved { .. } => {
+            // FIXME: DebugWithContext を使う
+            // error!("Unexpected unresolved type {:?} (cause={:?})", ty, cause);
+            error!("Unexpected unresolved");
             CTy::Other("/* unresolved */ void")
         }
         KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(&ty_env) {
             Some(ty) => gen_ty2(&ty.borrow(), ty_env, cx),
             None => {
-                error!("Unexpected free type {:?}", meta_ty);
+                // FIXME: DebugWithContext を使う
+                // error!("Unexpected free type {:?}", meta_ty);
+                error!("Unexpected free type");
                 CTy::Other("/* free */ void")
             }
         },
@@ -396,7 +400,7 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             | Some(KModSymbol::StructEnum(..))
             | Some(KModSymbol::Struct(..))
             | Some(KModSymbol::Field(..)) => {
-                error!("別名の参照先が不正です {:?}", (term, loc));
+                error!("別名の参照先が不正です {:?}", loc);
                 CExpr::Other("/* error: invalid alias term ")
             }
             None => {

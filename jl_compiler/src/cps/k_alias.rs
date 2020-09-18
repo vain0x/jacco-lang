@@ -10,7 +10,7 @@ pub(crate) type KAlias = VecArenaId<KAliasTag>;
 
 pub(crate) type KAliasArena = VecArena<KAliasTag, KAliasOutline>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KAliasOutline {
     name: String,
     path: Vec<String>,

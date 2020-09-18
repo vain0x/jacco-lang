@@ -5,7 +5,7 @@ use crate::{
     utils::DebugWithContext,
 };
 use k_ty::KTyCause;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::{self, Formatter};
 
 #[derive(Copy, Clone)]
 pub(crate) enum KTermCause {
@@ -152,13 +152,6 @@ impl KTerm {
             | KTerm::RecordTag { loc, .. }
             | KTerm::FieldTag(KFieldTag { loc, .. }) => *loc,
         }
-    }
-}
-
-impl Debug for KTerm {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        // FIXME: 実装
-        write!(f, "<KTerm>")
     }
 }
 

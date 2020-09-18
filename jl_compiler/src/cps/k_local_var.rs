@@ -47,7 +47,7 @@ impl KLocalVarParent {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KLocalVarData {
     pub(crate) name: String,
     pub(crate) ty: KTy2,

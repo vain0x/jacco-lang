@@ -22,7 +22,7 @@ impl KConst {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KConstOutline {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,
@@ -33,7 +33,7 @@ pub(crate) struct KConstOutline {
 
 pub(crate) type KConstInits = VecArena<KConstTag, KConstInit>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KConstInit {
     pub(crate) init_opt: Option<(KNode, KTerm)>,
 }

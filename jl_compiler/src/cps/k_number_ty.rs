@@ -58,7 +58,6 @@ impl KNumberTy {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn parse(s: &str) -> Option<KNumberTy> {
         let ty = match s {
             "bool" => KNumberTy::Bool,

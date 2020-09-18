@@ -283,33 +283,6 @@ impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
     }
 }
 
-impl Debug for KTy2 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
-            KTy2::Meta(meta_ty) => write!(f, "meta#{}", meta_ty.to_index()),
-            KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
-            KTy2::Unknown => write!(f, "unknown"),
-            KTy2::Never => write!(f, "!"),
-            KTy2::Unit => write!(f, "()"),
-            KTy2::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
-            KTy2::Ptr { k_mut, base_ty } => {
-                match k_mut {
-                    KMut::Const => write!(f, "*")?,
-                    KMut::Mut => write!(f, "*mut ")?,
-                }
-                Debug::fmt(base_ty, f)
-            }
-            // FIXME: 実装
-            KTy2::Fn { .. } => Ok(()),
-            KTy2::ConstEnum(..) => Ok(()),
-            KTy2::StructEnum(..) => Ok(()),
-            KTy2::Struct(..) => Ok(()),
-            KTy2::App { .. } => write!(f, "app"),
-        }
-    }
-}
-
 /// NOTE: メタ型変数は自動で展開されるので、`f` に `KTy::Meta` が渡されることはない。
 fn ty2_map<T>(ty: &KTy2, ty_env: &KTyEnv, f: impl Fn(&KTy2) -> T) -> T {
     match ty {
@@ -522,69 +495,6 @@ impl Default for KTy {
     fn default() -> Self {
         KTy::Unresolved {
             cause: KTyCause::Default,
-        }
-    }
-}
-
-impl Debug for KTy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            KTy::Unresolved { .. } => write!(f, "???"),
-            KTy::Var(ty_var) => write!(f, "{}", ty_var.name),
-            KTy::Unknown => write!(f, "unknown"),
-            KTy::Never => write!(f, "never"),
-            KTy::Unit => write!(f, "()"),
-            KTy::Number(number_ty) => write!(f, "{}", number_ty.as_str()),
-            KTy::Ptr { k_mut, ty } => {
-                write!(f, "*")?;
-                if let KMut::Mut = k_mut {
-                    write!(f, "mut ")?;
-                }
-                Debug::fmt(&ty, f)
-            }
-            KTy::Fn {
-                ty_params,
-                param_tys,
-                result_ty,
-            } => {
-                write!(f, "fn")?;
-
-                if !ty_params.is_empty() {
-                    f.debug_list()
-                        .entries(ty_params.iter().map(|ty_param| &ty_param.name))
-                        .finish()?;
-                }
-
-                write!(f, "(")?;
-                for (i, _ty) in param_tys.iter().enumerate() {
-                    if i != 0 {
-                        write!(f, ", ")?;
-                    }
-                    // NOTE: this cause stack overflow
-                    // Debug::fmt(ty, f)?;
-                    write!(f, "_")?;
-                }
-                write!(f, ") -> ")?;
-                Debug::fmt(result_ty, f)
-            }
-            KTy::Alias(alias) => write!(f, "alias#{}", alias.to_index()),
-            KTy::ConstEnum(const_enum) => write!(f, "enum(const)#{}", const_enum.to_index()),
-            KTy::StructEnum(struct_enum) => {
-                // FIXME: print name
-                write!(f, "enum#{}", struct_enum.to_index())
-            }
-            KTy::Struct(k_struct) => {
-                // FIXME: print name
-                write!(f, "struct {}", k_struct.to_index())
-            }
-            KTy::StructGeneric {
-                k_struct,
-                ty_params,
-            } => write!(f, "struct[{}] {}", ty_params.len(), k_struct.to_index()),
-            KTy::App { ty, ty_args } => {
-                Debug::fmt(&**ty, f)?;
-                f.debug_list().entries(ty_args.iter()).finish()
-            }
         }
     }
 }
