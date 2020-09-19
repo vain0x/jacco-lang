@@ -955,6 +955,8 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
 }
 
 pub(crate) fn resolve_types(mod_outline: &KModOutline, mod_data: &mut KModData, logger: Logger) {
-    let mut tx = Tx::new(mod_outline, logger);
-    resolve_root(mod_data, &mut tx);
+    KModOutline::given_for_debug(mod_outline, || {
+        let mut tx = Tx::new(mod_outline, logger);
+        resolve_root(mod_data, &mut tx);
+    });
 }

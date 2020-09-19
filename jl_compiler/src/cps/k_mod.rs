@@ -250,3 +250,46 @@ pub(crate) fn resolve_aliases(
         alias_data.bind(referent);
     }
 }
+
+mod debug_info {
+    #![allow(unused)]
+
+    use super::*;
+    use std::{cell::RefCell, ptr::null};
+
+    thread_local! {
+        static MOD_OUTLINE: RefCell<*const KModOutline> = RefCell::new(null());
+    }
+
+    impl KModOutline {
+        pub(crate) fn given_for_debug<T>(mod_outline: &KModOutline, f: impl FnOnce() -> T) -> T {
+            if cfg!(debug_assertions) {
+                MOD_OUTLINE.with(|slot| {
+                    *slot.borrow_mut() = mod_outline as *const KModOutline;
+                    let result = f();
+                    *slot.borrow_mut() = null();
+                    result
+                })
+            } else {
+                f()
+            }
+        }
+
+        pub(crate) fn using_for_debug<T>(f: impl FnOnce(Option<&KModOutline>) -> T) -> T {
+            if cfg!(debug_assertions) {
+                MOD_OUTLINE.with(|slot| {
+                    let ptr = slot.borrow();
+                    let ref_opt = if ptr.is_null() {
+                        None
+                    } else {
+                        Some(unsafe { &**ptr })
+                    };
+
+                    f(ref_opt)
+                })
+            } else {
+                f(None)
+            }
+        }
+    }
+}

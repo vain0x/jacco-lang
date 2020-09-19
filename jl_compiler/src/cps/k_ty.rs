@@ -311,6 +311,18 @@ impl Default for KTy2 {
     }
 }
 
+impl Debug for KTy2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            let context = KTy2DisplayContext {
+                mod_outline_opt,
+                ty_env_opt: None,
+            };
+            self.fmt_display_with(context, f)
+        })
+    }
+}
+
 impl<'a> DebugWithContext<KTy2DisplayContext<'a>> for KTy2 {
     fn fmt(&self, context: &KTy2DisplayContext<'a>, f: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_display_with(*context, f)
