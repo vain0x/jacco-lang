@@ -16,6 +16,12 @@ pub(crate) enum KEnumOrStruct {
     Struct(KStruct),
 }
 
+#[derive(Copy, Clone)]
+struct KTy2DisplayContext<'a> {
+    ty_env: &'a KTyEnv,
+    mod_outline: &'a KModOutline,
+}
+
 /// 型 (その2)
 ///
 /// 目的: 単一化の実装を簡略化すること、メタ型変数を含むこと、他のモジュールの enum/struct の型を表現すること
@@ -26,7 +32,6 @@ pub(crate) enum KTy2 {
     },
     /// メタ型は型変数とは異なり、型検査で一時的に発生して、単一化により他の型に束縛される。
     Meta(KMetaTy),
-    #[allow(unused)]
     /// 型変数はメタ型とは異なり、多相関数の型引数などの構文で明示的に宣言される。
     Var(KTyVar),
     Unknown,
@@ -215,14 +220,18 @@ impl KTy2 {
 
     fn fmt_display_with(
         &self,
-        ty_env: &KTyEnv,
-        mod_outline: &KModOutline,
+        context: KTy2DisplayContext<'_>,
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
+        let KTy2DisplayContext {
+            ty_env,
+            mod_outline,
+        } = context;
+
         match self {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
             KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
-                Some(ty) => ty.borrow().fmt_display_with(ty_env, mod_outline, f),
+                Some(ty) => ty.borrow().fmt_display_with(context, f),
                 None => write!(f, "?{}", meta_ty.to_index()),
             },
             KTy2::Var(ty_var) => write!(f, "{}", ty_var.name),
@@ -235,7 +244,7 @@ impl KTy2 {
                     KMut::Const => write!(f, "*")?,
                     KMut::Mut => write!(f, "*mut ")?,
                 }
-                base_ty.fmt_display_with(ty_env, mod_outline, f)
+                base_ty.fmt_display_with(context, f)
             }
             KTy2::Fn {
                 param_tys,
@@ -243,13 +252,13 @@ impl KTy2 {
             } => {
                 let mut tuple = f.debug_tuple("fn");
                 for param_ty in param_tys {
-                    tuple.field(&DebugWith::new(param_ty, &(ty_env, mod_outline)));
+                    tuple.field(&DebugWith::new(param_ty, &context));
                 }
                 tuple.finish()?;
 
                 if !result_ty.is_unit(ty_env) {
                     write!(f, " -> ")?;
-                    result_ty.fmt_display_with(ty_env, mod_outline, f)?;
+                    result_ty.fmt_display_with(context, f)?;
                 }
                 Ok(())
             }
@@ -269,7 +278,7 @@ impl KTy2 {
 
                 let mut list = f.debug_list();
                 for ty_arg in ty_args.values() {
-                    list.entry(&DebugWith::new(ty_arg, &(ty_env, mod_outline)));
+                    list.entry(&DebugWith::new(ty_arg, &context));
                 }
                 list.finish()
             }
@@ -277,7 +286,11 @@ impl KTy2 {
     }
 
     pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
-        format!("{:?}", DebugWith::new(self, &(ty_env, mod_outline)))
+        let context = KTy2DisplayContext {
+            ty_env,
+            mod_outline,
+        };
+        format!("{:?}", DebugWith::new(self, &context))
     }
 }
 
@@ -289,10 +302,9 @@ impl Default for KTy2 {
     }
 }
 
-impl<'a> DebugWithContext<(&'a KTyEnv, &'a KModOutline)> for KTy2 {
-    fn fmt(&self, context: &(&'a KTyEnv, &'a KModOutline), f: &mut Formatter<'_>) -> fmt::Result {
-        let (ty_env, mod_outline) = context;
-        self.fmt_display_with(ty_env, mod_outline, f)
+impl<'a> DebugWithContext<KTy2DisplayContext<'a>> for KTy2 {
+    fn fmt(&self, context: &KTy2DisplayContext<'a>, f: &mut Formatter<'_>) -> fmt::Result {
+        self.fmt_display_with(*context, f)
     }
 }
 
