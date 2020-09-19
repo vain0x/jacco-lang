@@ -18,8 +18,8 @@ pub(crate) enum KEnumOrStruct {
 
 #[derive(Copy, Clone)]
 struct KTy2DisplayContext<'a> {
-    ty_env: &'a KTyEnv,
-    mod_outline: &'a KModOutline,
+    ty_env_opt: Option<&'a KTyEnv>,
+    mod_outline_opt: Option<&'a KModOutline>,
 }
 
 /// 型 (その2)
@@ -224,13 +224,13 @@ impl KTy2 {
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
         let KTy2DisplayContext {
-            ty_env,
-            mod_outline,
+            ty_env_opt,
+            mod_outline_opt,
         } = context;
 
         match self {
             KTy2::Unresolved { cause } => write!(f, "{{unresolved}} ?{:?}", cause),
-            KTy2::Meta(meta_ty) => match meta_ty.try_unwrap(ty_env) {
+            KTy2::Meta(meta_ty) => match ty_env_opt.and_then(|ty_env| meta_ty.try_unwrap(ty_env)) {
                 Some(ty) => ty.borrow().fmt_display_with(context, f),
                 None => write!(f, "?{}", meta_ty.to_index()),
             },
@@ -256,25 +256,34 @@ impl KTy2 {
                 }
                 tuple.finish()?;
 
-                if !result_ty.is_unit(ty_env) {
+                if ty_env_opt.map_or(true, |ty_env| result_ty.is_unit(ty_env)) {
                     write!(f, " -> ")?;
                     result_ty.fmt_display_with(context, f)?;
                 }
                 Ok(())
             }
-            KTy2::ConstEnum(const_enum) => {
-                write!(f, "enum {}", &const_enum.of(&mod_outline.const_enums).name)
-            }
-            KTy2::StructEnum(struct_enum) => write!(
-                f,
-                "enum {}",
-                &struct_enum.of(&mod_outline.struct_enums).name
-            ),
-            KTy2::Struct(k_struct) => {
-                write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)
-            }
+            KTy2::ConstEnum(const_enum) => match mod_outline_opt {
+                Some(mod_outline) => {
+                    write!(f, "enum {}", &const_enum.of(&mod_outline.const_enums).name,)
+                }
+                None => write!(f, "const_enum#{}", const_enum.to_index()),
+            },
+            KTy2::StructEnum(struct_enum) => match mod_outline_opt {
+                Some(mod_outline) => write!(
+                    f,
+                    "enum {}",
+                    &struct_enum.of(&mod_outline.struct_enums).name
+                ),
+                None => write!(f, "struct enum#{}", struct_enum.to_index()),
+            },
+            KTy2::Struct(k_struct) => match mod_outline_opt {
+                Some(mod_outline) => {
+                    write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)
+                }
+                None => write!(f, "struct#{}", k_struct.to_index()),
+            },
             KTy2::App { k_struct, ty_args } => {
-                write!(f, "struct {}", &k_struct.of(&mod_outline.structs).name)?;
+                KTy2::Struct(*k_struct).fmt_display_with(context, f)?;
 
                 let mut list = f.debug_list();
                 for ty_arg in ty_args.values() {
@@ -287,8 +296,8 @@ impl KTy2 {
 
     pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
         let context = KTy2DisplayContext {
-            ty_env,
-            mod_outline,
+            ty_env_opt: Some(ty_env),
+            mod_outline_opt: Some(mod_outline),
         };
         format!("{:?}", DebugWith::new(self, &context))
     }
