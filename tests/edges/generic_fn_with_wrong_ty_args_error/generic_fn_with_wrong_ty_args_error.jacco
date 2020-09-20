@@ -1,0 +1,18 @@
+#![test("compile_error")]
+
+// ジェネリックな関数に型引数リストをつけておくことで、
+// 型推論によらずに型を決定させられる。
+
+struct A {}
+
+fn transmute[T, U](p: *T) -> *U {
+    p as usize as *U
+}
+
+pub fn main() -> i32 {
+    let b32: u32 = 0xdeadbeef;
+    let b8x4 = transmute::[i32, u8](&b32);
+    // 型引数がなければ型推論によりこれが通ってしまっていた。
+    let _: A = *b8x4;
+    0
+}

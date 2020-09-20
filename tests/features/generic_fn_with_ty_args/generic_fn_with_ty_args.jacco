@@ -1,0 +1,14 @@
+#![test("run", 0)]
+
+// ジェネリックな関数の名前に型引数リストを持たせられる。
+
+fn transmute[T, U](p: *T) -> *U {
+    p as usize as *U
+}
+
+pub fn main() -> i32 {
+    let b32: u32 = 0xdeadbeef;
+    let b8x4 = transmute::[i32, u8](&b32);
+    let _ = *b8x4;
+    0
+}

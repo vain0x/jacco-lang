@@ -702,7 +702,7 @@ fn convert_name_expr(name: ANameId, xx: &mut Xx) -> AfterRval {
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
         None => {
-            error_unresolved_value(PLoc::from_loc(loc), xx.logger);
+            error_unresolved_value(name.loc(), xx.logger);
             return new_error_term(loc);
         }
     };
@@ -768,8 +768,52 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
     }
 }
 
-fn convert_ty_app_expr(_expr: &ATyAppExpr, _xx: &mut Xx) -> AfterRval {
-    todo!()
+fn convert_ty_app_expr(expr: &ATyAppExpr, xx: &mut Xx) -> AfterRval {
+    let name = expr.left;
+
+    let loc = name.loc().to_loc(xx.doc);
+    let value = match resolve_value_path(name, path_resolution_context(xx)) {
+        Some(it) => it,
+        None => {
+            error_unresolved_value(name.loc(), xx.logger);
+            return new_error_term(loc);
+        }
+    };
+
+    match value {
+        KLocalValue::Fn(k_fn) => {
+            let fn_data = k_fn.of(&xx.mod_outline.fns);
+            if fn_data.ty_params.is_empty() {
+                error_invalid_ty_args(name.loc(), xx.logger);
+                return new_error_term(loc);
+            }
+
+            if expr.ty_args.len() != fn_data.ty_params.len() {
+                error_ty_arg_arity(name.loc(), xx.logger);
+                return new_error_term(loc);
+            }
+
+            let ty_args = fn_data
+                .ty_params
+                .iter()
+                .zip(expr.ty_args.iter())
+                .map(|(ty_param, ty_arg)| {
+                    let ty_param = ty_param.name.to_string();
+                    let ty_arg = convert_ty(ty_arg, &mut new_ty_resolver(xx))
+                        .to_ty2(xx.mod_outline, &mut xx.ty_env);
+                    (ty_param, ty_arg)
+                })
+                .collect::<HashMap<_, _>>();
+            let ty = fn_data.ty().substitute(&xx.mod_outline, &ty_args);
+
+            KTerm::Fn { k_fn, ty, loc }
+        }
+        _ => {
+            xx.logger
+                .error(name.loc(), "ジェネリックな関数以外の型適用式は未実装です");
+            new_error_term(loc)
+        }
+    }
 }
 
 enum FieldExhaustivityError {
