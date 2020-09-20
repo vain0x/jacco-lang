@@ -51,7 +51,6 @@ impl AName {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum ANameKey {
-    Field(AFieldDeclKey),
     Variant(AVariantDeclKey),
     Id(ANameId),
 }
@@ -59,7 +58,6 @@ pub(crate) enum ANameKey {
 impl ANameKey {
     pub(crate) fn element(self, tree: &PTree) -> PElement {
         let parent = match self {
-            ANameKey::Field(key) => key.element(tree),
             ANameKey::Variant(key) => key.element(tree),
             ANameKey::Id(key) => key.element(tree),
         };
