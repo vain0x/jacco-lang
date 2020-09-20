@@ -686,9 +686,9 @@ fn fresh_var(hint: &str, cause: impl Into<KVarTermCause>, xx: &mut Xx) -> KVarTe
     KVarTerm { local_var, cause }
 }
 
-fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
-    let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let cause = KVarTermCause::NameUse(xx.doc, key);
+fn convert_name_expr(name: ANameId, xx: &mut Xx) -> AfterRval {
+    let loc = name.loc().to_loc(xx.doc);
+    let cause = KVarTermCause::NameUse(xx.doc, ANameKey::Id(name));
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
@@ -719,14 +719,14 @@ fn convert_name_expr(name: ANameId, key: ANameKey, xx: &mut Xx) -> AfterRval {
     }
 }
 
-fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> AfterLval {
-    let loc = Loc::new(xx.doc, PLoc::Name(key));
-    let cause = KVarTermCause::NameUse(xx.doc, key);
+fn convert_name_lval(name: ANameId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
+    let loc = name.loc().to_loc(xx.doc);
+    let cause = KVarTermCause::NameUse(xx.doc, ANameKey::Id(name));
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
         None => {
-            error_unresolved_value(PLoc::Name(key), xx.logger);
+            error_unresolved_value(name.loc(), xx.logger);
             return new_error_term(loc);
         }
     };
@@ -739,7 +739,7 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, key: ANameKey, xx: &mut Xx) -> 
         | KLocalValue::Fn(_)
         | KLocalValue::ExternFn(_)
         | KLocalValue::UnitLikeStruct(_) => {
-            error_rval_used_as_lval(PLoc::Name(key), xx.logger);
+            error_rval_used_as_lval(name.loc(), xx.logger);
             return new_error_term(loc);
         }
     };
@@ -1383,7 +1383,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Number(token) => convert_number_lit(*token, ty_expect, xx.tokens, xx.doc, xx.logger),
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
-        AExpr::Name(name) => convert_name_expr(*name, ANameKey::Expr(expr_id), xx),
+        AExpr::Name(name) => convert_name_expr(*name, xx),
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),
@@ -1415,7 +1415,7 @@ fn do_convert_lval(
     let loc = Loc::new(xx.doc, PLoc::Expr(expr_id));
 
     match expr {
-        AExpr::Name(name) => convert_name_lval(*name, k_mut, ANameKey::Expr(expr_id), xx),
+        AExpr::Name(name) => convert_name_lval(*name, k_mut, xx),
         AExpr::Record(expr) => convert_record_lval(expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_lval(field_expr, k_mut, loc, xx),
         AExpr::Index(index_expr) => convert_index_lval(index_expr, ty_expect, loc, xx),
