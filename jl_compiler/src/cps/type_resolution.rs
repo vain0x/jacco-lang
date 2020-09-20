@@ -388,8 +388,12 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.struct_enums)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::FieldTag(_) => unreachable!(),
-        KTerm::SizeOf { ty, loc } => {
-            if ty.size_of(&tx.ty_env, &tx.mod_outline).is_none() {
+        KTerm::TyProperty { kind, ty, loc } => {
+            let value_opt = match kind {
+                KTyProperty::AlignOf => ty.align_of(&tx.ty_env, &tx.mod_outline),
+                KTyProperty::SizeOf => ty.size_of(&tx.ty_env, &tx.mod_outline),
+            };
+            if value_opt.is_none() {
                 error_invalid_size_of(*loc, &tx.logger);
             }
             KTy2::USIZE

@@ -86,7 +86,8 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     FieldTag(KFieldTag),
-    SizeOf {
+    TyProperty {
+        kind: KTyProperty,
         ty: KTy,
         loc: Loc,
     },
@@ -133,7 +134,7 @@ impl KTerm {
                     cause: KTyCause::FieldTag,
                 }
             }
-            KTerm::SizeOf { .. } => KTy2::USIZE,
+            KTerm::TyProperty { .. } => KTy2::USIZE,
         }
     }
 
@@ -156,7 +157,7 @@ impl KTerm {
             | KTerm::ExternFn { loc, .. }
             | KTerm::RecordTag { loc, .. }
             | KTerm::FieldTag(KFieldTag { loc, .. })
-            | KTerm::SizeOf { loc, .. } => *loc,
+            | KTerm::TyProperty { loc, .. } => *loc,
         }
     }
 }
@@ -208,11 +209,37 @@ impl<'a>
                 Ok(())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
-            KTerm::SizeOf { ty, .. } => write!(
+            KTerm::TyProperty { kind, ty, .. } => write!(
                 f,
-                "__size_of::[{}]",
-                ty.erasure(mod_outline).display(KTyEnv::EMPTY, mod_outline)
+                "{}::[{}]",
+                kind.as_str(),
+                ty.to_ty2_poly(mod_outline)
+                    .display(KTyEnv::EMPTY, mod_outline)
             ),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum KTyProperty {
+    AlignOf,
+    SizeOf,
+}
+
+impl KTyProperty {
+    pub(crate) fn from_str(s: &str) -> Option<Self> {
+        let it = match s {
+            "__align_of" => KTyProperty::AlignOf,
+            "__size_of" => KTyProperty::SizeOf,
+            _ => return None,
+        };
+        Some(it)
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            KTyProperty::AlignOf => "__align_of",
+            KTyProperty::SizeOf => "__size_of",
         }
     }
 }

@@ -423,15 +423,19 @@ fn gen_term(term: &KTerm, ty_env: &KTyEnv, cx: &mut Cx) -> CExpr {
             error!("can't gen field term to c {} ({:?})", name, loc);
             CExpr::Other("/* error */ 0")
         }
-        KTerm::SizeOf { ty, .. } => {
-            let size = match ty.erasure(cx.mod_outline).size_of(ty_env, cx.mod_outline) {
+        KTerm::TyProperty { kind, ty, .. } => {
+            let value_opt = match *kind {
+                KTyProperty::AlignOf => ty.align_of(ty_env, cx.mod_outline),
+                KTyProperty::SizeOf => ty.size_of(ty_env, cx.mod_outline),
+            };
+            let value = match value_opt {
                 Some(it) => it,
                 None => {
-                    error!("no size of type");
+                    error!("bad use of {:?}", kind);
                     return CExpr::Other("/* error */ 0");
                 }
             };
-            gen_constant_value(&KConstValue::Usize(size))
+            gen_constant_value(&KConstValue::Usize(value))
         }
     }
 }

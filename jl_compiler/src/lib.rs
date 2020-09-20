@@ -88,7 +88,7 @@ mod cps {
     pub(crate) use k_static_var::*;
     pub(crate) use k_struct::*;
     pub(crate) use k_struct_enum::*;
-    pub(crate) use k_term::{KTerm, KTermCause};
+    pub(crate) use k_term::*;
     pub(crate) use k_term_var::{KVarTerm, KVarTermCause};
     pub(crate) use k_ty::*;
     pub(crate) use k_value::KLocalValue;

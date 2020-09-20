@@ -293,7 +293,7 @@ fn collect_symbols(
             | KTerm::Float { .. }
             | KTerm::Char { .. }
             | KTerm::Str { .. }
-            | KTerm::SizeOf { .. } => return,
+            | KTerm::TyProperty { .. } => return,
             KTerm::Name(symbol) => {
                 on_symbol(symbol, KLocalVarParent::Fn(k_fn), sites);
                 return;

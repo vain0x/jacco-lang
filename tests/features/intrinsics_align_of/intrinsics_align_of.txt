@@ -1,0 +1,76 @@
+struct I32 {
+    int value;
+};
+
+struct F64 {
+    double value;
+};
+
+struct Point {
+    double x;
+    double y;
+};
+
+struct Padded {
+    unsigned char a;
+    int b;
+};
+
+struct MyUnit {
+};
+
+struct StructEnum {
+    unsigned char tag_;
+
+    union {
+        struct I32 I32;
+        struct F64 F64;
+    };
+};
+
+void assert(int cond_1);
+
+int main();
+
+int main() {
+    int equal_1 = 1ULL == 1;
+    // call_result_1 is killed.
+    assert(equal_1);
+    int equal_2 = 2ULL == 2;
+    // call_result_2 is killed.
+    assert(equal_2);
+    int equal_3 = 4ULL == 4;
+    // call_result_3 is killed.
+    assert(equal_3);
+    int equal_4 = 8ULL == 8;
+    // call_result_4 is killed.
+    assert(equal_4);
+    int greaterequal_1 = 8ULL >= 2;
+    // call_result_5 is killed.
+    assert(greaterequal_1);
+    int equal_5 = 8ULL == 8ULL;
+    // call_result_6 is killed.
+    assert(equal_5);
+    int equal_6 = 8ULL == 8ULL;
+    // call_result_7 is killed.
+    assert(equal_6);
+    int equal_7 = 1ULL == 1;
+    // call_result_8 is killed.
+    assert(equal_7);
+    int equal_8 = 8ULL == 8;
+    // call_result_9 is killed.
+    assert(equal_8);
+    int equal_9 = 8ULL == 8;
+    // call_result_a is killed.
+    assert(equal_9);
+    int equal_a = 8ULL == 8;
+    // call_result_b is killed.
+    assert(equal_a);
+    int equal_b = 4ULL == 4;
+    // call_result_c is killed.
+    assert(equal_b);
+    int equal_c = 1ULL == 1;
+    // call_result_d is killed.
+    assert(equal_c);
+    return 0;
+}
