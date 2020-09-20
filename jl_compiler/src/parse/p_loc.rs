@@ -28,7 +28,6 @@ pub(crate) enum PLoc {
     #[allow(unused)]
     ParamDecl(AParamDeclKey),
     FieldDecl(AFieldDeclKey),
-    #[allow(unused)]
     VariantDecl(AVariantDeclKey),
 }
 

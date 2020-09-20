@@ -232,7 +232,7 @@ impl<'a> OutlineGenerator<'a> {
             parent,
             loc: match decl.name_opt {
                 Some(name) => name.loc().to_loc(self.doc),
-                None => new_struct_loc(self.doc, key),
+                None => key.loc().to_loc(self.doc),
             },
         })
     }
@@ -261,7 +261,7 @@ impl<'a> OutlineGenerator<'a> {
             name: decl.name.of(self.ast.names()).text.to_string(),
             fields,
             parent,
-            loc: new_struct_loc(self.doc, key),
+            loc: decl.name.loc().to_loc(self.doc),
         })
     }
 
@@ -445,10 +445,6 @@ fn resolve_struct_enum_decl(
     for (variant_decl, k_struct) in decl.variants.iter().zip(variants) {
         resolve_variant_decl(variant_decl, k_struct, ty_resolver, mod_outline);
     }
-}
-
-fn new_struct_loc(doc: Doc, key: AVariantDeclKey) -> Loc {
-    Loc::new(doc, PLoc::Name(ANameKey::Variant(key)))
 }
 
 fn resolve_outline(
