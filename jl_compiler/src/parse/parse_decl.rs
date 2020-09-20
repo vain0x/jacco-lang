@@ -10,7 +10,15 @@ enum VariantParentKind {
 }
 
 fn parse_ty_param_list(px: &mut Px) -> Option<AfterTyParamList> {
-    let left_paren = px.eat(TokenKind::LeftBracket)?;
+    let left_paren = match px.next() {
+        TokenKind::LeftBracket => px.bump(),
+        TokenKind::ColonColon if px.nth(1) == TokenKind::LeftBracket => {
+            px.bump();
+            px.bump()
+        }
+        _ => return None,
+    };
+
     let mut ty_params = vec![];
 
     loop {
