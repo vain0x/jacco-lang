@@ -51,7 +51,6 @@ impl AName {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum ANameKey {
-    Ty(ATyId),
     Pat(APatId),
     Expr(AExprId),
     /// static や fn などの名前。
@@ -66,7 +65,6 @@ pub(crate) enum ANameKey {
 impl ANameKey {
     pub(crate) fn element(self, tree: &PTree) -> PElement {
         let parent = match self {
-            ANameKey::Ty(ty_id) => ty_id.element(tree),
             ANameKey::Pat(pat_id) => pat_id.element(tree),
             ANameKey::Expr(expr_id) => expr_id.element(tree),
             ANameKey::Decl(decl_id) => decl_id.element(tree),
