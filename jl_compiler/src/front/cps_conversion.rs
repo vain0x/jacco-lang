@@ -389,23 +389,24 @@ fn convert_wildcard_pat_as_cond(token: PToken, xx: &mut Xx) -> Branch {
     Branch::Default(term)
 }
 
-fn emit_default_branch(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
+fn emit_default_branch(name: ANameId, xx: &mut Xx) -> Branch {
     if name.of(xx.ast.names()).is_qualified() {
-        error_unresolved_value(PLoc::Name(key), &xx.logger);
+        error_unresolved_value(name.loc(), &xx.logger);
     }
 
     let term = {
-        let cause = KVarTermCause::NameDef(xx.doc, key);
+        let cause = KVarTermCause::NameDef(xx.doc, ANameKey::Id(name));
         fresh_var(&name.of(xx.ast.names()).text, cause, xx)
     };
     Branch::Default(term)
 }
 
-fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch {
-    let loc = Loc::new(xx.doc, PLoc::Name(key));
+fn convert_name_pat_as_cond(name: ANameId, xx: &mut Xx) -> Branch {
+    let loc = name.loc().to_loc(xx.doc);
+
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
-        None => return emit_default_branch(name, key, xx),
+        None => return emit_default_branch(name, xx),
     };
 
     match value {
@@ -415,11 +416,11 @@ fn convert_name_pat_as_cond(name: ANameId, key: ANameKey, xx: &mut Xx) -> Branch
         }
         KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
         KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(KTerm::RecordTag { k_struct, loc }),
-        _ => emit_default_branch(name, key, xx),
+        _ => emit_default_branch(name, xx),
     }
 }
 
-fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
+fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     let symbol = match term {
         KTerm::Name(symbol) if symbol.local_var.name(&xx.local_vars) == "_" => return,
         KTerm::Name(it) => it,
@@ -429,6 +430,7 @@ fn convert_name_pat_as_assign(name_id: ANameId, cond: &KTerm, term: KTerm, loc: 
     xx.name_symbols
         .insert(name_id, NameSymbol::LocalVar(symbol.local_var));
 
+    let loc = name_id.loc().to_loc(xx.doc);
     xx.nodes
         .push(new_let_node(cond.clone(), symbol, new_cont(), loc));
 }
@@ -444,7 +446,8 @@ fn convert_record_pat_as_cond(pat: &ARecordPat, loc: Loc, xx: &mut Xx) -> AfterR
     KTerm::RecordTag { k_struct, loc }
 }
 
-fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> Branch {
+fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, xx: &mut Xx) -> Branch {
+    let loc = pat_id.loc().to_loc(xx.doc);
     let term = match pat {
         APat::Unit => KTerm::Unit { loc },
         APat::True(_) => KTerm::True { loc },
@@ -455,23 +458,22 @@ fn do_convert_pat_as_cond(pat_id: APatId, pat: &APat, loc: Loc, xx: &mut Xx) -> 
         }
         APat::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         APat::Wildcard(token) => return convert_wildcard_pat_as_cond(*token, xx),
-        APat::Name(name) => return convert_name_pat_as_cond(*name, ANameKey::Pat(pat_id), xx),
+        APat::Name(name) => return convert_name_pat_as_cond(*name, xx),
         APat::Record(record_pat) => convert_record_pat_as_cond(record_pat, loc, xx),
     };
     Branch::Case(term)
 }
 
-fn do_convert_pat_as_assign(pat: &APat, cond: &KTerm, term: KTerm, loc: Loc, xx: &mut Xx) {
+fn do_convert_pat_as_assign(pat: &APat, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     match pat {
-        APat::Name(name) => convert_name_pat_as_assign(*name, cond, term, loc, xx),
+        APat::Name(name) => convert_name_pat_as_assign(*name, cond, term, xx),
         _ => {}
     }
 }
 
 fn convert_pat_as_cond(pat_id: APatId, xx: &mut Xx) -> Branch {
     let pat = pat_id.of(xx.ast.pats());
-    let loc = Loc::new(xx.doc, PLoc::Pat(pat_id));
-    do_convert_pat_as_cond(pat_id, pat, loc, xx)
+    do_convert_pat_as_cond(pat_id, pat, xx)
 }
 
 fn convert_pat_opt_as_cond(pat_opt: Option<APatId>, loc: PLoc, xx: &mut Xx) -> Branch {
@@ -483,8 +485,7 @@ fn convert_pat_opt_as_cond(pat_opt: Option<APatId>, loc: PLoc, xx: &mut Xx) -> B
 
 fn convert_pat_as_assign(pat_id: APatId, cond: &KTerm, term: KTerm, xx: &mut Xx) {
     let pat = pat_id.of(xx.ast.pats());
-    let loc = Loc::new(xx.doc, PLoc::Pat(pat_id));
-    do_convert_pat_as_assign(pat, cond, term, loc, xx)
+    do_convert_pat_as_assign(pat, cond, term, xx)
 }
 
 fn convert_pat_opt_as_assign(pat_opt: Option<APatId>, cond: &KTerm, term: KTerm, xx: &mut Xx) {
