@@ -1476,32 +1476,53 @@ fn convert_lval_opt(
     }
 }
 
-fn convert_let_decl(decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
-    let cause = KVarTermCause::NameDef(xx.doc, ANameKey::Decl(decl_id));
+/// 式を右辺値として評価する。型注釈があれば ty_opt に渡される。
+fn evaluate_rval(
+    expr_opt: Option<AExprId>,
+    ty_opt: Option<ATyId>,
+    loc: Loc,
+    xx: &mut Xx,
+) -> (AfterRval, KTy2) {
+    let value = convert_expr_opt(expr_opt, TyExpect::Todo, loc, xx);
+    let ty = convert_ty_opt(ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
+    (value, ty)
+}
 
-    let name_opt = decl
-        .name_opt
-        .map(|name| name.of(xx.ast.names()).text.to_string());
+fn convert_let_decl(_decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
+    let (init_term, ty) = evaluate_rval(decl.value_opt, decl.ty_opt, loc, xx);
 
-    let value = convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx);
-    let ty = convert_ty_opt(decl.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
+    let name = match decl.name_opt {
+        Some(it) => it,
+        None => {
+            // 名前がなくても、型検査のため、一時変数に束縛する必要がある。
+            let local_var = xx
+                .local_vars
+                .alloc(KLocalVarData::new("_".to_string(), loc).with_ty(ty));
+            let var_term = KVarTerm {
+                local_var,
+                cause: KVarTermCause::Loc(loc),
+            };
+            xx.nodes
+                .push(new_let_node(init_term, var_term, new_cont(), loc));
+            return;
+        }
+    };
 
     let local_var = xx.local_vars.alloc(
         KLocalVarData::new(
-            name_opt.clone().unwrap_or_else(|| "_".to_string()),
-            cause.loc(),
+            name.of(xx.ast.names()).text().to_string(),
+            name.loc().to_loc(xx.doc),
         )
         .with_ty(ty),
     );
-    let var_term = KVarTerm { local_var, cause };
-
+    let var_term = KVarTerm {
+        local_var,
+        cause: KVarTermCause::NameDef(xx.doc, ANameKey::Id(name)),
+    };
     xx.nodes
-        .push(new_let_node(value, var_term, new_cont(), loc));
-
-    if let Some(name) = decl.name_opt {
-        xx.name_symbols
-            .insert(name, NameSymbol::LocalVar(local_var));
-    }
+        .push(new_let_node(init_term, var_term, new_cont(), loc));
+    xx.name_symbols
+        .insert(name, NameSymbol::LocalVar(local_var));
 }
 
 fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
