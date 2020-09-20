@@ -300,10 +300,10 @@ fn swap[T](left: *mut T, right: *mut T, layout: *Layout[T]) {
 // 使用例
 
 fn use_bubble_sort() {
-    static I32_LAYOUT: Layout[i32] = Layout {
+    static I32_LAYOUT = Layout::[i32] {
         size: 4,
     };
-    static I32_ORD: Ord[i32] = Ord {
+    static I32_ORD = Ord {
         compare_fn: i32_compare,
     };
 

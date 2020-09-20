@@ -528,8 +528,8 @@ fn vec_drop[T](vec: *mut Vec[T]) {
 }
 
 fn vec_tests(tt: *mut TestTools) {
-    let i32_vec_vtable: VecVtable[i32] = {
-        let layout: StaticLayout[i32] = static_layout_new(4_usize, align_from_i32(4));
+    let i32_vec_vtable = {
+        let layout = static_layout_new::[i32](4_usize, align_from_i32(4));
         VecVtable {
             layout: layout,
             move_fn: i32_move,
