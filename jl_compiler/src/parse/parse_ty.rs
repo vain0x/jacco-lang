@@ -78,7 +78,7 @@ pub(crate) fn parse_ty_ascription(px: &mut Px) -> (Option<PToken>, Option<AfterT
 }
 
 /// 型引数リストのパース
-fn parse_ty_arg_list(px: &mut Px) -> Option<AfterParamTyList> {
+pub(crate) fn parse_ty_arg_list(px: &mut Px) -> Option<AfterParamTyList> {
     let left_bracket = px.eat(TokenKind::LeftBracket)?;
     let mut ty_args = vec![];
 

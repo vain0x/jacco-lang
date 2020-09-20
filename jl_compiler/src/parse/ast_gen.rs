@@ -430,8 +430,13 @@ pub(crate) fn alloc_false(event: ExprStart, token: PToken, px: &mut Px) -> After
 pub(crate) fn alloc_name_expr(
     event: ExprStart,
     name: AfterQualifiableName,
+    ty_arg_list_opt: Option<AfterTyArgList>,
     px: &mut Px,
 ) -> AfterExpr {
+    if let Some(ty_arg_list) = ty_arg_list_opt {
+        return alloc_ty_app_expr(event, name, ty_arg_list, px);
+    }
+
     let name = px.alloc_name(name);
 
     px.syntax_scopes.on_name_expr(name, &px.ast);
@@ -439,9 +444,30 @@ pub(crate) fn alloc_name_expr(
     (AExpr::Name(name), event.end(PElementKind::NameExpr, px))
 }
 
+fn alloc_ty_app_expr(
+    event: ExprStart,
+    name: AfterQualifiableName,
+    ty_arg_list: AfterTyArgList,
+    px: &mut Px,
+) -> AfterExpr {
+    let name = px.alloc_name(name);
+    px.syntax_scopes.on_name_expr(name, &px.ast);
+
+    let ty_args = px.alloc_tys(ty_arg_list);
+
+    (
+        AExpr::TyApp(ATyAppExpr {
+            left: name,
+            ty_args,
+        }),
+        event.end(PElementKind::TyAppExpr, px),
+    )
+}
+
 pub(crate) fn alloc_record_expr(
     event: ExprStart,
     name: AfterQualifiableName,
+    ty_arg_list_opt: Option<AfterTyArgList>,
     left_brace: PToken,
     fields: Vec<AfterLabeledArg>,
     right_brace_opt: Option<PToken>,
@@ -450,6 +476,10 @@ pub(crate) fn alloc_record_expr(
     validate_record_expr(left_brace, right_brace_opt, px);
 
     let name = px.alloc_name(name);
+    let ty_args = match ty_arg_list_opt {
+        Some(ty_arg_list) => px.alloc_tys(ty_arg_list),
+        None => ATyIds::EMPTY,
+    };
     let a_fields = fields
         .into_iter()
         .map(|(field_expr, _)| field_expr)
@@ -460,6 +490,7 @@ pub(crate) fn alloc_record_expr(
     (
         AExpr::Record(ARecordExpr {
             left: name,
+            ty_args,
             fields: a_fields,
         }),
         event.end(PElementKind::RecordExpr, px),

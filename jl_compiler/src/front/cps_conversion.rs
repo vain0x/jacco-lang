@@ -759,6 +759,10 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
     }
 }
 
+fn convert_ty_app_expr(_expr: &ATyAppExpr, _xx: &mut Xx) -> AfterRval {
+    todo!()
+}
+
 enum FieldExhaustivityError {
     NoSuchField {
         #[allow(unused)]
@@ -1384,6 +1388,7 @@ fn do_convert_expr(expr_id: AExprId, expr: &AExpr, ty_expect: TyExpect, xx: &mut
         AExpr::Char(token) => convert_char_expr(*token, xx.doc, xx.tokens),
         AExpr::Str(token) => convert_str_expr(*token, xx.doc, xx.tokens),
         AExpr::Name(name) => convert_name_expr(*name, xx),
+        AExpr::TyApp(expr) => convert_ty_app_expr(expr, xx),
         AExpr::Record(record_expr) => convert_record_expr(record_expr, loc, xx),
         AExpr::Field(field_expr) => convert_field_expr(field_expr, loc, xx),
         AExpr::Call(call_expr) => convert_call_expr(call_expr, ty_expect, loc, xx),

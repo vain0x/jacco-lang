@@ -2,7 +2,7 @@
 
 use super::*;
 use parse_pat::parse_pat;
-use parse_ty::parse_mut;
+use parse_ty::{parse_mut, parse_ty_arg_list};
 use std::mem::replace;
 
 /// `if cond { ... }` の `cond` に直接、構造体リテラルを書けないようにするためのもの。
@@ -87,15 +87,28 @@ fn parse_labeled_args(px: &mut Px) -> Vec<AfterLabeledArg> {
     fields
 }
 
-fn parse_record_expr(event: ExprStart, name: AfterQualifiableName, px: &mut Px) -> AfterExpr {
+fn parse_record_expr(
+    event: ExprStart,
+    name: AfterQualifiableName,
+    ty_arg_list_opt: Option<AfterTyArgList>,
+    px: &mut Px,
+) -> AfterExpr {
     let left_brace = match px.eat(TokenKind::LeftBrace) {
         Some(left_brace) => left_brace,
-        None => return alloc_name_expr(event, name, px),
+        None => return alloc_name_expr(event, name, ty_arg_list_opt, px),
     };
 
     let fields = parse_labeled_args(px);
     let right_brace_opt = px.eat(TokenKind::RightBrace);
-    alloc_record_expr(event, name, left_brace, fields, right_brace_opt, px)
+    alloc_record_expr(
+        event,
+        name,
+        ty_arg_list_opt,
+        left_brace,
+        fields,
+        right_brace_opt,
+        px,
+    )
 }
 
 fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr> {
@@ -127,9 +140,25 @@ fn parse_atomic_expr(allow_struct: AllowStruct, px: &mut Px) -> Option<AfterExpr
         }
         TokenKind::Ident => {
             let name = parse_qualifiable_name(px).unwrap();
+
+            let ty_arg_list_opt = if px.next() == TokenKind::ColonColon {
+                match px.nth(1) {
+                    TokenKind::LeftBracket => {
+                        px.bump();
+                        parse_ty_arg_list(px)
+                    }
+                    _ => {
+                        px.skip();
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
             match allow_struct {
-                AllowStruct::True => parse_record_expr(event, name, px),
-                AllowStruct::False => alloc_name_expr(event, name, px),
+                AllowStruct::True => parse_record_expr(event, name, ty_arg_list_opt, px),
+                AllowStruct::False => alloc_name_expr(event, name, ty_arg_list_opt, px),
             }
         }
         TokenKind::LeftParen => {

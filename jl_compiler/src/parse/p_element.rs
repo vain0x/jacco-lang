@@ -48,6 +48,7 @@ pub(crate) enum PElementKind {
     CharExpr,
     StrExpr,
     NameExpr,
+    TyAppExpr,
     ParenExpr,
     RecordExpr,
     FieldExpr,

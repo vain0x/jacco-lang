@@ -127,6 +127,12 @@ pub(crate) type AExprId = VecArenaId<AExprTag>;
 pub(crate) type AExprIds = VecArenaSlice<AExprTag>;
 pub(crate) type AExprArena = VecArena<AExprTag, AExpr>;
 
+/// `name::[ty...]`
+pub(crate) struct ATyAppExpr {
+    pub(crate) left: ANameId,
+    pub(crate) ty_args: ATyIds,
+}
+
 pub(crate) struct AFieldExpr {
     pub(crate) left: AExprId,
     pub(crate) field_opt: Option<PToken>,
@@ -162,6 +168,7 @@ pub(crate) struct ALabeledArg {
 
 pub(crate) struct ARecordExpr {
     pub(crate) left: ANameId,
+    pub(crate) ty_args: ATyIds,
     pub(crate) fields: Vec<ALabeledArg>,
 }
 
@@ -207,6 +214,7 @@ pub(crate) enum AExpr {
     Char(PToken),
     Str(PToken),
     Name(ANameId),
+    TyApp(ATyAppExpr),
     Record(ARecordExpr),
     Field(AFieldExpr),
     Call(ACallLikeExpr),
