@@ -168,7 +168,7 @@ pub(crate) struct ALabeledArg {
 
 pub(crate) struct ARecordExpr {
     pub(crate) left: ANameId,
-    pub(crate) ty_args: ATyIds,
+    pub(crate) ty_args_opt: Option<ATyIds>,
     pub(crate) fields: Vec<ALabeledArg>,
 }
 

@@ -10,6 +10,7 @@ use crate::{
     utils::VecArena,
 };
 use std::{
+    collections::HashMap,
     collections::HashSet,
     iter::once,
     mem::{swap, take},
@@ -233,6 +234,14 @@ fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
 
 fn error_unsupported_path_ty(loc: PLoc, logger: &DocLogger) {
     logger.error(loc, "パスによる型の指定は未実装");
+}
+
+fn error_ty_arg_arity(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "型引数の個数が一致しません。");
+}
+
+fn error_invalid_ty_args(loc: PLoc, logger: &DocLogger) {
+    logger.error(loc, "型引数は指定できません。");
 }
 
 fn error_expected_record_ty(loc: PLoc, logger: &DocLogger) {
@@ -869,19 +878,50 @@ fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<K
         }
     };
 
+    let mut ty_is_generic = false;
+    let loc_ty_args = PLoc::TokenBehind(expr.left.of(xx.ast.names()).token);
     let ty = match &k_struct.of(&xx.mod_outline.structs).parent {
-        KStructParent::Struct { ty_params } if !ty_params.is_empty() => KTy2::App {
-            k_struct,
-            ty_args: ty_params
-                .iter()
-                .map(|ty_param| {
-                    let meta_ty = xx.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
-                    (ty_param.name.to_string(), KTy2::Meta(meta_ty))
-                })
-                .collect(),
-        },
+        KStructParent::Struct { ty_params } if !ty_params.is_empty() => {
+            ty_is_generic = true;
+
+            let mut ty_args_opt = None;
+            if let Some(ty_args) = expr.ty_args_opt.as_ref() {
+                if ty_args.len() != ty_params.len() {
+                    error_ty_arg_arity(loc_ty_args, xx.logger);
+                } else {
+                    ty_args_opt = Some(
+                        ty_params
+                            .iter()
+                            .zip(ty_args.iter())
+                            .map(|(ty_param, ty_arg)| {
+                                let ty_param = ty_param.name.to_string();
+                                let ty_arg = convert_ty(ty_arg, &mut new_ty_resolver(xx))
+                                    .to_ty2_poly(xx.mod_outline);
+                                (ty_param, ty_arg)
+                            })
+                            .collect::<HashMap<_, _>>(),
+                    );
+                }
+            }
+
+            let ty_args = ty_args_opt.unwrap_or_else(|| {
+                ty_params
+                    .iter()
+                    .map(|ty_param| {
+                        let meta_ty = xx.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                        (ty_param.name.to_string(), KTy2::Meta(meta_ty))
+                    })
+                    .collect::<HashMap<_, _>>()
+            });
+
+            KTy2::App { k_struct, ty_args }
+        }
         _ => KTy2::Struct(k_struct),
     };
+
+    if expr.ty_args_opt.is_some() && !ty_is_generic {
+        error_invalid_ty_args(loc_ty_args, xx.logger);
+    }
 
     let fields = &k_struct.of(&xx.mod_outline.structs).fields;
     let perm =

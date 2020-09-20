@@ -1,0 +1,23 @@
+#![test("compile_error")]
+
+// ジェネリックなレコードのレコード式に型引数をつけることにより、
+// 型推論では束縛されない型引数を固定して、意図しない単一化を防げる。
+
+struct UserTag;
+struct ArticleTag;
+
+struct Id[T] {
+    value: i32,
+}
+
+pub fn main() -> i32 {
+    let id = Id::[UserTag] {
+        value: 1,
+    };
+
+    // 型引数を使って id の型パラメータ T を固定していなければ、
+    // T = ArticleTag に単一化されてコンパイルが通ってしまう。
+    let _: Id[ArticleTag] = id;
+
+    0
+}

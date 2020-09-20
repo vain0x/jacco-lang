@@ -20,7 +20,6 @@ pub(crate) fn parse_qualifiable_name(px: &mut Px) -> Option<AfterQualifiableName
 
     while let TokenKind::ColonColon = px.next() {
         if px.nth(1) != TokenKind::Ident {
-            px.skip();
             break;
         }
 
