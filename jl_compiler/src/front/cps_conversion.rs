@@ -1565,15 +1565,10 @@ fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, 
     };
 }
 
-fn new_param_name_key(decl_id: ADeclId, index: usize) -> ANameKey {
-    ANameKey::Param(AParamDeclKey::new(decl_id, index))
-}
-
 fn convert_param_decls(
     param_decls: &[AParamDecl],
     param_tys: &[KTy],
     doc: Doc,
-    decl_id: ADeclId,
     ast: &ATree,
     local_vars: &mut KLocalVarArena,
     name_symbols: &mut NameSymbols,
@@ -1582,30 +1577,27 @@ fn convert_param_decls(
 
     param_decls
         .iter()
-        .enumerate()
         .zip(param_tys)
-        .map(|((index, param_decl), _param_ty)| {
-            let name_key = new_param_name_key(decl_id, index);
-            let loc = Loc::new(doc, PLoc::Name(name_key));
+        .map(|(param_decl, _param_ty)| {
+            let loc = param_decl.name.loc().to_loc(doc);
             let name = param_decl.name.of(ast.names()).text.to_string();
             let local_var = local_vars.alloc(KLocalVarData::new(name.to_string(), loc));
             name_symbols.insert(param_decl.name, NameSymbol::LocalVar(local_var));
             KVarTerm {
                 local_var,
-                cause: KVarTermCause::NameDef(doc, name_key),
+                cause: KVarTermCause::NameDef(doc, ANameKey::Id(param_decl.name)),
             }
         })
         .collect()
 }
 
-fn convert_fn_decl(decl_id: ADeclId, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
+fn convert_fn_decl(k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc, xx: &mut Xx) {
     let mut local_vars = KLocalVarArena::new();
 
     let params = convert_param_decls(
         &fn_decl.params,
         k_fn.param_tys(&xx.mod_outline.fns),
         xx.doc,
-        decl_id,
         xx.ast,
         &mut local_vars,
         xx.name_symbols,
@@ -1654,19 +1646,13 @@ fn emit_return(term: KTerm, loc: Loc, xx: &mut Xx) {
     xx.nodes.push(new_return_tail(k_fn, term, loc));
 }
 
-fn convert_extern_fn_decl(
-    decl_id: ADeclId,
-    extern_fn: KExternFn,
-    extern_fn_decl: &AFnLikeDecl,
-    xx: &mut Xx,
-) {
+fn convert_extern_fn_decl(extern_fn: KExternFn, extern_fn_decl: &AFnLikeDecl, xx: &mut Xx) {
     let mut local_vars = KLocalVarArena::new();
 
     let params = convert_param_decls(
         &extern_fn_decl.params,
         extern_fn.param_tys(&xx.mod_outline.extern_fns),
         xx.doc,
-        decl_id,
         xx.ast,
         &mut local_vars,
         xx.name_symbols,
@@ -1724,14 +1710,14 @@ fn do_convert_decl(decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>,
                 Some(NameSymbol::ModSymbol(KModSymbol::Fn(it))) => it,
                 _ => return,
             };
-            convert_fn_decl(decl_id, k_fn, fn_decl, loc, xx);
+            convert_fn_decl(k_fn, fn_decl, loc, xx);
         }
         ADecl::ExternFn(extern_fn_decl) => {
             let extern_fn = match symbol_opt {
                 Some(NameSymbol::ModSymbol(KModSymbol::ExternFn(it))) => it,
                 _ => return,
             };
-            convert_extern_fn_decl(decl_id, extern_fn, extern_fn_decl, xx);
+            convert_extern_fn_decl(extern_fn, extern_fn_decl, xx);
         }
         ADecl::Enum(enum_decl) => match symbol_opt {
             Some(NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum))) => {
