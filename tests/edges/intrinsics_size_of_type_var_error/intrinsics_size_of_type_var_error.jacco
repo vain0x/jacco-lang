@@ -1,0 +1,11 @@
+#![test("compile_error")]
+
+// 型変数のサイズを取ることはできない。
+
+fn my_size_of[T]() -> usize {
+    __size_of::[T]
+}
+
+pub fn main() -> i32 {
+    my_size_of::[i32]() as i32
+}

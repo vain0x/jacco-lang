@@ -369,7 +369,7 @@ fn gen_number(s: &str, ty: &KTy2) -> CExpr {
     }
 }
 
-fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
+fn gen_term(term: &KTerm, ty_env: &KTyEnv, cx: &mut Cx) -> CExpr {
     match term {
         KTerm::Unit { .. } => {
             // FIXME: error!
@@ -423,6 +423,16 @@ fn gen_term(term: &KTerm, cx: &mut Cx) -> CExpr {
             error!("can't gen field term to c {} ({:?})", name, loc);
             CExpr::Other("/* error */ 0")
         }
+        KTerm::SizeOf { ty, .. } => {
+            let size = match ty.erasure(cx.mod_outline).size_of(ty_env, cx.mod_outline) {
+                Some(it) => it,
+                None => {
+                    error!("no size of type");
+                    return CExpr::Other("/* error */ 0");
+                }
+            };
+            gen_constant_value(&KConstValue::Usize(size))
+        }
     }
 }
 
@@ -436,7 +446,7 @@ fn gen_unary_op(
 ) {
     match (args, results, conts) {
         ([arg], [result], [cont]) => {
-            let arg = gen_term(arg, cx);
+            let arg = gen_term(arg, ty_env, cx);
             let expr = arg.into_unary_op(op);
             emit_var_decl(result, Some(expr), ty_env, cx);
             gen_node(cont, ty_env, cx);
@@ -455,8 +465,8 @@ fn gen_binary_op(
 ) {
     match (args, results, conts) {
         ([left, right], [result], [cont]) => {
-            let left = gen_term(left, cx);
-            let right = gen_term(right, cx);
+            let left = gen_term(left, ty_env, cx);
+            let right = gen_term(right, ty_env, cx);
             let expr = left.into_binary_op(op, right);
             emit_var_decl(result, Some(expr), ty_env, cx);
             gen_node(cont, ty_env, cx);
@@ -483,8 +493,8 @@ fn emit_assign(
                     )));
                 }
                 _ => {
-                    let left = gen_term(left, cx);
-                    let right = gen_term(right, cx);
+                    let left = gen_term(left, ty_env, cx);
+                    let right = gen_term(right, ty_env, cx);
                     cx.stmts.push(
                         left.into_unary_op(CUnaryOp::Deref)
                             .into_binary_op(op, right)
@@ -512,7 +522,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 cx.stmts.push(CStmt::Return(None));
             }
             ([KTerm::Return { .. }, arg], []) => {
-                let arg = gen_term(arg, cx);
+                let arg = gen_term(arg, ty_env, cx);
                 cx.stmts.push(CStmt::Return(Some(arg)));
             }
             ([KTerm::Label { label, .. }, args @ ..], []) => {
@@ -527,7 +537,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         continue;
                     }
 
-                    let arg = gen_term(arg, cx);
+                    let arg = gen_term(arg, ty_env, cx);
 
                     cx.stmts.push(
                         CExpr::Name(name)
@@ -544,8 +554,8 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ([result], [cont]) => {
                 let call_expr = {
                     let mut args = args.iter();
-                    let left = gen_term(args.next().unwrap(), cx);
-                    let args = args.map(|arg| gen_term(arg, cx));
+                    let left = gen_term(args.next().unwrap(), ty_env, cx);
+                    let args = args.map(|arg| gen_term(arg, ty_env, cx));
                     left.into_call(args)
                 };
                 emit_var_decl(result, Some(call_expr), ty_env, cx);
@@ -555,7 +565,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::Let => match (args, results, conts) {
             ([init], [result], [cont]) => {
-                let init = gen_term(init, cx);
+                let init = gen_term(init, ty_env, cx);
                 emit_var_decl(result, Some(init), ty_env, cx);
                 gen_node(cont, ty_env, cx);
             }
@@ -591,7 +601,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     let left = self_name
                         .clone()
                         .into_dot(field.name(&cx.mod_outline.fields));
-                    let right = gen_term(arg, cx);
+                    let right = gen_term(arg, ty_env, cx);
                     cx.stmts
                         .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
                 }
@@ -608,7 +618,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 [result],
                 [cont],
             ) => {
-                let left = gen_term(left, cx);
+                let left = gen_term(left, ty_env, cx);
                 let expr = left.into_arrow(field_name).into_ref();
                 emit_var_decl(result, Some(expr), ty_env, cx);
                 gen_node(cont, ty_env, cx);
@@ -617,7 +627,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         },
         KPrim::If => match (args, results, conts) {
             ([cond], [], [then_cont, else_cont]) => {
-                let cond = gen_term(cond, cx);
+                let cond = gen_term(cond, ty_env, cx);
                 let then_cont = gen_node_as_block(then_cont, ty_env, cx);
                 let else_cont = gen_node_as_block(else_cont, ty_env, cx);
 
@@ -635,7 +645,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     .as_enum(ty_env)
                     .is_some();
 
-                let mut cond = gen_term(cond, cx);
+                let mut cond = gen_term(cond, ty_env, cx);
                 if is_enum {
                     cond = cond.into_dot("tag_");
                 }
@@ -655,7 +665,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         default_opt = Some(body);
                     } else {
                         // 定数パターン
-                        let pat = gen_term(pat, cx);
+                        let pat = gen_term(pat, ty_env, cx);
                         let body = gen_node_as_block(cont, ty_env, cx);
                         cases.push((pat, body));
                     }
@@ -708,7 +718,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::RightShift => gen_binary_op(CBinaryOp::RightShift, args, results, conts, ty_env, cx),
         KPrim::Cast => match (args, results, conts) {
             ([arg], [result], [cont]) => {
-                let arg = gen_term(arg, cx);
+                let arg = gen_term(arg, ty_env, cx);
                 let result_ty = gen_ty2(&result.ty(&cx.local_vars), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
                 emit_var_decl(result, Some(expr), ty_env, cx);

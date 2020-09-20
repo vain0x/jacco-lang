@@ -86,6 +86,10 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     FieldTag(KFieldTag),
+    SizeOf {
+        ty: KTy,
+        loc: Loc,
+    },
 }
 
 impl KTerm {
@@ -129,6 +133,7 @@ impl KTerm {
                     cause: KTyCause::FieldTag,
                 }
             }
+            KTerm::SizeOf { .. } => KTy2::USIZE,
         }
     }
 
@@ -150,7 +155,8 @@ impl KTerm {
             | KTerm::Return { loc, .. }
             | KTerm::ExternFn { loc, .. }
             | KTerm::RecordTag { loc, .. }
-            | KTerm::FieldTag(KFieldTag { loc, .. }) => *loc,
+            | KTerm::FieldTag(KFieldTag { loc, .. })
+            | KTerm::SizeOf { loc, .. } => *loc,
         }
     }
 }
@@ -202,6 +208,11 @@ impl<'a>
                 Ok(())
             }
             KTerm::FieldTag(KFieldTag { name, .. }) => write!(f, "{}", name),
+            KTerm::SizeOf { ty, .. } => write!(
+                f,
+                "__size_of::[{}]",
+                ty.erasure(mod_outline).display(KTyEnv::EMPTY, mod_outline)
+            ),
         }
     }
 }

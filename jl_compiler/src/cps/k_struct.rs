@@ -79,4 +79,54 @@ impl KStructOutline {
             KStructParent::Struct { ty_params } => ty_params.as_ref(),
         }
     }
+
+    pub(crate) fn do_align_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        let mut align = 1;
+
+        for field in &self.fields {
+            let field_align = field
+                .ty(&mod_outline.fields)
+                .align_of(KTyEnv::EMPTY, mod_outline)?;
+
+            align = align.max(field_align);
+        }
+
+        Some(align)
+    }
+
+    pub(crate) fn do_size_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        let align = self.do_align_of(mod_outline)?;
+        let mut size = 0;
+
+        for field in &self.fields {
+            let field_size = field
+                .ty(&mod_outline.fields)
+                .size_of(KTyEnv::EMPTY, mod_outline)?;
+
+            size += field_size;
+            if size % align != 0 {
+                size += align - size % align;
+            }
+        }
+
+        Some(size)
+    }
+
+    pub(crate) fn align_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        match &self.parent {
+            KStructParent::Enum { struct_enum, .. } => struct_enum
+                .of(&mod_outline.struct_enums)
+                .align_of(mod_outline),
+            KStructParent::Struct { .. } => self.do_align_of(mod_outline),
+        }
+    }
+
+    pub(crate) fn size_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        match &self.parent {
+            KStructParent::Enum { struct_enum, .. } => struct_enum
+                .of(&mod_outline.struct_enums)
+                .size_of(mod_outline),
+            KStructParent::Struct { .. } => self.do_size_of(mod_outline),
+        }
+    }
 }

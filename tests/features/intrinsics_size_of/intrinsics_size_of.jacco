@@ -1,0 +1,70 @@
+#![test("run", 0)]
+
+// 具体的な型に対する __size_of が動くこと。
+// (この仕様は今後、変更される可能性がある。)
+
+extern fn assert(cond: bool);
+
+pub fn main() -> i32 {
+    // 固定サイズの整数型
+    assert(__size_of::[i8] == 1);
+    assert(__size_of::[i16] == 2);
+    assert(__size_of::[i32] == 4);
+    assert(__size_of::[i64] == 8);
+
+    // ポインタのサイズ
+    assert(__size_of::[*unknown] >= 2);
+    assert(__size_of::[*unknown] == __size_of::[usize]);
+    assert(__size_of::[*mut i32] == __size_of::[usize]);
+
+    // ゼロサイズ
+    assert(__size_of::[unit] == 0);
+
+    // const enum のサイズ
+    {
+        enum Bit {
+            Zero = 0_i32,
+            One = 1_i32,
+        }
+
+        assert(__size_of::[Bit] == 4);
+    }
+
+    // struct enum のサイズ
+    {
+        enum StructEnum {
+            I32 { value: i32 },
+            F64 { value: f64 },
+        }
+
+        assert(__size_of::[StructEnum] == 12)
+    }
+
+    // struct のサイズ
+    {
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+
+        assert(__size_of::[Point] == 16);
+    }
+
+    {
+        struct Padded {
+            a: c8,
+            // ここに 3 バイトのパディングが入る。
+            b: i32,
+        }
+
+        assert(__size_of::[Padded] == 8);
+    }
+
+    {
+        struct MyUnit {}
+
+        assert(__size_of::[MyUnit] == 0);
+    }
+
+    0
+}

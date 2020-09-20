@@ -42,4 +42,36 @@ impl KStructEnumOutline {
             KTy::U32
         }
     }
+
+    pub(crate) fn align_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        let mut align = self.tag_ty().align_of(KTyEnv::EMPTY, mod_outline)?;
+
+        for variant in &self.variants {
+            let variant_align = variant.of(&mod_outline.structs).do_align_of(mod_outline)?;
+            align = align.max(variant_align);
+        }
+
+        Some(align)
+    }
+
+    pub(crate) fn size_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        let align = self.align_of(mod_outline)?;
+
+        let mut tag_size = self.tag_ty().size_of(KTyEnv::EMPTY, mod_outline)?;
+        if tag_size % align != 0 {
+            tag_size += align - tag_size % align;
+        }
+
+        let mut variant_size = 0;
+        for variant in &self.variants {
+            let mut size = variant.of(&mod_outline.structs).do_size_of(mod_outline)?;
+            if size % align != 0 {
+                size += align - size % align;
+            }
+
+            variant_size = variant_size.max(size);
+        }
+
+        Some(tag_size + variant_size)
+    }
 }

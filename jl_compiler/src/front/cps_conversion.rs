@@ -770,8 +770,22 @@ fn convert_name_lval(name: ANameId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
 
 fn convert_ty_app_expr(expr: &ATyAppExpr, xx: &mut Xx) -> AfterRval {
     let name = expr.left;
-
     let loc = name.loc().to_loc(xx.doc);
+
+    // sizeof
+    if name.of(xx.ast.names()).text() == "__size_of" {
+        if expr.ty_args.len() != 1 {
+            error_ty_arg_arity(name.loc(), xx.logger);
+            return new_error_term(loc);
+        }
+
+        let ty = convert_ty(
+            expr.ty_args.iter().next().unwrap(),
+            &mut new_ty_resolver(xx),
+        );
+        return KTerm::SizeOf { ty, loc };
+    }
+
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
         None => {

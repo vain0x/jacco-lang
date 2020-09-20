@@ -44,4 +44,12 @@ impl KConstEnumOutline {
             }
         }
     }
+
+    pub(crate) fn align_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        self.repr_ty.align_of(KTyEnv::EMPTY, mod_outline)
+    }
+
+    pub(crate) fn size_of(&self, mod_outline: &KModOutline) -> Option<usize> {
+        self.repr_ty.size_of(KTyEnv::EMPTY, mod_outline)
+    }
 }

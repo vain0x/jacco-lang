@@ -263,6 +263,10 @@ fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
     KTy2::Meta(meta_ty)
 }
 
+fn error_invalid_size_of(loc: Loc, logger: &Logger) {
+    logger.error(loc, "この型のサイズは取得できません。");
+}
+
 fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 {
     match struct_ty {
         KTy2::Struct(_) => field.ty(&tx.mod_outline.fields).to_ty2_poly(tx.mod_outline),
@@ -384,6 +388,12 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
             .tag_ty(&tx.mod_outline.structs, &tx.mod_outline.struct_enums)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::FieldTag(_) => unreachable!(),
+        KTerm::SizeOf { ty, loc } => {
+            if ty.size_of(&tx.ty_env, &tx.mod_outline).is_none() {
+                error_invalid_size_of(*loc, &tx.logger);
+            }
+            KTy2::USIZE
+        }
     }
 }
 

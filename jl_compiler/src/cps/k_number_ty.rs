@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug, Formatter};
+use std::{
+    fmt::{self, Debug, Formatter},
+    mem::size_of,
+};
 
 /// 組み込みの数値型
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -79,6 +82,18 @@ impl KNumberTy {
             _ => return None,
         };
         Some(ty)
+    }
+
+    pub(crate) fn size_of(&self) -> Option<usize> {
+        let size = match self {
+            KNumberTy::Bool | KNumberTy::I8 | KNumberTy::U8 | KNumberTy::C8 => 1,
+            KNumberTy::I16 | KNumberTy::U16 | KNumberTy::C16 => 2,
+            KNumberTy::I32 | KNumberTy::U32 | KNumberTy::F32 | KNumberTy::C32 => 4,
+            KNumberTy::I64 | KNumberTy::U64 | KNumberTy::F64 => 8,
+            KNumberTy::Isize | KNumberTy::Usize => size_of::<*const ()>(),
+            KNumberTy::INN | KNumberTy::UNN | KNumberTy::FNN | KNumberTy::CNN => return None,
+        };
+        Some(size)
     }
 }
 

@@ -8,6 +8,8 @@ use std::{
     collections::HashMap,
     fmt::{self, Debug, Formatter},
     hash::{Hash, Hasher},
+    mem::align_of,
+    mem::size_of,
     mem::take,
 };
 
@@ -215,6 +217,44 @@ impl KTy2 {
             KTy2::Struct(k_struct) => Some(k_struct),
             KTy2::Ptr { ref base_ty, .. } => base_ty.as_struct_by_deref(ty_env),
             _ => None,
+        })
+    }
+
+    pub(crate) fn align_of(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> Option<usize> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Unresolved { .. } | KTy2::Var { .. } | KTy2::Unknown | KTy2::Never => None,
+            KTy2::Ptr { .. } | KTy2::Fn { .. } => Some(align_of::<*const ()>()),
+            KTy2::Unit => Some(1),
+            KTy2::Number(number_ty) => number_ty.size_of(),
+            KTy2::ConstEnum(const_enum) => const_enum
+                .of(&mod_outline.const_enums)
+                .align_of(mod_outline),
+            KTy2::StructEnum(struct_enum) => struct_enum
+                .of(&mod_outline.struct_enums)
+                .align_of(mod_outline),
+            KTy2::Struct(k_struct) | KTy2::App { k_struct, .. } => {
+                k_struct.of(&mod_outline.structs).align_of(mod_outline)
+            }
+            KTy2::Meta(_) => unreachable!(),
+        })
+    }
+
+    pub(crate) fn size_of(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> Option<usize> {
+        ty2_map(self, ty_env, |ty| match *ty {
+            KTy2::Unresolved { .. } | KTy2::Var { .. } | KTy2::Unknown | KTy2::Never => None,
+            KTy2::Ptr { .. } | KTy2::Fn { .. } => Some(size_of::<*const ()>()),
+            KTy2::Unit => Some(1),
+            KTy2::Number(number_ty) => number_ty.size_of(),
+            KTy2::ConstEnum(const_enum) => {
+                const_enum.of(&mod_outline.const_enums).size_of(mod_outline)
+            }
+            KTy2::StructEnum(struct_enum) => struct_enum
+                .of(&mod_outline.struct_enums)
+                .size_of(mod_outline),
+            KTy2::Struct(k_struct) | KTy2::App { k_struct, .. } => {
+                k_struct.of(&mod_outline.structs).size_of(mod_outline)
+            }
+            KTy2::Meta(_) => unreachable!(),
         })
     }
 
@@ -534,6 +574,14 @@ impl KTy {
                 TySchemeConversionMode::Substitute(ty_args),
             ),
         )
+    }
+
+    pub(crate) fn align_of(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> Option<usize> {
+        self.to_ty2_poly(mod_outline).align_of(ty_env, mod_outline)
+    }
+
+    pub(crate) fn size_of(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> Option<usize> {
+        self.to_ty2_poly(mod_outline).size_of(ty_env, mod_outline)
     }
 }
 
