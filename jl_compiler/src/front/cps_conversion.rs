@@ -395,7 +395,7 @@ fn emit_default_branch(name: ANameId, xx: &mut Xx) -> Branch {
     }
 
     let term = {
-        let cause = KVarTermCause::NameDef(xx.doc, ANameKey::Id(name));
+        let cause = KVarTermCause::NameDef(xx.doc, name);
         fresh_var(&name.of(xx.ast.names()).text, cause, xx)
     };
     Branch::Default(term)
@@ -688,7 +688,7 @@ fn fresh_var(hint: &str, cause: impl Into<KVarTermCause>, xx: &mut Xx) -> KVarTe
 
 fn convert_name_expr(name: ANameId, xx: &mut Xx) -> AfterRval {
     let loc = name.loc().to_loc(xx.doc);
-    let cause = KVarTermCause::NameUse(xx.doc, ANameKey::Id(name));
+    let cause = KVarTermCause::NameUse(xx.doc, name);
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
@@ -721,7 +721,7 @@ fn convert_name_expr(name: ANameId, xx: &mut Xx) -> AfterRval {
 
 fn convert_name_lval(name: ANameId, k_mut: KMut, xx: &mut Xx) -> AfterLval {
     let loc = name.loc().to_loc(xx.doc);
-    let cause = KVarTermCause::NameUse(xx.doc, ANameKey::Id(name));
+    let cause = KVarTermCause::NameUse(xx.doc, name);
 
     let value = match resolve_value_path(name, path_resolution_context(xx)) {
         Some(it) => it,
@@ -1517,7 +1517,7 @@ fn convert_let_decl(_decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
     );
     let var_term = KVarTerm {
         local_var,
-        cause: KVarTermCause::NameDef(xx.doc, ANameKey::Id(name)),
+        cause: KVarTermCause::NameDef(xx.doc, name),
     };
     xx.nodes
         .push(new_let_node(init_term, var_term, new_cont(), loc));
@@ -1585,7 +1585,7 @@ fn convert_param_decls(
             name_symbols.insert(param_decl.name, NameSymbol::LocalVar(local_var));
             KVarTerm {
                 local_var,
-                cause: KVarTermCause::NameDef(doc, ANameKey::Id(param_decl.name)),
+                cause: KVarTermCause::NameDef(doc, param_decl.name),
             }
         })
         .collect()

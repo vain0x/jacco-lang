@@ -1,6 +1,6 @@
 use super::{k_local_var::KLocalVarArena, k_ty::KTy2, KLocalVar};
 use crate::{
-    parse::{ANameKey, PLoc, PToken},
+    parse::{ANameId, PLoc, PToken},
     source::Loc,
     source::{Doc, HaveLoc},
     utils::DebugWithContext,
@@ -11,8 +11,8 @@ use std::fmt::{self, Formatter};
 pub(crate) enum KVarTermCause {
     Loc(Loc),
     WildcardPat(Doc, PToken),
-    NameDef(Doc, ANameKey),
-    NameUse(Doc, ANameKey),
+    NameDef(Doc, ANameId),
+    NameUse(Doc, ANameId),
 }
 
 impl KVarTermCause {

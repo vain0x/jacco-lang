@@ -49,26 +49,6 @@ impl AName {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) enum ANameKey {
-    Id(ANameId),
-}
-
-impl ANameKey {
-    pub(crate) fn element(self, tree: &PTree) -> PElement {
-        let parent = match self {
-            ANameKey::Id(key) => key.element(tree),
-        };
-        parent
-            .of(&tree.elements)
-            .nth_child_element_of(PElementKind::Name, 0, tree)
-            .unwrap_or_else(|| {
-                // FIXME: 名前があるべき位置を見つける？
-                parent
-            })
-    }
-}
-
 /// 型パラメータ
 pub(crate) struct ATyParamDecl {
     pub(crate) name: ANameId,
@@ -458,7 +438,7 @@ impl ANameId {
     }
 
     pub(crate) fn loc(self) -> PLoc {
-        PLoc::Name(ANameKey::Id(self))
+        PLoc::Name(self)
     }
 }
 

@@ -24,7 +24,7 @@ pub(crate) enum PLoc {
     Pat(APatId),
     Expr(AExprId),
     Decl(ADeclId),
-    Name(ANameKey),
+    Name(ANameId),
     #[allow(unused)]
     ParamDecl(AParamDeclKey),
     FieldDecl(AFieldDeclKey),
