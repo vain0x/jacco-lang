@@ -19,11 +19,11 @@ fn resolve_name_opt(name_opt: Option<&AName>) -> String {
     name_opt.map_or(String::new(), |name| name.text.to_string())
 }
 
-fn resolve_ty_opt(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KTy {
+fn resolve_ty_opt(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
     convert_ty_opt(ty_opt, ty_resolver)
 }
 
-fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &mut TyResolver) -> KTy {
+fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
     match ty_opt {
         Some(ty) => convert_ty(ty, ty_resolver),
         None => KTy::Unit,
@@ -366,7 +366,7 @@ impl<'a> OutlineGenerator<'a> {
 fn resolve_const_decl(
     const_decl: &AFieldLikeDecl,
     k_const: KConst,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let value_ty = resolve_ty_opt(const_decl.ty_opt, ty_resolver);
@@ -376,14 +376,14 @@ fn resolve_const_decl(
 fn resolve_static_decl(
     static_decl: &AFieldLikeDecl,
     static_var: KStaticVar,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let value_ty = resolve_ty_opt(static_decl.ty_opt, ty_resolver);
     static_var.of_mut(&mut mod_outline.static_vars).ty = value_ty;
 }
 
-fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &mut TyResolver) -> Vec<KTy> {
+fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &TyResolver) -> Vec<KTy> {
     param_decls
         .iter()
         .map(|param_decl| resolve_ty_opt(param_decl.ty_opt, ty_resolver))
@@ -397,7 +397,7 @@ fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
 fn resolve_record_variant_decl(
     decl: &ARecordVariantDecl,
     k_struct: KStruct,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let fields = k_struct.fields(&mod_outline.structs).to_owned();
@@ -410,7 +410,7 @@ fn resolve_record_variant_decl(
 fn resolve_variant_decl(
     variant_decl: &AVariantDecl,
     k_struct: KStruct,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     match variant_decl {
@@ -424,7 +424,7 @@ fn resolve_variant_decl(
 fn resolve_const_enum_decl(
     decl: &AEnumDecl,
     const_enum: KConstEnum,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let variants = const_enum.variants(&mod_outline.const_enums).to_owned();
@@ -438,7 +438,7 @@ fn resolve_const_enum_decl(
 fn resolve_struct_enum_decl(
     decl: &AEnumDecl,
     struct_enum: KStructEnum,
-    ty_resolver: &mut TyResolver,
+    ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
     let variants = struct_enum.variants(&mod_outline.struct_enums).to_owned();
@@ -455,7 +455,7 @@ fn resolve_outline(
     logger: &DocLogger,
 ) {
     let ast = &tree.ast;
-    let ty_resolver = &mut TyResolver {
+    let ty_resolver = &TyResolver {
         ast,
         name_referents,
         name_symbols,

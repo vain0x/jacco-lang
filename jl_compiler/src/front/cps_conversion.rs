@@ -297,7 +297,7 @@ pub(crate) struct TyResolver<'a> {
     pub(crate) logger: &'a DocLogger,
 }
 
-fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
+fn new_ty_resolver<'a>(xx: &'a Xx<'_>) -> TyResolver<'a> {
     TyResolver {
         ast: xx.ast,
         name_referents: xx.name_referents,
@@ -306,7 +306,7 @@ fn new_ty_resolver<'a>(xx: &'a mut Xx<'_>) -> TyResolver<'a> {
     }
 }
 
-fn do_convert_name_ty(ty_id: ATyId, name: ANameId, xx: &mut TyResolver) -> KTy {
+fn do_convert_name_ty(ty_id: ATyId, name: ANameId, xx: &TyResolver) -> KTy {
     if name.of(xx.ast.names()).is_qualified() {
         error_unsupported_path_ty(name.loc(), xx.logger);
     }
@@ -322,7 +322,7 @@ fn do_convert_name_ty(ty_id: ATyId, name: ANameId, xx: &mut TyResolver) -> KTy {
     }
 }
 
-fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
+fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &TyResolver) -> KTy {
     match ty {
         ATy::Name(name) => do_convert_name_ty(ty_id, *name, xx),
         ATy::App(name, ty_args) => {
@@ -359,12 +359,12 @@ fn do_convert_ty(ty_id: ATyId, ty: &ATy, xx: &mut TyResolver) -> KTy {
     }
 }
 
-pub(crate) fn convert_ty(ty_id: ATyId, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty(ty_id: ATyId, xx: &TyResolver) -> KTy {
     let ty = ty_id.of(xx.ast.tys());
     do_convert_ty(ty_id, ty, xx)
 }
 
-pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
     match ty_opt {
         Some(ty) => convert_ty(ty, xx),
         None => KTy::Unresolved {
@@ -373,7 +373,7 @@ pub(crate) fn convert_ty_opt(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy 
     }
 }
 
-pub(crate) fn convert_ty_or_unit(ty_opt: Option<ATyId>, xx: &mut TyResolver) -> KTy {
+pub(crate) fn convert_ty_or_unit(ty_opt: Option<ATyId>, xx: &TyResolver) -> KTy {
     match ty_opt {
         Some(ty) => convert_ty(ty, xx),
         None => KTy::Unit,
@@ -779,10 +779,7 @@ fn convert_ty_app_expr(expr: &ATyAppExpr, xx: &mut Xx) -> AfterRval {
             return new_error_term(loc);
         }
 
-        let ty = convert_ty(
-            expr.ty_args.iter().next().unwrap(),
-            &mut new_ty_resolver(xx),
-        );
+        let ty = convert_ty(expr.ty_args.iter().next().unwrap(), &new_ty_resolver(xx));
         return KTerm::TyProperty { kind, ty, loc };
     }
 
@@ -813,7 +810,7 @@ fn convert_ty_app_expr(expr: &ATyAppExpr, xx: &mut Xx) -> AfterRval {
                 .zip(expr.ty_args.iter())
                 .map(|(ty_param, ty_arg)| {
                     let ty_param = ty_param.name.to_string();
-                    let ty_arg = convert_ty(ty_arg, &mut new_ty_resolver(xx))
+                    let ty_arg = convert_ty(ty_arg, &new_ty_resolver(xx))
                         .to_ty2(xx.mod_outline, &mut xx.ty_env);
                     (ty_param, ty_arg)
                 })
@@ -953,7 +950,7 @@ fn do_convert_record_expr(expr: &ARecordExpr, loc: Loc, xx: &mut Xx) -> Option<K
                             .zip(ty_args.iter())
                             .map(|(ty_param, ty_arg)| {
                                 let ty_param = ty_param.name.to_string();
-                                let ty_arg = convert_ty(ty_arg, &mut new_ty_resolver(xx))
+                                let ty_arg = convert_ty(ty_arg, &new_ty_resolver(xx))
                                     .to_ty2_poly(xx.mod_outline);
                                 (ty_param, ty_arg)
                             })
@@ -1123,7 +1120,7 @@ fn convert_index_lval(
 }
 
 fn convert_cast_expr(expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc, xx: &mut Xx) -> AfterRval {
-    let ty = convert_ty_opt(expr.ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
+    let ty = convert_ty_opt(expr.ty_opt, &new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
     let arg = convert_expr(expr.left, TyExpect::from(&ty), xx);
 
     let result = fresh_var("cast", loc, xx);
@@ -1587,7 +1584,7 @@ fn evaluate_rval(
     xx: &mut Xx,
 ) -> (AfterRval, KTy2) {
     let value = convert_expr_opt(expr_opt, TyExpect::Todo, loc, xx);
-    let ty = convert_ty_opt(ty_opt, &mut new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
+    let ty = convert_ty_opt(ty_opt, &new_ty_resolver(xx)).to_ty2_poly(xx.mod_outline);
     (value, ty)
 }
 
