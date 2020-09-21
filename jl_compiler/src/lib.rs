@@ -246,7 +246,6 @@ mod utils {
     mod debug_with;
     mod id_provider;
     mod map_stack;
-    mod take_out;
 
     #[macro_use]
     mod vec_arena;
