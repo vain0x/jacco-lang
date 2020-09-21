@@ -229,7 +229,6 @@ mod token {
     mod lit_binary;
     mod lit_decimal;
     mod lit_hex;
-    mod punctuation;
     mod token_data;
     mod token_kind;
     mod tokenize_context;
