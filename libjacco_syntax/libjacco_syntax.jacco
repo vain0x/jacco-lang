@@ -1716,15 +1716,6 @@ fn syntax_kind_parse_star_pun(s: Str, len: *mut usize) -> SyntaxKind {
     SyntaxKind::Star
 }
 
-fn syntax_kind_from_u16(kind: u16) -> SyntaxKind {
-    let kind = (*((&kind) as *u16)) as usize;
-    *((&kind) as *SyntaxKind)
-}
-
-fn syntax_kind_to_u16(kind: SyntaxKind) -> u16 {
-    (*((&kind) as *usize)) as u16
-}
-
 // -----------------------------------------------
 // GreenToken
 // -----------------------------------------------
@@ -1745,7 +1736,7 @@ struct GreenToken {
 
 fn green_token_new(kind: SyntaxKind, len: usize) -> GreenToken {
     GreenToken {
-        kind: syntax_kind_to_u16(kind),
+        kind: kind as u16,
         len: len as u16,
     }
 }
@@ -1755,7 +1746,7 @@ fn green_token_new(kind: SyntaxKind, len: usize) -> GreenToken {
 // }
 
 fn green_token_kind(token: GreenToken) -> SyntaxKind {
-    syntax_kind_from_u16(token.kind)
+    token.kind as SyntaxKind
 }
 
 fn green_token_len(token: GreenToken) -> usize {
@@ -2352,7 +2343,7 @@ struct PToken {
 
 fn p_token_new(kind: SyntaxKind, leading_len: usize, body_len: usize, trailing_len: usize) -> PToken {
     PToken {
-        kind: syntax_kind_to_u16(kind),
+        kind: kind as u16,
         leading_len: leading_len as u16,
         body_len: body_len as u16,
         trailing_len: trailing_len as u16,
@@ -2364,7 +2355,7 @@ fn p_token_default() -> PToken {
 }
 
 fn p_token_kind(token: PToken) -> SyntaxKind {
-    syntax_kind_from_u16(token.kind)
+    token.kind as SyntaxKind
 }
 
 fn p_token_leading_len(token: PToken) -> usize {
