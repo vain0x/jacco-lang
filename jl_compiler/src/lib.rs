@@ -103,8 +103,11 @@ mod front {
     //! 構文木上の処理
 
     mod cps_conversion;
+    pub(crate) mod cps_generator;
     mod mod_outline_gen;
     pub(crate) mod name_resolution;
+    pub(crate) mod semantic_analyzer;
+    pub(crate) mod ty_inferrer;
 
     pub(crate) use cps_conversion::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;

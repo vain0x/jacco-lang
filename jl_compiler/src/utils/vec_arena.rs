@@ -27,7 +27,6 @@ const fn id_to_index(id: NonZeroU32) -> usize {
     (id.get() - 1) as usize
 }
 
-#[allow(unused)]
 const fn id_add_offset(id: NonZeroU32, offset: usize) -> NonZeroU32 {
     let value: u32 = id.get() + offset as u32;
     unsafe { NonZeroU32::new_unchecked(value) }
@@ -85,7 +84,6 @@ impl<Tag> VecArenaId<Tag> {
         id_to_index(self.inner)
     }
 
-    #[allow(unused)]
     pub(crate) const fn add_offset(self, offset: usize) -> VecArenaId<Tag> {
         Self::from_inner(id_add_offset(self.inner, offset))
     }
@@ -372,6 +370,10 @@ impl<Tag> VecArenaSlice<Tag> {
         let start = self.0.start;
         let end = self.0.end;
         end.to_index().saturating_sub(start.to_index())
+    }
+
+    pub(crate) fn is_last(&self, id: VecArenaId<Tag>) -> bool {
+        self.0.start != self.0.end && self.0.end == id.add_offset(1)
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = VecArenaId<Tag>> {

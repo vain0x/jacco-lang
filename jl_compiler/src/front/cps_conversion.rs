@@ -28,7 +28,7 @@ type AfterJump = KTerm;
 /// 式の型に与えられる制約。
 #[allow(unused)]
 #[derive(Copy, Clone)]
-enum TyExpect<'a> {
+pub(crate) enum TyExpect<'a> {
     /// 未実装部分
     Todo,
     Exact(&'a KTy2),
