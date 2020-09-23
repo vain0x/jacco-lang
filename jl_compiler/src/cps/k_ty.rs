@@ -629,11 +629,22 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         KTy::Unresolved { cause } => KTy2::Unresolved { cause },
         KTy::Var(ref ty_var) => match context.mode {
             TySchemeConversionMode::Instantiate(_) => {
-                // FIXME: unwrap できないことがある
-                let meta_ty = context.env.get(&ty_var.name).copied().unwrap();
+                let meta_ty = match context.env.get(&ty_var.name).copied() {
+                    Some(it) => it,
+                    None => {
+                        return KTy2::Unresolved {
+                            cause: KTyCause::Loc(ty_var.loc),
+                        };
+                    }
+                };
                 KTy2::Meta(meta_ty)
             }
-            TySchemeConversionMode::Substitute(env) => env.get(&ty_var.name).cloned().unwrap(),
+            TySchemeConversionMode::Substitute(env) => match env.get(&ty_var.name).cloned() {
+                Some(it) => it,
+                None => KTy2::Unresolved {
+                    cause: KTyCause::Loc(ty_var.loc),
+                },
+            },
             TySchemeConversionMode::Preserve => KTy2::Var(ty_var.clone()),
             TySchemeConversionMode::Erasure => {
                 // FIXME: この段階では型変数のままにしておく方がよい (例えば `x as T` の式の型は型変数 T のままになるはず。型を消去するのはコード生成の工程でいい)

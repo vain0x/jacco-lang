@@ -774,12 +774,15 @@ fn convert_ty_app_expr(expr: &ATyAppExpr, xx: &mut Xx) -> AfterRval {
 
     // __align_of/__size_of
     if let Some(kind) = KTyProperty::from_str(name.of(xx.ast.names()).text()) {
-        if expr.ty_args.len() != 1 {
-            error_ty_arg_arity(name.loc(), xx.logger);
-            return new_error_term(loc);
-        }
+        let ty_arg = match expr.ty_args.iter().next() {
+            Some(it) if expr.ty_args.len() == 1 => it,
+            _ => {
+                error_ty_arg_arity(name.loc(), xx.logger);
+                return new_error_term(loc);
+            }
+        };
 
-        let ty = convert_ty(expr.ty_args.iter().next().unwrap(), &new_ty_resolver(xx));
+        let ty = convert_ty(ty_arg, &new_ty_resolver(xx));
         return KTerm::TyProperty { kind, ty, loc };
     }
 
@@ -1106,11 +1109,9 @@ fn convert_index_lval(
     xx: &mut Xx,
 ) -> AfterLval {
     let left = convert_expr(expr.left, TyExpect::Todo, xx);
-    let right = if expr.args.len() == 1 {
-        let right = expr.args.iter().next().unwrap();
-        convert_expr(right, TyExpect::Todo, xx)
-    } else {
-        new_error_term(loc)
+    let right = match expr.args.iter().next() {
+        Some(right) if expr.args.len() == 1 => convert_expr(right, TyExpect::Todo, xx),
+        _ => new_error_term(loc),
     };
 
     let result = fresh_var("indexed_ptr", loc, xx);
@@ -1628,13 +1629,10 @@ fn convert_let_decl(_decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
 fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let (node, term) = {
         let mut nodes = take(&mut xx.nodes);
-        let mut term_opt = None;
-        xx.do_out_fn(|xx| {
-            term_opt = Some(convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
-        });
+        let term = xx.do_out_fn(|xx| convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
         swap(&mut xx.nodes, &mut nodes);
 
-        (fold_nodes(nodes), term_opt.unwrap())
+        (fold_nodes(nodes), term)
     };
 
     #[cfg(skip)]
@@ -1651,13 +1649,10 @@ fn convert_const_decl(k_const: KConst, decl: &AFieldLikeDecl, loc: Loc, xx: &mut
 fn convert_static_decl(static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc, xx: &mut Xx) {
     let (node, term) = {
         let mut nodes = take(&mut xx.nodes);
-        let mut term_opt = None;
-        xx.do_out_fn(|xx| {
-            term_opt = Some(convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
-        });
+        let term = xx.do_out_fn(|xx| convert_expr_opt(decl.value_opt, TyExpect::Todo, loc, xx));
         swap(&mut xx.nodes, &mut nodes);
 
-        (fold_nodes(nodes), term_opt.unwrap())
+        (fold_nodes(nodes), term)
     };
 
     *static_var.of_mut(&mut xx.mod_data.static_vars) = KStaticVarInit {

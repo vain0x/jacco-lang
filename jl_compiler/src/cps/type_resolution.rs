@@ -412,19 +412,26 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
-            [label, args @ ..] => {
+            [label, args @ ..] => loop {
                 let def_fn_ty = resolve_term(label, tx);
                 let arg_tys = resolve_terms(args, tx);
 
-                // FIXME: unwrap しない
-                let (param_tys, _) = def_fn_ty.as_fn(&tx.ty_env).unwrap();
+                let (param_tys, _) = match def_fn_ty.as_fn(&tx.ty_env) {
+                    Some(it) => it,
+                    None => {
+                        tx.logger
+                            .error(node.loc(), "関数ではないものは呼び出せません");
+                        break;
+                    }
+                };
 
                 // FIXME: 引数の個数を検査する
 
                 for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
                     unify2(param_ty, arg_ty, node.loc, tx);
                 }
-            }
+                break;
+            },
             _ => unimplemented!(),
         },
         KPrim::CallDirect => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
@@ -432,7 +439,6 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let def_fn_ty = resolve_term(callee, tx);
                 let arg_tys = resolve_terms(args, tx);
 
-                // FIXME: unwrap しない
                 let (param_tys, result_ty) = match def_fn_ty.as_fn(&tx.ty_env) {
                     Some(it) => it,
                     None => {
@@ -454,7 +460,13 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
         },
         KPrim::Record => match (node.tys.as_mut_slice(), node.results.as_mut_slice()) {
             ([ty], [result]) => {
-                let k_struct = ty.as_struct(&tx.ty_env).unwrap();
+                let k_struct = match ty.as_struct(&tx.ty_env) {
+                    Some(it) => it,
+                    None => {
+                        tx.logger.error(node.loc(), "レコード型が必要です。");
+                        return;
+                    }
+                };
                 for (arg, field) in node
                     .args
                     .iter_mut()
