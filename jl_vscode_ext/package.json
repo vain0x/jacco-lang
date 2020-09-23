@@ -3,7 +3,7 @@
   "displayName": "ジャッコ言語用 VSCode 拡張",
   "version": "0.1.2",
   "description": "ジャッコ言語サポート",
-  "repository": "https://github.com/vain0x/languages",
+  "repository": "https://github.com/vain0x/jacco-lang",
   "author": "vain0x",
   "publisher": "vain0x",
   "license": "Apache2.0",
