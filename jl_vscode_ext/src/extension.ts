@@ -46,7 +46,7 @@ const getLspBin = (jaccoHome: string, logger: Logger): string | null => {
   }
 
   const lspBin = config.get("lsp-bin") as string | undefined
-  if (lspBin != null) {
+  if (lspBin) {
     return lspBin
   }
   logger.info("設定 'jacco-lang.lsp-bin' は空または未設定です。")
@@ -59,7 +59,7 @@ const getLspBin = (jaccoHome: string, logger: Logger): string | null => {
   return path.join(jaccoHome, "bin/jacco_lsp")
 }
 
-const startLspClient = (context: ExtensionContext, logger: Logger) => {
+const startLspClient = (_context: ExtensionContext, logger: Logger) => {
   const jaccoHome = getJaccoHome(logger)
   if (jaccoHome == null) {
     return
