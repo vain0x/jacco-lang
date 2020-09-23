@@ -1,9 +1,9 @@
 {
   "name": "jacco-lang",
   "displayName": "ジャッコ言語用 VSCode 拡張",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "ジャッコ言語サポート",
-  "repository": "https://github.com/vain0x/languages",
+  "repository": "https://github.com/vain0x/jacco-lang",
   "author": "vain0x",
   "publisher": "vain0x",
   "license": "Apache2.0",
@@ -41,9 +41,9 @@
       "type": "object",
       "title": "ジャッコ言語の設定",
       "properties": {
-        "jacco-lang.jacco-home": {
+        "jacco-lang.home": {
           "type": "string",
-          "description": "ジャッココンパイラのインストールディレクトリへの絶対パス。未指定時は既定のインストールディレクトリが使用されます。"
+          "description": "ジャッコ言語処理系のインストールディレクトリへの絶対パス。未指定時は $HOME/.jacco が参照されます。"
         },
         "jacco-lang.use-lsp": {
           "type": "boolean",

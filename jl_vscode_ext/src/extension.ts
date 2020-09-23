@@ -1,45 +1,76 @@
-import { ExtensionContext, workspace, commands } from "vscode"
+import { homedir } from "os"
+import * as path from "path"
+import { ExtensionContext, workspace } from "vscode"
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient"
-// import { homedir } from "os"
-// import * as path from "path"
 
 let client: LanguageClient | undefined
 
-/** LSP サーバーの実行ファイルの絶対パスを取得する。 */
-const getLspBin = (context: ExtensionContext): string | null => {
+type Logger = {
+  info: (...args: unknown[]) => void
+}
+
+/**
+ * ジャッコ言語のインストールディレクトリを見つける。
+ */
+const getJaccoHome = (logger: Logger): string | null => {
+  const config = workspace.getConfiguration("jacco-lang")
+
+  const home = config.get<string>("home")
+  if (home) {
+    return home
+  }
+  logger.info("設定 'jacco-lang.home' は空または未設定です。")
+
+  if (process.env.JACCO_HOME) {
+    return process.env.JACCO_HOME
+  }
+  logger.info("環境変数 'JACCO_HOME' は空または未設定です。")
+
+  return path.join(homedir(), ".jacco")
+}
+
+/**
+ * LSP サーバーの実行ファイルを見つける。
+ */
+const getLspBin = (jaccoHome: string, logger: Logger): string | null => {
   const config = workspace.getConfiguration("jacco-lang")
 
   const useLsp = config.get<boolean>("use-lsp", true)
-  if (useLsp === false) {
+  if (!useLsp) {
+    logger.info("設定 'jacco-lang.use-lsp' が false なので LSP サーバーを起動しません。")
     return null
   }
+
+  const lspBin = config.get("lsp-bin") as string | undefined
+  if (lspBin) {
+    return lspBin
+  }
+  logger.info("設定 'jacco-lang.lsp-bin' は空または未設定です。")
 
   if (process.env.JACCO_LSP_BIN) {
     return process.env.JACCO_LSP_BIN
   }
+  logger.info("環境変数 'JACCO_LSP_BIN' は空または未設定です。")
 
-  const relativePath =
-    config.get("lsp-bin") as string | undefined
-    ?? "./out/jacco-lsp"
-  return context.asAbsolutePath(relativePath)
+  return path.join(jaccoHome, "bin/jacco_lsp")
 }
 
-// const getJaccoHome = () => {
-//   const config = workspace.getConfiguration("jacco-lang")
-//   return config.get("jacco-home") as string | undefined
-//     || process.env.JACCO_HOME
-//     || path.join(homedir(), "bin/jacco")
-// }
+const startLspClient = (_context: ExtensionContext, logger: Logger) => {
+  const jaccoHome = getJaccoHome(logger)
+  if (jaccoHome == null) {
+    return
+  }
+  logger.info("jaccoHome =", jaccoHome)
 
-const startLspClient = (context: ExtensionContext) => {
-  const lspBin = getLspBin(context)
+  const lspBin = getLspBin(jaccoHome, logger)
   if (lspBin == null) {
     return
   }
+  logger.info("lspBin =", lspBin)
 
   // const workspaceUris = (workspace.workspaceFolders ?? [])
   //   .map(workspaceFolder => workspaceFolder.uri.toString())
@@ -77,14 +108,22 @@ const startLspClient = (context: ExtensionContext) => {
   client.start()
 }
 
-/** 拡張機能の起動時に呼ばれる。 */
+/**
+ * 拡張機能の起動時に呼ばれる。
+ */
 export const activate = (context: ExtensionContext): void => {
   // commands.registerCommand("getLspBin", () => getLspBin(context))
 
-  startLspClient(context)
+  const logger: Logger =  {
+    info: (...args) => console.info("[jacco-lsp]", ...args),
+  }
+
+  startLspClient(context, logger)
 }
 
-/** 拡張機能の終了時に呼ばれる。 */
+/**
+ * 拡張機能の終了時に呼ばれる。
+ */
 export const deactivate = (): Thenable<void> | undefined => {
   if (client) {
     return client.stop()

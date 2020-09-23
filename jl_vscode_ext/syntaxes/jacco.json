@@ -1,13 +1,13 @@
 {
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "name": "Jacco",
     "scopeName": "source.jacco",
     "patterns": [
         {
             "comment": "ドキュメンテーションコメント (一行)",
             "name": "comment.line.documentation.jacco",
-            "begin": "//[!/](?=[^/])",
+            "begin": "//[!/]",
             "end": "$"
         },
         {
@@ -55,7 +55,7 @@
         {
             "comment": "キーワード (予約語)",
             "name": "invalid.deprecated.jacco",
-            "match": "\\b(async|await|box|case|cl|crate|default|defer|do|dyn|ensures|enum|export|from|impl|import|inline|into|macro|mod|move|not|out|raw|requires|ref|of|safe|self|super|then|throw|trait|try|to|type|union|unless|unsafe|until|use|val|void|with|when|where|yield)\\b"
+            "match": "\\b(async|await|box|case|cl|crate|default|defer|do|dyn|ensures|export|from|impl|import|inline|into|macro|mod|move|not|out|raw|requires|ref|of|safe|self|super|then|throw|trait|try|to|type|union|unless|unsafe|until|val|with|when|where|yield)\\b"
         },
         {
             "comment": "キーワード (制御構文)",
@@ -70,17 +70,12 @@
         {
             "comment": "キーワード (その他)",
             "name": "keyword.other.jacco",
-            "match": "\\b(as|const|extern|fn|let|mut|static|struct)\\b"
+            "match": "\\b(as|const|enum|extern|fn|let|mut|static|struct|use)\\b"
         },
         {
             "comment": "組み込み型",
             "name": "storage.type.core.jacco",
-            "match": "\\b(bool|c(8|16|32)|f(16|32|64|128)|[iu](8|16|32|64|128|size))\\b"
-        },
-        {
-            "comment": "型名",
-            "name": "entity.name.type.jacco",
-            "match": "\\b([A-Z][0-9A-Za-z]*)\\b"
+            "match": "\\b(bool|c(8|16|32)|f(16|32|64|128)|[iu](8|16|32|64|128|size)|unknown|never|unit)\\b"
         },
         {
             "comment": "比較演算子 (同値)",
@@ -106,33 +101,6 @@
             "comment": "比較演算子 (順序) (ルールの順番に注意)",
             "name": "keyword.operator.comparison.jacco",
             "match": "<=|>=|<|>"
-        },
-        {
-            "comment": "その他の記号",
-            "name": "keyword.operator.misc.rust",
-            "match": "=>|::"
-        },
-        {
-            "comment": "関数呼び出し",
-            "match": "\\b([A-Za-z][0-9A-Za-z_]*|_[0-9A-Za-z_]+)\\s*\\(",
-            "captures": {
-                "1": {
-                    "name": "entity.name.function.jacco"
-                }
-            }
-        },
-        {
-            "comment": "関数呼び出し (型引数つき)",
-            "begin": "\\b([A-Za-z][0-9A-Za-z_]*|_[0-9A-Za-z_]+)\\s*(::)(?=\\s*\\[.*\\]\\s*\\()",
-            "end": "\\(",
-            "captures": {
-                "1": {
-                    "name": "entity.name.function.jacco"
-                },
-                "2": {
-                    "name": "keyword.operator.misc.jacco"
-                }
-            }
         }
     ],
     "repository": {

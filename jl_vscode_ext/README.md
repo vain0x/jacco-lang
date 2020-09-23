@@ -4,8 +4,8 @@
 
 ## インストール
 
-- Visual Studio Code で次の拡張機能をインストールしてください:
-    - `vain0x.jacco-lang`
+- ジャッコ言語の処理系をインストールしてください。
+- Visual Studio Code で次の拡張機能をインストールしてください: `vain0x.jacco-lang`
 
 その後、ジャッコ言語のファイル (.jacco) を開くと動作するはずです。
 
