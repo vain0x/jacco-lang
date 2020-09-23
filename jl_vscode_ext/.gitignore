@@ -2,8 +2,8 @@ dist/*.js
 dist/*.js.map
 dist/jacco_lsp
 dist/jacco_lsp.exe
-out/*.js
-out/*.js.map
+target/*.js
+target/*.js.map
 jacco-lang.vsix
 
 
