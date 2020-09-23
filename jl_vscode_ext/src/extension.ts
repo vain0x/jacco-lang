@@ -6,6 +6,7 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient"
+import { registerSemanticTokensProvider } from "./semantic_token_provider"
 
 let client: LanguageClient | undefined
 
@@ -118,6 +119,7 @@ export const activate = (context: ExtensionContext): void => {
     info: (...args) => console.info("[jacco-lsp]", ...args),
   }
 
+  registerSemanticTokensProvider(context)
   startLspClient(context, logger)
 }
 
