@@ -948,7 +948,12 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
         swap(&mut tx.local_vars, &mut extern_fn_data.local_vars);
     }
 
-    for (k_fn, fn_data) in root.fns.enumerate_mut() {
+    // HACK: label_sigs が空でない関数はすでに型検査済みなので無視する。応急処置
+    for (k_fn, fn_data) in root
+        .fns
+        .enumerate_mut()
+        .filter(|(_, fn_data)| fn_data.label_sigs.is_empty())
+    {
         swap(&mut tx.local_vars, &mut fn_data.local_vars);
 
         prepare_fn(k_fn, fn_data, tx);
