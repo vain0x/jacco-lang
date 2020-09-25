@@ -548,13 +548,6 @@ impl KTy {
         }
     }
 
-    pub(crate) fn is_unresolved(&self) -> bool {
-        match self {
-            KTy::Unresolved { .. } => true,
-            _ => false,
-        }
-    }
-
     pub(crate) fn is_unit(&self) -> bool {
         match self {
             KTy::Unit => true,

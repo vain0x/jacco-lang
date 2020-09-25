@@ -715,21 +715,7 @@ fn prepare_extern_fn(extern_fn: KExternFn, data: &mut KExternFnData, tx: &mut Tx
     }
 }
 
-fn prepare_struct(k_struct: KStruct, tx: &mut Tx) {
-    for field in k_struct.fields(&tx.mod_outline.structs) {
-        if field.ty(&tx.mod_outline.fields).is_unresolved() {
-            // FIXME: handle correctly. unresolved type crashes on unification for now
-            tx.logger
-                .error(&field.loc(&tx.mod_outline.fields), "unresolved field type");
-        }
-    }
-}
-
 fn resolve_root(root: &mut KModData, tx: &mut Tx) {
-    for k_struct in tx.mod_outline.structs.keys() {
-        prepare_struct(k_struct, tx);
-    }
-
     for (extern_fn, extern_fn_data) in root.extern_fns.enumerate_mut() {
         swap(&mut tx.local_vars, &mut extern_fn_data.local_vars);
 

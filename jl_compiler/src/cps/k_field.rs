@@ -25,14 +25,11 @@ impl KField {
     pub(crate) fn ty(self, fields: &KFieldArena) -> &KTy {
         &fields[self].ty
     }
-
-    pub(crate) fn loc(self, fields: &KFieldArena) -> Loc {
-        fields[self].loc
-    }
 }
 
 pub(crate) struct KFieldOutline {
     pub(crate) name: String,
     pub(crate) ty: KTy,
+    #[allow(unused)]
     pub(crate) loc: Loc,
 }
