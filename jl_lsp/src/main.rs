@@ -2,6 +2,7 @@ mod docs;
 mod lsp_server;
 
 mod utils {
+    pub(crate) mod json;
     mod uri;
     mod watcher;
 

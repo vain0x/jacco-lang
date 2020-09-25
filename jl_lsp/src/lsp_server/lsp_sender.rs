@@ -1,6 +1,5 @@
-use super::{LspNotification, LspResponse};
+use crate::utils::json::*;
 use log::trace;
-use serde::Serialize;
 use std::io::{BufWriter, Write};
 
 pub(crate) struct LspSender<W: Write> {
@@ -14,9 +13,8 @@ impl<W: Write> LspSender<W> {
         }
     }
 
-    fn do_send(&mut self, content: &[u8]) {
+    fn do_send(&mut self, content: &str) {
         let content_length = content.len();
-        let content = String::from_utf8_lossy(content);
 
         write!(
             self.writer,
@@ -33,33 +31,27 @@ impl<W: Write> LspSender<W> {
         );
     }
 
-    pub(crate) fn send_notification<P: Serialize>(&mut self, method: &str, params: P) {
-        let mut buf = Vec::new();
-        serde_json::to_writer(
-            &mut buf,
-            &LspNotification::<P> {
-                jsonrpc: "2.0".to_string(),
-                method: method.to_string(),
-                params,
-            },
-        )
-        .unwrap();
+    pub(crate) fn send_notification(&mut self, method: &str, params: JsonValue) {
+        let obj = {
+            let mut o = JsonObject::new();
+            o.insert("jsonrpc").string("2.0");
+            o.insert("method").string(method);
+            o.insert("params").value(params);
+            o
+        };
 
-        self.do_send(&buf);
+        self.do_send(&JsonValue::Object(obj).stringify());
     }
 
-    pub(crate) fn send_response<R: Serialize>(&mut self, id: i64, result: R) {
-        let mut buf = Vec::new();
-        serde_json::to_writer(
-            &mut buf,
-            &LspResponse::<R> {
-                jsonrpc: "2.0".to_string(),
-                id,
-                result,
-            },
-        )
-        .unwrap();
+    pub(crate) fn send_response(&mut self, id: i64, result: JsonValue) {
+        let obj = {
+            let mut o = JsonObject::new();
+            o.insert("jsonrpc").string("2.0");
+            o.insert("id").number(id as f64);
+            o.insert("result").value(result);
+            o
+        };
 
-        self.do_send(&buf);
+        self.do_send(&JsonValue::Object(obj).stringify());
     }
 }
