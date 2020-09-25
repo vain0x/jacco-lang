@@ -64,6 +64,7 @@ mod cps {
     mod k_ty;
     mod k_value;
     mod k_vis;
+    mod ty_unification;
     mod type_resolution;
 
     pub(crate) use eliminate_unit::eliminate_unit;
