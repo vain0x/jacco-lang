@@ -5,29 +5,55 @@ use crate::{
     util::{dyn_error::DynError, package_info::PackageInfo},
     Cmd,
 };
-use miniserde::{
-    json::{self, Value},
-    Deserialize, Serialize,
+use std::{
+    collections::HashMap,
+    env::Args,
+    fmt::Debug,
+    io,
+    panic::{self, UnwindSafe},
 };
-use panic::UnwindSafe;
-use std::{env::Args, fmt::Debug, io, panic};
+use tinyjson::{JsonParser, JsonValue};
 
-#[derive(Deserialize, Debug)]
+fn as_string(value: JsonValue) -> Option<String> {
+    match value {
+        JsonValue::String(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn as_array(value: JsonValue) -> Option<Vec<JsonValue>> {
+    match value {
+        JsonValue::Array(vec) => Some(vec),
+        _ => None,
+    }
+}
+
 struct InputRow {
-    id: Option<Value>,
-    args: Option<Vec<String>>,
+    id: JsonValue,
+    args: Vec<String>,
+}
+
+impl InputRow {
+    fn from_json(value: JsonValue) -> Result<Self, &'static str> {
+        let value = match value {
+            JsonValue::Object(mut map) => {
+                let id = map.remove("id").ok_or("expected id")?;
+                let args = map
+                    .remove("args")
+                    .and_then(|args| as_array(args)?.into_iter().map(as_string).collect())
+                    .ok_or("expected args: string[]")?;
+                InputRow { id, args }
+            }
+            _ => return Err("expected {id, args}"),
+        };
+        Ok(value)
+    }
 }
 
 struct Action<A> {
-    id: Option<Value>,
+    id: JsonValue,
     cmd: Cmd,
     args: A,
-}
-
-#[derive(Serialize, Debug)]
-struct OutputRow {
-    id: Option<Value>,
-    err: Option<String>,
 }
 
 fn write_batch_help() {
@@ -40,16 +66,14 @@ fn write_batch_help() {
 }
 
 fn parse_action(json: &str) -> Result<Action<impl Iterator<Item = String>>, DynError> {
-    let row: InputRow = match json::from_str(json) {
-        Ok(row) => row,
-        Err(miniserde::Error) => {
-            return Err(format!("JSON としてパースできません。({})", json).into())
-        }
+    let row: InputRow = match JsonParser::new(json.chars()).parse() {
+        Ok(row) => InputRow::from_json(row)?,
+        Err(err) => return Err(format!("JSON としてパースできません。({})", err).into()),
     };
 
     let id = row.id;
 
-    let mut args = row.args.into_iter().flatten();
+    let mut args = row.args.into_iter();
     let cmd_name = match args.next() {
         Some(cmd) => cmd,
         None => return Err("args は空にできません。".into()),
@@ -82,7 +106,14 @@ fn exec_action(action: Action<impl Iterator<Item = String> + UnwindSafe>) {
     };
 
     if let Err(err) = result {
-        println!("{{\"id\":{},\"err\":{:?}}}", json::to_string(&id), err);
+        let output = {
+            let mut o = HashMap::new();
+            o.insert("id".to_string(), id);
+            o.insert("err".to_string(), JsonValue::String(format!("{:?}", err)));
+            JsonValue::Object(o)
+        };
+
+        println!("{}", output.stringify().unwrap());
     }
 }
 

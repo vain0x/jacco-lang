@@ -17,10 +17,9 @@ env_logger = { version = "0.7", default-features = false, features = ["termcolor
 # <https://github.com/rust-lang/log>
 log = "0.4"
 
-# データ構造を JSON 文字列と相互変換するためのライブラリ。(serde の軽量版)
-# <https://github.com/dtolnay/miniserde>
-miniserde = "0.1"
-
 # 並列処理のためのライブラリ。
 # <https://github.com/rayon-rs/rayon>
 rayon = "1"
+
+# <https://github.com/rhysd/tinyjson>
+tinyjson = "2"
