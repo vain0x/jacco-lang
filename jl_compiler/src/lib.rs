@@ -64,6 +64,7 @@ mod cps {
     mod k_ty;
     mod k_value;
     mod k_vis;
+    mod ty_expect;
     mod ty_unification;
     mod type_resolution;
 
@@ -94,6 +95,7 @@ mod cps {
     pub(crate) use k_ty::*;
     pub(crate) use k_value::KLocalValue;
     pub(crate) use k_vis::KVis;
+    pub(crate) use ty_expect::TyExpect;
     pub(crate) use type_resolution::resolve_types;
 
     use crate::logs::Logger;
@@ -103,11 +105,16 @@ mod cps {
 mod front {
     //! 構文木上の処理
 
-    mod cps_conversion;
+    mod cps_gen;
+    mod cps_gen_decl;
+    mod cps_gen_expr;
+    mod cps_gen_lit;
+    mod cps_gen_pat;
+    mod cps_gen_ty;
     mod mod_outline_gen;
     pub(crate) mod name_resolution;
 
-    pub(crate) use cps_conversion::convert_to_cps;
+    pub(crate) use cps_gen::convert_to_cps;
     pub(crate) use mod_outline_gen::generate_outline;
 
     use crate::parse::*;

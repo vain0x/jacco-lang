@@ -1,7 +1,4 @@
-use super::{
-    cps_conversion::{convert_ty, convert_ty_opt, TyResolver},
-    name_resolution::*,
-};
+use super::{cps_gen_ty::*, name_resolution::*};
 use crate::{
     cps::*,
     logs::DocLogger,
@@ -17,17 +14,6 @@ fn resolve_modifiers(modifiers: &ADeclModifiers) -> Option<KVis> {
 
 fn resolve_name_opt(name_opt: Option<&AName>) -> String {
     name_opt.map_or(String::new(), |name| name.text.to_string())
-}
-
-fn resolve_ty_opt(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
-    convert_ty_opt(ty_opt, ty_resolver)
-}
-
-fn resolve_ty_or_unit(ty_opt: Option<ATyId>, ty_resolver: &TyResolver) -> KTy {
-    match ty_opt {
-        Some(ty) => convert_ty(ty, ty_resolver),
-        None => KTy::Unit,
-    }
 }
 
 struct OutlineGenerator<'a> {
@@ -369,7 +355,7 @@ fn resolve_const_decl(
     ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
-    let value_ty = resolve_ty_opt(const_decl.ty_opt, ty_resolver);
+    let value_ty = ty_resolver.convert_ty_opt(const_decl.ty_opt);
     k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
 }
 
@@ -379,15 +365,8 @@ fn resolve_static_decl(
     ty_resolver: &TyResolver,
     mod_outline: &mut KModOutline,
 ) {
-    let value_ty = resolve_ty_opt(static_decl.ty_opt, ty_resolver);
+    let value_ty = ty_resolver.convert_ty_opt(static_decl.ty_opt);
     static_var.of_mut(&mut mod_outline.static_vars).ty = value_ty;
-}
-
-fn resolve_param_tys(param_decls: &[AParamDecl], ty_resolver: &TyResolver) -> Vec<KTy> {
-    param_decls
-        .iter()
-        .map(|param_decl| resolve_ty_opt(param_decl.ty_opt, ty_resolver))
-        .collect()
 }
 
 fn new_field_loc(doc: Doc, parent: AVariantDeclKey, index: usize) -> Loc {
@@ -402,7 +381,7 @@ fn resolve_record_variant_decl(
 ) {
     let fields = k_struct.fields(&mod_outline.structs).to_owned();
     for (field_decl, field) in decl.fields.iter().zip(fields) {
-        let ty = resolve_ty_opt(field_decl.ty_opt, ty_resolver);
+        let ty = ty_resolver.convert_ty_opt(field_decl.ty_opt);
         field.of_mut(&mut mod_outline.fields).ty = ty;
     }
 }
@@ -430,7 +409,7 @@ fn resolve_const_enum_decl(
     let variants = const_enum.variants(&mod_outline.const_enums).to_owned();
     for (decl, k_const) in decl.variants.iter().zip(variants.iter()) {
         let decl = decl.as_const().unwrap();
-        let value_ty = resolve_ty_opt(decl.ty_opt, ty_resolver);
+        let value_ty = ty_resolver.convert_ty_opt(decl.ty_opt);
         k_const.of_mut(&mut mod_outline.consts).value_ty = value_ty;
     }
 }
@@ -493,8 +472,8 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
-                let param_tys = resolve_param_tys(&fn_decl.params, ty_resolver);
-                let result_ty = resolve_ty_or_unit(fn_decl.result_ty_opt, ty_resolver);
+                let param_tys = ty_resolver.convert_param_tys(&fn_decl.params);
+                let result_ty = ty_resolver.convert_ty_or_unit(fn_decl.result_ty_opt);
 
                 let fn_data = k_fn.of_mut(&mut mod_outline.fns);
                 fn_data.param_tys = param_tys;
@@ -506,8 +485,8 @@ fn resolve_outline(
                     _ => unreachable!(),
                 };
 
-                let param_tys = resolve_param_tys(&extern_fn_decl.params, ty_resolver);
-                let result_ty = resolve_ty_or_unit(extern_fn_decl.result_ty_opt, ty_resolver);
+                let param_tys = ty_resolver.convert_param_tys(&extern_fn_decl.params);
+                let result_ty = ty_resolver.convert_ty_or_unit(extern_fn_decl.result_ty_opt);
 
                 let extern_fn_data = extern_fn.of_mut(&mut mod_outline.extern_fns);
                 extern_fn_data.param_tys = param_tys;
