@@ -298,7 +298,7 @@ pub(crate) fn convert_to_cps(
 
     {
         xx.mod_data = take(mod_data);
-        xx.convert_decls(tree.ast.root_decls());
+        xx.convert_decls(tree.ast.root_decls(), TyExpect::unit());
         *mod_data = xx.mod_data;
     }
 }

@@ -206,7 +206,13 @@ impl<'a> Xx<'a> {
         // pass
     }
 
-    fn do_convert_decl(&mut self, decl_id: ADeclId, decl: &ADecl, term_opt: &mut Option<KTerm>) {
+    fn do_convert_decl(
+        &mut self,
+        decl_id: ADeclId,
+        decl: &ADecl,
+        _ty_expect: TyExpect,
+        term_opt: &mut Option<KTerm>,
+    ) {
         let symbol_opt = decl
             .name_opt()
             .and_then(|name| self.name_symbols.get(&name).cloned());
@@ -262,14 +268,16 @@ impl<'a> Xx<'a> {
         }
     }
 
-    pub(crate) fn convert_decls(&mut self, decls: ADeclIds) -> Option<KTerm> {
+    pub(crate) fn convert_decls(&mut self, decls: ADeclIds, ty_expect: TyExpect) -> Option<KTerm> {
         let mut last_opt = None;
         for (decl_id, decl) in decls.enumerate(self.ast.decls()) {
-            let mut term_opt = None;
+            // 最後の式文以外は unit
+            let ty_expect = match decl {
+                ADecl::Expr(..) if decls.is_last(decl_id) => ty_expect,
+                _ => TyExpect::unit(),
+            };
 
-            self.do_convert_decl(decl_id, decl, &mut term_opt);
-
-            last_opt = term_opt;
+            self.do_convert_decl(decl_id, decl, ty_expect, &mut last_opt);
         }
         last_opt
     }

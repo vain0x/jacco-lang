@@ -374,6 +374,12 @@ impl<Tag> VecArenaSlice<Tag> {
         end.to_index().saturating_sub(start.to_index())
     }
 
+    pub(crate) fn is_last(&self, id: VecArenaId<Tag>) -> bool {
+        let start = self.0.start;
+        let end = self.0.end;
+        start != end && id.add_offset(1) == end
+    }
+
     pub(crate) fn iter(&self) -> impl Iterator<Item = VecArenaId<Tag>> {
         let start = self.0.start.inner;
         let end = self.0.end.inner;

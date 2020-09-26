@@ -11,6 +11,10 @@ pub(crate) enum TyExpect<'a> {
 }
 
 impl<'a> TyExpect<'a> {
+    pub(crate) fn unit() -> TyExpect<'static> {
+        TyExpect::Exact(&KTy2::Unit)
+    }
+
     pub(crate) fn from(ty: &'a KTy2) -> Self {
         if ty.is_unresolved() {
             Self::Todo

@@ -621,8 +621,8 @@ impl<'a> Xx<'a> {
         }
     }
 
-    fn convert_block_expr(&mut self, decls: ADeclIds, _ty_expect: TyExpect, loc: Loc) -> AfterRval {
-        self.convert_decls(decls.clone())
+    fn convert_block_expr(&mut self, decls: ADeclIds, ty_expect: TyExpect, loc: Loc) -> AfterRval {
+        self.convert_decls(decls.clone(), ty_expect)
             .unwrap_or_else(|| KTerm::Unit { loc })
     }
 
