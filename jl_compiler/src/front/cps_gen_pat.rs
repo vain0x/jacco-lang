@@ -35,10 +35,13 @@ impl<'a> Xx<'a> {
         };
 
         match value {
-            KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
-            KLocalValue::UnitLikeStruct(k_struct) => {
-                Branch::Case(KTerm::RecordTag { k_struct, loc })
+            KLocalValue::Const(k_const) => {
+                Branch::Case(KTerm::Const { k_const, loc }, self.const_ty(k_const))
             }
+            KLocalValue::UnitLikeStruct(k_struct) => Branch::Case(
+                KTerm::RecordTag { k_struct, loc },
+                self.record_tag_ty(k_struct),
+            ),
             _ => self.emit_default_branch(name),
         }
     }
@@ -66,15 +69,18 @@ impl<'a> Xx<'a> {
                 return new_error_term(loc);
             }
         };
-        KTerm::RecordTag { k_struct, loc }
+        let tag_ty = k_struct
+            .tag_ty(&self.mod_outline.structs, &self.mod_outline.struct_enums)
+            .to_ty2_poly(self.mod_outline);
+        (KTerm::RecordTag { k_struct, loc }, tag_ty)
     }
 
     fn do_convert_pat_as_cond(&mut self, pat_id: APatId, pat: &APat) -> Branch {
         let loc = pat_id.loc().to_loc(self.doc);
-        let term = match pat {
-            APat::Unit => KTerm::Unit { loc },
-            APat::True(_) => KTerm::True { loc },
-            APat::False(_) => KTerm::False { loc },
+        let (term, ty) = match pat {
+            APat::Unit => new_unit_term(loc),
+            APat::True(_) => new_true_term(loc),
+            APat::False(_) => new_false_term(loc),
             APat::Number(token) => {
                 convert_number_lit(*token, TyExpect::Todo, self.tokens, self.doc, self.logger)
             }
@@ -84,7 +90,7 @@ impl<'a> Xx<'a> {
             APat::Name(name) => return self.convert_name_pat_as_cond(*name),
             APat::Record(record_pat) => self.convert_record_pat_as_cond(record_pat, loc),
         };
-        Branch::Case(term)
+        Branch::Case(term, ty)
     }
 
     fn do_convert_pat_as_assign(&mut self, pat: &APat, cond: &KTerm, term: KTerm) {
@@ -102,7 +108,10 @@ impl<'a> Xx<'a> {
     pub(crate) fn convert_pat_opt_as_cond(&mut self, pat_opt: Option<APatId>, loc: PLoc) -> Branch {
         match pat_opt {
             Some(pat) => self.convert_pat_as_cond(pat),
-            None => Branch::Case(new_error_term(Loc::new(self.doc, loc))),
+            None => {
+                let (term, ty) = new_error_term(Loc::new(self.doc, loc));
+                Branch::Case(term, ty)
+            }
         }
     }
 

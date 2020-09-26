@@ -8,6 +8,30 @@ use crate::{
 use std::{collections::HashMap, collections::HashSet, iter::once, mem::take};
 
 impl<'a> Xx<'a> {
+    pub(crate) fn local_var_ty(&self, local_var: KLocalVar) -> KTy2 {
+        local_var.ty(&self.local_vars)
+    }
+
+    pub(crate) fn const_ty(&self, k_const: KConst) -> KTy2 {
+        k_const
+            .of(&self.mod_outline.consts)
+            .value_ty
+            .to_ty2_poly(self.mod_outline)
+    }
+
+    pub(crate) fn static_var_ty(&self, static_var: KStaticVar) -> KTy2 {
+        static_var
+            .of(&self.mod_outline.static_vars)
+            .ty
+            .to_ty2_poly(self.mod_outline)
+    }
+
+    pub(crate) fn record_tag_ty(&self, k_struct: KStruct) -> KTy2 {
+        k_struct
+            .tag_ty(&self.mod_outline.structs, &self.mod_outline.struct_enums)
+            .to_ty2_poly(self.mod_outline)
+    }
+
     fn new_break_label(&mut self, hint: &str, result: KVarTerm) -> BreakLabel {
         let label = self.labels.alloc(KLabelConstruction {
             name: hint.to_string(),
@@ -48,7 +72,10 @@ impl<'a> Xx<'a> {
         self.commit_label();
 
         self.label = break_label.label;
-        KTerm::Name(break_label.result)
+        (
+            KTerm::Name(break_label.result),
+            self.local_var_ty(break_label.result.local_var),
+        )
     }
 
     /// continue のような進行方向と逆行するジャンプを含む変換を行う。
@@ -123,17 +150,36 @@ impl<'a> Xx<'a> {
         };
 
         match value {
-            KLocalValue::LocalVar(local_var) => KTerm::Name(KVarTerm { local_var, cause }),
-            KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
-            KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
-            KLocalValue::Fn(k_fn) => KTerm::Fn {
-                k_fn,
-                ty: k_fn
+            KLocalValue::LocalVar(local_var) => (
+                KTerm::Name(KVarTerm { local_var, cause }),
+                self.local_var_ty(local_var),
+            ),
+            KLocalValue::Const(k_const) => (KTerm::Const { k_const, loc }, self.const_ty(k_const)),
+            KLocalValue::StaticVar(static_var) => (
+                KTerm::StaticVar { static_var, loc },
+                self.static_var_ty(static_var),
+            ),
+            KLocalValue::Fn(k_fn) => {
+                // インスタンス化
+                let ty = k_fn
                     .ty(&self.mod_outline.fns)
-                    .to_ty2(self.mod_outline, &mut self.ty_env),
-                loc,
-            },
-            KLocalValue::ExternFn(extern_fn) => KTerm::ExternFn { extern_fn, loc },
+                    .to_ty2(self.mod_outline, &mut self.ty_env);
+                (
+                    KTerm::Fn {
+                        k_fn,
+                        ty: ty.clone(),
+                        loc,
+                    },
+                    ty,
+                )
+            }
+            KLocalValue::ExternFn(extern_fn) => {
+                // インスタンス化
+                let ty = extern_fn
+                    .ty(&self.mod_outline.extern_fns)
+                    .to_ty2(self.mod_outline, &mut self.ty_env);
+                (KTerm::ExternFn { extern_fn, loc }, ty)
+            }
             KLocalValue::UnitLikeStruct(k_struct) => {
                 let name = k_struct.name(&self.mod_outline.structs);
                 let result = self.fresh_var(name, cause);
@@ -170,13 +216,13 @@ impl<'a> Xx<'a> {
             KMut::Const => {
                 let result = self.fresh_var("ref", cause);
                 self.nodes.push(new_ref_node(term, result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
             KMut::Mut => {
                 let result = self.fresh_var("refmut", cause);
                 self.nodes
                     .push(new_ref_mut_node(term, result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
         }
     }
@@ -196,7 +242,7 @@ impl<'a> Xx<'a> {
             };
 
             let ty = self.ty_resolver().convert_ty(ty_arg);
-            return KTerm::TyProperty { kind, ty, loc };
+            return (KTerm::TyProperty { kind, ty, loc }, KTy2::USIZE);
         }
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
@@ -235,7 +281,14 @@ impl<'a> Xx<'a> {
                     .collect::<HashMap<_, _>>();
                 let ty = fn_data.ty().substitute(&self.mod_outline, &ty_args);
 
-                KTerm::Fn { k_fn, ty, loc }
+                (
+                    KTerm::Fn {
+                        k_fn,
+                        ty: ty.clone(),
+                        loc,
+                    },
+                    ty,
+                )
             }
             _ => {
                 self.logger
@@ -317,7 +370,8 @@ impl<'a> Xx<'a> {
 
         let mut args = vec![KTerm::Unit { loc }; fields.len()];
         for (i, field_expr) in expr.fields.iter().enumerate() {
-            args[perm[i]] = self.convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc);
+            let (term, _ty) = self.convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc);
+            args[perm[i]] = term;
         }
 
         let result = self.fresh_var(&k_struct.of(&self.mod_outline.structs).name, loc);
@@ -328,7 +382,7 @@ impl<'a> Xx<'a> {
 
     fn convert_record_expr(&mut self, expr: &ARecordExpr, loc: Loc) -> AfterRval {
         match self.do_convert_record_expr(expr, loc) {
-            Some(result) => KTerm::Name(result),
+            Some(result) => (KTerm::Name(result), KTy2::TODO),
             None => new_error_term(loc),
         }
     }
@@ -343,7 +397,7 @@ impl<'a> Xx<'a> {
         let result = self.fresh_var("ref", loc);
         self.nodes
             .push(new_ref_node(KTerm::Name(arg), result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     // `x.field` ==> `*(&x)->field`
@@ -356,10 +410,10 @@ impl<'a> Xx<'a> {
             self.fresh_var(&name, loc)
         };
 
-        let field_ptr = self.convert_field_lval(expr, KMut::Const, loc);
+        let (field_ptr, _ty) = self.convert_field_lval(expr, KMut::Const, loc);
         self.nodes
             .push(new_deref_node(field_ptr, result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     // `&x.field` ==> `&(&x)->field`
@@ -374,7 +428,7 @@ impl<'a> Xx<'a> {
         };
         let result = self.fresh_var(&format!("{}_ptr", name), loc);
 
-        let left = self.convert_lval(expr.left, k_mut, TyExpect::Todo);
+        let (left, _ty) = self.convert_lval(expr.left, k_mut, TyExpect::Todo);
         self.nodes.push(new_field_node(
             left,
             name,
@@ -384,7 +438,7 @@ impl<'a> Xx<'a> {
             new_cont(),
             loc,
         ));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     fn convert_call_expr(
@@ -394,20 +448,18 @@ impl<'a> Xx<'a> {
         loc: Loc,
     ) -> AfterRval {
         let result = self.fresh_var("call_result", loc);
-        let left = self.convert_expr(call_expr.left, TyExpect::Todo);
+        let (left, _ty) = self.convert_expr(call_expr.left, TyExpect::Todo);
 
         let mut args = Vec::with_capacity(call_expr.args.len() + 1);
         args.push(left);
-        args.extend(
-            call_expr
-                .args
-                .iter()
-                .map(|arg| self.convert_expr(arg, TyExpect::Todo)),
-        );
+        args.extend(call_expr.args.iter().map(|arg| {
+            let (term, _ty) = self.convert_expr(arg, TyExpect::Todo);
+            term
+        }));
 
         self.nodes
             .push(new_call_node(args, result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     // `a[i]` ==> `*(a + i)`
@@ -417,12 +469,12 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
-        let ptr = self.convert_index_lval(expr, TyExpect::Todo, loc);
+        let (ptr, _ty) = self.convert_index_lval(expr, TyExpect::Todo, loc);
 
         let result = self.fresh_var("index_result", loc);
         self.nodes
             .push(new_deref_node(ptr, result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     // `&a[i]` ==> `a + i`
@@ -432,8 +484,8 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterLval {
-        let left = self.convert_expr(expr.left, TyExpect::Todo);
-        let right = match expr.args.iter().next() {
+        let (left, _ty) = self.convert_expr(expr.left, TyExpect::Todo);
+        let (right, _ty) = match expr.args.iter().next() {
             Some(right) if expr.args.len() == 1 => self.convert_expr(right, TyExpect::Todo),
             _ => new_error_term(loc),
         };
@@ -441,7 +493,7 @@ impl<'a> Xx<'a> {
         let result = self.fresh_var("indexed_ptr", loc);
         self.nodes
             .push(new_add_node(left, right, result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     fn convert_cast_expr(&mut self, expr: &ACastExpr, _ty_expect: TyExpect, loc: Loc) -> AfterRval {
@@ -449,12 +501,12 @@ impl<'a> Xx<'a> {
             .ty_resolver()
             .convert_ty_opt(expr.ty_opt)
             .to_ty2_poly(self.mod_outline);
-        let arg = self.convert_expr(expr.left, TyExpect::from(&ty));
+        let (arg, _ty) = self.convert_expr(expr.left, TyExpect::from(&ty));
 
         let result = self.fresh_var("cast", loc);
         self.nodes
             .push(new_cast_node(ty, arg, result, new_cont(), loc));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     fn convert_unary_op_expr(
@@ -465,28 +517,28 @@ impl<'a> Xx<'a> {
     ) -> AfterRval {
         match expr.op {
             PUnaryOp::Deref => {
-                let arg = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+                let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
                 let result = self.fresh_var("deref", loc);
                 self.nodes
                     .push(new_deref_node(arg, result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
             PUnaryOp::Ref => {
                 let k_mut = expr.mut_opt.unwrap_or(KMut::Const);
                 self.convert_lval_opt(expr.arg_opt, k_mut, TyExpect::Todo, loc)
             }
             PUnaryOp::Minus => {
-                let arg = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+                let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
                 let result = self.fresh_var("minus", loc);
                 self.nodes
                     .push(new_minus_node(arg, result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
             PUnaryOp::Not => {
-                let arg = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+                let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
                 let result = self.fresh_var("not", loc);
                 self.nodes.push(new_not_node(arg, result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
         }
     }
@@ -515,8 +567,8 @@ impl<'a> Xx<'a> {
         expr: &ABinaryOpExpr,
         loc: Loc,
     ) -> AfterRval {
-        let left = self.convert_lval(expr.left, KMut::Mut, TyExpect::Todo);
-        let right = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
+        let (left, _ty) = self.convert_lval(expr.left, KMut::Mut, TyExpect::Todo);
+        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
 
         self.nodes
             .push(new_assignment_node(prim, left, right, new_cont(), loc));
@@ -529,8 +581,8 @@ impl<'a> Xx<'a> {
         expr: &ABinaryOpExpr,
         loc: Loc,
     ) -> AfterRval {
-        let left = self.convert_expr(expr.left, TyExpect::Todo);
-        let right = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
+        let (left, _ty) = self.convert_expr(expr.left, TyExpect::Todo);
+        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
 
         let result = self.fresh_var(&prim.hint_str(), loc);
         self.nodes.push(new_basic_binary_op_node(
@@ -541,7 +593,7 @@ impl<'a> Xx<'a> {
             new_cont(),
             loc,
         ));
-        KTerm::Name(result)
+        (KTerm::Name(result), KTy2::TODO)
     }
 
     // `p && q` ==> `if p { q } else { false }`
@@ -554,7 +606,7 @@ impl<'a> Xx<'a> {
         self.do_convert_if_expr(
             |xx| xx.convert_expr(expr.left, TyExpect::Todo),
             |xx| xx.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc),
-            |_| KTerm::False { loc },
+            |_| new_false_term(loc),
             ty_expect,
             loc,
         )
@@ -569,7 +621,7 @@ impl<'a> Xx<'a> {
     ) -> AfterRval {
         self.do_convert_if_expr(
             |xx| xx.convert_expr(expr.left, TyExpect::Todo),
-            |_| KTerm::True { loc },
+            |_| new_true_term(loc),
             |xx| xx.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc),
             ty_expect,
             loc,
@@ -623,7 +675,7 @@ impl<'a> Xx<'a> {
 
     fn convert_block_expr(&mut self, decls: ADeclIds, ty_expect: TyExpect, loc: Loc) -> AfterRval {
         self.convert_decls(decls.clone(), ty_expect)
-            .unwrap_or_else(|| KTerm::Unit { loc })
+            .unwrap_or_else(|| new_unit_term(loc))
     }
 
     fn convert_break_expr(
@@ -637,14 +689,14 @@ impl<'a> Xx<'a> {
             Some(it) => it,
             None => {
                 error_break_out_of_loop(PLoc::from_loc(loc), self.logger);
-                return new_error_term(loc);
+                return new_error_term(loc).0;
             }
         };
 
-        let arg = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+        let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
         self.nodes
             .push(new_jump_node(label, vec![arg], new_cont(), loc));
-        new_never_term(loc)
+        new_never_term(loc).0
     }
 
     fn convert_continue_expr(&mut self, _ty_expect: TyExpect, loc: Loc) -> AfterJump {
@@ -653,17 +705,17 @@ impl<'a> Xx<'a> {
             Some(it) => it,
             None => {
                 error_continue_out_of_loop(PLoc::from_loc(loc), self.logger);
-                return new_error_term(loc);
+                return new_error_term(loc).0;
             }
         };
 
         self.nodes.push(new_jump_node(
             label,
-            vec![new_unit_term(loc)],
+            vec![KTerm::Unit { loc }],
             new_cont(),
             loc,
         ));
-        new_never_term(loc)
+        new_never_term(loc).0
     }
 
     fn convert_return_expr(
@@ -672,7 +724,7 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterJump {
-        let arg = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+        let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
 
         let node = match self.fn_opt {
             Some(k_fn) => new_return_node(k_fn, arg, loc),
@@ -683,7 +735,7 @@ impl<'a> Xx<'a> {
         };
 
         self.nodes.push(node);
-        new_never_term(loc)
+        new_never_term(loc).0
     }
 
     fn do_convert_if_expr(
@@ -699,17 +751,17 @@ impl<'a> Xx<'a> {
         let next = self.new_break_label("next", result);
 
         self.do_with_break(next, |xx, break_label| {
-            let cond = cond_fn(xx);
+            let (cond, _ty) = cond_fn(xx);
             xx.nodes
                 .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
             xx.do_in_branch(|xx| {
-                let body = body_fn(xx);
+                let (body, _ty) = body_fn(xx);
                 xx.nodes.push(new_jump_tail(break_label, once(body), loc));
             });
 
             xx.do_in_branch(|xx| {
-                let alt = alt_fn(xx);
+                let (alt, _ty) = alt_fn(xx);
                 xx.nodes.push(new_jump_tail(break_label, once(alt), loc));
             });
         })
@@ -731,7 +783,7 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
-        let cond = self.convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc);
+        let (cond, _ty) = self.convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc);
         if expr.arms.is_empty() {
             error_empty_match(PLoc::from_loc(loc), self.logger);
             return new_error_term(loc);
@@ -746,7 +798,7 @@ impl<'a> Xx<'a> {
                 .iter()
                 .map(|arm| {
                     let term = match xx.convert_pat_opt_as_cond(arm.pat_opt, arm.loc) {
-                        Branch::Case(term) => term,
+                        Branch::Case(term, _ty) => term,
                         Branch::Default(term) => KTerm::Name(term),
                     };
                     (arm, term)
@@ -765,7 +817,7 @@ impl<'a> Xx<'a> {
             for (arm, term) in arms {
                 xx.do_in_branch(|xx| {
                     xx.convert_pat_opt_as_assign(arm.pat_opt, &cond, term);
-                    let body = xx.convert_expr_opt(arm.body_opt, TyExpect::Todo, loc);
+                    let (body, _ty) = xx.convert_expr_opt(arm.body_opt, TyExpect::Todo, loc);
                     let node = new_jump_tail(break_label, vec![body], loc);
                     xx.nodes.push(node);
                 });
@@ -780,10 +832,8 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
-        let unit_term = new_unit_term(loc);
-
         self.do_in_loop("while_result", loc, |xx, _, break_label, continue_label| {
-            let cond = xx.convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc);
+            let (cond, _ty) = xx.convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc);
             xx.nodes
                 .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
@@ -799,7 +849,7 @@ impl<'a> Xx<'a> {
             // alt
             xx.do_in_branch(|xx| {
                 xx.nodes
-                    .push(new_jump_tail(break_label, vec![unit_term.clone()], loc));
+                    .push(new_jump_tail(break_label, vec![KTerm::Unit { loc }], loc));
             });
         })
     }
@@ -825,9 +875,9 @@ impl<'a> Xx<'a> {
         let loc = Loc::new(self.doc, PLoc::Expr(expr_id));
 
         match expr {
-            AExpr::Unit => KTerm::Unit { loc },
-            AExpr::True => KTerm::True { loc },
-            AExpr::False => KTerm::False { loc },
+            AExpr::Unit => new_unit_term(loc),
+            AExpr::True => new_true_term(loc),
+            AExpr::False => new_false_term(loc),
             AExpr::Number(token) => {
                 convert_number_lit(*token, ty_expect, self.tokens, self.doc, self.logger)
             }
@@ -849,9 +899,18 @@ impl<'a> Xx<'a> {
             AExpr::Block(ABlockExpr { decls }) => {
                 self.convert_block_expr(decls.clone(), ty_expect, loc)
             }
-            AExpr::Break(break_expr) => self.convert_break_expr(break_expr, ty_expect, loc),
-            AExpr::Continue => self.convert_continue_expr(ty_expect, loc),
-            AExpr::Return(return_expr) => self.convert_return_expr(return_expr, ty_expect, loc),
+            AExpr::Break(break_expr) => {
+                self.convert_break_expr(break_expr, ty_expect, loc);
+                new_never_term(loc)
+            }
+            AExpr::Continue => {
+                self.convert_continue_expr(ty_expect, loc);
+                new_never_term(loc)
+            }
+            AExpr::Return(return_expr) => {
+                self.convert_return_expr(return_expr, ty_expect, loc);
+                new_never_term(loc)
+            }
             AExpr::If(if_expr) => self.convert_if_expr(if_expr, ty_expect, loc),
             AExpr::Match(match_expr) => self.convert_match_expr(match_expr, ty_expect, loc),
             AExpr::While(while_expr) => self.convert_while_expr(while_expr, ty_expect, loc),
@@ -880,7 +939,7 @@ impl<'a> Xx<'a> {
             _ => {
                 // break や if など、左辺値と解釈可能な式は他にもある。いまのところ実装する必要はない
 
-                let term = match self.convert_expr(expr_id, ty_expect) {
+                let term = match self.convert_expr(expr_id, ty_expect).0 {
                     KTerm::Name(it) => it,
                     term => {
                         // FIXME: リテラルなら static を導入してそのアドレスを取る。
@@ -893,7 +952,7 @@ impl<'a> Xx<'a> {
                 let result = self.fresh_var("ref", loc);
                 self.nodes
                     .push(new_ref_node(KTerm::Name(term), result, new_cont(), loc));
-                KTerm::Name(result)
+                (KTerm::Name(result), KTy2::TODO)
             }
         }
     }
@@ -1044,6 +1103,6 @@ fn emit_unit_like_struct(
 ) -> AfterRval {
     let ty = KTy2::Struct(k_struct);
 
-    nodes.push(new_record_node(ty, vec![], result, new_cont(), loc));
-    KTerm::Name(result)
+    nodes.push(new_record_node(ty.clone(), vec![], result, new_cont(), loc));
+    (KTerm::Name(result), ty)
 }

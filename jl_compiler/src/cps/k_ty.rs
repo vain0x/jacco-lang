@@ -58,6 +58,10 @@ pub(crate) enum KTy2 {
 }
 
 impl KTy2 {
+    pub(crate) const TODO: KTy2 = KTy2::Unresolved {
+        cause: KTyCause::Default,
+    };
+
     #[allow(unused)]
     pub(crate) const DEFAULT: KTy2 = KTy2::Unresolved {
         cause: KTyCause::Default,

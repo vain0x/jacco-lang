@@ -11,15 +11,15 @@ impl<'a> Xx<'a> {
     fn evaluate_rval(
         &mut self,
         expr_opt: Option<AExprId>,
-        ty_opt: Option<ATyId>,
+        expected_ty_opt: Option<ATyId>,
         loc: Loc,
-    ) -> (AfterRval, KTy2) {
-        let value = self.convert_expr_opt(expr_opt, TyExpect::Todo, loc);
-        let ty = self
+    ) -> (KTerm, KTy2) {
+        let (term, _ty) = self.convert_expr_opt(expr_opt, TyExpect::Todo, loc);
+        let expected_ty = self
             .ty_resolver()
-            .convert_ty_opt(ty_opt)
+            .convert_ty_opt(expected_ty_opt)
             .to_ty2_poly(self.mod_outline);
-        (value, ty)
+        (term, expected_ty)
     }
 
     fn convert_let_decl(&mut self, _decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc) {
@@ -62,7 +62,7 @@ impl<'a> Xx<'a> {
     fn convert_const_decl(&mut self, k_const: KConst, decl: &AFieldLikeDecl, loc: Loc) {
         let (node, term) = {
             let mut nodes = take(&mut self.nodes);
-            let term =
+            let (term, _ty) =
                 self.do_out_fn(|xx| xx.convert_expr_opt(decl.value_opt, TyExpect::Todo, loc));
             swap(&mut self.nodes, &mut nodes);
 
@@ -83,7 +83,7 @@ impl<'a> Xx<'a> {
     fn convert_static_decl(&mut self, static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc) {
         let (node, term) = {
             let mut nodes = take(&mut self.nodes);
-            let term =
+            let (term, _ty) =
                 self.do_out_fn(|xx| xx.convert_expr_opt(decl.value_opt, TyExpect::Todo, loc));
             swap(&mut self.nodes, &mut nodes);
 
@@ -140,7 +140,7 @@ impl<'a> Xx<'a> {
             // 関数の本体を格納しておくラベル
             xx.label = xx.labels.alloc(KLabelConstruction::default());
 
-            let term = xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Todo, loc);
+            let (term, _ty) = xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Todo, loc);
             xx.emit_return(term, loc);
             xx.commit_label();
 
@@ -211,7 +211,7 @@ impl<'a> Xx<'a> {
         decl_id: ADeclId,
         decl: &ADecl,
         _ty_expect: TyExpect,
-        term_opt: &mut Option<KTerm>,
+        term_opt: &mut Option<AfterRval>,
     ) {
         let symbol_opt = decl
             .name_opt()
@@ -268,7 +268,11 @@ impl<'a> Xx<'a> {
         }
     }
 
-    pub(crate) fn convert_decls(&mut self, decls: ADeclIds, ty_expect: TyExpect) -> Option<KTerm> {
+    pub(crate) fn convert_decls(
+        &mut self,
+        decls: ADeclIds,
+        ty_expect: TyExpect,
+    ) -> Option<AfterRval> {
         let mut last_opt = None;
         for (decl_id, decl) in decls.enumerate(self.ast.decls()) {
             // 最後の式文以外は unit

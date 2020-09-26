@@ -125,26 +125,21 @@ pub(crate) struct ContinueLabel {
 
 // 入れ子のパターンはまだコンパイルできない
 pub(crate) enum Branch {
-    Case(KTerm),
+    Case(KTerm, KTy2),
     Default(KVarTerm),
 }
 
-pub(crate) type AfterLval = KTerm;
-pub(crate) type AfterRval = KTerm;
+pub(crate) type AfterLval = (KTerm, KTy2);
+pub(crate) type AfterRval = (KTerm, KTy2);
 pub(crate) type AfterJump = KTerm;
 
 // FIXME: KTerm::Never を追加。型は never になるべき
 pub(crate) fn new_never_term(loc: Loc) -> AfterRval {
-    KTerm::Unit { loc }
-}
-
-// FIXME: KTerm::Unit に置き換える
-pub(crate) fn new_unit_term(loc: Loc) -> AfterRval {
-    KTerm::Unit { loc }
+    (KTerm::Unit { loc }, KTy2::Never)
 }
 
 pub(crate) fn new_error_term(loc: Loc) -> AfterRval {
-    KTerm::Unit { loc }
+    (KTerm::Unit { loc }, KTy2::Never)
 }
 
 pub(crate) fn new_cont() -> KNode {
