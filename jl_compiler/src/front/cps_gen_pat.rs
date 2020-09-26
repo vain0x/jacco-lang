@@ -79,10 +79,10 @@ impl<'a> Xx<'a> {
             APat::Unit => KTerm::Unit { loc },
             APat::True(_) => KTerm::True { loc },
             APat::False(_) => KTerm::False { loc },
-            APat::Char(token) => convert_char_expr(*token, self.doc, self.tokens),
             APat::Number(token) => {
                 convert_number_lit(*token, TyExpect::Todo, self.tokens, self.doc, self.logger)
             }
+            APat::Char(token) => convert_char_expr(*token, self.doc, self.tokens),
             APat::Str(token) => convert_str_expr(*token, self.doc, self.tokens),
             APat::Wildcard(token) => return self.convert_wildcard_pat_as_cond(*token),
             APat::Name(name) => return self.convert_name_pat_as_cond(*name),
