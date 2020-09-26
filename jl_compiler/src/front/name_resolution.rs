@@ -133,27 +133,25 @@ fn resolve_value_name(
     name_symbols: &NameSymbols,
     mod_outline: &KModOutline,
 ) -> Option<Result<KLocalValue, KAlias>> {
+    let def_to_value = |name: ANameId| {
+        let value = match name_symbols.get(&name)? {
+            NameSymbol::TyParam(_) => return None,
+            NameSymbol::LocalVar(local_var) => Ok(KLocalValue::LocalVar(*local_var)),
+            NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
+                KValueOrAlias::Alias(alias) => Err(alias),
+                KValueOrAlias::Value(value) => Ok(value.to_local_value()),
+            },
+        };
+        Some(value)
+    };
+
     // FIXME: この時点で alias を展開する？
     name_referents
         .get(&name)
-        .and_then(|referent| match referent {
+        .and_then(|referent| match *referent {
             LexicalReferent::Unresolved | LexicalReferent::BuiltInTy(_) => None,
-            LexicalReferent::Def => match name_symbols.get(&name)? {
-                NameSymbol::TyParam(_) => None,
-                NameSymbol::LocalVar(local_var) => Some(Ok(KLocalValue::LocalVar(*local_var))),
-                NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
-                    KValueOrAlias::Alias(alias) => Some(Err(alias)),
-                    KValueOrAlias::Value(value) => Some(Ok(value.to_local_value())),
-                },
-            },
-            LexicalReferent::Name(def_name) => match name_symbols.get(&def_name)? {
-                NameSymbol::TyParam(_) => None,
-                NameSymbol::LocalVar(local_var) => Some(Ok(KLocalValue::LocalVar(*local_var))),
-                NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
-                    KValueOrAlias::Alias(alias) => Some(Err(alias)),
-                    KValueOrAlias::Value(value) => Some(Ok(value.to_local_value())),
-                },
-            },
+            LexicalReferent::Def => def_to_value(name),
+            LexicalReferent::Name(def_name) => def_to_value(def_name),
         })
 }
 
