@@ -109,45 +109,6 @@ fn resolve_pat(pat: &mut KTerm, expected_ty: &KTy2, tx: &mut Tx) {
     }
 }
 
-fn resolve_alias_term(alias: KAlias, loc: Loc, tx: &mut Tx) -> KTy2 {
-    let outline = match alias
-        .of(&tx.mod_outline.aliases)
-        .referent_outline(&tx.mod_outline)
-    {
-        Some(outline) => outline,
-        None => {
-            tx.logger.error(
-                loc,
-                "解決されていないエイリアスの型が {unresolved} になりました",
-            );
-            return KTy2::Unresolved {
-                cause: KTyCause::Alias,
-            };
-        }
-    };
-
-    match outline {
-        KModSymbolRef::Const(_, const_outline) => const_outline
-            .value_ty
-            .to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KModSymbolRef::StaticVar(_, static_var_outline) => {
-            static_var_outline.ty.to_ty2(tx.mod_outline, &mut tx.ty_env)
-        }
-        KModSymbolRef::Fn(_, fn_outline) => fn_outline.ty().to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KModSymbolRef::ExternFn(_, extern_fn_outline) => extern_fn_outline
-            .ty()
-            .to_ty2(tx.mod_outline, &mut tx.ty_env),
-        KModSymbolRef::ConstEnum(..)
-        | KModSymbolRef::StructEnum(..)
-        | KModSymbolRef::Struct(..) => {
-            tx.logger
-                .unimpl(loc, "インポートされた型の型検査は未実装です");
-            KTy2::Never
-        }
-        KModSymbolRef::Alias(_, _) | KModSymbolRef::Field(_, _) => unreachable!(),
-    }
-}
-
 fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
     match term {
         KTerm::Unit { .. } => KTy2::Unit,
@@ -156,7 +117,6 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Char { ty, .. } => ty.clone(),
         KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
         KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
-        KTerm::Alias { alias, loc } => resolve_alias_term(*alias, *loc, tx),
         KTerm::Const { k_const, .. } => k_const
             .ty(&tx.mod_outline.consts)
             .to_ty2(tx.mod_outline, &mut tx.ty_env),

@@ -66,34 +66,6 @@ pub(crate) enum KModSymbol {
 }
 
 impl KModSymbol {
-    pub(crate) fn outline(self, mod_outline: &KModOutline) -> KModSymbolRef<'_> {
-        match self {
-            KModSymbol::Alias(alias) => KModSymbolRef::Alias(alias, alias.of(&mod_outline.aliases)),
-            KModSymbol::Const(k_const) => {
-                KModSymbolRef::Const(k_const, k_const.of(&mod_outline.consts))
-            }
-            KModSymbol::StaticVar(static_var) => {
-                KModSymbolRef::StaticVar(static_var, static_var.of(&mod_outline.static_vars))
-            }
-            KModSymbol::Fn(k_fn) => KModSymbolRef::Fn(k_fn, k_fn.of(&mod_outline.fns)),
-            KModSymbol::ExternFn(extern_fn) => {
-                KModSymbolRef::ExternFn(extern_fn, extern_fn.of(&mod_outline.extern_fns))
-            }
-            KModSymbol::ConstEnum(const_enum) => {
-                KModSymbolRef::ConstEnum(const_enum, const_enum.of(&mod_outline.const_enums))
-            }
-            KModSymbol::StructEnum(struct_enum) => {
-                KModSymbolRef::StructEnum(struct_enum, struct_enum.of(&mod_outline.struct_enums))
-            }
-            KModSymbol::Struct(k_struct) => {
-                KModSymbolRef::Struct(k_struct, k_struct.of(&mod_outline.structs))
-            }
-            KModSymbol::Field(k_field) => {
-                KModSymbolRef::Field(k_field, k_field.of(&mod_outline.fields))
-            }
-        }
-    }
-
     #[cfg(unused)]
     pub(crate) fn name(self, mod_outline: &KModOutline) -> &str {
         match self.outline(mod_outline) {
@@ -143,29 +115,6 @@ impl KModSymbol {
             }
         };
         Some(KValueOrAlias::Value(value))
-    }
-}
-
-/// モジュール内で定義されるシンボルのアウトラインの参照
-#[derive(Copy, Clone)]
-pub(crate) enum KModSymbolRef<'a> {
-    Alias(KAlias, &'a KAliasOutline),
-    Const(KConst, &'a KConstOutline),
-    StaticVar(KStaticVar, &'a KStaticVarOutline),
-    Fn(KFn, &'a KFnOutline),
-    ExternFn(KExternFn, &'a KExternFnOutline),
-    ConstEnum(KConstEnum, &'a KConstEnumOutline),
-    StructEnum(KStructEnum, &'a KStructEnumOutline),
-    Struct(KStruct, &'a KStructOutline),
-    Field(KField, &'a KFieldOutline),
-}
-
-impl KAliasOutline {
-    pub(crate) fn referent_outline<'a>(
-        &self,
-        mod_outline: &'a KModOutline,
-    ) -> Option<KModSymbolRef<'a>> {
-        self.referent().map(|symbol| symbol.outline(mod_outline))
     }
 }
 

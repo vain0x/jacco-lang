@@ -30,11 +30,7 @@ impl<'a> Xx<'a> {
         let loc = name.loc().to_loc(self.doc);
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
-            Some(Ok(it)) => it,
-            Some(Err(alias)) => {
-                // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
-                return Branch::Case(KTerm::Alias { alias, loc });
-            }
+            Some(it) => it,
             None => return self.emit_default_branch(name),
         };
 

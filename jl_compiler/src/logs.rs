@@ -136,8 +136,4 @@ impl Logger {
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLoc { message, loc });
     }
-
-    pub(crate) fn unimpl(&self, node: impl HaveLoc, message: impl Into<String>) {
-        self.error(node, format!("[未実装?] {}", message.into()))
-    }
 }

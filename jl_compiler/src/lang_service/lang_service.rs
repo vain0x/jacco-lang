@@ -298,7 +298,6 @@ fn collect_symbols(
                 on_symbol(symbol, KLocalVarParent::Fn(k_fn), sites);
                 return;
             }
-            KTerm::Alias { alias, loc } => (KModSymbol::Alias(alias), loc),
             KTerm::Const { k_const, loc } => {
                 // FIXME: 外部のモジュールの定数である可能性もある
                 (KModSymbol::Const(k_const), loc)

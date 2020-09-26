@@ -52,10 +52,6 @@ pub(crate) enum KTerm {
         loc: Loc,
     },
     Name(KVarTerm),
-    Alias {
-        alias: KAlias,
-        loc: Loc,
-    },
     Const {
         k_const: KConst,
         loc: Loc,
@@ -109,12 +105,6 @@ impl KTerm {
             KTerm::Str { .. } => KTy2::C8.into_ptr(KMut::Const),
             KTerm::True { .. } | KTerm::False { .. } => KTy2::BOOL,
             KTerm::Name(term) => term.local_var.ty(&local_vars),
-            KTerm::Alias { .. } => {
-                log::error!("エイリアス項の型は未実装");
-                KTy2::Unresolved {
-                    cause: KTyCause::Alias,
-                }
-            }
             KTerm::Const { k_const, .. } => k_const.ty(&mod_outline.consts).erasure(mod_outline),
             KTerm::StaticVar { static_var, .. } => {
                 static_var.ty(&mod_outline.static_vars).erasure(mod_outline)
@@ -148,7 +138,6 @@ impl KTerm {
             | KTerm::Str { loc, .. }
             | KTerm::True { loc }
             | KTerm::False { loc }
-            | KTerm::Alias { loc, .. }
             | KTerm::Const { loc, .. }
             | KTerm::StaticVar { loc, .. }
             | KTerm::Fn { loc, .. }
@@ -190,7 +179,6 @@ impl<'a>
                 Some((local_vars, _)) => write!(f, "{}", term.local_var.of(local_vars).name),
                 None => write!(f, "var({:?})", term.cause),
             },
-            KTerm::Alias { alias, .. } => write!(f, "{}", alias.of(&mod_outline.aliases).name()),
             KTerm::Const { k_const, .. } => write!(f, "const#{:?}", k_const),
             KTerm::StaticVar { static_var, .. } => {
                 write!(f, "{}", static_var.name(&mod_outline.static_vars))

@@ -28,10 +28,6 @@ impl KAliasOutline {
         }
     }
 
-    pub(crate) fn name(&self) -> &str {
-        &self.name
-    }
-
     pub(crate) fn path(&self) -> &[String] {
         &self.path
     }

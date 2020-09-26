@@ -132,20 +132,27 @@ fn resolve_value_name(
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
     mod_outline: &KModOutline,
-) -> Option<Result<KLocalValue, KAlias>> {
+) -> Option<KLocalValue> {
     let def_to_value = |name: ANameId| {
-        let value = match name_symbols.get(&name)? {
+        let symbol = match name_symbols.get(&name)? {
             NameSymbol::TyParam(_) => return None,
-            NameSymbol::LocalVar(local_var) => Ok(KLocalValue::LocalVar(*local_var)),
-            NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
-                KValueOrAlias::Alias(alias) => Err(alias),
-                KValueOrAlias::Value(value) => Ok(value.to_local_value()),
+            NameSymbol::LocalVar(local_var) => return Some(KLocalValue::LocalVar(*local_var)),
+            NameSymbol::ModSymbol(it) => it,
+        };
+        let value = match symbol.as_value(mod_outline)? {
+            KValueOrAlias::Alias(alias) => match alias
+                .of(&mod_outline.aliases)
+                .referent()?
+                .as_value(mod_outline)?
+            {
+                KValueOrAlias::Alias(..) => unreachable!("alias can't be alias of another alias"),
+                KValueOrAlias::Value(value) => value.to_local_value(),
             },
+            KValueOrAlias::Value(value) => value.to_local_value(),
         };
         Some(value)
     };
 
-    // FIXME: この時点で alias を展開する？
     name_referents
         .get(&name)
         .and_then(|referent| match *referent {
@@ -158,7 +165,7 @@ fn resolve_value_name(
 pub(crate) fn resolve_value_path(
     name: ANameId,
     context: PathResolutionContext<'_>,
-) -> Option<Result<KLocalValue, KAlias>> {
+) -> Option<KLocalValue> {
     let PathResolutionContext {
         tokens,
         ast,
@@ -200,7 +207,7 @@ pub(crate) fn resolve_value_path(
                 }
                 _ => return None,
             };
-            return Some(Ok(value));
+            return Some(value);
         }
         KTy::ConstEnum(const_enum) => {
             let name = name.of(ast.names()).token.text(tokens);
@@ -219,7 +226,7 @@ pub(crate) fn resolve_value_path(
         }
         _ => return None,
     };
-    Some(Ok(value))
+    Some(value)
 }
 
 // =============================================================================
