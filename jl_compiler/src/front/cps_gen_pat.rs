@@ -30,15 +30,15 @@ impl<'a> Xx<'a> {
         let loc = name.loc().to_loc(self.doc);
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
-            Some(it) => it,
+            Some(KValueOrAlias::Value(it)) => it,
+            Some(KValueOrAlias::Alias(alias)) => {
+                // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
+                return Branch::Case(KTerm::Alias { alias, loc });
+            }
             None => return self.emit_default_branch(name),
         };
 
         match value {
-            KLocalValue::Alias(alias) => {
-                // FIXME: エイリアスが const などを指している可能性があるので、shadowing とはみなせない。Rust と挙動が異なる
-                Branch::Case(KTerm::Alias { alias, loc })
-            }
             KLocalValue::Const(k_const) => Branch::Case(KTerm::Const { k_const, loc }),
             KLocalValue::UnitLikeStruct(k_struct) => {
                 Branch::Case(KTerm::RecordTag { k_struct, loc })

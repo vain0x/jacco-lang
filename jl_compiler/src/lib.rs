@@ -93,7 +93,7 @@ mod cps {
     pub(crate) use k_term::*;
     pub(crate) use k_term_var::{KVarTerm, KVarTermCause};
     pub(crate) use k_ty::*;
-    pub(crate) use k_value::KLocalValue;
+    pub(crate) use k_value::*;
     pub(crate) use k_vis::KVis;
     pub(crate) use ty_expect::TyExpect;
     pub(crate) use type_resolution::resolve_types;

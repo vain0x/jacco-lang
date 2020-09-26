@@ -124,15 +124,15 @@ impl KModSymbol {
         Some(ty)
     }
 
-    pub(crate) fn as_value(self, mod_outline: &KModOutline) -> Option<KLocalValue> {
+    pub(crate) fn as_value(self, mod_outline: &KModOutline) -> Option<KValueOrAlias> {
         let value = match self {
-            KModSymbol::Alias(alias) => KLocalValue::Alias(alias),
+            KModSymbol::Alias(alias) => return Some(KValueOrAlias::Alias(alias)),
             KModSymbol::Const(k_const) => KLocalValue::Const(k_const),
             KModSymbol::StaticVar(static_var) => KLocalValue::StaticVar(static_var),
             KModSymbol::Fn(k_fn) => KLocalValue::Fn(k_fn),
             KModSymbol::ExternFn(extern_fn) => KLocalValue::ExternFn(extern_fn),
             KModSymbol::ConstEnum(_) | KModSymbol::StructEnum(_) | KModSymbol::Field(_) => {
-                return None
+                return None;
             }
             KModSymbol::Struct(k_struct) => {
                 if k_struct.of(&mod_outline.structs).is_unit_like() {
@@ -142,7 +142,7 @@ impl KModSymbol {
                 }
             }
         };
-        Some(value)
+        Some(KValueOrAlias::Value(value))
     }
 }
 

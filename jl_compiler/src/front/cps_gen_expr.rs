@@ -122,8 +122,12 @@ impl<'a> Xx<'a> {
             }
         };
 
+        let value = match value {
+            KValueOrAlias::Value(it) => it,
+            KValueOrAlias::Alias(alias) => return KTerm::Alias { alias, loc },
+        };
+
         match value {
-            KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
             KLocalValue::LocalVar(local_var) => KTerm::Name(KVarTerm { local_var, cause }),
             KLocalValue::Const(k_const) => KTerm::Const { k_const, loc },
             KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
@@ -148,7 +152,8 @@ impl<'a> Xx<'a> {
         let cause = KVarTermCause::NameUse(self.doc, name);
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
-            Some(it) => it,
+            Some(KValueOrAlias::Value(it)) => it,
+            Some(KValueOrAlias::Alias(alias)) => return KTerm::Alias { alias, loc },
             None => {
                 error_unresolved_value(name.loc(), self.logger);
                 return new_error_term(loc);
@@ -156,7 +161,6 @@ impl<'a> Xx<'a> {
         };
 
         let term = match value {
-            KLocalValue::Alias(alias) => KTerm::Alias { alias, loc },
             KLocalValue::LocalVar(local_var) => KTerm::Name(KVarTerm { local_var, cause }),
             KLocalValue::StaticVar(static_var) => KTerm::StaticVar { static_var, loc },
             KLocalValue::Const(_)
@@ -210,7 +214,7 @@ impl<'a> Xx<'a> {
         };
 
         match value {
-            KLocalValue::Fn(k_fn) => {
+            KValueOrAlias::Value(KLocalValue::Fn(k_fn)) => {
                 let fn_data = k_fn.of(&self.mod_outline.fns);
                 if fn_data.ty_params.is_empty() {
                     error_invalid_ty_args(name.loc(), self.logger);
