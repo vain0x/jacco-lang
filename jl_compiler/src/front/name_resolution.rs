@@ -132,24 +132,27 @@ fn resolve_value_name(
     name_referents: &NameReferents,
     name_symbols: &NameSymbols,
     mod_outline: &KModOutline,
-) -> Option<KValueOrAlias> {
+) -> Option<Result<KLocalValue, KAlias>> {
+    // FIXME: この時点で alias を展開する？
     name_referents
         .get(&name)
         .and_then(|referent| match referent {
             LexicalReferent::Unresolved | LexicalReferent::BuiltInTy(_) => None,
             LexicalReferent::Def => match name_symbols.get(&name)? {
                 NameSymbol::TyParam(_) => None,
-                NameSymbol::LocalVar(local_var) => {
-                    Some(KValueOrAlias::Value(KLocalValue::LocalVar(*local_var)))
-                }
-                NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
+                NameSymbol::LocalVar(local_var) => Some(Ok(KLocalValue::LocalVar(*local_var))),
+                NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
+                    KValueOrAlias::Alias(alias) => Some(Err(alias)),
+                    KValueOrAlias::Value(value) => Some(Ok(value.to_local_value())),
+                },
             },
             LexicalReferent::Name(def_name) => match name_symbols.get(&def_name)? {
                 NameSymbol::TyParam(_) => None,
-                NameSymbol::LocalVar(local_var) => {
-                    Some(KValueOrAlias::Value(KLocalValue::LocalVar(*local_var)))
-                }
-                NameSymbol::ModSymbol(symbol) => symbol.as_value(mod_outline),
+                NameSymbol::LocalVar(local_var) => Some(Ok(KLocalValue::LocalVar(*local_var))),
+                NameSymbol::ModSymbol(symbol) => match symbol.as_value(mod_outline)? {
+                    KValueOrAlias::Alias(alias) => Some(Err(alias)),
+                    KValueOrAlias::Value(value) => Some(Ok(value.to_local_value())),
+                },
             },
         })
 }
@@ -157,7 +160,7 @@ fn resolve_value_name(
 pub(crate) fn resolve_value_path(
     name: ANameId,
     context: PathResolutionContext<'_>,
-) -> Option<KValueOrAlias> {
+) -> Option<Result<KLocalValue, KAlias>> {
     let PathResolutionContext {
         tokens,
         ast,
@@ -199,7 +202,7 @@ pub(crate) fn resolve_value_path(
                 }
                 _ => return None,
             };
-            return Some(KValueOrAlias::Value(value));
+            return Some(Ok(value));
         }
         KTy::ConstEnum(const_enum) => {
             let name = name.of(ast.names()).token.text(tokens);
@@ -218,7 +221,7 @@ pub(crate) fn resolve_value_path(
         }
         _ => return None,
     };
-    Some(KValueOrAlias::Value(value))
+    Some(Ok(value))
 }
 
 // =============================================================================

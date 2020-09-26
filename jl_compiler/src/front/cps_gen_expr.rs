@@ -115,16 +115,12 @@ impl<'a> Xx<'a> {
         let cause = KVarTermCause::NameUse(self.doc, name);
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
-            Some(it) => it,
+            Some(Ok(it)) => it,
+            Some(Err(alias)) => return KTerm::Alias { alias, loc },
             None => {
                 error_unresolved_value(name.loc(), self.logger);
                 return new_error_term(loc);
             }
-        };
-
-        let value = match value {
-            KValueOrAlias::Value(it) => it,
-            KValueOrAlias::Alias(alias) => return KTerm::Alias { alias, loc },
         };
 
         match value {
@@ -152,8 +148,8 @@ impl<'a> Xx<'a> {
         let cause = KVarTermCause::NameUse(self.doc, name);
 
         let value = match resolve_value_path(name, self.path_resolution_context()) {
-            Some(KValueOrAlias::Value(it)) => it,
-            Some(KValueOrAlias::Alias(alias)) => return KTerm::Alias { alias, loc },
+            Some(Ok(it)) => it,
+            Some(Err(alias)) => return KTerm::Alias { alias, loc },
             None => {
                 error_unresolved_value(name.loc(), self.logger);
                 return new_error_term(loc);
@@ -214,7 +210,7 @@ impl<'a> Xx<'a> {
         };
 
         match value {
-            KValueOrAlias::Value(KLocalValue::Fn(k_fn)) => {
+            Ok(KLocalValue::Fn(k_fn)) => {
                 let fn_data = k_fn.of(&self.mod_outline.fns);
                 if fn_data.ty_params.is_empty() {
                     error_invalid_ty_args(name.loc(), self.logger);
