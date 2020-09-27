@@ -45,7 +45,7 @@ impl KVarTerm {
         self.local_var.ty(local_vars)
     }
 
-    pub(crate) fn ty_mut<'a>(&mut self, local_vars: &'a mut KLocalVarArena) -> &'a mut KTy2 {
+    pub(crate) fn ty_mut(self, local_vars: &mut KLocalVarArena) -> &mut KTy2 {
         &mut self.local_var.of_mut(local_vars).ty
     }
 

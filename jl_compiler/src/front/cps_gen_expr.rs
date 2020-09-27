@@ -575,6 +575,36 @@ impl<'a> Xx<'a> {
         new_unit_term(loc)
     }
 
+    fn do_convert_add_expr(
+        &mut self,
+        expr: &ABinaryOpExpr,
+        ty_expect: TyExpect,
+        loc: Loc,
+    ) -> AfterRval {
+        let mut ty_rule = AddExprRule::new(ty_expect, self.logger);
+
+        let (left, left_ty) = self.convert_expr(expr.left, ty_rule.left_ty_expect());
+        ty_rule.verify_left_ty(&left_ty, &self.ty_env);
+
+        let right_ty_expect = ty_rule.right_ty_expect();
+        let (right, right_ty) = self.convert_expr_opt(expr.right_opt, right_ty_expect, loc);
+        ty_rule.verify_right_ty(&right_ty, &self.ty_env);
+
+        let result = self.fresh_var("add", loc);
+        let result_ty = ty_rule.to_result_ty();
+        *result.ty_mut(&mut self.local_vars) = result_ty.clone();
+
+        self.nodes.push(new_basic_binary_op_node(
+            KPrim::Add,
+            left,
+            right,
+            result,
+            new_cont(),
+            loc,
+        ));
+        (KTerm::Name(result), result_ty)
+    }
+
     fn do_convert_basic_binary_op_expr(
         &mut self,
         prim: KPrim,
@@ -652,7 +682,7 @@ impl<'a> Xx<'a> {
             PBinaryOp::BitXorAssign => on_assign(KPrim::BitXorAssign, xx),
             PBinaryOp::LeftShiftAssign => on_assign(KPrim::LeftShiftAssign, xx),
             PBinaryOp::RightShiftAssign => on_assign(KPrim::RightShiftAssign, xx),
-            PBinaryOp::Add => on_basic(KPrim::Add, xx),
+            PBinaryOp::Add => xx.do_convert_add_expr(expr, ty_expect, loc),
             PBinaryOp::Sub => on_basic(KPrim::Sub, xx),
             PBinaryOp::Mul => on_basic(KPrim::Mul, xx),
             PBinaryOp::Div => on_basic(KPrim::Div, xx),
@@ -1105,4 +1135,76 @@ fn emit_unit_like_struct(
 
     nodes.push(new_record_node(ty.clone(), vec![], result, new_cont(), loc));
     (KTerm::Name(result), ty)
+}
+
+#[derive(Debug)]
+enum AddExprRuleKind {
+    Number,
+    PtrAdd,
+}
+
+struct AddExprRule<'a> {
+    ty_expect: TyExpect<'a>,
+    #[allow(unused)]
+    logger: &'a DocLogger,
+    kind_opt: Option<AddExprRuleKind>,
+    left_ty_opt: Option<&'a KTy2>,
+}
+
+impl<'a> AddExprRule<'a> {
+    fn new(ty_expect: TyExpect<'a>, logger: &'a DocLogger) -> Self {
+        AddExprRule {
+            ty_expect,
+            logger,
+            kind_opt: None,
+            left_ty_opt: None,
+        }
+    }
+
+    fn left_ty_expect(&self) -> TyExpect<'a> {
+        self.ty_expect.meet(TyExpect::NumberOrPtr)
+    }
+
+    fn verify_left_ty(&mut self, left_ty: &'a KTy2, ty_env: &KTyEnv) {
+        let kind = if left_ty.is_ptr(&ty_env) {
+            AddExprRuleKind::PtrAdd
+        } else {
+            AddExprRuleKind::Number
+        };
+        self.kind_opt = Some(kind);
+        self.left_ty_opt = Some(left_ty);
+
+        // FIXME: left_ty: number or ptr でなければエラー
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            log::trace!(
+                "add({:?}) left_ty={} (expected {})",
+                self.kind_opt,
+                left_ty.display(ty_env, mod_outline_opt.unwrap()),
+                self.ty_expect.display(ty_env, mod_outline_opt.unwrap()),
+            );
+        });
+    }
+
+    fn right_ty_expect(&self) -> TyExpect<'a> {
+        let other = match self.kind_opt.as_ref().unwrap() {
+            AddExprRuleKind::Number => TyExpect::Exact(self.left_ty_opt.unwrap()),
+            AddExprRuleKind::PtrAdd => TyExpect::IsizeOrUsize,
+        };
+        self.ty_expect.meet(other)
+    }
+
+    fn verify_right_ty(&self, right_ty: &KTy2, ty_env: &KTyEnv) {
+        // FIXME: unify with left_ty
+
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            log::trace!(
+                "add right_ty={}",
+                right_ty.display(ty_env, mod_outline_opt.unwrap())
+            );
+        });
+    }
+
+    fn to_result_ty(&self) -> KTy2 {
+        self.left_ty_opt.unwrap().clone()
+    }
 }

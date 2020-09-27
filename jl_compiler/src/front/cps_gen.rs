@@ -291,9 +291,9 @@ pub(crate) fn convert_to_cps(
         fns.extend_with(mod_outline.fns.len(), Default::default);
     }
 
-    {
+    KModOutline::given_for_debug(mod_outline, || {
         xx.mod_data = take(mod_data);
         xx.convert_decls(tree.ast.root_decls(), TyExpect::unit());
         *mod_data = xx.mod_data;
-    }
+    });
 }
