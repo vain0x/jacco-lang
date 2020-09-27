@@ -19,12 +19,13 @@ TODO: 概要を詳しく書く
 - 型検査の流れを書く
     (型検査は基本的に、式を評価順にみていき、それぞれの部分式の型を貪欲に決めていく。ただし部分的に、評価の「結果」側から式の型を決定する部分もある。)
 - 式やパターンに「期待される型」について書く
-    - 式 e に期待される型が X であるとき、e の型が T になることを `e: T (expected X)` と書く
+    - 式 e に期待される型が X のとき、e の型が T になることを `e: T (expected X)` と書く
     - 期待される型はヒントであって制約ではない。
         実際の型が「期待される型」に一致するか、あるいは部分型になるか、という検査は意図していない。
     - 式の型が持つべき条件は、期待される型とは別に、実際の型に関する条件を記述する。これが破られたら型エラーを起こす。
+    - 式 e に期待される型が X のとき、e の型が S になって、それが型 T の部分型でなければいけない、ということを `e: S <: T (expected X)` と書く
 - 式の型は、その式に要求される制約が一意に決まるときのみ型が決定する。
-- 型検査の途中では bool | int などの和型が出現する。シンボルの型は和型にはならない。
+- 型検査の途中では bool | iNN などの和型が出現する。シンボルの宣言の型は和型にはならない。
 
 ### 宣言の型と式の型
 
@@ -41,37 +42,103 @@ fn 宣言などにより定義される、シンボル本来の型を宣言の�
 - never, unit, bool
 - `*unknown`, `*mut unknown`
 - 数値型 (iNN, uNN, fNN, cNN)
-- enum, struct で定義されるシンボルの型
+- enum 型
+- struct 型
 - 具体的な型へのポインタ型 (`*i32`, `*mut i32` など)
 - 具体的な型からなる矢印型 (`fn() -> i32` など)
 - 具体的な型に解決されたメタ型
 
 unknown と、具体的な型に解決されていないメタ型は具体的な型ではない。
 
-### 型の制約
-
-- 同一性の制約: ある2つの式が同じ型を持つこと。
-    例えば `if { x } else { y }` の `x`, `y` は同じ型でなければいけない。
-- キャスト可能性の制約: 式の型がある型へキャスト可能であること。
-    例えば `x as i32` の式 x は、型 i32 へのキャストが可能な型を持たなければいけない。
-- その他の制約: ある式がいくつかの種類の型のどれかを持つこと。
-    例えば `x + y` のとき x はポインタ型か数値型でなければいけない。
-
 ## 補助的な関係や操作の定義
 
 メタ型を扱うため、単一化がある。
 
-部分型関係の定義のため、補助的に型の二項演算 `T \ U` と属性 `T is-empty` がある。
+部分型関係の定義のため、補助的に属性 `T is-empty` と型の二項演算 `T \ U` がある。
 
 ### 単一化
 
 TODO
 
+### 空の型
+
+```
+(never は空)
+    never is-empty
+
+(空の型の和も空)
+    ∀i. Ti is-empty
+=>
+    (Ti | ...) is-empty
+```
+
 ### 型の引き算
+
+```
+    U is-empty
+=>
+    T \ U = T
+
+    T <: U
+=>
+    T \ U = never
+
+    *T \ *U = *(T \ U)
+
+    *mut T \ *mut U = *mut (T \ U)
+
+    (Ti, ...) -> U \ (Xi, ...) -> Y
+    = TODO
+
+    T \ (Ui | ...) = T \ Ui \ ...
+
+    (Ti | ...) \ U = ((Ti \ U) | ...)
+```
 
 TODO
 
-### 空の型
+### join
+
+TODO
+
+join は複数の型の上界を求める、部分型関係における max のような操作。`∀i. Ti <: join(Ti, ...)` が成り立つ。
+
+n 項の join は二項演算の join の畳み込みとして定める。単位元は never。
+
+```
+    join() = never
+    join(T) = T
+    join(T1, T2, Ui, ...) = join(join(T1, T2), Ui, ...)
+```
+
+```
+    join(T, T) = T
+
+(空の型は無視する)
+    U is-empty
+=>
+    join(T, U) = T,
+    join(U, T) = T
+
+(unknown による吸収)
+    join(T, unknown) = unknown,
+    join(unknown, T) = unknown,
+    join(*mut T, *mut unknown) = *mut unknown,
+    join(*mut unknown, *mut T) = *mut unknown
+
+(読み取り専用のポインタ型の上界)
+    join(*T, *mut U)
+    = *join(T, U)
+
+(関数)
+    TODO
+
+(和の上界は上界の和)
+    join((Ti | ...), U) = (join(Ti, U) | ...),
+    join(T, (Ui | ...)) = (join(T, Ui) | ...)
+```
+
+### meet
 
 TODO
 
@@ -84,21 +151,23 @@ TODO
     T <: T
 
 (unknown の部分型関係)
-    *T <: *unknown,
+    T <: unknown,
     *mut T <: *mut unknown
 
-(never の部分型関係)
-    never <: T
+(空の型の部分型関係)
+    T is-empty
+=>
+    T <: U
 
-    T is-empty => T <: never
-
-(*T の共変性)
+(読み取り専用のポインタの共変性)
     T <: U
 =>
     *T <: *U
 
 (読み取り専用のポインタへの降格)
-    *mut T <: *T
+    T <: U
+=>
+    *mut T <: *U
 
 (関数の部分型関係)
     Ti <: Xi,
@@ -107,7 +176,7 @@ TODO
     (Ti, ...) -> U <: (Xi, ...) -> Y
 
 (和型の部分型関係)
-    (U \ Ti | ...) <: never
+    (U \ Ti \ ...) is-empty
 =>
     U <: (Ti | ...)
 ```
@@ -115,6 +184,11 @@ TODO
 代入などの際に、部分型関係を使って暗黙の「アップキャスト」が起こるようになっている。
 部分型関係は値の表現を保つので、いわゆる型強制は生じない。
 (実行時の処理が必要な場合は as を使って明示的にキャストする方針。)
+
+推移的に適用することはできない。
+(部分型関係を検査するときに結論から前提を逆算できるようにするため。)
+
+部分型関係を検査する際にどちらかまたは両方が未束縛なメタ型なら、バインドする。
 
 FIXME: ジェネリック型の型パラメータに関する共変性・反変性を追加したい
 
@@ -124,7 +198,9 @@ FIXME: ジェネリック型の型パラメータに関する共変性・反変�
 
 ```
 (部分型つけ可能ならキャスト可能)
-    T <: U => T cast-to U
+    T <: U
+=>
+    T cast-to U
 
 (任意の型は unit にキャスト可能)
     T cast-to unit
@@ -147,10 +223,6 @@ FIXME: ジェネリック型の型パラメータに関する共変性・反変�
     T cast-to E
 ```
 
-### join
-
-TODO
-
 ## リテラルの型つけ規則
 
 リテラルの型つけ規則は式とパターンのどちらでも同様なので、まとめて書く。
@@ -158,15 +230,9 @@ TODO
 ### unit, true, false リテラル
 
 ```
-    unit: unit.
-```
-
-```
-    true: bool.
-```
-
-```
-    false: bool.
+    unit: unit,
+    true: bool,
+    false: bool
 ```
 
 ### 数値リテラル
@@ -174,8 +240,8 @@ TODO
 型接尾辞を持つ数値リテラルはその型を持つ。(例えば 42_i32 なら型は i32 になる。)
 
 ```
-    T <: iNN | uNN | fNN | cNN,
-    n: 型接頭辞 T を持つ数値リテラル
+    T <: (iNN | uNN | fNN | cNN),
+    n: 型接尾辞 T を持つ数値リテラル
 =>
     n: T (expected _)
 ```
@@ -183,7 +249,7 @@ TODO
 型接尾辞がないときは期待される型がつく。ただし小数リテラルは浮動小数点数型になる。
 
 ```
-    n: 型接頭辞を持たない、小数部か指数部を持つ数値リテラル,
+    n: 型接尾辞を持たない、小数部か指数部を持つ数値リテラル,
     T <: fNN
 =>
     n: T (expected T)
@@ -192,8 +258,8 @@ TODO
 それ以外はいずれかの数値型がつく。
 
 ```
-    n: 型接頭辞や小数部や指数部を持たない数値リテラル,
-    T <: iNN | uNN | fNN | cNN
+    n: 型接尾辞や小数部や指数部を持たない数値リテラル,
+    T <: (iNN | uNN | fNN | cNN)
 =>
     n: T (expected T)
 ```
@@ -215,16 +281,32 @@ TODO
 
 ```
     c: 型接尾辞を持たない文字リテラル,
-    T <: cNN
+    T <: (c8 | c16 | c32)
 =>
     c: T (expected T)
 ```
 
-FIXME: expected が c16, c32 でなければ c8 に解決したほうがよい？
+期待される型から決定できないときは、1バイトで表現できる文字は c8 に推論する。
+
+```
+    c: 型接尾辞を持たない、1バイトで表現できる文字リテラル,
+    ￢(X <: (c8 | c16 | c32))
+=>
+    c: c8 (expected X)
+```
+
+1バイトで表現できない文字は c32 に推論する。
+
+```
+    c: 型接尾辞を持たない、1バイトで表現できない文字リテラル,
+    ￢(X <: (c8 | c16 | c32))
+=>
+    c: c32 (expected X)
+```
 
 ### 文字列リテラル
 
-数値リテラルと同様。
+文字リテラルと同様。
 
 ```
     T <: cNN,
@@ -238,6 +320,15 @@ FIXME: expected が c16, c32 でなければ c8 に解決したほうがよい�
     T <: cNN
 =>
     s: *T (expected *T)
+```
+
+期待される型から決定できないときは `*c8` に推論する。
+
+```
+    s: 型接尾辞を持たない文字列リテラル,
+    ￢(X <: (*c8 | *c16 | *c32))
+=>
+    s: *c8 (expected X)
 ```
 
 FIXME: 文字列リテラルを `Str` などの構造体に直に推論する規則を追加したい
@@ -259,8 +350,10 @@ FIXME: 文字列リテラルを `Str` などの構造体に直に推論する規
     (型変数をそれぞれフレッシュなメタ型で置き換える。)
     (FIXME: 期待される型と unify する？)
 
+変数の参照は可変な式である。
+
 ```
-    n: ローカル変数または static 変数
+    n: ローカル変数か static 変数
 =>
     n: 可変な式
 ```
@@ -274,14 +367,15 @@ FIXME: 文字列リテラルを `Str` などの構造体に直に推論する規
     K: レコード型,
     ∀i. (
         fi: K のフィールド,
-        Ti: フィールド Ti の型,
+        Ti: フィールド fi の型,
         xi: _ <: Ti (expected Ti),
     )
 =>
     K { fi: xi, ... }: T (expected _)
 
 ただし
-    T = (K が構造体なら K、enum E のバリアントなら E)
+    K が構造体なら T = K,
+    K が enum E のバリアントなら T = E
 ```
 
 ### フィールド式
@@ -295,13 +389,15 @@ FIXME: 文字列リテラルを `Str` などの構造体に直に推論する規
     x.f: T (expected _)
 ```
 
+FIXME: ポインタを自動で脱参照する？
+
+x の可変性が遺伝する。
+
 ```
     x: 可変な式
 =>
     x.f: 可変な式
 ```
-
-FIXME: ポインタを自動で脱参照する？
 
 ### 関数呼び出し
 
@@ -340,15 +436,13 @@ FIXME: ポインタを自動で脱参照する？
     (x as U): U (expected _)
 ```
 
-FIXME: unify した方がいい？
-
 ### 単項演算
 
 `!x` は、x が bool または整数型でなければいけない。結果は x と同じ型になる。
 
 ```
     x: T (expected (X & (bool | iNN | uNN))),
-    T <: bool | iNN | uNN,
+    T <: (bool | iNN | uNN),
 =>
     !x: T (expected X)
 ```
@@ -357,28 +451,35 @@ FIXME: unify した方がいい？
 
 ```
     x: T (expected (X & (iNN | fNN))),
-    T <: iNN | fNN
+    T <: (iNN | fNN)
 =>
-    -x: (expected X)
+    -x: T (expected X)
 ```
 
+`*x` は x がポインタ型である必要がある。
+
 ```
-    x: T (expected (X & (*unknown | *mut unknown))),
+    x: T (expected (*X & (*unknown | *mut unknown))),
     (T = *U または T = *mut U)
 =>
     *x: U (expected X)
+```
 
-また、
+```
     x: *mut T (expected 同上)
 =>
     *x: 可変な式
 ```
+
+`&x`:
 
 ```
     x: T (expected X)
 =>
     &x: *T (expected *X)
 ```
+
+`&mut x` は x の可変性を検査する:
 
 ```
     x: T (expected X),
@@ -430,7 +531,7 @@ x がポインタ型のときは、y はポインタサイズの整数型でな�
 ```
 
 (次の規則のため、y の expected に T をいれておく必要がある。
-これにより数値リテラルの推論が阻害されることはない。)
+これにより数値リテラルの推論が阻害されることはないはず。)
 
 ```
     x: T (expected X),
@@ -470,12 +571,12 @@ x がポインタ型のときは、y はポインタサイズの整数型でな�
     (x ^ y): T (expected X)
 ```
 
-シフトは整数型に入る。右辺は整数なら何でもよいが、既定で u32 に推論される。
+シフトは左辺が整数型と文字型で、右辺は整数型でなければいけない。左右の型は異なってもよい。右辺は既定で u32 に推論される。
 
 ```
     x: T (expected X),
     y: _ <: (iNN | uNN) (expected u32),
-    T <: (iNN | uNN)
+    T <: (iNN | uNN | cNN)
 =>
     (x << y): T (expected X),
     (x >> y): T (expected X)
@@ -503,8 +604,8 @@ x がポインタ型のときは、y はポインタサイズの整数型でな�
     (x >= y): i32 (expected _)
 ```
 
-FIXME: is-equatable, is-comparable の定義を書く
-FIXME: レコード型の比較に関する型つけ規則を定める
+- FIXME: is-equatable, is-comparable の定義を書く。
+- FIXME: レコード型の比較に関する型つけ規則を定める。
 
 同値比較が可能な型の条件:
 
@@ -546,12 +647,12 @@ FIXME: レコード型の比較に関する型つけ規則を定める
     {}: unit
 ```
 
-空でないブロックは、最後が式宣言でなければ unit に評価される。
+空でないブロックは、最後が式宣言でなければ unit に評価される。途中の宣言は unit の部分型でなければいけない。
+(unit の部分型とは要するに never で、`(return;): never <: unit` を許可している。)
 
 ```
-    { di; ... },
     dn: (ブロックの最後の宣言) 式宣言でない,
-    ∀i. di: unit
+    ∀i. di: _ <: unit
 =>
     { di; ... }: unit (expected _)
 ```
@@ -559,8 +660,7 @@ FIXME: レコード型の比較に関する型つけ規則を定める
 最後が式宣言なら、ブロックに期待される型はその式に引き継がれる。ブロックの結果は、その式の結果に等しい。
 
 ```
-    { di; ...; x; },
-    ∀i. di: unit,
+    ∀i. di: _ <: unit,
     x: T (expected X)
 =>
     { di; ...; x; }: T (expected X)
@@ -578,7 +678,7 @@ else 節がないとき、if 式の結果は unit になる。ここで x は th
 
 ```
     cond: bool (expected bool),
-    x: unit (expected unit)
+    x: _ <: unit (expected unit)
 =>
     if cond { x }: unit (expected X)
 ```
@@ -608,7 +708,7 @@ match 式に期待される型はアームの本体にも期待される。
     cond: T (expected _),
     ∀i. (
         pi: _ <: T (expected T),
-        xi: Ui (expected join(X, U1, ..., U(i-1))),
+        xi: Ui (expected (X & join(U1, ..., U(i-1)))),
     ),
     U = join(Ui, ...)
 =>
@@ -619,7 +719,7 @@ match 式に期待される型はアームの本体にも期待される。
 
 ```
     cond: bool (expected bool),
-    x: unit (expected unit)
+    x: _ <: unit (expected unit)
 =>
     while cond { x }: unit (expected _)
 ```
@@ -634,7 +734,7 @@ loop に期待される型は、そのループをターゲットとする break
 (match と同様。)
 
 ```
-    x: unit (expected unit),
+    x: _ <: unit (expected unit),
     ∀(break xi). xi: Ti (expected (X & join(T1, ..., T(i-1)))),
     T = join(Ti, ...)
 =>
@@ -688,6 +788,10 @@ fn 宣言の本体には、結果型の型が期待される。
 =>
     (fn f(pi: Ti, ...) -> U { x }): unit (expected _)
 ```
+
+### extern fn
+
+fn と同様。
 
 ### struct, enum, use
 
