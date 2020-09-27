@@ -18,6 +18,10 @@ impl<'a> TyExpect<'a> {
         TyExpect::Exact(&KTy2::Unit)
     }
 
+    pub(crate) fn bool() -> TyExpect<'static> {
+        TyExpect::Exact(&KTy2::BOOL)
+    }
+
     pub(crate) fn from(ty: &'a KTy2) -> Self {
         if ty.is_unresolved() {
             Self::Todo

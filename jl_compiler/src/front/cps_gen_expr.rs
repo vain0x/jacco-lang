@@ -640,9 +640,9 @@ impl<'a> Xx<'a> {
         loc: Loc,
     ) -> AfterRval {
         self.do_convert_if_expr(
-            |xx| xx.convert_expr(expr.left, TyExpect::Todo),
-            |xx| xx.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc),
-            |_| new_false_term(loc),
+            |xx| xx.convert_expr(expr.left, TyExpect::bool()),
+            |xx, _| xx.convert_expr_opt(expr.right_opt, TyExpect::bool(), loc),
+            |_, _| new_false_term(loc),
             ty_expect,
             loc,
         )
@@ -656,9 +656,9 @@ impl<'a> Xx<'a> {
         loc: Loc,
     ) -> AfterRval {
         self.do_convert_if_expr(
-            |xx| xx.convert_expr(expr.left, TyExpect::Todo),
-            |_| new_true_term(loc),
-            |xx| xx.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc),
+            |xx| xx.convert_expr(expr.left, TyExpect::bool()),
+            |_, _| new_true_term(loc),
+            |xx, ty_expect| xx.convert_expr_opt(expr.right_opt, ty_expect, loc),
             ty_expect,
             loc,
         )
@@ -777,37 +777,50 @@ impl<'a> Xx<'a> {
     fn do_convert_if_expr(
         &mut self,
         cond_fn: impl FnOnce(&mut Xx) -> AfterRval,
-        body_fn: impl FnOnce(&mut Xx) -> AfterRval,
-        alt_fn: impl FnOnce(&mut Xx) -> AfterRval,
-        _ty_expect: TyExpect,
+        body_fn: impl FnOnce(&mut Xx, TyExpect) -> AfterRval,
+        alt_fn: impl FnOnce(&mut Xx, TyExpect) -> AfterRval,
+        ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
         let result = self.fresh_var("if_result", loc);
         // FIXME: next → if_next
         let next = self.new_break_label("next", result);
 
+        let mut ty_rule = IfRule::new(ty_expect, self.logger);
+        let mut body_ty = KTy2::DEFAULT;
+        let mut alt_ty = KTy2::Unit;
+
         self.do_with_break(next, |xx, break_label| {
-            let (cond, _ty) = cond_fn(xx);
+            let (cond, cond_ty) = cond_fn(xx);
+            ty_rule.verify_cond_ty(&cond_ty, &xx.ty_env);
             xx.nodes
                 .push(new_if_node(cond, new_cont(), new_cont(), loc));
 
             xx.do_in_branch(|xx| {
-                let (body, _ty) = body_fn(xx);
+                let (body, body_ty1) = body_fn(xx, ty_rule.body_ty_expect());
+                body_ty = body_ty1;
+                ty_rule.verify_body_ty(&body_ty);
                 xx.nodes.push(new_jump_tail(break_label, once(body), loc));
             });
 
             xx.do_in_branch(|xx| {
-                let (alt, _ty) = alt_fn(xx);
+                let (alt, alt_ty1) = alt_fn(xx, ty_rule.alt_ty_expect());
+                alt_ty = alt_ty1;
+                ty_rule.verify_alt_ty(&alt_ty);
                 xx.nodes.push(new_jump_tail(break_label, once(alt), loc));
+                ty_rule.verify_cond_ty(&cond_ty, &xx.ty_env);
             });
+
+            let _result_ty = ty_rule.to_result_ty(&xx.ty_env);
+            // *result.ty_mut(&mut xx.local_vars) = result_ty;
         })
     }
 
     fn convert_if_expr(&mut self, expr: &AIfExpr, ty_expect: TyExpect, loc: Loc) -> AfterRval {
         self.do_convert_if_expr(
-            |xx| xx.convert_expr_opt(expr.cond_opt, TyExpect::Todo, loc),
-            |xx| xx.convert_expr_opt(expr.body_opt, TyExpect::Todo, loc),
-            |xx| xx.convert_expr_opt(expr.alt_opt, TyExpect::Todo, loc),
+            |xx| xx.convert_expr_opt(expr.cond_opt, TyExpect::bool(), loc),
+            |xx, ty_expect| xx.convert_expr_opt(expr.body_opt, ty_expect, loc),
+            |xx, ty_expect| xx.convert_expr_opt(expr.alt_opt, ty_expect, loc),
             ty_expect,
             loc,
         )
@@ -1277,5 +1290,65 @@ impl<'a> AddExprRule<'a> {
 
     fn to_result_ty(&self) -> KTy2 {
         self.left_ty_opt.unwrap().clone()
+    }
+}
+
+struct IfRule<'a> {
+    ty_expect: TyExpect<'a>,
+    #[allow(unused)]
+    logger: &'a DocLogger,
+    body_ty_opt: Option<&'a KTy2>,
+    alt_ty: &'a KTy2,
+}
+
+impl<'a> IfRule<'a> {
+    fn new(ty_expect: TyExpect<'a>, logger: &'a DocLogger) -> Self {
+        Self {
+            ty_expect,
+            logger,
+            body_ty_opt: None,
+            alt_ty: &KTy2::Unit,
+        }
+    }
+
+    fn verify_cond_ty(&self, cond_ty: &KTy2, ty_env: &KTyEnv) {
+        if !cond_ty.is_bool(ty_env) {
+            // FIXME: error
+        }
+    }
+
+    fn body_ty_expect(&self) -> TyExpect<'a> {
+        self.ty_expect
+    }
+
+    fn verify_body_ty(&mut self, body_ty: &'a KTy2) {
+        self.body_ty_opt = Some(body_ty);
+    }
+
+    fn alt_ty_expect(&self) -> TyExpect<'a> {
+        self.ty_expect
+            .meet(TyExpect::Exact(self.body_ty_opt.unwrap()))
+    }
+
+    fn verify_alt_ty(&mut self, alt_ty: &'a KTy2) {
+        // FIXME: body_ty と互換性がなければエラー？
+        self.alt_ty = alt_ty;
+    }
+
+    fn to_result_ty(self, ty_env: &KTyEnv) -> KTy2 {
+        let body_ty = self.body_ty_opt.unwrap();
+        let ty = body_ty.join(self.alt_ty, ty_env);
+
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            let mod_outline = mod_outline_opt.unwrap();
+            log::trace!(
+                "if(body: {}, alt: {}): {}",
+                body_ty.display(ty_env, mod_outline),
+                self.alt_ty.display(ty_env, mod_outline),
+                ty.display(ty_env, mod_outline),
+            );
+        });
+
+        ty
     }
 }

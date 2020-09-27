@@ -224,6 +224,66 @@ impl KTy2 {
         })
     }
 
+    pub(crate) fn join(&self, other: &KTy2, ty_env: &KTyEnv) -> KTy2 {
+        match (self, other) {
+            (KTy2::Unresolved { .. }, ty) | (ty, KTy2::Unresolved { .. }) => ty.clone(),
+            (KTy2::Unknown, _) | (_, KTy2::Unknown) => KTy2::Unknown,
+            (KTy2::Never, ty) | (ty, KTy2::Never) => ty.clone(),
+            (KTy2::Meta(meta_ty), other) => match meta_ty.try_unwrap(ty_env) {
+                Some(ty_cell) => ty_cell.borrow().join(other, ty_env),
+                None => todo!(),
+            },
+            (other, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(ty_env) {
+                Some(ty_cell) => ty_cell.borrow().join(other, ty_env),
+                None => todo!(),
+            },
+            (
+                KTy2::Ptr {
+                    k_mut: KMut::Mut,
+                    base_ty,
+                },
+                KTy2::Ptr {
+                    k_mut: KMut::Mut,
+                    base_ty: other_base_ty,
+                },
+            ) => {
+                if base_ty == other_base_ty {
+                    self.clone()
+                } else {
+                    KTy2::Ptr {
+                        k_mut: KMut::Mut,
+                        base_ty: Box::new(KTy2::Unknown),
+                    }
+                }
+            }
+            (
+                KTy2::Ptr { k_mut: _, base_ty },
+                KTy2::Ptr {
+                    k_mut: _,
+                    base_ty: other_base_ty,
+                },
+            ) => KTy2::Ptr {
+                k_mut: KMut::Const,
+                base_ty: Box::new(base_ty.join(other_base_ty, ty_env)),
+            },
+            (KTy2::Var(..), _)
+            | (KTy2::Unit, _)
+            | (KTy2::Number(..), _)
+            | (KTy2::Ptr { .. }, _)
+            | (KTy2::Fn { .. }, _)
+            | (KTy2::ConstEnum(..), _)
+            | (KTy2::StructEnum(..), _)
+            | (KTy2::Struct(..), _)
+            | (KTy2::App { .. }, _) => {
+                if self == other {
+                    self.clone()
+                } else {
+                    KTy2::Unknown
+                }
+            }
+        }
+    }
+
     pub(crate) fn align_of(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> Option<usize> {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::Unresolved { .. } | KTy2::Var { .. } | KTy2::Unknown | KTy2::Never => None,
