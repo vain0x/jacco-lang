@@ -7,6 +7,7 @@ use super::*;
 pub(crate) enum TyExpect<'a> {
     /// 未実装部分
     Todo,
+    Unknown,
     NumberOrPtr,
     IsizeOrUsize,
     Exact(&'a KTy2),
@@ -43,6 +44,7 @@ impl<'a> TyExpect<'a> {
     pub(crate) fn display(self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
         match self {
             TyExpect::Todo => "TODO".into(),
+            TyExpect::Unknown => "unknown".into(),
             TyExpect::NumberOrPtr => "(iNN | uNN | fNN | cNN | *unknown | *mut unknown)".into(),
             TyExpect::IsizeOrUsize => "(isize | usize)".into(),
             TyExpect::Exact(ty) => ty.display(ty_env, mod_outline),

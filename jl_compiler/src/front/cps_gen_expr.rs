@@ -447,19 +447,25 @@ impl<'a> Xx<'a> {
         _ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
+        let mut ty_rule = CallExprRule::new(self.logger);
+
         let result = self.fresh_var("call_result", loc);
-        let (left, _ty) = self.convert_expr(call_expr.left, TyExpect::Todo);
+        let (left, fn_ty) = self.convert_expr(call_expr.left, TyExpect::Unknown);
+        ty_rule.verify_fn_ty(&fn_ty, &self.ty_env);
 
         let mut args = Vec::with_capacity(call_expr.args.len() + 1);
         args.push(left);
-        args.extend(call_expr.args.iter().map(|arg| {
-            let (term, _ty) = self.convert_expr(arg, TyExpect::Todo);
+        args.extend(call_expr.args.iter().enumerate().map(|(i, arg)| {
+            let (term, arg_ty) = self.convert_expr(arg, ty_rule.arg_ty_expect(i));
+            ty_rule.verify_arg_ty(i, &arg_ty, &self.ty_env);
             term
         }));
+        let result_ty = ty_rule.to_result_ty();
 
         self.nodes
             .push(new_call_node(args, result, new_cont(), loc));
-        (KTerm::Name(result), KTy2::TODO)
+        *result.ty_mut(&mut self.local_vars) = result_ty.clone();
+        (KTerm::Name(result), result_ty)
     }
 
     // `a[i]` ==> `*(a + i)`
@@ -1140,6 +1146,66 @@ fn emit_unit_like_struct(
 
     nodes.push(new_record_node(ty.clone(), vec![], result, new_cont(), loc));
     (KTerm::Name(result), ty)
+}
+
+struct CallExprRule<'a> {
+    #[allow(unused)]
+    logger: &'a DocLogger,
+    arg_tys: Vec<KTy2>,
+    result_ty_opt: Option<KTy2>,
+}
+
+impl<'a> CallExprRule<'a> {
+    fn new(logger: &'a DocLogger) -> Self {
+        Self {
+            logger,
+            arg_tys: vec![],
+            result_ty_opt: None,
+        }
+    }
+
+    fn verify_fn_ty(&mut self, fn_ty: &'a KTy2, ty_env: &KTyEnv) {
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            log::trace!(
+                "call fn: {}",
+                fn_ty.display(&ty_env, mod_outline_opt.unwrap()),
+            )
+        });
+
+        match fn_ty.as_fn(ty_env) {
+            Some((arg_tys, result_ty)) => {
+                self.arg_tys = arg_tys;
+                self.result_ty_opt = Some(result_ty);
+            }
+            None => {
+                // FIXME: error
+            }
+        }
+    }
+
+    fn arg_ty_expect<'b: 'a>(&'b self, i: usize) -> TyExpect<'a> {
+        match &self.arg_tys.get(i) {
+            Some(ty) => TyExpect::Exact(ty),
+            None => TyExpect::Todo,
+        }
+    }
+
+    fn verify_arg_ty(&mut self, i: usize, arg_ty: &KTy2, ty_env: &KTyEnv) {
+        KModOutline::using_for_debug(|mod_outline_opt| {
+            log::trace!(
+                "call arg#{}: {}",
+                i,
+                arg_ty.display(&ty_env, mod_outline_opt.unwrap()),
+            )
+        });
+    }
+
+    fn to_result_ty(mut self) -> KTy2 {
+        // FIXME: 後続の型検査に任せるため unresolved にする
+        self.result_ty_opt.take().unwrap_or(KTy2::Unresolved {
+            cause: KTyCause::Default,
+        })
+    }
 }
 
 #[derive(Debug)]
