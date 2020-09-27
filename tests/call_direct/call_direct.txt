@@ -6,7 +6,7 @@ int main();
 
 int main() {
     int mul_1 = 1 * 2;
-    int add_1 = 3 + 4;
+    unsigned long long add_1 = 3 + 4ULL;
     int call_result_1 = g();
     int call_result_2 = f(mul_1, add_1, call_result_1);
     return call_result_2;

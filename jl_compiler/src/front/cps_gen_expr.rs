@@ -704,7 +704,7 @@ impl<'a> Xx<'a> {
     }
 
     fn convert_block_expr(&mut self, decls: ADeclIds, ty_expect: TyExpect, loc: Loc) -> AfterRval {
-        self.convert_decls(decls.clone(), ty_expect)
+        self.convert_decls(decls, ty_expect)
             .unwrap_or_else(|| new_unit_term(loc))
     }
 
@@ -903,6 +903,11 @@ impl<'a> Xx<'a> {
         ty_expect: TyExpect,
     ) -> AfterRval {
         let loc = Loc::new(self.doc, PLoc::Expr(expr_id));
+        log::trace!(
+            "expr=#{} ty_expect={}",
+            expr_id.to_index(),
+            ty_expect.display(&self.ty_env, self.mod_outline)
+        );
 
         match expr {
             AExpr::Unit => new_unit_term(loc),

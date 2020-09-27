@@ -3,8 +3,8 @@ int main();
 int main() {
     int if_result_1;
     int if_result_2;
-    int add_1 = 1 + 2;
-    int add_2 = add_1;
+    unsigned long long add_1 = 1 + 2ULL;
+    unsigned long long add_2 = add_1;
     int sub_1 = 1 - 2;
     int sub_2 = sub_1;
     int mul_1 = 1 * 2;

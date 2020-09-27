@@ -132,6 +132,10 @@ impl<'a> Xx<'a> {
             &mut local_vars,
             self.name_symbols,
         );
+        let result_ty = k_fn
+            .of(&self.mod_outline.fns)
+            .result_ty
+            .to_ty2_poly(self.mod_outline);
 
         let fn_data = self.do_out_fn(|xx| {
             xx.fn_opt = Some(k_fn);
@@ -140,7 +144,12 @@ impl<'a> Xx<'a> {
             // 関数の本体を格納しておくラベル
             xx.label = xx.labels.alloc(KLabelConstruction::default());
 
-            let (term, _ty) = xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Todo, loc);
+            log::trace!(
+                "fn result_ty={}",
+                result_ty.display(&xx.ty_env, xx.mod_outline)
+            );
+            let (term, _ty) =
+                xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Exact(&result_ty), loc);
             xx.emit_return(term, loc);
             xx.commit_label();
 
@@ -210,7 +219,7 @@ impl<'a> Xx<'a> {
         &mut self,
         decl_id: ADeclId,
         decl: &ADecl,
-        _ty_expect: TyExpect,
+        ty_expect: TyExpect,
         term_opt: &mut Option<AfterRval>,
     ) {
         let symbol_opt = decl
@@ -221,7 +230,7 @@ impl<'a> Xx<'a> {
         match decl {
             ADecl::Attr => {}
             ADecl::Expr(expr) => {
-                *term_opt = Some(self.convert_expr(*expr, TyExpect::Todo));
+                *term_opt = Some(self.convert_expr(*expr, ty_expect));
             }
             ADecl::Let(decl) => {
                 assert_eq!(symbol_opt, None);
