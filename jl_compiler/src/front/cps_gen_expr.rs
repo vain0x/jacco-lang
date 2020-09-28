@@ -518,16 +518,25 @@ impl<'a> Xx<'a> {
     fn convert_unary_op_expr(
         &mut self,
         expr: &AUnaryOpExpr,
-        _ty_expect: TyExpect,
+        ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
         match expr.op {
             PUnaryOp::Deref => {
-                let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+                // FIXME: ty_expect に和型 (*T | *mut T) を指定する?
+                let (arg, arg_ty) = self.convert_expr_opt(expr.arg_opt, ty_expect, loc);
+                let (_mut, value_ty) = match arg_ty.as_ptr(&self.ty_env) {
+                    Some(it) => it,
+                    None => {
+                        // FIXME: error
+                        (KMut::Const, KTy2::Never)
+                    }
+                };
+
                 let result = self.fresh_var("deref", loc);
                 self.nodes
                     .push(new_deref_node(arg, result, new_cont(), loc));
-                (KTerm::Name(result), KTy2::TODO)
+                (KTerm::Name(result), value_ty)
             }
             PUnaryOp::Ref => {
                 let k_mut = expr.mut_opt.unwrap_or(KMut::Const);
