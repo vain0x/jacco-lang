@@ -3,34 +3,34 @@
 use super::*;
 
 /// 式の型に与えられる制約。
-#[derive(Copy, Clone)]
-pub(crate) enum TyExpect<'a> {
+#[derive(Clone)]
+pub(crate) enum TyExpect {
     /// 未実装部分
     Todo,
     Unknown,
     NumberOrPtr,
     IsizeOrUsize,
-    Exact(&'a KTy2),
+    Exact(KTy2),
 }
 
-impl<'a> TyExpect<'a> {
-    pub(crate) fn unit() -> TyExpect<'static> {
-        TyExpect::Exact(&KTy2::Unit)
+impl TyExpect {
+    pub(crate) fn unit() -> TyExpect {
+        TyExpect::Exact(KTy2::Unit)
     }
 
-    pub(crate) fn bool() -> TyExpect<'static> {
-        TyExpect::Exact(&KTy2::BOOL)
+    pub(crate) fn bool() -> TyExpect {
+        TyExpect::Exact(KTy2::BOOL)
     }
 
-    pub(crate) fn from(ty: &'a KTy2) -> Self {
+    pub(crate) fn from(ty: &KTy2) -> Self {
         if ty.is_unresolved() {
             Self::Todo
         } else {
-            TyExpect::Exact(ty)
+            TyExpect::Exact(ty.clone())
         }
     }
 
-    pub(crate) fn as_number(self) -> Option<KNumberTy> {
+    pub(crate) fn as_number(&self) -> Option<KNumberTy> {
         match self {
             TyExpect::Exact(KTy2::Number(it)) => Some(*it),
             _ => None,
@@ -60,7 +60,7 @@ impl<'a> TyExpect<'a> {
         }
     }
 
-    pub(crate) fn display(self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
+    pub(crate) fn display(&self, ty_env: &KTyEnv, mod_outline: &KModOutline) -> String {
         match self {
             TyExpect::Todo => "TODO".into(),
             TyExpect::Unknown => "unknown".into(),

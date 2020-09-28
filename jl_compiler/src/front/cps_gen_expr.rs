@@ -1207,9 +1207,9 @@ impl<'a> CallExprRule<'a> {
         }
     }
 
-    fn arg_ty_expect<'b: 'a>(&'b self, i: usize) -> TyExpect<'a> {
-        match &self.arg_tys.get(i) {
-            Some(ty) => TyExpect::Exact(ty),
+    fn arg_ty_expect(&self, i: usize) -> TyExpect {
+        match self.arg_tys.get(i) {
+            Some(ty) => TyExpect::Exact(ty.clone()),
             None => TyExpect::Todo,
         }
     }
@@ -1239,15 +1239,15 @@ enum AddExprRuleKind {
 }
 
 struct AddExprRule<'a> {
-    ty_expect: TyExpect<'a>,
+    ty_expect: TyExpect,
     #[allow(unused)]
     logger: &'a DocLogger,
     kind_opt: Option<AddExprRuleKind>,
-    left_ty_opt: Option<&'a KTy2>,
+    left_ty_opt: Option<KTy2>,
 }
 
 impl<'a> AddExprRule<'a> {
-    fn new(ty_expect: TyExpect<'a>, logger: &'a DocLogger) -> Self {
+    fn new(ty_expect: TyExpect, logger: &'a DocLogger) -> Self {
         AddExprRule {
             ty_expect,
             logger,
@@ -1256,18 +1256,18 @@ impl<'a> AddExprRule<'a> {
         }
     }
 
-    fn left_ty_expect(&self) -> TyExpect<'a> {
-        self.ty_expect.meet(TyExpect::NumberOrPtr)
+    fn left_ty_expect(&self) -> TyExpect {
+        self.ty_expect.clone().meet(TyExpect::NumberOrPtr)
     }
 
-    fn verify_left_ty(&mut self, left_ty: &'a KTy2, ty_env: &KTyEnv) {
+    fn verify_left_ty(&mut self, left_ty: &KTy2, ty_env: &KTyEnv) {
         let kind = if left_ty.is_ptr(&ty_env) {
             AddExprRuleKind::PtrAdd
         } else {
             AddExprRuleKind::Number
         };
         self.kind_opt = Some(kind);
-        self.left_ty_opt = Some(left_ty);
+        self.left_ty_opt = Some(left_ty.clone());
 
         // FIXME: left_ty: number or ptr でなければエラー
         KModOutline::using_for_debug(|mod_outline_opt| {
@@ -1280,12 +1280,12 @@ impl<'a> AddExprRule<'a> {
         });
     }
 
-    fn right_ty_expect(&self) -> TyExpect<'a> {
+    fn right_ty_expect(&self) -> TyExpect {
         let other = match self.kind_opt.as_ref().unwrap() {
-            AddExprRuleKind::Number => TyExpect::Exact(self.left_ty_opt.unwrap()),
+            AddExprRuleKind::Number => TyExpect::Exact(self.left_ty_opt.clone().unwrap()),
             AddExprRuleKind::PtrAdd => TyExpect::IsizeOrUsize,
         };
-        self.ty_expect.meet(other)
+        self.ty_expect.clone().meet(other)
     }
 
     fn verify_right_ty(&self, right_ty: &KTy2, ty_env: &KTyEnv) {
@@ -1299,26 +1299,26 @@ impl<'a> AddExprRule<'a> {
         });
     }
 
-    fn to_result_ty(&self) -> KTy2 {
-        self.left_ty_opt.unwrap().clone()
+    fn to_result_ty(&mut self) -> KTy2 {
+        self.left_ty_opt.take().unwrap()
     }
 }
 
 struct IfRule<'a> {
-    ty_expect: TyExpect<'a>,
+    ty_expect: TyExpect,
     #[allow(unused)]
     logger: &'a DocLogger,
-    body_ty_opt: Option<&'a KTy2>,
-    alt_ty: &'a KTy2,
+    body_ty_opt: Option<KTy2>,
+    alt_ty: KTy2,
 }
 
 impl<'a> IfRule<'a> {
-    fn new(ty_expect: TyExpect<'a>, logger: &'a DocLogger) -> Self {
+    fn new(ty_expect: TyExpect, logger: &'a DocLogger) -> Self {
         Self {
             ty_expect,
             logger,
             body_ty_opt: None,
-            alt_ty: &KTy2::Unit,
+            alt_ty: KTy2::Unit,
         }
     }
 
@@ -1328,34 +1328,36 @@ impl<'a> IfRule<'a> {
         }
     }
 
-    fn body_ty_expect(&self) -> TyExpect<'a> {
+    fn body_ty_expect(&self) -> TyExpect {
+        self.ty_expect.clone()
+    }
+
+    fn verify_body_ty(&mut self, body_ty: &KTy2) {
+        self.body_ty_opt = Some(body_ty.clone());
+    }
+
+    fn alt_ty_expect(&self) -> TyExpect {
         self.ty_expect
+            .clone()
+            .meet(TyExpect::Exact(self.body_ty_opt.clone().unwrap()))
     }
 
-    fn verify_body_ty(&mut self, body_ty: &'a KTy2) {
-        self.body_ty_opt = Some(body_ty);
-    }
-
-    fn alt_ty_expect(&self) -> TyExpect<'a> {
-        self.ty_expect
-            .meet(TyExpect::Exact(self.body_ty_opt.unwrap()))
-    }
-
-    fn verify_alt_ty(&mut self, alt_ty: &'a KTy2) {
+    fn verify_alt_ty(&mut self, alt_ty: &KTy2) {
         // FIXME: body_ty と互換性がなければエラー？
-        self.alt_ty = alt_ty;
+        self.alt_ty = alt_ty.clone();
     }
 
     fn to_result_ty(self, ty_env: &KTyEnv) -> KTy2 {
         let body_ty = self.body_ty_opt.unwrap();
-        let ty = body_ty.join(self.alt_ty, ty_env);
+        let alt_ty = &self.alt_ty;
+        let ty = body_ty.join(alt_ty, ty_env);
 
         KModOutline::using_for_debug(|mod_outline_opt| {
             let mod_outline = mod_outline_opt.unwrap();
             log::trace!(
                 "if(body: {}, alt: {}): {}",
                 body_ty.display(ty_env, mod_outline),
-                self.alt_ty.display(ty_env, mod_outline),
+                alt_ty.display(ty_env, mod_outline),
                 ty.display(ty_env, mod_outline),
             );
         });

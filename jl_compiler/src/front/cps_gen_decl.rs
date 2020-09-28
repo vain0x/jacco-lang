@@ -149,7 +149,7 @@ impl<'a> Xx<'a> {
                 result_ty.display(&xx.ty_env, xx.mod_outline)
             );
             let (term, _ty) =
-                xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Exact(&result_ty), loc);
+                xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Exact(result_ty), loc);
             xx.emit_return(term, loc);
             xx.commit_label();
 
@@ -284,13 +284,16 @@ impl<'a> Xx<'a> {
     ) -> Option<AfterRval> {
         let mut last_opt = None;
         for (decl_id, decl) in decls.enumerate(self.ast.decls()) {
-            // 最後の式文以外は unit
-            let ty_expect = match decl {
-                ADecl::Expr(..) if decls.is_last(decl_id) => ty_expect,
-                _ => TyExpect::unit(),
-            };
+            // 最後の式文
+            match decl {
+                ADecl::Expr(..) if decls.is_last(decl_id) => {
+                    self.do_convert_decl(decl_id, decl, ty_expect, &mut last_opt);
+                    break;
+                }
+                _ => {}
+            }
 
-            self.do_convert_decl(decl_id, decl, ty_expect, &mut last_opt);
+            self.do_convert_decl(decl_id, decl, TyExpect::unit(), &mut last_opt);
         }
         last_opt
     }
