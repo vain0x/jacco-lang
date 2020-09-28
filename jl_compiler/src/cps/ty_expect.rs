@@ -8,6 +8,7 @@ pub(crate) enum TyExpect {
     /// 未実装部分
     Todo,
     Unknown,
+    BoolOrInt,
     Number,
     NumberOrPtr,
     IsizeOrUsize,
@@ -40,7 +41,6 @@ impl TyExpect {
 
     pub(crate) fn try_unwrap_ptr(self, ty_env: &KTyEnv) -> Self {
         match self {
-            TyExpect::Todo | TyExpect::Unknown | TyExpect::Number | TyExpect::IsizeOrUsize => self,
             TyExpect::NumberOrPtr => TyExpect::Unknown,
             TyExpect::Exact(ty) => match ty.as_ptr(ty_env) {
                 Some((_, ty)) => {
@@ -50,6 +50,7 @@ impl TyExpect {
                 }
                 None => TyExpect::Unknown,
             },
+            _ => TyExpect::Todo,
         }
     }
 
@@ -65,6 +66,7 @@ impl TyExpect {
         match self {
             TyExpect::Todo => "TODO".into(),
             TyExpect::Unknown => "unknown".into(),
+            TyExpect::BoolOrInt => "(bool | iNN | uNN | cNN)".into(),
             TyExpect::Number => "(iNN | uNN | fNN | cNN)".into(),
             TyExpect::NumberOrPtr => "(iNN | uNN | fNN | cNN | *unknown | *mut unknown)".into(),
             TyExpect::IsizeOrUsize => "(isize | usize)".into(),
