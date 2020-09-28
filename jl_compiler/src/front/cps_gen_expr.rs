@@ -545,11 +545,13 @@ impl<'a> Xx<'a> {
                 self.convert_lval_opt(expr.arg_opt, k_mut, arg_ty_expect, loc)
             }
             PUnaryOp::Minus => {
-                let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
+                let arg_ty_expect = ty_expect.meet(TyExpect::Number);
+                let (arg, arg_ty) = self.convert_expr_opt(expr.arg_opt, arg_ty_expect, loc);
+
                 let result = self.fresh_var("minus", loc);
                 self.nodes
                     .push(new_minus_node(arg, result, new_cont(), loc));
-                (KTerm::Name(result), KTy2::TODO)
+                (KTerm::Name(result), arg_ty)
             }
             PUnaryOp::Not => {
                 let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
