@@ -588,10 +588,14 @@ impl<'a> Xx<'a> {
         &mut self,
         prim: KPrim,
         expr: &ABinaryOpExpr,
+        ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
-        let (left, _ty) = self.convert_lval(expr.left, KMut::Mut, TyExpect::Todo);
-        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
+        let left_ty_expect = ty_expect;
+        let (left, left_ty) = self.convert_lval(expr.left, KMut::Mut, left_ty_expect);
+
+        let right_ty_expect = TyExpect::Exact(left_ty);
+        let (right, _ty) = self.convert_expr_opt(expr.right_opt, right_ty_expect, loc);
 
         self.nodes
             .push(new_assignment_node(prim, left, right, new_cont(), loc));
@@ -688,23 +692,25 @@ impl<'a> Xx<'a> {
         loc: Loc,
     ) -> AfterRval {
         let xx = self;
-        let on_assign = |prim: KPrim, xx| Xx::do_convert_assignment_expr(xx, prim, expr, loc);
+        let on_assign = |prim: KPrim, ty_expect: TyExpect, xx| {
+            Xx::do_convert_assignment_expr(xx, prim, expr, ty_expect, loc)
+        };
         let on_basic = |prim: KPrim, xx| Xx::do_convert_basic_binary_op_expr(xx, prim, expr, loc);
         let on_bit = on_basic;
         let on_comparison = on_basic;
 
         match expr.op {
-            PBinaryOp::Assign => on_assign(KPrim::Assign, xx),
-            PBinaryOp::AddAssign => on_assign(KPrim::AddAssign, xx),
-            PBinaryOp::SubAssign => on_assign(KPrim::SubAssign, xx),
-            PBinaryOp::MulAssign => on_assign(KPrim::MulAssign, xx),
-            PBinaryOp::DivAssign => on_assign(KPrim::DivAssign, xx),
-            PBinaryOp::ModuloAssign => on_assign(KPrim::ModuloAssign, xx),
-            PBinaryOp::BitAndAssign => on_assign(KPrim::BitAndAssign, xx),
-            PBinaryOp::BitOrAssign => on_assign(KPrim::BitOrAssign, xx),
-            PBinaryOp::BitXorAssign => on_assign(KPrim::BitXorAssign, xx),
-            PBinaryOp::LeftShiftAssign => on_assign(KPrim::LeftShiftAssign, xx),
-            PBinaryOp::RightShiftAssign => on_assign(KPrim::RightShiftAssign, xx),
+            PBinaryOp::Assign => on_assign(KPrim::Assign, ty_expect, xx),
+            PBinaryOp::AddAssign => on_assign(KPrim::AddAssign, ty_expect, xx),
+            PBinaryOp::SubAssign => on_assign(KPrim::SubAssign, ty_expect, xx),
+            PBinaryOp::MulAssign => on_assign(KPrim::MulAssign, ty_expect, xx),
+            PBinaryOp::DivAssign => on_assign(KPrim::DivAssign, ty_expect, xx),
+            PBinaryOp::ModuloAssign => on_assign(KPrim::ModuloAssign, ty_expect, xx),
+            PBinaryOp::BitAndAssign => on_assign(KPrim::BitAndAssign, ty_expect, xx),
+            PBinaryOp::BitOrAssign => on_assign(KPrim::BitOrAssign, ty_expect, xx),
+            PBinaryOp::BitXorAssign => on_assign(KPrim::BitXorAssign, ty_expect, xx),
+            PBinaryOp::LeftShiftAssign => on_assign(KPrim::LeftShiftAssign, ty_expect, xx),
+            PBinaryOp::RightShiftAssign => on_assign(KPrim::RightShiftAssign, ty_expect, xx),
             PBinaryOp::Add => xx.do_convert_add_expr(expr, ty_expect, loc),
             PBinaryOp::Sub => on_basic(KPrim::Sub, xx),
             PBinaryOp::Mul => on_basic(KPrim::Mul, xx),
