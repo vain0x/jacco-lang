@@ -37,6 +37,21 @@ impl<'a> TyExpect<'a> {
         }
     }
 
+    pub(crate) fn try_unwrap_ptr(self, ty_env: &KTyEnv) -> Self {
+        match self {
+            TyExpect::Todo | TyExpect::Unknown | TyExpect::IsizeOrUsize => self,
+            TyExpect::NumberOrPtr => TyExpect::Unknown,
+            TyExpect::Exact(ty) => match ty.as_ptr(ty_env) {
+                Some((_, ty)) => {
+                    // FIXME: TyExpect に型を所有させる必要がある？
+                    // TyExpect::Exact(&ty),
+                    TyExpect::Todo
+                }
+                None => TyExpect::Unknown,
+            },
+        }
+    }
+
     pub(crate) fn meet(self, other: Self) -> Self {
         // TODO: ちゃんと実装する
         match self {

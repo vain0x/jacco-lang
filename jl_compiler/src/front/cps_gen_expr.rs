@@ -540,7 +540,9 @@ impl<'a> Xx<'a> {
             }
             PUnaryOp::Ref => {
                 let k_mut = expr.mut_opt.unwrap_or(KMut::Const);
-                self.convert_lval_opt(expr.arg_opt, k_mut, TyExpect::Todo, loc)
+
+                let arg_ty_expect = ty_expect.try_unwrap_ptr(&self.ty_env);
+                self.convert_lval_opt(expr.arg_opt, k_mut, arg_ty_expect, loc)
             }
             PUnaryOp::Minus => {
                 let (arg, _ty) = self.convert_expr_opt(expr.arg_opt, TyExpect::Todo, loc);
