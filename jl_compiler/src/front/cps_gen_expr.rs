@@ -656,6 +656,29 @@ impl<'a> Xx<'a> {
         (KTerm::Name(result), right_ty)
     }
 
+    fn do_convert_shift_op_expr(
+        &mut self,
+        prim: KPrim,
+        expr: &ABinaryOpExpr,
+        ty_expect: TyExpect,
+        loc: Loc,
+    ) -> AfterRval {
+        let (left, _ty) = self.convert_expr(expr.left, ty_expect);
+        let (right, right_ty) =
+            self.convert_expr_opt(expr.right_opt, TyExpect::Exact(KTy2::U32), loc);
+
+        let result = self.fresh_var(&prim.hint_str(), loc);
+        self.nodes.push(new_basic_binary_op_node(
+            prim,
+            left,
+            right,
+            result,
+            new_cont(),
+            loc,
+        ));
+        (KTerm::Name(result), right_ty)
+    }
+
     fn do_convert_equal_op_expr(
         &mut self,
         prim: KPrim,
@@ -746,6 +769,9 @@ impl<'a> Xx<'a> {
             Xx::do_convert_basic_binary_op_expr(xx, prim, expr, ty_expect, loc)
         };
         let on_bit = on_basic;
+        let on_shift = |prim: KPrim, ty_expect: TyExpect, xx| {
+            Xx::do_convert_shift_op_expr(xx, prim, expr, ty_expect, loc)
+        };
         let on_equal = |prim: KPrim, ty_expect: TyExpect, xx| {
             Xx::do_convert_equal_op_expr(xx, prim, expr, ty_expect, loc)
         };
@@ -773,8 +799,8 @@ impl<'a> Xx<'a> {
             PBinaryOp::BitAnd => on_bit(KPrim::BitAnd, ty_expect, xx),
             PBinaryOp::BitOr => on_bit(KPrim::BitOr, ty_expect, xx),
             PBinaryOp::BitXor => on_bit(KPrim::BitXor, ty_expect, xx),
-            PBinaryOp::LeftShift => on_bit(KPrim::LeftShift, ty_expect, xx),
-            PBinaryOp::RightShift => on_bit(KPrim::RightShift, ty_expect, xx),
+            PBinaryOp::LeftShift => on_shift(KPrim::LeftShift, ty_expect, xx),
+            PBinaryOp::RightShift => on_shift(KPrim::RightShift, ty_expect, xx),
             PBinaryOp::Equal => on_equal(KPrim::Equal, ty_expect, xx),
             PBinaryOp::NotEqual => on_equal(KPrim::NotEqual, ty_expect, xx),
             PBinaryOp::LessThan => on_comparison(KPrim::LessThan, ty_expect, xx),
