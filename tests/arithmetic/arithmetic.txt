@@ -3,8 +3,8 @@ int main();
 int main() {
     int mul_1 = 3 * 4;
     int div_1 = mul_1 / 1;
-    unsigned long long add_1 = 2 + div_1;
+    int add_1 = 2 + div_1;
     int modulo_1 = 9 % 100000007;
-    unsigned long long sub_1 = add_1 - modulo_1;
+    int sub_1 = add_1 - modulo_1;
     return sub_1;
 }

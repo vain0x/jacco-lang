@@ -636,10 +636,13 @@ impl<'a> Xx<'a> {
         &mut self,
         prim: KPrim,
         expr: &ABinaryOpExpr,
+        ty_expect: TyExpect,
         loc: Loc,
     ) -> AfterRval {
-        let (left, _ty) = self.convert_expr(expr.left, TyExpect::Todo);
-        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Todo, loc);
+        let left_ty_expect = ty_expect;
+        let (left, left_ty) = self.convert_expr(expr.left, left_ty_expect);
+        let (right, right_ty) =
+            self.convert_expr_opt(expr.right_opt, TyExpect::Exact(left_ty), loc);
 
         let result = self.fresh_var(&prim.hint_str(), loc);
         self.nodes.push(new_basic_binary_op_node(
@@ -650,7 +653,51 @@ impl<'a> Xx<'a> {
             new_cont(),
             loc,
         ));
-        (KTerm::Name(result), KTy2::TODO)
+        (KTerm::Name(result), right_ty)
+    }
+
+    fn do_convert_equal_op_expr(
+        &mut self,
+        prim: KPrim,
+        expr: &ABinaryOpExpr,
+        _ty_expect: TyExpect,
+        loc: Loc,
+    ) -> AfterRval {
+        let (left, left_ty) = self.convert_expr(expr.left, TyExpect::Unknown);
+        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Exact(left_ty), loc);
+
+        let result = self.fresh_var(&prim.hint_str(), loc);
+        self.nodes.push(new_basic_binary_op_node(
+            prim,
+            left,
+            right,
+            result,
+            new_cont(),
+            loc,
+        ));
+        (KTerm::Name(result), KTy2::BOOL)
+    }
+
+    fn do_convert_compare_op_expr(
+        &mut self,
+        prim: KPrim,
+        expr: &ABinaryOpExpr,
+        _ty_expect: TyExpect,
+        loc: Loc,
+    ) -> AfterRval {
+        let (left, left_ty) = self.convert_expr(expr.left, TyExpect::Unknown);
+        let (right, _ty) = self.convert_expr_opt(expr.right_opt, TyExpect::Exact(left_ty), loc);
+
+        let result = self.fresh_var(&prim.hint_str(), loc);
+        self.nodes.push(new_basic_binary_op_node(
+            prim,
+            left,
+            right,
+            result,
+            new_cont(),
+            loc,
+        ));
+        (KTerm::Name(result), KTy2::I32)
     }
 
     // `p && q` ==> `if p { q } else { false }`
@@ -695,9 +742,16 @@ impl<'a> Xx<'a> {
         let on_assign = |prim: KPrim, ty_expect: TyExpect, xx| {
             Xx::do_convert_assignment_expr(xx, prim, expr, ty_expect, loc)
         };
-        let on_basic = |prim: KPrim, xx| Xx::do_convert_basic_binary_op_expr(xx, prim, expr, loc);
+        let on_basic = |prim: KPrim, ty_expect: TyExpect, xx| {
+            Xx::do_convert_basic_binary_op_expr(xx, prim, expr, ty_expect, loc)
+        };
         let on_bit = on_basic;
-        let on_comparison = on_basic;
+        let on_equal = |prim: KPrim, ty_expect: TyExpect, xx| {
+            Xx::do_convert_equal_op_expr(xx, prim, expr, ty_expect, loc)
+        };
+        let on_comparison = |prim: KPrim, ty_expect: TyExpect, xx| {
+            Xx::do_convert_compare_op_expr(xx, prim, expr, ty_expect, loc)
+        };
 
         match expr.op {
             PBinaryOp::Assign => on_assign(KPrim::Assign, ty_expect, xx),
@@ -712,21 +766,21 @@ impl<'a> Xx<'a> {
             PBinaryOp::LeftShiftAssign => on_assign(KPrim::LeftShiftAssign, ty_expect, xx),
             PBinaryOp::RightShiftAssign => on_assign(KPrim::RightShiftAssign, ty_expect, xx),
             PBinaryOp::Add => xx.do_convert_add_expr(expr, ty_expect, loc),
-            PBinaryOp::Sub => on_basic(KPrim::Sub, xx),
-            PBinaryOp::Mul => on_basic(KPrim::Mul, xx),
-            PBinaryOp::Div => on_basic(KPrim::Div, xx),
-            PBinaryOp::Modulo => on_basic(KPrim::Modulo, xx),
-            PBinaryOp::BitAnd => on_bit(KPrim::BitAnd, xx),
-            PBinaryOp::BitOr => on_bit(KPrim::BitOr, xx),
-            PBinaryOp::BitXor => on_bit(KPrim::BitXor, xx),
-            PBinaryOp::LeftShift => on_bit(KPrim::LeftShift, xx),
-            PBinaryOp::RightShift => on_bit(KPrim::RightShift, xx),
-            PBinaryOp::Equal => on_comparison(KPrim::Equal, xx),
-            PBinaryOp::NotEqual => on_comparison(KPrim::NotEqual, xx),
-            PBinaryOp::LessThan => on_comparison(KPrim::LessThan, xx),
-            PBinaryOp::LessEqual => on_comparison(KPrim::LessEqual, xx),
-            PBinaryOp::GreaterThan => on_comparison(KPrim::GreaterThan, xx),
-            PBinaryOp::GreaterEqual => on_comparison(KPrim::GreaterEqual, xx),
+            PBinaryOp::Sub => on_basic(KPrim::Sub, ty_expect, xx),
+            PBinaryOp::Mul => on_basic(KPrim::Mul, ty_expect, xx),
+            PBinaryOp::Div => on_basic(KPrim::Div, ty_expect, xx),
+            PBinaryOp::Modulo => on_basic(KPrim::Modulo, ty_expect, xx),
+            PBinaryOp::BitAnd => on_bit(KPrim::BitAnd, ty_expect, xx),
+            PBinaryOp::BitOr => on_bit(KPrim::BitOr, ty_expect, xx),
+            PBinaryOp::BitXor => on_bit(KPrim::BitXor, ty_expect, xx),
+            PBinaryOp::LeftShift => on_bit(KPrim::LeftShift, ty_expect, xx),
+            PBinaryOp::RightShift => on_bit(KPrim::RightShift, ty_expect, xx),
+            PBinaryOp::Equal => on_equal(KPrim::Equal, ty_expect, xx),
+            PBinaryOp::NotEqual => on_equal(KPrim::NotEqual, ty_expect, xx),
+            PBinaryOp::LessThan => on_comparison(KPrim::LessThan, ty_expect, xx),
+            PBinaryOp::LessEqual => on_comparison(KPrim::LessEqual, ty_expect, xx),
+            PBinaryOp::GreaterThan => on_comparison(KPrim::GreaterThan, ty_expect, xx),
+            PBinaryOp::GreaterEqual => on_comparison(KPrim::GreaterEqual, ty_expect, xx),
             PBinaryOp::LogAnd => xx.do_convert_log_and_expr(expr, ty_expect, loc),
             PBinaryOp::LogOr => xx.do_convert_log_or_expr(expr, ty_expect, loc),
         }

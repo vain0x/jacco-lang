@@ -38,7 +38,7 @@ pub(crate) fn convert_number_lit(
                     loc,
                 },
                 KNumberTy::UNN => {
-                    if let Some(ty) = ty_expect.as_number() {
+                    if let Some(ty) = ty_expect.as_number().filter(|&ty| ty != KNumberTy::UNN) {
                         return (
                             KTerm::Int {
                                 text,

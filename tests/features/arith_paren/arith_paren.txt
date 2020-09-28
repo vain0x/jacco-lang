@@ -1,7 +1,7 @@
 int main();
 
 int main() {
-    unsigned long long add_1 = 3 + 5ULL;
+    int add_1 = 3 + 5;
     int sub_1 = 50 - add_1;
     return sub_1;
 }
