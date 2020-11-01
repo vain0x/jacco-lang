@@ -5,7 +5,12 @@ use crate::{
     parse::*,
     source::*,
 };
-use std::{collections::HashMap, collections::HashSet, iter::once, mem::take};
+use std::{
+    collections::HashMap,
+    collections::HashSet,
+    iter::once,
+    mem::{replace, take},
+};
 
 impl<'a> Xx<'a> {
     pub(crate) fn local_var_ty(&self, local_var: KLocalVar) -> KTy2 {
@@ -35,6 +40,7 @@ impl<'a> Xx<'a> {
     fn new_break_label(&mut self, hint: &str, result: KVarTerm) -> BreakLabel {
         let label = self.labels.alloc(KLabelConstruction {
             name: hint.to_string(),
+            parent_opt: None,
             params: vec![result],
             body: vec![],
         });
@@ -44,10 +50,18 @@ impl<'a> Xx<'a> {
     fn new_continue_label(&mut self, hint: &str) -> ContinueLabel {
         let label = self.labels.alloc(KLabelConstruction {
             name: hint.to_string(),
+            parent_opt: None,
             params: vec![],
             body: vec![],
         });
         ContinueLabel { label }
+    }
+
+    /// 他のラベルの変換を開始する。
+    fn start_label(&mut self, label: KLabel) {
+        let parent = replace(&mut self.label, label);
+        let old = label.of_mut(&mut self.labels).parent_opt.replace(parent);
+        assert_eq!(old, None);
     }
 
     /// 現在のラベルの変換を一時中断する。
@@ -62,16 +76,20 @@ impl<'a> Xx<'a> {
     /// break のような進行方向へのジャンプを含む変換を行う。
     ///
     /// loop からの break だけでなく、if/match から下に抜けるときのジャンプにも使える。
-    /// 変換の評価値は `result` に束縛すること。
+    ///
+    /// `f` は分岐するノードを配置した後、分岐先ごとに `do_in_branch` を使う。
+    /// 変換の評価値を `break_label.result` に束縛する。
+    /// 末尾で `break_label.label` にジャンプする。
     fn do_with_break(
         &mut self,
         break_label: BreakLabel,
         f: impl FnOnce(&mut Xx, KLabel),
     ) -> AfterRval {
+        // f は分岐するノードを配置する。
         f(self, break_label.label);
         self.commit_label();
 
-        self.label = break_label.label;
+        self.start_label(break_label.label);
         (
             KTerm::Name(break_label.result),
             self.local_var_ty(break_label.result.local_var),
@@ -89,13 +107,13 @@ impl<'a> Xx<'a> {
             .push(new_jump_tail(continue_label.label, vec![], loc));
         self.commit_label();
 
-        self.label = continue_label.label;
+        self.start_label(continue_label.label);
         f(self, continue_label.label)
     }
 
     /// 分岐の CPS 変換を行う。
     ///
-    /// 変換前後でラベルを戻す必要がある。
+    /// `do_with_break` の中で使うこと。
     fn do_in_branch(&mut self, f: impl FnOnce(&mut Xx)) {
         let label = self.label;
         self.commit_label();

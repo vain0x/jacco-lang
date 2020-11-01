@@ -39,6 +39,7 @@ impl<'a> Xx<'a> {
 
         let toplevel = labels.alloc(KLabelConstruction {
             name: String::new(),
+            parent_opt: None,
             params: vec![],
             body: vec![],
         });
@@ -103,6 +104,7 @@ impl<'a> Xx<'a> {
 #[derive(Default)]
 pub(crate) struct KLabelConstruction {
     pub(crate) name: String,
+    pub(crate) parent_opt: Option<KLabel>,
     pub(crate) params: Vec<KVarTerm>,
     pub(crate) body: Vec<KNode>,
 }
@@ -295,5 +297,30 @@ pub(crate) fn convert_to_cps(
         xx.mod_data = take(mod_data);
         xx.convert_decls(tree.ast.root_decls(), TyExpect::unit());
         *mod_data = xx.mod_data;
+
+        #[cfg(skip)]
+        for ((k_fn, fn_outline), fn_data) in mod_outline.fns.enumerate().zip(mod_data.fns.iter()) {
+            log::trace!("fn {}", fn_outline.name);
+            let KFnData {
+                local_vars, labels, ..
+            } = fn_data;
+
+            for (label, label_data) in fn_data.labels.enumerate() {
+                if let Some(p) = label_data.parent_opt {
+                    log::trace!("in {}#{}", &p.of(labels).name, p.to_index());
+                }
+                label_data
+                    .body
+                    .with_debug(mod_outline, mod_data, k_fn, |body| {
+                        log::trace!(
+                            "label {}#{}({:#?}) = {:#?}",
+                            &label_data.name,
+                            label.to_index(),
+                            DebugWith::new(&label_data.params, local_vars),
+                            body
+                        )
+                    });
+            }
+        }
     });
 }

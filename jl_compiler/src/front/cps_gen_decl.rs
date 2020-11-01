@@ -153,24 +153,19 @@ impl<'a> Xx<'a> {
             xx.emit_return(term, loc);
             xx.commit_label();
 
-            #[cfg(skip)]
-            for label in xx.labels.iter() {
-                log::trace!(
-                    "label {}({:#?}) size={} = {:#?}",
-                    &label.name,
-                    DebugWith::new(&label.params, &xx.local_vars),
-                    label.body.len(),
-                    DebugWith::new(&label.body, &local_context(xx))
-                );
-            }
-
             let local_vars = take(&mut xx.local_vars);
             let labels =
                 KLabelArena::from_iter(take(&mut xx.labels).into_vec().into_iter().map(|label| {
                     let name = label.name;
+                    let parent_opt = label.parent_opt;
                     let params = label.params;
                     let body = fold_nodes(label.body);
-                    KLabelData { name, params, body }
+                    KLabelData {
+                        name,
+                        parent_opt,
+                        params,
+                        body,
+                    }
                 }));
             let ty_env = take(&mut xx.ty_env);
 

@@ -1,4 +1,4 @@
-use super::{KLabelArena, KLocalVarArena, KModOutline, KPrim, KTerm, KTy2, KVarTerm};
+use super::*;
 use crate::{
     source::{HaveLoc, Loc},
     utils::{DebugWith, DebugWithContext},
@@ -13,6 +13,22 @@ pub(crate) struct KNode {
     pub(crate) results: Vec<KVarTerm>,
     pub(crate) conts: Vec<KNode>,
     pub(crate) loc: Loc,
+}
+
+impl KNode {
+    pub(crate) fn with_debug<'a, A>(
+        &'a self,
+        mod_outline: &'a KModOutline,
+        mod_data: &'a KModData,
+        k_fn: KFn,
+        f: impl FnOnce(&dyn fmt::Debug) -> A,
+    ) -> A {
+        let fn_data = k_fn.of(&mod_data.fns);
+        f(&DebugWith::new(
+            self,
+            &(mod_outline, Some((&fn_data.local_vars, &fn_data.labels))),
+        ))
+    }
 }
 
 impl<'a>
