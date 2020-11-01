@@ -544,7 +544,7 @@ mod tests {
     }
 
     #[test]
-    fn test_highlight_fn_decl() {
+    fn test_highlight_fn_stmt() {
         do_test_highlight("fn <$cursor|><$def[f]>() {}");
     }
 

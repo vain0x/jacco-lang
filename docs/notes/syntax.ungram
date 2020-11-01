@@ -174,7 +174,7 @@ BinaryOpExpr =
 
 BlockExpr =
   '{'
-    decls:Decl*
+    decls:Stmt*
   '}'
 
 BreakExpr =
@@ -203,18 +203,18 @@ WhileExpr =
   'while' Cond BlockExpr
 
 // -----------------------------------------------
-// 宣言
+// 文
 // -----------------------------------------------
 
-Decl =
-  AttrDecl
-| LetDecl
-| ConstDecl
-| StaticDecl
-| FnDecl
-| EnumDecl
-| StructDecl
-| UseDecl
+Stmt =
+  AttrStmt
+| LetStmt
+| ConstStmt
+| StaticStmt
+| FnStmt
+| EnumStmt
+| StructStmt
+| UseStmt
 
 Vis =
   'priv'
@@ -226,25 +226,25 @@ TyParam =
 TyParamList =
   '[' (TyParam (',' TyParam)* ','?)? ']'
 
-AttrDecl =
+AttrStmt =
   '#' '!' '[' AttrItem (',' AttrItem)* ','? ']'
 
-LetDecl =
+LetStmt =
   Attr* Vis?
   'let' Pat (':' Ty)? ('=' init:Expr)? ';'
 
-ConstDecl =
+ConstStmt =
   Attr* Vis?
   'const' (UnqualName | '_') ':' Ty ('=' init:Expr)? ';'
 
-StaticDecl =
+StaticStmt =
   Attr* Vis?
   'static' (UnqualName | '_') ':' Ty ('=' init:Expr)? ';'
 
 Param =
   (UnqualName | '_') ':' Ty
 
-FnDecl =
+FnStmt =
   Attr* Vis?
   'extern'?
   'fn' UnqualName TyParamList?
@@ -270,13 +270,13 @@ VariantDecl =
   ConstVariantDecl
 | RecordVariantDecl
 
-EnumDecl =
+EnumStmt =
   Attr* Vis?
   'enum' UnqualName TyParamList? '{'
     (VariantDecl (',' VariantDecl)* ','?)?
   '}'
 
-StructDecl =
+StructStmt =
   Attr* Vis?
   'struct' UnqualName TyParamList?
   (
@@ -286,9 +286,9 @@ StructDecl =
   | ';'
   )
 
-UseDecl =
+UseStmt =
   Attr* Vis?
   'use' Name ';'
 
-RootDecl =
-  Decl*
+Root =
+  Stmt*

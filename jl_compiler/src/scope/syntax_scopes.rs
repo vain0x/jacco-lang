@@ -123,15 +123,15 @@ impl SyntaxScopes {
         }
     }
 
-    pub(crate) fn leave_let_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_let_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.leave_stacked_value_decl("let", name_opt, ast);
     }
 
-    pub(crate) fn leave_const_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_const_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.leave_stacked_value_decl("const", name_opt, ast);
     }
 
-    pub(crate) fn leave_static_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_static_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.leave_stacked_value_decl("static", name_opt, ast);
     }
 
@@ -158,38 +158,38 @@ impl SyntaxScopes {
         }
     }
 
-    pub(crate) fn enter_fn_decl(&mut self) {
+    pub(crate) fn enter_fn_stmt(&mut self) {
         self.resolver.enter_scope();
     }
 
-    pub(crate) fn leave_fn_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_fn_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.resolver.leave_scope();
         self.leave_hoisted_decl("fn", name_opt, ImportKind::Value, ast);
     }
 
-    pub(crate) fn enter_extern_fn_decl(&mut self) {
+    pub(crate) fn enter_extern_fn_stmt(&mut self) {
         self.resolver.enter_scope();
     }
 
-    pub(crate) fn leave_extern_fn_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_extern_fn_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.resolver.leave_scope();
         self.leave_hoisted_decl("extern fn", name_opt, ImportKind::Value, ast);
     }
 
-    pub(crate) fn enter_enum_decl(&mut self) {
+    pub(crate) fn enter_enum_stmt(&mut self) {
         self.resolver.enter_scope();
     }
 
-    pub(crate) fn leave_enum_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn leave_enum_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.resolver.leave_scope();
         self.leave_hoisted_decl("enum", name_opt, ImportKind::Ty, ast);
     }
 
-    pub(crate) fn enter_struct_decl(&mut self) {
+    pub(crate) fn enter_struct_stmt(&mut self) {
         self.resolver.enter_scope();
     }
 
-    pub(crate) fn leave_struct_decl(
+    pub(crate) fn leave_struct_stmt(
         &mut self,
         name_opt: Option<ANameId>,
         is_unit_like: bool,
@@ -207,7 +207,7 @@ impl SyntaxScopes {
         self.leave_hoisted_decl("struct", name_opt, kind, ast);
     }
 
-    pub(crate) fn on_use_decl(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
+    pub(crate) fn on_use_stmt(&mut self, name_opt: Option<ANameId>, ast: &ATree) {
         self.leave_hoisted_decl("use", name_opt, ImportKind::Both, ast);
     }
 

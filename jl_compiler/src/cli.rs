@@ -126,7 +126,7 @@ impl Project {
             assert_eq!(id2, id);
         }
 
-        // use 宣言から参照される不明なモジュール名を列挙して、報告する。
+        // use 文から参照される不明なモジュール名を列挙して、報告する。
         let mut mod_names = HashSet::new();
         for syntax_data in self.syntaxes.iter() {
             for mod_name in &syntax_data.mod_names {
@@ -326,7 +326,7 @@ pub fn compile_v2(source_path: &Path, source_code: &str) -> Option<String> {
     if !missed_files.is_empty() {
         for path in missed_files {
             error!(
-                "このファイルが use 宣言で必要とされていますが、見つかりませんでした {:?}",
+                "このファイルが use 文で必要とされていますが、見つかりませんでした {:?}",
                 path.to_string_lossy(),
             );
         }

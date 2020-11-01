@@ -22,10 +22,10 @@ impl<'a> Xx<'a> {
         (term, expected_ty)
     }
 
-    fn convert_let_decl(&mut self, _decl_id: ADeclId, decl: &AFieldLikeDecl, loc: Loc) {
-        let (init_term, ty) = self.evaluate_rval(decl.value_opt, decl.ty_opt, loc);
+    fn convert_let_stmt(&mut self, _stmt_id: AStmtId, stmt: &AFieldLikeDecl, loc: Loc) {
+        let (init_term, ty) = self.evaluate_rval(stmt.value_opt, stmt.ty_opt, loc);
 
-        let name = match decl.name_opt {
+        let name = match stmt.name_opt {
             Some(it) => it,
             None => {
                 // 名前がなくても、型検査のため、一時変数に束縛する必要がある。
@@ -59,11 +59,11 @@ impl<'a> Xx<'a> {
             .insert(name, NameSymbol::LocalVar(local_var));
     }
 
-    fn convert_const_decl(&mut self, k_const: KConst, decl: &AFieldLikeDecl, loc: Loc) {
+    fn convert_const_stmt(&mut self, k_const: KConst, stmt: &AFieldLikeDecl, loc: Loc) {
         let (node, term) = {
             let mut nodes = take(&mut self.nodes);
             let (term, _ty) =
-                self.do_out_fn(|xx| xx.convert_expr_opt(decl.value_opt, TyExpect::Todo, loc));
+                self.do_out_fn(|xx| xx.convert_expr_opt(stmt.value_opt, TyExpect::Todo, loc));
             swap(&mut self.nodes, &mut nodes);
 
             (fold_nodes(nodes), term)
@@ -80,11 +80,11 @@ impl<'a> Xx<'a> {
         };
     }
 
-    fn convert_static_decl(&mut self, static_var: KStaticVar, decl: &AFieldLikeDecl, loc: Loc) {
+    fn convert_static_stmt(&mut self, static_var: KStaticVar, stmt: &AFieldLikeDecl, loc: Loc) {
         let (node, term) = {
             let mut nodes = take(&mut self.nodes);
             let (term, _ty) =
-                self.do_out_fn(|xx| xx.convert_expr_opt(decl.value_opt, TyExpect::Todo, loc));
+                self.do_out_fn(|xx| xx.convert_expr_opt(stmt.value_opt, TyExpect::Todo, loc));
             swap(&mut self.nodes, &mut nodes);
 
             (fold_nodes(nodes), term)
@@ -121,11 +121,11 @@ impl<'a> Xx<'a> {
             .collect()
     }
 
-    fn convert_fn_decl(&mut self, k_fn: KFn, fn_decl: &AFnLikeDecl, loc: Loc) {
+    fn convert_fn_stmt(&mut self, k_fn: KFn, stmt: &AFnLikeStmt, loc: Loc) {
         let mut local_vars = KLocalVarArena::new();
 
         let params = Self::convert_param_decls(
-            &fn_decl.params,
+            &stmt.params,
             k_fn.param_tys(&self.mod_outline.fns),
             self.doc,
             self.ast,
@@ -149,8 +149,7 @@ impl<'a> Xx<'a> {
                 "fn result_ty={}",
                 result_ty.display(&xx.ty_env, xx.mod_outline)
             );
-            let (term, _ty) =
-                xx.convert_expr_opt(fn_decl.body_opt, TyExpect::Exact(result_ty), loc);
+            let (term, _ty) = xx.convert_expr_opt(stmt.body_opt, TyExpect::Exact(result_ty), loc);
             xx.emit_return(term, loc);
             xx.commit_label();
 
@@ -181,11 +180,11 @@ impl<'a> Xx<'a> {
         self.nodes.push(new_return_tail(k_fn, term, loc));
     }
 
-    fn convert_extern_fn_decl(&mut self, extern_fn: KExternFn, extern_fn_decl: &AFnLikeDecl) {
+    fn convert_extern_fn_stmt(&mut self, extern_fn: KExternFn, stmt: &AFnLikeStmt) {
         let mut local_vars = KLocalVarArena::new();
 
         let params = Self::convert_param_decls(
-            &extern_fn_decl.params,
+            &stmt.params,
             extern_fn.param_tys(&self.mod_outline.extern_fns),
             self.doc,
             self.ast,
@@ -196,100 +195,100 @@ impl<'a> Xx<'a> {
         *extern_fn.of_mut(&mut self.mod_data.extern_fns) = KExternFnData { params, local_vars };
     }
 
-    fn convert_const_enum_decl(&mut self, const_enum: KConstEnum, decl: &AEnumDecl, loc: Loc) {
-        for (decl, k_const) in decl
+    fn convert_const_enum_stmt(&mut self, const_enum: KConstEnum, stmt: &AEnumStmt, loc: Loc) {
+        for (variant_decl, k_const) in stmt
             .variants
             .iter()
             .zip(const_enum.variants(&self.mod_outline.const_enums).iter())
         {
-            let decl = decl.as_const().unwrap();
-            self.convert_const_decl(k_const, decl, loc);
+            let decl = variant_decl.as_const().unwrap();
+            self.convert_const_stmt(k_const, decl, loc);
         }
     }
 
-    fn convert_struct_enum_decl(&mut self, _enum: KStructEnum, _decl: &AEnumDecl, _loc: Loc) {
+    fn convert_struct_enum_stmt(&mut self, _enum: KStructEnum, _stmt: &AEnumStmt, _loc: Loc) {
         // pass
     }
 
-    fn do_convert_decl(
+    fn do_convert_stmt(
         &mut self,
-        decl_id: ADeclId,
-        decl: &ADecl,
+        stmt_id: AStmtId,
+        stmt: &AStmt,
         ty_expect: TyExpect,
         term_opt: &mut Option<AfterRval>,
     ) {
-        let symbol_opt = decl
+        let symbol_opt = stmt
             .name_opt()
             .and_then(|name| self.name_symbols.get(&name).cloned());
-        let loc = Loc::new(self.doc, PLoc::Decl(decl_id));
+        let loc = Loc::new(self.doc, PLoc::Stmt(stmt_id));
 
-        match decl {
-            ADecl::Attr => {}
-            ADecl::Expr(expr) => {
+        match stmt {
+            AStmt::Attr => {}
+            AStmt::Expr(expr) => {
                 *term_opt = Some(self.convert_expr(*expr, ty_expect));
             }
-            ADecl::Let(decl) => {
+            AStmt::Let(stmt) => {
                 assert_eq!(symbol_opt, None);
-                self.convert_let_decl(decl_id, decl, loc);
+                self.convert_let_stmt(stmt_id, stmt, loc);
             }
-            ADecl::Const(decl) => {
+            AStmt::Const(stmt) => {
                 let k_const = match symbol_opt {
                     Some(NameSymbol::ModSymbol(KModSymbol::Const(it))) => it,
                     _ => return,
                 };
-                self.convert_const_decl(k_const, decl, loc)
+                self.convert_const_stmt(k_const, stmt, loc)
             }
-            ADecl::Static(decl) => {
+            AStmt::Static(stmt) => {
                 let static_var = match symbol_opt {
                     Some(NameSymbol::ModSymbol(KModSymbol::StaticVar(it))) => it,
                     _ => return,
                 };
-                self.convert_static_decl(static_var, decl, loc)
+                self.convert_static_stmt(static_var, stmt, loc)
             }
-            ADecl::Fn(fn_decl) => {
+            AStmt::Fn(stmt) => {
                 let k_fn = match symbol_opt {
                     Some(NameSymbol::ModSymbol(KModSymbol::Fn(it))) => it,
                     _ => return,
                 };
-                self.convert_fn_decl(k_fn, fn_decl, loc);
+                self.convert_fn_stmt(k_fn, stmt, loc);
             }
-            ADecl::ExternFn(extern_fn_decl) => {
+            AStmt::ExternFn(stmt) => {
                 let extern_fn = match symbol_opt {
                     Some(NameSymbol::ModSymbol(KModSymbol::ExternFn(it))) => it,
                     _ => return,
                 };
-                self.convert_extern_fn_decl(extern_fn, extern_fn_decl);
+                self.convert_extern_fn_stmt(extern_fn, stmt);
             }
-            ADecl::Enum(enum_decl) => match symbol_opt {
+            AStmt::Enum(stmt) => match symbol_opt {
                 Some(NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum))) => {
-                    self.convert_const_enum_decl(const_enum, enum_decl, loc)
+                    self.convert_const_enum_stmt(const_enum, stmt, loc)
                 }
                 Some(NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum))) => {
-                    self.convert_struct_enum_decl(struct_enum, enum_decl, loc)
+                    self.convert_struct_enum_stmt(struct_enum, stmt, loc)
                 }
                 _ => return,
             },
-            ADecl::Struct(_) | ADecl::Use(_) => {}
+            AStmt::Struct(_) | AStmt::Use(_) => {}
         }
     }
 
-    pub(crate) fn convert_decls(
+    pub(crate) fn convert_stmts(
         &mut self,
-        decls: ADeclIds,
+        stmts: AStmtIds,
         ty_expect: TyExpect,
     ) -> Option<AfterRval> {
         let mut last_opt = None;
-        for (decl_id, decl) in decls.enumerate(self.ast.decls()) {
+        for (stmt_id, stmt) in stmts.enumerate(self.ast.stmts()) {
             // 最後の式文
-            match decl {
-                ADecl::Expr(..) if decls.is_last(decl_id) => {
-                    self.do_convert_decl(decl_id, decl, ty_expect, &mut last_opt);
+            match stmt {
+                AStmt::Expr(..) if stmts.is_last(stmt_id) => {
+                    self.do_convert_stmt(stmt_id, stmt, ty_expect, &mut last_opt);
                     break;
                 }
                 _ => {}
             }
 
-            self.do_convert_decl(decl_id, decl, TyExpect::unit(), &mut last_opt);
+            self.do_convert_stmt(stmt_id, stmt, TyExpect::unit(), &mut last_opt);
         }
         last_opt
     }

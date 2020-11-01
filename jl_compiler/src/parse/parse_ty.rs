@@ -1,5 +1,4 @@
 use super::*;
-use parse_decl::parse_result_ty;
 
 pub(crate) fn parse_mut(px: &mut Px) -> Option<PMut> {
     let p_mut = match px.next() {

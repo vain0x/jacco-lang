@@ -66,25 +66,25 @@ pub(crate) enum PElementKind {
     WhileExpr,
     LoopExpr,
 
-    // 宣言の一部
-    /// 関数宣言のパラメータリストの項目
+    // 文の一部
+    /// 関数文のパラメータリストの項目
     ParamDecl,
     ConstVariantDecl,
     FieldDecl,
     RecordVariantDecl,
 
-    // 宣言
-    AttrDecl,
-    ExprDecl,
-    LetDecl,
-    ConstDecl,
-    StaticDecl,
-    FnDecl,
-    ExternFnDecl,
-    EnumDecl,
-    StructDecl,
-    UseDecl,
-    RootDecl,
+    // 文
+    AttrStmt,
+    ExprStmt,
+    LetStmt,
+    ConstStmt,
+    StaticStmt,
+    FnStmt,
+    ExternFnStmt,
+    EnumStmt,
+    StructStmt,
+    UseStmt,
+    Root,
 }
 
 impl PElementKind {

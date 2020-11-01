@@ -21,15 +21,15 @@ pub(crate) type AfterPat = (APat, PatEnd);
 pub(crate) type AfterLabeledArg = (ALabeledArg, ParseEnd);
 pub(crate) type AfterArm = (AArm, ParseEnd);
 pub(crate) type AfterExpr = (AExpr, ExprEnd);
-pub(crate) type AfterBlock = (Vec<(ADecl, DeclEnd)>, ExprEnd);
-pub(crate) type AfterDeclModifiers = (DeclStart, Option<PVis>);
+pub(crate) type AfterBlock = (Vec<(AStmt, StmtEnd)>, ExprEnd);
+pub(crate) type AfterStmtModifiers = (StmtStart, Option<PVis>);
 pub(crate) type AfterVariantDecl = (AVariantDecl, ParseEnd);
 pub(crate) type AfterVariantDecls = Vec<AVariantDecl>;
 pub(crate) type AfterFieldDecl = (AFieldLikeDecl, ParseEnd);
 pub(crate) type AfterFieldDecls = Vec<AFieldLikeDecl>;
-pub(crate) type AfterDecl = (ADecl, DeclEnd);
-pub(crate) type AfterSemi = Vec<(ADecl, DeclEnd)>;
-pub(crate) type AfterRoot = Vec<AfterDecl>;
+pub(crate) type AfterStmt = (AStmt, StmtEnd);
+pub(crate) type AfterSemi = Vec<(AStmt, StmtEnd)>;
+pub(crate) type AfterRoot = Vec<AfterStmt>;
 
 impl Px {
     fn alloc_name(&mut self, (name, event): (AName, NameEnd)) -> ANameId {
@@ -64,10 +64,10 @@ impl Px {
         self.ast.exprs.alloc_slice(exprs)
     }
 
-    pub(crate) fn alloc_decls(&mut self, decls: Vec<(ADecl, DeclEnd)>) -> ADeclIds {
-        let (decls, events): (Vec<_>, Vec<_>) = decls.into_iter().unzip();
-        self.ast.decl_events.alloc_slice(events);
-        self.ast.decls.alloc_slice(decls)
+    pub(crate) fn alloc_stmts(&mut self, stmts: Vec<(AStmt, StmtEnd)>) -> AStmtIds {
+        let (stmts, events): (Vec<_>, Vec<_>) = stmts.into_iter().unzip();
+        self.ast.stmt_events.alloc_slice(events);
+        self.ast.stmts.alloc_slice(stmts)
     }
 }
 
@@ -610,9 +610,9 @@ pub(crate) fn alloc_binary_op_expr(
     )
 }
 
-fn do_alloc_block_expr(event: ExprEnd, decls: Vec<(ADecl, DeclEnd)>, px: &mut Px) -> AExprId {
-    let decls = px.alloc_decls(decls);
-    px.alloc_expr((AExpr::Block(ABlockExpr { decls }), event))
+fn do_alloc_block_expr(event: ExprEnd, stmts: Vec<(AStmt, StmtEnd)>, px: &mut Px) -> AExprId {
+    let stmts = px.alloc_stmts(stmts);
+    px.alloc_expr((AExpr::Block(ABlockExpr { stmts }), event))
 }
 
 pub(crate) fn before_block(px: &mut Px) {
@@ -626,11 +626,9 @@ pub(crate) fn alloc_block(
     right_brace_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterBlock {
-    let a_decls = semi;
-
     px.syntax_scopes.leave_block();
 
-    (a_decls, event.end(PElementKind::BlockExpr, px))
+    (semi, event.end(PElementKind::BlockExpr, px))
 }
 
 pub(crate) fn alloc_block_expr(
@@ -642,12 +640,12 @@ pub(crate) fn alloc_block_expr(
 ) -> AfterExpr {
     validate_block_expr(left_brace, right_brace_opt, px);
 
-    let a_decls = px.alloc_decls(semi);
+    let stmts = px.alloc_stmts(semi);
 
     px.syntax_scopes.leave_block();
 
     (
-        AExpr::Block(ABlockExpr { decls: a_decls }),
+        AExpr::Block(ABlockExpr { stmts: stmts }),
         event.end(PElementKind::BlockExpr, px),
     )
 }
@@ -703,7 +701,7 @@ pub(crate) fn alloc_if_expr(
     );
 
     let a_cond_opt = cond_opt.map(|expr| px.alloc_expr(expr));
-    let a_body_opt = body_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
+    let a_body_opt = body_opt.map(|(stmts, body_event)| do_alloc_block_expr(body_event, stmts, px));
     let a_alt_opt = alt_opt.map(|expr| px.alloc_expr(expr));
 
     (
@@ -810,7 +808,7 @@ pub(crate) fn alloc_while_expr(
     validate_while_expr(keyword, cond_opt.as_ref(), body_opt.as_ref(), px);
 
     let a_cond_opt = cond_opt.map(|expr| px.alloc_expr(expr));
-    let a_body_opt = body_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
+    let a_body_opt = body_opt.map(|(stmts, body_event)| do_alloc_block_expr(body_event, stmts, px));
 
     (
         AExpr::While(AWhileExpr {
@@ -829,7 +827,7 @@ pub(crate) fn alloc_loop_expr(
 ) -> AfterExpr {
     validate_loop_expr(keyword, body_opt.as_ref(), px);
 
-    let a_body_opt = body_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
+    let a_body_opt = body_opt.map(|(stmts, body_event)| do_alloc_block_expr(body_event, stmts, px));
 
     (
         AExpr::Loop(ALoopExpr {
@@ -883,39 +881,39 @@ pub(crate) fn alloc_arg_list(
 }
 
 // -----------------------------------------------
-// 宣言
+// 文
 // -----------------------------------------------
 
-fn alloc_modifiers(modifiers: AfterDeclModifiers) -> (DeclStart, ADeclModifiers) {
+fn alloc_modifiers(modifiers: AfterStmtModifiers) -> (StmtStart, AStmtModifiers) {
     let (event, vis_opt) = modifiers;
 
     (
         event,
-        ADeclModifiers {
+        AStmtModifiers {
             vis_opt: vis_opt.map(|(vis, _)| vis),
         },
     )
 }
 
-pub(crate) fn alloc_attr_decl(event: DeclStart, hash_bang: PToken, px: &mut Px) -> AfterDecl {
-    (ADecl::Attr, event.end(PElementKind::AttrDecl, px))
+pub(crate) fn alloc_attr_stmt(event: StmtStart, hash_bang: PToken, px: &mut Px) -> AfterStmt {
+    (AStmt::Attr, event.end(PElementKind::AttrStmt, px))
 }
 
-pub(crate) fn alloc_expr_decl(
-    event: DeclStart,
+pub(crate) fn alloc_expr_stmt(
+    event: StmtStart,
     expr: AfterExpr,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
+) -> AfterStmt {
     // FIXME: セミコロンの抜けを報告する
 
     let a_expr = px.alloc_expr(expr);
 
-    (ADecl::Expr(a_expr), event.end(PElementKind::ExprDecl, px))
+    (AStmt::Expr(a_expr), event.end(PElementKind::ExprStmt, px))
 }
 
-pub(crate) fn alloc_let_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_let_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -924,8 +922,8 @@ pub(crate) fn alloc_let_decl(
     init_opt: Option<AfterExpr>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_let_decl(
+) -> AfterStmt {
+    validate_let_stmt(
         &modifiers.0,
         &modifiers,
         keyword,
@@ -943,21 +941,21 @@ pub(crate) fn alloc_let_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    px.syntax_scopes.leave_let_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_let_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Let(AFieldLikeDecl {
+        AStmt::Let(AFieldLikeDecl {
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::LetDecl, px),
+        event.end(PElementKind::LetStmt, px),
     )
 }
 
-pub(crate) fn alloc_const_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_const_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -966,8 +964,8 @@ pub(crate) fn alloc_const_decl(
     init_opt: Option<AfterExpr>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_const_decl(
+) -> AfterStmt {
+    validate_const_stmt(
         &modifiers.0,
         &modifiers,
         keyword,
@@ -985,21 +983,21 @@ pub(crate) fn alloc_const_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    px.syntax_scopes.leave_const_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_const_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Const(AFieldLikeDecl {
+        AStmt::Const(AFieldLikeDecl {
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::ConstDecl, px),
+        event.end(PElementKind::ConstStmt, px),
     )
 }
 
-pub(crate) fn alloc_static_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_static_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -1008,8 +1006,8 @@ pub(crate) fn alloc_static_decl(
     init_opt: Option<AfterExpr>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_static_decl(
+) -> AfterStmt {
+    validate_static_stmt(
         &modifiers.0,
         &modifiers,
         keyword,
@@ -1027,25 +1025,25 @@ pub(crate) fn alloc_static_decl(
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
 
-    px.syntax_scopes.leave_static_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_static_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Static(AFieldLikeDecl {
+        AStmt::Static(AFieldLikeDecl {
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
             value_opt: a_init_opt,
         }),
-        event.end(PElementKind::StaticDecl, px),
+        event.end(PElementKind::StaticStmt, px),
     )
 }
 
-pub(crate) fn before_fn_decl(px: &mut Px) {
-    px.syntax_scopes.enter_fn_decl();
+pub(crate) fn before_fn_stmt(px: &mut Px) {
+    px.syntax_scopes.enter_fn_stmt();
 }
 
-pub(crate) fn alloc_fn_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_fn_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
     ty_param_list_opt: Option<AfterTyParamList>,
@@ -1054,8 +1052,8 @@ pub(crate) fn alloc_fn_decl(
     result_ty_opt: Option<AfterTy>,
     block_opt: Option<AfterBlock>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_fn_decl(
+) -> AfterStmt {
+    validate_fn_stmt(
         &modifiers.0,
         &modifiers,
         keyword,
@@ -1077,12 +1075,12 @@ pub(crate) fn alloc_fn_decl(
         .map(|(param, _, _)| param)
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
-    let body_opt = block_opt.map(|(decls, body_event)| do_alloc_block_expr(body_event, decls, px));
+    let body_opt = block_opt.map(|(stmts, body_event)| do_alloc_block_expr(body_event, stmts, px));
 
-    px.syntax_scopes.leave_fn_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_fn_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Fn(AFnLikeDecl {
+        AStmt::Fn(AFnLikeStmt {
             modifiers,
             name_opt,
             ty_params,
@@ -1090,16 +1088,16 @@ pub(crate) fn alloc_fn_decl(
             result_ty_opt: a_ty_opt,
             body_opt,
         }),
-        event.end(PElementKind::FnDecl, px),
+        event.end(PElementKind::FnStmt, px),
     )
 }
 
-pub(crate) fn before_extern_fn_decl(px: &mut Px) {
-    px.syntax_scopes.enter_extern_fn_decl();
+pub(crate) fn before_extern_fn_stmt(px: &mut Px) {
+    px.syntax_scopes.enter_extern_fn_stmt();
 }
 
-pub(crate) fn alloc_extern_fn_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_extern_fn_stmt(
+    modifiers: AfterStmtModifiers,
     extern_keyword: PToken,
     fn_keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
@@ -1108,8 +1106,8 @@ pub(crate) fn alloc_extern_fn_decl(
     result_ty_opt: Option<AfterTy>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_extern_fn_decl(
+) -> AfterStmt {
+    validate_extern_fn_stmt(
         &modifiers.0,
         &modifiers,
         extern_keyword,
@@ -1131,10 +1129,10 @@ pub(crate) fn alloc_extern_fn_decl(
         .collect();
     let a_ty_opt = result_ty_opt.map(|ty| px.alloc_ty(ty));
 
-    px.syntax_scopes.leave_extern_fn_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_extern_fn_stmt(name_opt, &px.ast);
 
     (
-        ADecl::ExternFn(AFnLikeDecl {
+        AStmt::ExternFn(AFnLikeStmt {
             modifiers,
             name_opt,
             // FIXME: 実装
@@ -1143,7 +1141,7 @@ pub(crate) fn alloc_extern_fn_decl(
             result_ty_opt: a_ty_opt,
             body_opt: None,
         }),
-        event.end(PElementKind::ExternFnDecl, px),
+        event.end(PElementKind::ExternFnStmt, px),
     )
 }
 
@@ -1162,7 +1160,7 @@ pub(crate) fn alloc_const_variant_decl(
 
     (
         AVariantDecl::Const(AFieldLikeDecl {
-            modifiers: ADeclModifiers::default(),
+            modifiers: AStmtModifiers::default(),
             name_opt: Some(name),
             ty_opt: None,
             value_opt: a_init_opt,
@@ -1186,7 +1184,7 @@ pub(crate) fn alloc_field_decl(
 
     (
         AFieldLikeDecl {
-            modifiers: ADeclModifiers::default(),
+            modifiers: AStmtModifiers::default(),
             name_opt: Some(name),
             ty_opt: a_ty_opt,
             value_opt: None,
@@ -1231,20 +1229,20 @@ pub(crate) fn alloc_variants(variants: Vec<AfterVariantDecl>, _px: &mut Px) -> A
         .collect()
 }
 
-pub(crate) fn before_enum_decl(px: &mut Px) {
-    px.syntax_scopes.enter_enum_decl();
+pub(crate) fn before_enum_stmt(px: &mut Px) {
+    px.syntax_scopes.enter_enum_stmt();
 }
 
-pub(crate) fn alloc_enum_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_enum_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterUnqualifiableName>,
     left_brace_opt: Option<PToken>,
     variants: AfterVariantDecls,
     right_brace_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_enum_decl(
+) -> AfterStmt {
+    validate_enum_stmt(
         &modifiers,
         keyword,
         name_opt.as_ref(),
@@ -1258,30 +1256,30 @@ pub(crate) fn alloc_enum_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
-    px.syntax_scopes.leave_enum_decl(name_opt, &px.ast);
+    px.syntax_scopes.leave_enum_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Enum(AEnumDecl {
+        AStmt::Enum(AEnumStmt {
             modifiers,
             name_opt,
             variants,
         }),
-        event.end(PElementKind::EnumDecl, px),
+        event.end(PElementKind::EnumStmt, px),
     )
 }
 
-pub(crate) fn before_struct_decl(px: &mut Px) {
-    px.syntax_scopes.enter_struct_decl();
+pub(crate) fn before_struct_stmt(px: &mut Px) {
+    px.syntax_scopes.enter_struct_stmt();
 }
 
-pub(crate) fn alloc_struct_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_struct_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     variant_opt: Option<AfterVariantDecl>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_struct_decl(&modifiers, keyword, variant_opt.as_ref(), semi_opt, px);
+) -> AfterStmt {
+    validate_struct_stmt(&modifiers, keyword, variant_opt.as_ref(), semi_opt, px);
 
     let name_opt = variant_opt.as_ref().and_then(|(v, _)| v.name_opt());
     let (event, modifiers) = alloc_modifiers(modifiers);
@@ -1292,25 +1290,25 @@ pub(crate) fn alloc_struct_decl(
         .map_or(false, |variant| variant.is_unit_like());
 
     px.syntax_scopes
-        .leave_struct_decl(name_opt, is_unit_like, &px.ast);
+        .leave_struct_stmt(name_opt, is_unit_like, &px.ast);
 
     (
-        ADecl::Struct(AStructDecl {
+        AStmt::Struct(AStructStmt {
             modifiers,
             variant_opt: a_variant_opt,
         }),
-        event.end(PElementKind::StructDecl, px),
+        event.end(PElementKind::StructStmt, px),
     )
 }
 
-pub(crate) fn alloc_use_decl(
-    modifiers: AfterDeclModifiers,
+pub(crate) fn alloc_use_stmt(
+    modifiers: AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<AfterQualifiableName>,
     semi_opt: Option<PToken>,
     px: &mut Px,
-) -> AfterDecl {
-    validate_use_decl(
+) -> AfterStmt {
+    validate_use_stmt(
         &modifiers.0,
         &modifiers,
         keyword,
@@ -1322,13 +1320,13 @@ pub(crate) fn alloc_use_decl(
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
-    px.syntax_scopes.on_use_decl(name_opt, &px.ast);
+    px.syntax_scopes.on_use_stmt(name_opt, &px.ast);
 
     (
-        ADecl::Use(AUseDecl {
+        AStmt::Use(AUseStmt {
             modifiers,
             name_opt,
         }),
-        event.end(PElementKind::UseDecl, px),
+        event.end(PElementKind::UseStmt, px),
     )
 }

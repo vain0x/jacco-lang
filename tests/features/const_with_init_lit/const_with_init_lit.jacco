@@ -1,6 +1,6 @@
 #![test("run", 0)]
 
-// const 宣言はリテラルを初期化子に持てる。
+// const 文はリテラルを初期化子に持てる。
 
 const EXIT_SUCCESS: i32 = 0_i32;
 

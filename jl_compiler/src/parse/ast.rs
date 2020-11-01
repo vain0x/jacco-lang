@@ -177,7 +177,7 @@ pub(crate) struct AJumpExpr {
 }
 
 pub(crate) struct ABlockExpr {
-    pub(crate) decls: ADeclIds,
+    pub(crate) stmts: AStmtIds,
 }
 
 pub(crate) struct AIfExpr {
@@ -233,23 +233,23 @@ pub(crate) enum AExpr {
 }
 
 /// -----------------------------------------------
-// 宣言
+// 文
 // -----------------------------------------------
 
-pub(crate) struct ADeclTag;
-pub(crate) type ADeclId = VecArenaId<ADeclTag>;
-pub(crate) type ADeclIds = VecArenaSlice<ADeclTag>;
-pub(crate) type ADeclArena = VecArena<ADeclTag, ADecl>;
+pub(crate) struct AStmtTag;
+pub(crate) type AStmtId = VecArenaId<AStmtTag>;
+pub(crate) type AStmtIds = VecArenaSlice<AStmtTag>;
+pub(crate) type AStmtArena = VecArena<AStmtTag, AStmt>;
 
 #[derive(Default)]
-pub(crate) struct ADeclModifiers {
+pub(crate) struct AStmtModifiers {
     pub(crate) vis_opt: Option<KVis>,
     // attrs: Vec<AAttr>,
 }
 
 /// let, const, static, const variant, field of record variant
 pub(crate) struct AFieldLikeDecl {
-    pub(crate) modifiers: ADeclModifiers,
+    pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
     pub(crate) ty_opt: Option<ATyId>,
     pub(crate) value_opt: Option<AExprId>,
@@ -276,7 +276,7 @@ impl AFieldDeclKey {
     }
 }
 
-pub(crate) struct AExprDecl {
+pub(crate) struct AExprStmt {
     pub(crate) expr: AExprId,
 }
 
@@ -287,12 +287,12 @@ pub(crate) struct AParamDecl {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) struct AParamDeclKey {
-    parent: ADeclId,
+    parent: AStmtId,
     index: usize,
 }
 
 impl AParamDeclKey {
-    pub(crate) fn new(parent: ADeclId, index: usize) -> Self {
+    pub(crate) fn new(parent: AStmtId, index: usize) -> Self {
         Self { parent, index }
     }
 
@@ -306,8 +306,8 @@ impl AParamDeclKey {
     }
 }
 
-pub(crate) struct AFnLikeDecl {
-    pub(crate) modifiers: ADeclModifiers,
+pub(crate) struct AFnLikeStmt {
+    pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
     pub(crate) ty_params: Vec<ATyParamDecl>,
     pub(crate) params: Vec<AParamDecl>,
@@ -351,8 +351,8 @@ impl AVariantDecl {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum AVariantDeclKey {
-    Enum(ADeclId, usize),
-    Struct(ADeclId),
+    Enum(AStmtId, usize),
+    Struct(AStmtId),
 }
 
 impl AVariantDeclKey {
@@ -374,59 +374,59 @@ impl AVariantDeclKey {
     }
 }
 
-pub(crate) struct AEnumDecl {
-    pub(crate) modifiers: ADeclModifiers,
+pub(crate) struct AEnumStmt {
+    pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
     pub(crate) variants: Vec<AVariantDecl>,
 }
 
-impl AEnumDecl {
+impl AEnumStmt {
     pub(crate) fn as_const_enum(&self) -> Option<Vec<&AFieldLikeDecl>> {
         self.variants.iter().map(AVariantDecl::as_const).collect()
     }
 }
 
-pub(crate) struct AStructDecl {
-    pub(crate) modifiers: ADeclModifiers,
+pub(crate) struct AStructStmt {
+    pub(crate) modifiers: AStmtModifiers,
     pub(crate) variant_opt: Option<AVariantDecl>,
 }
 
-impl AStructDecl {
+impl AStructStmt {
     pub(crate) fn name_opt(&self) -> Option<ANameId> {
         self.variant_opt.as_ref()?.name_opt()
     }
 }
 
-pub(crate) struct AUseDecl {
-    pub(crate) modifiers: ADeclModifiers,
+pub(crate) struct AUseStmt {
+    pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
 }
 
-pub(crate) enum ADecl {
+pub(crate) enum AStmt {
     Attr,
     Expr(AExprId),
     Let(AFieldLikeDecl),
     Const(AFieldLikeDecl),
     Static(AFieldLikeDecl),
-    Fn(AFnLikeDecl),
-    ExternFn(AFnLikeDecl),
-    Enum(AEnumDecl),
-    Struct(AStructDecl),
-    Use(AUseDecl),
+    Fn(AFnLikeStmt),
+    ExternFn(AFnLikeStmt),
+    Enum(AEnumStmt),
+    Struct(AStructStmt),
+    Use(AUseStmt),
 }
 
-impl ADecl {
+impl AStmt {
     pub(crate) fn name_opt(&self) -> Option<ANameId> {
         match self {
-            ADecl::Attr | ADecl::Expr(_) => None,
-            ADecl::Let(decl) => decl.name_opt,
-            ADecl::Const(decl) => decl.name_opt,
-            ADecl::Static(decl) => decl.name_opt,
-            ADecl::Fn(decl) => decl.name_opt,
-            ADecl::ExternFn(decl) => decl.name_opt,
-            ADecl::Enum(decl) => decl.name_opt,
-            ADecl::Struct(decl) => decl.name_opt(),
-            ADecl::Use(decl) => decl.name_opt,
+            AStmt::Attr | AStmt::Expr(_) => None,
+            AStmt::Let(stmt) => stmt.name_opt,
+            AStmt::Const(stmt) => stmt.name_opt,
+            AStmt::Static(stmt) => stmt.name_opt,
+            AStmt::Fn(stmt) => stmt.name_opt,
+            AStmt::ExternFn(stmt) => stmt.name_opt,
+            AStmt::Enum(stmt) => stmt.name_opt,
+            AStmt::Struct(stmt) => stmt.name_opt(),
+            AStmt::Use(stmt) => stmt.name_opt,
         }
     }
 }
@@ -495,9 +495,9 @@ impl AExprId {
     }
 }
 
-impl ADeclId {
+impl AStmtId {
     pub(crate) fn element(self, tree: &PTree) -> PElement {
-        let event_id = self.of(&tree.ast.decl_events).id();
+        let event_id = self.of(&tree.ast.stmt_events).id();
         event_id.of(&tree.ast.events).unwrap()
     }
 
@@ -506,7 +506,7 @@ impl ADeclId {
     }
 
     pub(crate) fn loc(self, tree: &PTree) -> PLoc {
-        PLoc::Decl(self)
+        PLoc::Stmt(self)
     }
 }
 
@@ -515,7 +515,7 @@ pub(crate) enum AElementId {
     Ty(ATyId),
     Pat(APatId),
     Expr(AExprId),
-    Decl(ADeclId),
+    Stmt(AStmtId),
 }
 
 #[derive(Copy, Clone)]
@@ -523,7 +523,7 @@ pub(crate) enum AElementRef<'a> {
     Ty(&'a ATy),
     Pat(&'a APat),
     Expr(&'a AExpr),
-    Decl(&'a ADecl),
+    Stmt(&'a AStmt),
 }
 
 impl AElementId {
@@ -532,7 +532,7 @@ impl AElementId {
             AElementId::Ty(ty) => AElementRef::Ty(ty.of(&ast.tys)),
             AElementId::Pat(pat) => AElementRef::Pat(pat.of(&ast.pats)),
             AElementId::Expr(expr) => AElementRef::Expr(expr.of(&ast.exprs)),
-            AElementId::Decl(decl) => AElementRef::Decl(decl.of(&ast.decls)),
+            AElementId::Stmt(stmt) => AElementRef::Stmt(stmt.of(&ast.stmts)),
         }
     }
 
@@ -541,7 +541,7 @@ impl AElementId {
             AElementId::Ty(ty) => ty.of(&tree.ast.ty_events).id(),
             AElementId::Pat(pat) => pat.of(&tree.ast.pat_events).id(),
             AElementId::Expr(expr) => expr.of(&tree.ast.expr_events).id(),
-            AElementId::Decl(decl) => decl.of(&tree.ast.decl_events).id(),
+            AElementId::Stmt(stmt) => stmt.of(&tree.ast.stmt_events).id(),
         }
     }
 
@@ -561,7 +561,7 @@ impl AElementId {
 
 #[derive(Default)]
 pub(crate) struct ARoot {
-    pub(crate) decls: ADeclIds,
+    pub(crate) stmts: AStmtIds,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -569,7 +569,7 @@ pub(crate) enum ALoc {
     Ty(ATyId),
     Pat(APatId),
     Expr(AExprId),
-    Decl(ADeclId),
+    Stmt(AStmtId),
 }
 
 #[derive(Default)]
@@ -579,18 +579,18 @@ pub(crate) struct ATree {
     pub(super) tys: ATyArena,
     pub(super) pats: APatArena,
     pub(super) exprs: AExprArena,
-    pub(super) decls: ADeclArena,
+    pub(super) stmts: AStmtArena,
     pub(super) name_events: VecArena<ANameTag, NameEnd>,
     pub(super) ty_events: VecArena<ATyTag, TyEnd>,
     pub(super) pat_events: VecArena<APatTag, PatEnd>,
     pub(super) expr_events: VecArena<AExprTag, ExprEnd>,
-    pub(super) decl_events: VecArena<ADeclTag, DeclEnd>,
+    pub(super) stmt_events: VecArena<AStmtTag, StmtEnd>,
     pub(super) events: EventArena,
 }
 
 impl ATree {
-    pub(crate) fn root_decls(&self) -> ADeclIds {
-        self.root.decls.clone()
+    pub(crate) fn root_stmts(&self) -> AStmtIds {
+        self.root.stmts.clone()
     }
 
     pub(crate) fn names(&self) -> &ANameArena {
@@ -609,7 +609,7 @@ impl ATree {
         &self.exprs
     }
 
-    pub(crate) fn decls(&self) -> &ADeclArena {
-        &self.decls
+    pub(crate) fn stmts(&self) -> &AStmtArena {
+        &self.stmts
     }
 }

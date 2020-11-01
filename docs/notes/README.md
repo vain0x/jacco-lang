@@ -43,7 +43,7 @@
 
 - 破棄パターン: `_`
 - 変数パターン: `x`
-- 定数パターン: `TokenKind::Eof` など (`enum TokenKind { Eof, ... }` のような宣言がみえているとき)
+- 定数パターン: `TokenKind::Eof` など (`enum TokenKind { Eof, ... }` のような定義がみえているとき)
 - リテラルパターン: `0`, など
 - タプルパターン: `(x, y)` など
 - タプル構造体パターン: `Point(x, y)` など
@@ -96,7 +96,7 @@
     - continue
     - return
 
-### 言語: 宣言
+### 言語: 文
 
 - let/const/static
 - fn

@@ -48,8 +48,8 @@ pub(crate) type PatStart = ParseEvent<(StartEventTag, PatTag)>;
 pub(crate) type PatEnd = ParseEvent<(EndEventTag, PatTag)>;
 pub(crate) type ExprStart = ParseEvent<(StartEventTag, ExprTag)>;
 pub(crate) type ExprEnd = ParseEvent<(EndEventTag, ExprTag)>;
-pub(crate) type DeclStart = ParseEvent<(StartEventTag, DeclTag)>;
-pub(crate) type DeclEnd = ParseEvent<(EndEventTag, DeclTag)>;
+pub(crate) type StmtStart = ParseEvent<(StartEventTag, DeclTag)>;
+pub(crate) type StmtEnd = ParseEvent<(EndEventTag, DeclTag)>;
 
 struct PElementBuilder {
     id: EventId,
@@ -247,7 +247,7 @@ impl PTreeBuilder {
             let id = self.events.alloc(None);
             PElementBuilder::new(id, 0, children)
         };
-        root.end(PElementKind::RootDecl, eof.to_index());
+        root.end(PElementKind::Root, eof.to_index());
         let root = root.finish(elements, &mut self.events);
 
         for (event_id, message) in self.errors {

@@ -1,4 +1,4 @@
-//! 宣言の構文解析ルール
+//! 文の構文解析ルール
 
 use super::*;
 use crate::{cps::KVis, logs::DocLogger};
@@ -85,14 +85,14 @@ pub(crate) fn parse_result_ty(px: &mut Px) -> (Option<PToken>, Option<AfterTy>) 
     (arrow_opt, ty_opt)
 }
 
-fn parse_expr_decl(modifiers: AfterDeclModifiers, px: &mut Px) -> Option<AfterDecl> {
+fn parse_expr_stmt(modifiers: AfterStmtModifiers, px: &mut Px) -> Option<AfterStmt> {
     let expr = parse_expr(px)?;
     let semi_opt = px.eat(TokenKind::Semi);
 
-    Some(alloc_expr_decl(modifiers.0, expr, semi_opt, px))
+    Some(alloc_expr_stmt(modifiers.0, expr, semi_opt, px))
 }
 
-fn parse_let_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+fn parse_let_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
     let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
@@ -104,12 +104,12 @@ fn parse_let_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -
     };
 
     let semi_opt = px.eat(TokenKind::Semi);
-    alloc_let_decl(
+    alloc_let_stmt(
         modifiers, keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt, px,
     )
 }
 
-fn parse_const_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+fn parse_const_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
     let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
@@ -121,12 +121,12 @@ fn parse_const_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px)
     };
 
     let semi_opt = px.eat(TokenKind::Semi);
-    alloc_const_decl(
+    alloc_const_stmt(
         modifiers, keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt, px,
     )
 }
 
-fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+fn parse_static_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
     let name_opt = parse_unqualifiable_name(px);
     let (colon_opt, ty_opt) = parse_ty_ascription(px);
 
@@ -138,13 +138,13 @@ fn parse_static_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px
     };
 
     let semi_opt = px.eat(TokenKind::Semi);
-    alloc_static_decl(
+    alloc_static_stmt(
         modifiers, keyword, name_opt, colon_opt, ty_opt, equal_opt, init_opt, semi_opt, px,
     )
 }
 
-fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    before_fn_decl(px);
+fn parse_fn_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
+    before_fn_stmt(px);
 
     let name_opt = parse_unqualifiable_name(px);
     let ty_param_list_opt = parse_ty_param_list(px);
@@ -152,7 +152,7 @@ fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) ->
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let block_opt = parse_block(px);
 
-    alloc_fn_decl(
+    alloc_fn_stmt(
         modifiers,
         keyword,
         name_opt,
@@ -165,20 +165,20 @@ fn parse_fn_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) ->
     )
 }
 
-fn parse_extern_fn_decl(
-    modifiers: AfterDeclModifiers,
+fn parse_extern_fn_stmt(
+    modifiers: AfterStmtModifiers,
     extern_keyword: PToken,
     fn_keyword: PToken,
     px: &mut Px,
-) -> AfterDecl {
-    before_extern_fn_decl(px);
+) -> AfterStmt {
+    before_extern_fn_stmt(px);
 
     let name_opt = parse_unqualifiable_name(px);
     let param_list_opt = parse_param_list(px);
     let (arrow_opt, result_ty_opt) = parse_result_ty(px);
     let semi_opt = px.eat(TokenKind::Semi);
 
-    alloc_extern_fn_decl(
+    alloc_extern_fn_stmt(
         modifiers,
         extern_keyword,
         fn_keyword,
@@ -304,8 +304,8 @@ fn parse_variants(px: &mut Px) -> AfterVariantDecls {
     alloc_variants(variants, px)
 }
 
-fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    before_enum_decl(px);
+fn parse_enum_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
+    before_enum_stmt(px);
     let name_opt = parse_unqualifiable_name(px);
 
     let left_brace_opt = px.eat(TokenKind::LeftBrace);
@@ -320,7 +320,7 @@ fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) 
         None
     };
 
-    alloc_enum_decl(
+    alloc_enum_stmt(
         modifiers,
         keyword,
         name_opt,
@@ -331,21 +331,21 @@ fn parse_enum_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) 
     )
 }
 
-fn parse_struct_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
-    before_struct_decl(px);
+fn parse_struct_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
+    before_struct_stmt(px);
     let variant_opt = parse_variant_decl(VariantParentKind::Struct, px);
     let semi_opt = px.eat(TokenKind::Semi);
 
-    alloc_struct_decl(modifiers, keyword, variant_opt, semi_opt, px)
+    alloc_struct_stmt(modifiers, keyword, variant_opt, semi_opt, px)
 }
 
-fn parse_use_decl(modifiers: AfterDeclModifiers, keyword: PToken, px: &mut Px) -> AfterDecl {
+fn parse_use_stmt(modifiers: AfterStmtModifiers, keyword: PToken, px: &mut Px) -> AfterStmt {
     let name_opt = parse_qualifiable_name(px);
     let semi_opt = px.eat(TokenKind::Semi);
-    alloc_use_decl(modifiers, keyword, name_opt, semi_opt, px)
+    alloc_use_stmt(modifiers, keyword, name_opt, semi_opt, px)
 }
 
-fn parse_attr_decl(event: DeclStart, hash_bang: PToken, px: &mut Px) -> AfterDecl {
+fn parse_attr_stmt(event: StmtStart, hash_bang: PToken, px: &mut Px) -> AfterStmt {
     let left_bracket_opt = px.eat(TokenKind::LeftBracket);
 
     if left_bracket_opt.is_some() {
@@ -366,15 +366,15 @@ fn parse_attr_decl(event: DeclStart, hash_bang: PToken, px: &mut Px) -> AfterDec
         px.eat(TokenKind::RightBracket);
     }
 
-    alloc_attr_decl(event, hash_bang, px)
+    alloc_attr_stmt(event, hash_bang, px)
 }
 
-pub(crate) fn parse_decl(px: &mut Px) -> Option<AfterDecl> {
+pub(crate) fn parse_stmt(px: &mut Px) -> Option<AfterStmt> {
     let event = px.start_element();
 
     if px.next() == TokenKind::HashBang {
         let hash_bang = px.bump();
-        return Some(parse_attr_decl(event, hash_bang, px));
+        return Some(parse_attr_stmt(event, hash_bang, px));
     }
 
     // modifiers
@@ -383,80 +383,80 @@ pub(crate) fn parse_decl(px: &mut Px) -> Option<AfterDecl> {
         TokenKind::Pub => Some((KVis::Pub, px.bump())),
         _ => None,
     };
-    let modifiers: AfterDeclModifiers = (event, vis_opt);
+    let modifiers: AfterStmtModifiers = (event, vis_opt);
 
-    let decl = match px.next() {
+    let stmt = match px.next() {
         TokenKind::Let => {
             let keyword = px.bump();
-            parse_let_decl(modifiers, keyword, px)
+            parse_let_stmt(modifiers, keyword, px)
         }
         TokenKind::Const => {
             let keyword = px.bump();
-            parse_const_decl(modifiers, keyword, px)
+            parse_const_stmt(modifiers, keyword, px)
         }
         TokenKind::Static => {
             let keyword = px.bump();
-            parse_static_decl(modifiers, keyword, px)
+            parse_static_stmt(modifiers, keyword, px)
         }
         TokenKind::Fn => {
             let keyword = px.bump();
-            parse_fn_decl(modifiers, keyword, px)
+            parse_fn_stmt(modifiers, keyword, px)
         }
         TokenKind::Extern if px.nth(1) == TokenKind::Fn => {
             let extern_keyword = px.bump();
             let fn_keyword = px.bump();
-            parse_extern_fn_decl(modifiers, extern_keyword, fn_keyword, px)
+            parse_extern_fn_stmt(modifiers, extern_keyword, fn_keyword, px)
         }
         TokenKind::Enum => {
             let keyword = px.bump();
-            parse_enum_decl(modifiers, keyword, px)
+            parse_enum_stmt(modifiers, keyword, px)
         }
         TokenKind::Struct => {
             let keyword = px.bump();
-            parse_struct_decl(modifiers, keyword, px)
+            parse_struct_stmt(modifiers, keyword, px)
         }
         TokenKind::Use => {
             let keyword = px.bump();
-            parse_use_decl(modifiers, keyword, px)
+            parse_use_stmt(modifiers, keyword, px)
         }
         _ => {
             // FIXME: pub expr; をエラーにする
-            return parse_expr_decl(modifiers, px);
+            return parse_expr_stmt(modifiers, px);
         }
     };
-    Some(decl)
+    Some(stmt)
 }
 
-fn do_parse_decls(decls: &mut Vec<AfterDecl>, px: &mut Px) {
+fn do_parse_stmts(stmts: &mut Vec<AfterStmt>, px: &mut Px) {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
             TokenKind::Semi => {
-                // 空宣言
+                // 空文
                 let _ = px.bump();
                 continue;
             }
             _ => {}
         }
 
-        match parse_decl(px) {
-            Some(decl) => decls.push(decl),
+        match parse_stmt(px) {
+            Some(stmt) => stmts.push(stmt),
             None => px.skip(),
         }
     }
 }
 
 pub(crate) fn parse_semi(px: &mut Px) -> AfterSemi {
-    let mut decls = vec![];
-    do_parse_decls(&mut decls, px);
-    decls
+    let mut stmts = vec![];
+    do_parse_stmts(&mut stmts, px);
+    stmts
 }
 
 fn parse_root(px: &mut Px) -> AfterRoot {
-    let mut decls = vec![];
+    let mut stmts = vec![];
 
     loop {
-        do_parse_decls(&mut decls, px);
+        do_parse_stmts(&mut stmts, px);
 
         match px.next() {
             TokenKind::Eof => break,
@@ -464,7 +464,7 @@ fn parse_root(px: &mut Px) -> AfterRoot {
         }
     }
 
-    decls
+    stmts
 }
 
 pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTree {
@@ -483,13 +483,13 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
 
     let mut px = Px::new(tokens, logger.clone());
 
-    let decls = parse_root(&mut px);
-    let a_decls = px.alloc_decls(decls);
+    let root = parse_root(&mut px);
+    let stmts = px.alloc_stmts(root);
     let name_referents = px.syntax_scopes.finish(&px.ast);
     let (eof, skipped, tokens, mut elements, mut ast, builder) = px.finish();
 
     let (root, events) = builder.finish(&mut elements, &logger);
-    ast.root = ARoot { decls: a_decls };
+    ast.root = ARoot { stmts: stmts };
     ast.events = events;
 
     for token in &skipped {
@@ -522,6 +522,6 @@ mod tests {
         let tokens = token::tokenize(source_code.to_string().into());
         let p_root = parse::parse_tokens(tokens, logs.logger());
 
-        assert!(p_root.ast.decls().is_empty());
+        assert!(p_root.ast.stmts().is_empty());
     }
 }

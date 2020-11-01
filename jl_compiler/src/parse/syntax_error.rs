@@ -238,7 +238,7 @@ pub(crate) fn validate_arg_list(
 }
 
 // -----------------------------------------------
-// 宣言
+// 文
 // -----------------------------------------------
 
 fn error_behind_token(token: PToken, message: impl Into<String>, px: &Px) {
@@ -286,7 +286,7 @@ fn validate_initializer(equal_opt: Option<PToken>, init_opt: Option<&AfterExpr>,
     }
 }
 
-fn validate_decl_semi(event: &DeclStart, semi_opt: Option<PToken>, px: &mut Px) {
+fn validate_stmt_semi(event: &StmtStart, semi_opt: Option<PToken>, px: &mut Px) {
     if semi_opt.is_none() {
         // FIXME: 末尾がブロックなら省略可能。
         px.builder
@@ -319,9 +319,9 @@ pub(crate) fn validate_param_list(
     validate_paren_matching(left_paren, right_paren_opt, px);
 }
 
-pub(crate) fn validate_let_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_let_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -338,12 +338,12 @@ pub(crate) fn validate_let_decl(
 
     validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::False, px);
     validate_initializer(equal_opt, init_opt, px);
-    validate_decl_semi(event, semi_opt, px);
+    validate_stmt_semi(event, semi_opt, px);
 }
 
-pub(crate) fn validate_const_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_const_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -360,12 +360,12 @@ pub(crate) fn validate_const_decl(
 
     validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::True, px);
     validate_initializer(equal_opt, init_opt, px);
-    validate_decl_semi(event, semi_opt, px);
+    validate_stmt_semi(event, semi_opt, px);
 }
 
-pub(crate) fn validate_static_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_static_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     colon_opt: Option<PToken>,
@@ -382,10 +382,10 @@ pub(crate) fn validate_static_decl(
 
     validate_ty_ascription(name_opt, colon_opt, ty_opt, IsRequired::True, px);
     validate_initializer(equal_opt, init_opt, px);
-    validate_decl_semi(event, semi_opt, px);
+    validate_stmt_semi(event, semi_opt, px);
 }
 
-fn do_validate_fn_decl_sig(
+fn do_validate_fn_stmt_sig(
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     param_list_opt: Option<&AfterParamList>,
@@ -409,9 +409,9 @@ fn do_validate_fn_decl_sig(
     false
 }
 
-pub(crate) fn validate_fn_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_fn_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     param_list_opt: Option<&AfterParamList>,
@@ -420,7 +420,7 @@ pub(crate) fn validate_fn_decl(
     block_opt: Option<&AfterBlock>,
     px: &mut Px,
 ) {
-    if !do_validate_fn_decl_sig(
+    if !do_validate_fn_stmt_sig(
         keyword,
         name_opt,
         param_list_opt,
@@ -440,9 +440,9 @@ pub(crate) fn validate_fn_decl(
     }
 }
 
-pub(crate) fn validate_extern_fn_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_extern_fn_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     _extern_keyword: PToken,
     fn_keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
@@ -452,7 +452,7 @@ pub(crate) fn validate_extern_fn_decl(
     semi_opt: Option<PToken>,
     px: &mut Px,
 ) {
-    if !do_validate_fn_decl_sig(
+    if !do_validate_fn_stmt_sig(
         fn_keyword,
         name_opt,
         param_list_opt,
@@ -463,7 +463,7 @@ pub(crate) fn validate_extern_fn_decl(
         return;
     }
 
-    validate_decl_semi(event, semi_opt, px);
+    validate_stmt_semi(event, semi_opt, px);
 }
 
 pub(crate) fn validate_const_variant_decl(
@@ -496,8 +496,8 @@ pub(crate) fn validate_record_variant_decl(
     validate_brace_matching(left_brace, right_brace_opt, px);
 }
 
-pub(crate) fn validate_enum_decl(
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_enum_stmt(
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterUnqualifiableName>,
     left_brace_opt: Option<PToken>,
@@ -510,14 +510,14 @@ pub(crate) fn validate_enum_decl(
     match (name_opt, left_brace_opt, right_brace_opt) {
         (None, ..) => error_behind_token(keyword, "enum キーワードの後に型名が必要です。", px),
         (Some(name), None, ..) => {
-            error_behind_element(name.1.id(), "enum 宣言の本体が必要です。", px);
+            error_behind_element(name.1.id(), "enum 文の本体が必要です。", px);
         }
         (Some(_), Some(left_brace), _) => validate_brace_matching(left_brace, right_brace_opt, px),
     }
 }
 
-pub(crate) fn validate_struct_decl(
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_struct_stmt(
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     variant_opt: Option<&AfterVariantDecl>,
     _semi_opt: Option<PToken>,
@@ -530,9 +530,9 @@ pub(crate) fn validate_struct_decl(
     // FIXME: セミコロンの抜けを報告する
 }
 
-pub(crate) fn validate_use_decl(
-    event: &DeclStart,
-    _modifiers: &AfterDeclModifiers,
+pub(crate) fn validate_use_stmt(
+    event: &StmtStart,
+    _modifiers: &AfterStmtModifiers,
     keyword: PToken,
     name_opt: Option<&AfterQualifiableName>,
     semi_opt: Option<PToken>,
@@ -542,7 +542,7 @@ pub(crate) fn validate_use_decl(
         error_behind_token(keyword, "use キーワードの後にパスが必要です。", px);
     }
 
-    validate_decl_semi(event, semi_opt, px);
+    validate_stmt_semi(event, semi_opt, px);
 }
 
 #[cfg(test)]
@@ -710,76 +710,76 @@ mod tests {
     }
 
     #[test]
-    fn test_let_decl_no_pat() {
+    fn test_let_stmt_no_pat() {
         assert_syntax_error("let<[]> ;");
     }
 
     #[test]
-    fn test_let_decl_no_ty() {
+    fn test_let_stmt_no_ty() {
         assert_syntax_error("let _ :<[]> ;");
     }
 
     #[test]
-    fn test_let_decl_no_init() {
+    fn test_let_stmt_no_init() {
         assert_syntax_error("let _ =<[]> ;");
     }
 
     #[test]
-    fn test_let_decl_no_semi_after_pat() {
+    fn test_let_stmt_no_semi_after_pat() {
         assert_syntax_error("let _<[]>");
     }
 
     #[test]
-    fn test_let_decl_no_semi_after_init() {
+    fn test_let_stmt_no_semi_after_init() {
         assert_syntax_error("let n: i32 = 1<[]>");
     }
 
     #[test]
-    fn test_const_decl_no_name() {
+    fn test_const_stmt_no_name() {
         assert_syntax_error("const<[]> ;");
     }
 
     #[test]
-    fn test_const_decl_no_ty_ascription() {
+    fn test_const_stmt_no_ty_ascription() {
         assert_syntax_error("const A<[]> = 1;");
     }
 
     #[test]
-    fn test_const_decl_no_semi_after_init() {
+    fn test_const_stmt_no_semi_after_init() {
         assert_syntax_error("{ const A: i32 = 1<[]> }");
     }
 
     // static は const と同じだから省略。
 
     #[test]
-    fn test_fn_decl_no_name() {
+    fn test_fn_stmt_no_name() {
         assert_syntax_error("fn<[]> () {}");
     }
 
     #[test]
-    fn test_fn_decl_no_param_list() {
+    fn test_fn_stmt_no_param_list() {
         assert_syntax_error("fn f<[]> -> i32 {}");
     }
 
     #[test]
-    fn test_fn_decl_no_result_ty() {
+    fn test_fn_stmt_no_result_ty() {
         assert_syntax_error("fn f() -><[]> {}");
     }
 
     #[test]
-    fn test_fn_decl_no_body_after_param_list() {
+    fn test_fn_stmt_no_body_after_param_list() {
         assert_syntax_error("fn f()<[]> ;");
     }
 
     #[test]
-    fn test_fn_decl_no_body_after_ty() {
+    fn test_fn_stmt_no_body_after_ty() {
         assert_syntax_error("fn f() -> i32<[]> ;");
     }
 
     // extern fn はおおよそ fn と同じだから省略。
 
     #[test]
-    fn test_extern_fn_decl_no_semi() {
+    fn test_extern_fn_stmt_no_semi() {
         assert_syntax_error("extern fn f()<[]> ");
     }
 
@@ -804,27 +804,27 @@ mod tests {
     }
 
     #[test]
-    fn test_enum_decl_syntax_error_no_name() {
+    fn test_enum_stmt_syntax_error_no_name() {
         assert_syntax_error("enum<[]> {}");
     }
 
     #[test]
-    fn test_enum_decl_syntax_error_no_block() {
+    fn test_enum_stmt_syntax_error_no_block() {
         assert_syntax_error("enum Option<[]> ");
     }
 
     #[test]
-    fn test_struct_decl_syntax_error_no_name() {
+    fn test_struct_stmt_syntax_error_no_name() {
         assert_syntax_error("struct<[]> ;");
     }
 
     #[test]
-    fn test_use_decl_syntax_error_no_name() {
+    fn test_use_stmt_syntax_error_no_name() {
         assert_syntax_error("use<[]> ;");
     }
 
     #[test]
-    fn test_use_decl_syntax_error_no_semi() {
+    fn test_use_stmt_syntax_error_no_semi() {
         assert_syntax_error("{ use a::A<[]> }");
     }
 }

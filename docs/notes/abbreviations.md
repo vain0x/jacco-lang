@@ -37,6 +37,7 @@
 | ref   | reference     | 参照 |
 | semi  | semicolon     | セミコロン |
 | sig   | signature     | シグネチャ |
+| stmt  | statement     | 文 |
 | sub   | subtraction   | 減算 |
 | ty    | type          | (静的) 型 |
 

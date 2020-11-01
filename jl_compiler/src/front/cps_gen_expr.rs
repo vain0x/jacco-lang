@@ -830,8 +830,8 @@ impl<'a> Xx<'a> {
         }
     }
 
-    fn convert_block_expr(&mut self, decls: ADeclIds, ty_expect: TyExpect, loc: Loc) -> AfterRval {
-        self.convert_decls(decls, ty_expect)
+    fn convert_block_expr(&mut self, stmts: AStmtIds, ty_expect: TyExpect, loc: Loc) -> AfterRval {
+        self.convert_stmts(stmts, ty_expect)
             .unwrap_or_else(|| new_unit_term(loc))
     }
 
@@ -1073,8 +1073,8 @@ impl<'a> Xx<'a> {
             AExpr::BinaryOp(binary_op_expr) => {
                 self.convert_binary_op_expr(binary_op_expr, ty_expect, loc)
             }
-            AExpr::Block(ABlockExpr { decls }) => {
-                self.convert_block_expr(decls.clone(), ty_expect, loc)
+            AExpr::Block(ABlockExpr { stmts }) => {
+                self.convert_block_expr(stmts.clone(), ty_expect, loc)
             }
             AExpr::Break(break_expr) => {
                 self.convert_break_expr(break_expr, ty_expect, loc);

@@ -106,10 +106,10 @@ mod front {
     //! 構文木上の処理
 
     mod cps_gen;
-    mod cps_gen_decl;
     mod cps_gen_expr;
     mod cps_gen_lit;
     mod cps_gen_pat;
+    mod cps_gen_stmt;
     mod cps_gen_ty;
     mod mod_outline_gen;
     pub(crate) mod name_resolution;
@@ -166,9 +166,9 @@ mod parse {
     mod p_tree_builder;
     mod p_unary_op;
     mod parse_context;
-    mod parse_decl;
     mod parse_expr;
     mod parse_pat;
+    mod parse_stmt;
     mod parse_ty;
     mod syntax_error;
 
@@ -181,7 +181,7 @@ mod parse {
     pub(crate) use p_tree::PTree;
     pub(crate) use p_tree_builder::*;
     pub(crate) use p_unary_op::PUnaryOp;
-    pub(crate) use parse_decl::parse_tokens;
+    pub(crate) use parse_stmt::parse_tokens;
 
     use crate::{
         cps::{KMut, KVis},
@@ -189,8 +189,8 @@ mod parse {
     };
     use ast_gen::*;
     use parse_context::Px;
-    use parse_decl::parse_semi;
     use parse_expr::{parse_block, parse_expr, parse_qualifiable_name};
+    use parse_stmt::{parse_result_ty, parse_semi};
     use parse_ty::{parse_ty, parse_ty_ascription};
 
     pub(crate) type PMut = (KMut, PToken);
