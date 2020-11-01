@@ -92,7 +92,9 @@ impl PElementBuilder {
 
         let element = elements.alloc(PElementData::new(kind, children));
 
+        #[cfg(skip)]
         log::trace!("id={:?} events.len={}", self.id, events.len());
+
         let old = self.id.of_mut(events).replace(element);
         assert!(old.is_none());
 

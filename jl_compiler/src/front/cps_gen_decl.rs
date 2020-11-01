@@ -144,6 +144,7 @@ impl<'a> Xx<'a> {
             // 関数の本体を格納しておくラベル
             xx.label = xx.labels.alloc(KLabelConstruction::default());
 
+            #[cfg(skip)]
             log::trace!(
                 "fn result_ty={}",
                 result_ty.display(&xx.ty_env, xx.mod_outline)

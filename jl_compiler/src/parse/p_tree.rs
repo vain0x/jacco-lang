@@ -27,6 +27,7 @@ pub(crate) struct PTree {
 
 impl PTree {
     pub(crate) fn write_trace(&self) {
+        #[cfg(skip)]
         log::trace!(
             "SyntaxTree (untyped):\n{:#?}",
             DebugWith::new(&self.root, self)

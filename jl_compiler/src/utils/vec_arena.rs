@@ -270,6 +270,7 @@ impl<Tag, T> VecArena<Tag, T> {
         self.resize_with(len.max(self.len()), default_fn);
     }
 
+    #[allow(unused)]
     pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {
         self.inner.get(id.to_index())
     }

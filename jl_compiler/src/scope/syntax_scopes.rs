@@ -42,6 +42,7 @@ impl SyntaxScopes {
     }
 
     pub(crate) fn on_name_ty(&mut self, name: ANameId, ast: &ATree) {
+        #[cfg(skip)]
         log::trace!(
             "on_name_ty {}#{}",
             name.of(ast.names()).head(),
@@ -72,6 +73,7 @@ impl SyntaxScopes {
     }
 
     pub(crate) fn on_name_expr(&mut self, name: ANameId, ast: &ATree) {
+        #[cfg(skip)]
         log::trace!(
             "on_name_expr {}#{}",
             name.of(ast.names()).head(),
@@ -99,7 +101,13 @@ impl SyntaxScopes {
         self.resolver.leave_scope();
     }
 
-    fn leave_stacked_value_decl(&mut self, hint: &str, name_opt: Option<ANameId>, ast: &ATree) {
+    fn leave_stacked_value_decl(
+        &mut self,
+        #[allow(unused)] hint: &str,
+        name_opt: Option<ANameId>,
+        ast: &ATree,
+    ) {
+        #[cfg(skip)]
         log::trace!(
             "leave_stacked_value_decl({}) {}",
             hint,
@@ -129,11 +137,12 @@ impl SyntaxScopes {
 
     fn leave_hoisted_decl(
         &mut self,
-        hint: &str,
+        #[allow(unused)] hint: &str,
         name_opt: Option<ANameId>,
         kind: ImportKind,
         ast: &ATree,
     ) {
+        #[cfg(skip)]
         log::trace!(
             "leave_hoisted_decl({}) {}",
             hint,
@@ -202,7 +211,7 @@ impl SyntaxScopes {
         self.leave_hoisted_decl("use", name_opt, ImportKind::Both, ast);
     }
 
-    pub(crate) fn finish(&mut self, ast: &ATree) -> NameReferents {
+    pub(crate) fn finish(&mut self, #[allow(unused)] ast: &ATree) -> NameReferents {
         // 解決結果をログ出力する。
         let mut referents = self
             .resolver
@@ -212,6 +221,7 @@ impl SyntaxScopes {
             .collect::<Vec<_>>();
         referents.sort_by_key(|&(key, _)| key);
 
+        #[cfg(skip)]
         for (name, referent) in referents {
             log::trace!(
                 "name#{} ({:?}) -> {:?}",

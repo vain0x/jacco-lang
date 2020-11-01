@@ -53,11 +53,15 @@ impl ScopeSystem {
         self.scope_walker.enter("");
         self.ty_env.push();
         self.value_env.push();
+
+        #[cfg(skip)]
         log::trace!("enter_scope {}", self.scope_walker.breadcrumbs());
     }
 
     pub(crate) fn leave_scope(&mut self) {
+        #[cfg(skip)]
         log::trace!("leave_scope {}", self.scope_walker.breadcrumbs());
+
         self.scope_walker.leave();
         self.ty_env.pop();
         self.value_env.pop();
@@ -65,12 +69,13 @@ impl ScopeSystem {
 
     fn bind_name(
         &mut self,
-        hint: &str,
+        #[allow(unused)] hint: &str,
         name_id: ANameId,
         #[allow(unused)] text_opt: Option<&str>,
         referent: LexicalReferent,
         expected: Option<LexicalReferent>,
     ) {
+        #[cfg(skip)]
         log::trace!(
             "bind_name({}) {}#{} ({:?} -> {:?})",
             hint,
@@ -87,15 +92,21 @@ impl ScopeSystem {
     fn import_name(&mut self, name_id: ANameId, kind: ImportKind, text: &str) {
         match kind {
             ImportKind::Ty => {
+                #[cfg(skip)]
                 log::trace!("import ty {} -> {}", text, name_id.to_index());
+
                 self.ty_env.insert(text.to_string(), name_id);
             }
             ImportKind::Value => {
+                #[cfg(skip)]
                 log::trace!("import value {} -> {}", text, name_id.to_index());
+
                 self.value_env.insert(text.to_string(), name_id);
             }
             ImportKind::Both => {
+                #[cfg(skip)]
                 log::trace!("import ty/value {} -> {}", text, name_id.to_index());
+
                 self.value_env.insert(text.to_string(), name_id);
                 self.ty_env.insert(text.to_string(), name_id);
             }

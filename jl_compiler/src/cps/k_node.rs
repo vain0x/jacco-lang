@@ -16,6 +16,7 @@ pub(crate) struct KNode {
 }
 
 impl KNode {
+    #[allow(unused)]
     pub(crate) fn with_debug<'a, A>(
         &'a self,
         mod_outline: &'a KModOutline,

@@ -6,6 +6,7 @@ pub(crate) type ScopeId = VecArenaId<ScopeTag>;
 
 struct ScopeData {
     /// スコープの名前 (デバッグ用)
+    #[allow(unused)]
     hint: String,
 
     /// 親スコープ。ルートのみ None。
@@ -37,6 +38,7 @@ impl ScopeWalker {
     }
 
     /// デバッグ用: いまのスコープまでの祖先を列挙する。
+    #[allow(unused)]
     pub(crate) fn breadcrumbs(&self) -> String {
         let mut ancestors = vec![];
         let mut scope_id = self.current;

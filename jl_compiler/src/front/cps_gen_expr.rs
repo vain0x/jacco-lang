@@ -1043,6 +1043,8 @@ impl<'a> Xx<'a> {
         ty_expect: TyExpect,
     ) -> AfterRval {
         let loc = Loc::new(self.doc, PLoc::Expr(expr_id));
+
+        #[cfg(skip)]
         log::trace!(
             "expr=#{} ty_expect={}",
             expr_id.to_index(),
@@ -1299,6 +1301,7 @@ impl<'a> CallExprRule<'a> {
     }
 
     fn verify_fn_ty(&mut self, fn_ty: &'a KTy2, ty_env: &KTyEnv) {
+        #[cfg(skip)]
         KModOutline::using_for_debug(|mod_outline_opt| {
             log::trace!(
                 "call fn: {}",
@@ -1324,7 +1327,9 @@ impl<'a> CallExprRule<'a> {
         }
     }
 
+    #[allow(unused)]
     fn verify_arg_ty(&mut self, i: usize, arg_ty: &KTy2, ty_env: &KTyEnv) {
+        #[cfg(skip)]
         KModOutline::using_for_debug(|mod_outline_opt| {
             log::trace!(
                 "call arg#{}: {}",
@@ -1380,6 +1385,7 @@ impl<'a> AddExprRule<'a> {
         self.left_ty_opt = Some(left_ty.clone());
 
         // FIXME: left_ty: number or ptr でなければエラー
+        #[cfg(skip)]
         KModOutline::using_for_debug(|mod_outline_opt| {
             log::trace!(
                 "add({:?}) left_ty={} (expected {})",
@@ -1398,9 +1404,11 @@ impl<'a> AddExprRule<'a> {
         self.ty_expect.clone().meet(other)
     }
 
+    #[allow(unused)]
     fn verify_right_ty(&self, right_ty: &KTy2, ty_env: &KTyEnv) {
         // FIXME: unify with left_ty
 
+        #[cfg(skip)]
         KModOutline::using_for_debug(|mod_outline_opt| {
             log::trace!(
                 "add right_ty={}",
@@ -1462,6 +1470,7 @@ impl<'a> IfRule<'a> {
         let alt_ty = &self.alt_ty;
         let ty = body_ty.join(alt_ty, ty_env);
 
+        #[cfg(skip)]
         KModOutline::using_for_debug(|mod_outline_opt| {
             let mod_outline = mod_outline_opt.unwrap();
             log::trace!(
