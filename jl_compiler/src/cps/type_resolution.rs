@@ -427,15 +427,12 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let init_ty = resolve_term(init, tx);
 
                 // 型注釈と単一化する。
-                // FIXME: 本来なら init_ty <- expected_ty の向きで単一化しないといけないが、 `let p: *u8 = transmute(...)` のように後ろから型を伝播するにはこの向きでなければいけない。そのせいで部分型付けがうまく動いていない (tests/never/never.jacco など)。
                 let result_ty = {
                     let expected_ty = result.ty(&tx.local_vars);
-                    if init_ty.is_never(&tx.ty_env) {
-                        KTy2::Never
-                    } else if expected_ty.is_unresolved() {
+                    if expected_ty.is_unresolved() {
                         init_ty
                     } else {
-                        unify2(&init_ty, &expected_ty, node.loc, tx);
+                        unify2(&expected_ty, &init_ty, node.loc, tx);
                         expected_ty
                     }
                 };

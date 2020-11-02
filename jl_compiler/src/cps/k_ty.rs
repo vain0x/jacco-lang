@@ -127,13 +127,6 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn is_never(&self, ty_env: &KTyEnv) -> bool {
-        ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Never => true,
-            _ => false,
-        })
-    }
-
     pub(crate) fn is_unit(&self, ty_env: &KTyEnv) -> bool {
         ty2_map(self, ty_env, |ty| match *ty {
             KTy2::Unit => true,
