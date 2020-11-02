@@ -395,7 +395,7 @@ fn gen_term(term: &KTerm, ty_env: &KTyEnv, cx: &mut Cx) -> CExpr {
         KTerm::ExternFn { extern_fn, .. } => gen_extern_fn_term(*extern_fn, cx),
         KTerm::Name(term) => CExpr::Name(unique_name(&term, cx)),
         KTerm::RecordTag { k_struct, .. } => gen_record_tag(*k_struct, &cx.mod_outline.structs),
-        KTerm::FieldTag(KFieldTag { name, loc }) => {
+        KTerm::FieldTag(KFieldTag { name, loc, .. }) => {
             error!("can't gen field term to c {} ({:?})", name, loc);
             CExpr::Other("/* error */ 0")
         }

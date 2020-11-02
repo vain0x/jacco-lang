@@ -72,6 +72,65 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
     }
 }
 
+fn get_field_or_variant(
+    #[allow(unused)] hint: &str,
+    field_name: &str,
+    left_ty: &KTy2,
+    k_mut: KMut,
+    loc: Loc,
+    tx: &mut Tx,
+) -> (Option<KField>, KTy2) {
+    let mut trial = || -> Option<(Option<KField>, KTy2)> {
+        let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
+
+        // ジェネリック構造体のケース
+        if let KTy2::App { k_struct, .. } = ty {
+            let field = *k_struct
+                .of(&tx.mod_outline.structs)
+                .fields
+                .iter()
+                .find(|field| field.name(&tx.mod_outline.fields) == field_name)?;
+
+            let field_ty = get_field_ty(&ty, field, loc, tx).into_ptr(k_mut);
+            return Some((Some(field), field_ty));
+        }
+
+        match ty.as_struct_or_enum(&tx.ty_env)? {
+            KEnumOrStruct::Enum(struct_enum) => {
+                let k_struct = *struct_enum
+                    .variants(&tx.mod_outline.struct_enums)
+                    .iter()
+                    .find(|&k_struct| k_struct.name(&tx.mod_outline.structs) == field_name)?;
+
+                let ty = KTy2::Struct(k_struct).into_ptr(k_mut);
+                Some((None, ty))
+            }
+            KEnumOrStruct::Struct(k_struct) => {
+                let field = *k_struct
+                    .fields(&tx.mod_outline.structs)
+                    .iter()
+                    .find(|field| field.name(&tx.mod_outline.fields) == field_name)?;
+
+                let ty = field
+                    .ty(&tx.mod_outline.fields)
+                    .to_ty2(tx.mod_outline, &mut tx.ty_env)
+                    .into_ptr(k_mut);
+                Some((Some(field), ty))
+            }
+        }
+    };
+
+    trial().unwrap_or_else(|| {
+        log::error!(
+            "{} left_ty={:?}",
+            hint,
+            left_ty.display(&tx.ty_env, tx.mod_outline)
+        );
+        tx.logger.error(loc, "bad type");
+        (None, KTy2::Never)
+    })
+}
+
 fn resolve_var_def(term: &mut KVarTerm, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
     if term.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
@@ -246,125 +305,41 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
             _ => unimplemented!(),
         },
         KPrim::GetField => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            (
-                [left, KTerm::FieldTag(KFieldTag {
-                    name: field_name,
-                    loc,
-                })],
-                [result],
-            ) => {
+            ([left, KTerm::FieldTag(field_tag)], [result]) => {
                 let left_ty = resolve_term(left, tx);
 
-                let result_ty = (|| {
-                    let (_, ty) = left_ty.as_ptr(&tx.ty_env)?;
+                let (field_opt, result_ty) = get_field_or_variant(
+                    "KPrim::GetField",
+                    &field_tag.name,
+                    &left_ty,
+                    KMut::Const,
+                    field_tag.loc,
+                    tx,
+                );
 
-                    // ジェネリック構造体のケース
-                    if let KTy2::App { k_struct, .. } = ty {
-                        return k_struct
-                            .of(&tx.mod_outline.structs)
-                            .fields
-                            .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|&field| get_field_ty(&ty, field, *loc, tx))
-                            .map(|ty| ty.into_ptr(KMut::Const));
-                    }
-
-                    let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(struct_enum) => struct_enum
-                            .variants(&tx.mod_outline.struct_enums)
-                            .iter()
-                            .find_map(|&k_struct| {
-                                if k_struct.name(&tx.mod_outline.structs) == field_name {
-                                    Some(KTy2::Struct(k_struct))
-                                } else {
-                                    None
-                                }
-                            })?,
-                        KEnumOrStruct::Struct(k_struct) => k_struct
-                            .fields(&tx.mod_outline.structs)
-                            .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|field| {
-                                field
-                                    .ty(&tx.mod_outline.fields)
-                                    .to_ty2(tx.mod_outline, &mut tx.ty_env)
-                            })?,
-                    };
-                    Some(ty.into_ptr(KMut::Const))
-                })()
-                .unwrap_or_else(|| {
-                    log::error!(
-                        "KPrim::GetField left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outline)
-                    );
-                    tx.logger.error(loc, "bad type");
-                    KTy2::Never
-                });
+                field_tag.ty = result_ty.clone();
+                field_tag.field_opt = field_opt;
 
                 resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),
         },
         KPrim::GetFieldMut => match (node.args.as_mut_slice(), node.results.as_mut_slice()) {
-            (
-                [left, KTerm::FieldTag(KFieldTag {
-                    name: field_name,
-                    loc,
-                })],
-                [result],
-            ) => {
+            ([left, KTerm::FieldTag(field_tag)], [result]) => {
+                let loc = field_tag.loc;
                 let left_ty = resolve_term(left, tx);
 
-                let result_ty = (|| {
-                    let (k_mut, ty) = left_ty.as_ptr(&tx.ty_env)?;
-                    if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference");
-                    }
+                let (field_opt, result_ty) = get_field_or_variant(
+                    "KPrim::GetFieldMut",
+                    &field_tag.name,
+                    &left_ty,
+                    KMut::Mut,
+                    loc,
+                    tx,
+                );
 
-                    // ジェネリック構造体のケース
-                    if let KTy2::App { k_struct, .. } = ty {
-                        return k_struct
-                            .of(&tx.mod_outline.structs)
-                            .fields
-                            .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|&field| get_field_ty(&ty, field, *loc, tx))
-                            .map(|ty| ty.into_ptr(KMut::Mut));
-                    }
-
-                    let ty = match ty.as_struct_or_enum(&tx.ty_env)? {
-                        KEnumOrStruct::Enum(struct_enum) => struct_enum
-                            .variants(&tx.mod_outline.struct_enums)
-                            .iter()
-                            .find_map(|&k_struct| {
-                                if k_struct.name(&tx.mod_outline.structs) == field_name {
-                                    Some(KTy2::Struct(k_struct))
-                                } else {
-                                    None
-                                }
-                            })?,
-                        KEnumOrStruct::Struct(k_struct) => k_struct
-                            .fields(&tx.mod_outline.structs)
-                            .iter()
-                            .find(|field| field.name(&tx.mod_outline.fields) == *field_name)
-                            .map(|field| {
-                                // FIXME: フィールドの型には型変数が束縛されずに出現する(ようにみえる)ので、インスタンス化の実装がパニックしてしまう
-                                field
-                                    .ty(&tx.mod_outline.fields)
-                                    .to_ty2(tx.mod_outline, &mut tx.ty_env)
-                            })?,
-                    };
-                    Some(ty.into_ptr(k_mut))
-                })()
-                .unwrap_or_else(|| {
-                    log::error!(
-                        "GetFieldMut left_ty={:?}",
-                        left_ty.display(&tx.ty_env, tx.mod_outline)
-                    );
-                    tx.logger.error(loc, "bad type");
-                    KTy2::Never
-                });
-
+                field_tag.ty = result_ty.clone();
+                field_tag.field_opt = field_opt;
                 resolve_var_def(result, Some(&result_ty), tx);
             }
             _ => unimplemented!(),

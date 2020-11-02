@@ -162,6 +162,8 @@ pub(crate) fn new_field_node(
             left,
             KTerm::FieldTag(KFieldTag {
                 name: right,
+                ty: KTy2::default(),
+                field_opt: None,
                 loc: right_loc,
             }),
         ],

@@ -216,14 +216,6 @@ impl KTy2 {
         })
     }
 
-    pub(crate) fn as_struct_by_deref(&self, ty_env: &KTyEnv) -> Option<KStruct> {
-        ty2_map(self, ty_env, |ty| match *ty {
-            KTy2::Struct(k_struct) => Some(k_struct),
-            KTy2::Ptr { ref base_ty, .. } => base_ty.as_struct_by_deref(ty_env),
-            _ => None,
-        })
-    }
-
     pub(crate) fn join(&self, other: &KTy2, ty_env: &KTyEnv) -> KTy2 {
         match (self, other) {
             (KTy2::Unresolved { .. }, ty) | (ty, KTy2::Unresolved { .. }) => ty.clone(),
@@ -452,7 +444,6 @@ pub(crate) enum KTyCause {
     InitLater(Loc),
     Miss,
     Alias,
-    FieldTag,
     NameUnresolved(ATyId),
     InferTy(ATyId),
     Unbound,

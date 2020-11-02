@@ -4,7 +4,6 @@ use crate::{
     source::{Doc, Loc},
     utils::DebugWithContext,
 };
-use k_ty::KTyCause;
 use std::fmt::{self, Formatter};
 
 #[derive(Copy, Clone)]
@@ -118,12 +117,7 @@ impl KTerm {
             KTerm::RecordTag { k_struct, .. } => k_struct
                 .tag_ty(&mod_outline.structs, &mod_outline.struct_enums)
                 .erasure(mod_outline),
-            KTerm::FieldTag(field_tag) => {
-                error!("don't obtain type of field tag {:?}", field_tag);
-                KTy2::Unresolved {
-                    cause: KTyCause::FieldTag,
-                }
-            }
+            KTerm::FieldTag(field_tag) => field_tag.ty.clone(),
             KTerm::TyProperty { .. } => KTy2::USIZE,
         }
     }

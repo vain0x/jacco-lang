@@ -16,44 +16,22 @@ struct FieldOccurrenceInFnCollector<'a> {
 }
 
 impl FieldOccurrenceInFnCollector<'_> {
-    fn do_on_node(&mut self, node: &KNode) {
-        let (record, field_name, loc) = match node.prim {
-            KPrim::GetField | KPrim::GetFieldMut => match node.args.as_slice() {
-                [record, KTerm::FieldTag(KFieldTag { name, loc, .. })] => {
-                    (record, name.as_str(), loc.clone())
-                }
-                _ => return,
-            },
-            _ => return,
-        };
-
-        let ty = record.ty(
-            self.mod_outline,
-            &self.fn_data.label_sigs,
-            &self.fn_data.local_vars,
-        );
-
-        let k_struct = match ty.as_struct_by_deref(&self.fn_data.ty_env) {
+    fn do_on_field_tag(&mut self, field_tag: &KFieldTag) {
+        let field = match field_tag.field_opt {
             Some(it) => it,
             None => return,
         };
 
-        let field_opt = k_struct
-            .of(&self.mod_outline.structs)
-            .fields
-            .iter()
-            .copied()
-            .find(|field| field.name(&self.mod_outline.fields) == field_name);
-        let field = match field_opt {
-            Some(it) => it,
-            _ => return,
-        };
-
-        self.occurrences.push((field, loc));
+        self.occurrences.push((field, field_tag.loc));
     }
 
     fn on_node(&mut self, node: &KNode) {
-        self.do_on_node(node);
+        for term in &node.args {
+            match term {
+                KTerm::FieldTag(field_tag) => self.do_on_field_tag(field_tag),
+                _ => {}
+            }
+        }
 
         for cont in &node.conts {
             self.on_node(cont);

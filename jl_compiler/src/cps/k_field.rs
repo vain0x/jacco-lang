@@ -1,4 +1,4 @@
-use super::KTy;
+use super::*;
 use crate::{
     source::Loc,
     utils::{VecArena, VecArenaId},
@@ -9,6 +9,11 @@ use crate::{
 #[derive(Clone, Debug)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
+    pub(crate) ty: KTy2,
+
+    /// 型推論で埋める。
+    pub(crate) field_opt: Option<KField>,
+
     pub(crate) loc: Loc,
 }
 
