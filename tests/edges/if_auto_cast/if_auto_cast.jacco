@@ -1,15 +1,13 @@
 #![test("run", 0)]
 
 // if の then 節の型が alt 節の型の部分型であるとき、前者は自動でアップキャストされる。
-// FIXME: まだ動かない
 
 pub fn main() -> i32 {
     let x = 0_i32;
 
     let p = if true {
         let q: *mut i32 = &mut x;
-        q as *i32
-    //    ^^^^^^^ これを消したい
+        q
     } else {
         let r: *i32 = &x;
         r
