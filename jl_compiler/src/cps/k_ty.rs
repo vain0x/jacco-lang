@@ -816,3 +816,26 @@ impl Variance {
         *self = it;
     }
 }
+
+/// 極性
+#[allow(unused)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum Polarity {
+    /// 陰極。入力となる型を表している。ダウンキャストできる。
+    Negative,
+    /// 中立。部分型付けの影響を受けない。
+    Neutral,
+    /// 陽極。出力となる値の型を表している。アップキャストできる。
+    Positive,
+}
+
+#[allow(unused)]
+impl Polarity {
+    pub(crate) fn negate(self) -> Self {
+        match self {
+            Polarity::Negative => Polarity::Positive,
+            Polarity::Neutral => self,
+            Polarity::Positive => Polarity::Negative,
+        }
+    }
+}
