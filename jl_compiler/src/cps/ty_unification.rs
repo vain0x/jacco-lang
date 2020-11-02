@@ -80,6 +80,7 @@ impl<'a> UnificationContext<'a> {
     }
 }
 
+// NOTE: unify は型変数を貪欲にバインドする。この挙動は部分型つけと相性が悪くて、包摂の機会を失うことがある。包摂の機会がなくなるのを待ってから unify すること。
 fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
     match (left, right) {
         (KTy2::Unresolved { cause }, other) | (other, KTy2::Unresolved { cause }) => {
@@ -109,9 +110,8 @@ fn do_unify2(left: &KTy2, right: &KTy2, ux: &mut UnificationContext<'_>) {
         (_, KTy2::Meta(meta_ty)) => match meta_ty.try_unwrap(&ux.ty_env) {
             Some(ty_cell) => do_unify2(left, &ty_cell.borrow(), ux),
             None => {
-                // fn main() -> i32 { loop {} } などで発生する。
-                // この時点で unbound な型変数は never とみなしてよいはず?
-                do_unify2(left, &KTy2::Never, ux)
+                // FIXME: occurrence check
+                meta_ty.bind(left.clone(), &ux.ty_env);
             }
         },
         (KTy2::Meta(meta_ty), _) => {

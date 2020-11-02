@@ -21,7 +21,6 @@ next_1:;
 }
 
 void continue_in_loop_1() {
-    // loop_result_1 is killed.
     goto continue__2;
 
 continue__2:;

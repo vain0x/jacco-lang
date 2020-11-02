@@ -11,21 +11,33 @@ use crate::{
 };
 use std::{
     cell::RefCell,
-    mem::{swap, take},
+    collections::HashMap,
+    mem::{replace, swap, take},
 };
 
 /// Typing context. 型検査の状態
 struct Tx<'a> {
     /// 現在の関数の型環境
     ty_env: KTyEnv,
+
     /// 現在の関数に含まれるローカル変数の情報
     local_vars: KLocalVarArena,
+
     /// 現在の関数に含まれるラベルのシグネチャ情報
     label_sigs: KLabelSigArena,
+
+    /// ラベルのパラメータにかかる制約 (下界)。
+    ///
+    /// ラベルにジャンプする際に制約が増える。
+    /// ラベルの型検査を始める際に決定する。
+    param_bounds: HashMap<KLabel, Vec<KTy2>>,
+
     /// 現在の関数の return ラベルの型
     return_ty_opt: Option<KTy>,
+
     /// 検査対象のモジュールのアウトライン
     mod_outline: &'a KModOutline,
+
     logger: Logger,
 }
 
@@ -35,16 +47,34 @@ impl<'a> Tx<'a> {
             ty_env: KTyEnv::default(),
             local_vars: Default::default(),
             label_sigs: Default::default(),
+            param_bounds: Default::default(),
             return_ty_opt: None,
             mod_outline,
             logger,
         }
+    }
+
+    fn take_label_bound(&mut self, label: KLabel, len: usize) -> Vec<KTy2> {
+        replace(
+            self.param_bounds
+                .entry(label)
+                .or_insert_with(|| vec![KTy2::Never; len]),
+            vec![],
+        )
     }
 }
 
 /// left 型の変数に right 型の値を代入できるか判定する。
 /// 必要に応じて型変数を束縛する。
 fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
+    #[cfg(skip)]
+    log::trace!(
+        "unify: {} <- {} @{:?}",
+        left.display(&tx.ty_env, tx.mod_outline),
+        right.display(&tx.ty_env, tx.mod_outline),
+        loc,
+    );
+
     UnificationContext::new(loc, &tx.ty_env, tx.mod_outline, &tx.logger).unify(&left, &right);
 }
 
@@ -221,24 +251,55 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
     match node.prim {
         KPrim::Stuck => {}
         KPrim::Jump => match node.args.as_mut_slice() {
-            [label, args @ ..] => loop {
-                let def_fn_ty = resolve_term(label, tx);
-                let arg_tys = resolve_terms(args, tx);
+            [callee, args @ ..] => loop {
+                let label = match *callee {
+                    KTerm::Label { label, .. } => label,
+                    KTerm::Return { .. } => {
+                        let callee_ty = resolve_term(callee, tx);
+                        let arg_tys = resolve_terms(args, tx);
 
-                let (param_tys, _) = match def_fn_ty.as_fn(&tx.ty_env) {
-                    Some(it) => it,
-                    None => {
-                        tx.logger
-                            .error(node.loc(), "関数ではないものは呼び出せません");
+                        let (param_tys, _) = callee_ty.as_fn(&tx.ty_env).unwrap();
+                        let result_ty = param_tys.first().unwrap();
+
+                        let arg_ty = arg_tys.first().cloned().unwrap_or(KTy2::Unit);
+                        unify2(&result_ty, &arg_ty, node.loc, tx);
                         break;
                     }
+                    _ => callee.with_debug(
+                        tx.mod_outline,
+                        Some(&tx.local_vars),
+                        Some(&tx.label_sigs),
+                        |callee| unreachable!("{:?}", callee),
+                    ),
                 };
 
-                // FIXME: 引数の個数を検査する
-
-                for (param_ty, arg_ty) in param_tys.iter().zip(&arg_tys) {
-                    unify2(param_ty, arg_ty, node.loc, tx);
+                let param_tys = label.of_mut(&mut tx.label_sigs).param_tys_mut();
+                if param_tys.len() > args.len() {
+                    tx.logger.error(
+                        node.loc,
+                        format!("{} 個の引数が必要です。", param_tys.len()),
+                    );
                 }
+
+                let param_tys = param_tys.clone();
+                let mut bounds = tx.take_label_bound(label, param_tys.len());
+
+                let arg_tys = resolve_terms(args, tx);
+
+                for (((param_ty, bound), arg), arg_ty) in
+                    param_tys.iter().zip(&mut bounds).zip(args).zip(arg_tys)
+                {
+                    // 型注釈があるか、シグネチャが確定済みのときは単一化する。
+                    if !param_ty.is_unbound(&tx.ty_env) {
+                        unify2(param_ty, &arg_ty, arg.loc(), tx);
+                        continue;
+                    }
+
+                    let current = replace(bound, KTy2::DEFAULT);
+                    *bound = current.join(&arg_ty, &tx.ty_env);
+                }
+
+                tx.param_bounds.insert(label, bounds);
                 break;
             },
             _ => unimplemented!(),
@@ -674,13 +735,24 @@ fn resolve_root(root: &mut KModData, tx: &mut Tx) {
 
     // 項の型を解決する。
     for (k_fn, fn_data) in root.fns.enumerate_mut() {
+        #[cfg(skip)]
+        log::trace!("type res fn {}", k_fn.of(&tx.mod_outline.fns).name);
+
         tx.return_ty_opt = Some(k_fn.return_ty(&tx.mod_outline.fns));
         swap(&mut tx.local_vars, &mut fn_data.local_vars);
         swap(&mut tx.label_sigs, &mut fn_data.label_sigs);
         swap(&mut tx.ty_env, &mut fn_data.ty_env);
 
-        for label in fn_data.labels.iter_mut() {
-            resolve_node(&mut label.body, tx);
+        for (label, label_data) in fn_data.labels.enumerate_mut() {
+            #[cfg(skip)]
+            log::trace!("type res label {}", label_data.name);
+
+            let bounds = tx.take_label_bound(label, label_data.params.len());
+            for (bound, param) in bounds.iter().zip(label_data.params.iter()) {
+                unify2(&bound, &param.ty(&tx.local_vars), param.loc(), tx);
+            }
+
+            resolve_node(&mut label_data.body, tx);
         }
 
         for local_var_data in tx.local_vars.iter_mut() {

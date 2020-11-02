@@ -26,6 +26,10 @@ impl KLabelSig {
         Self { name, param_tys }
     }
 
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
     pub(crate) fn ty(&self) -> KTy2 {
         KTy2::new_fn(self.param_tys.clone(), KTy2::Never)
     }

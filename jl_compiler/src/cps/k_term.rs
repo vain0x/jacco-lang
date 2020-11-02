@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     parse::{PLoc, PToken},
     source::{Doc, Loc},
+    utils::DebugWith,
     utils::DebugWithContext,
 };
 use std::fmt::{self, Formatter};
@@ -143,19 +144,31 @@ impl KTerm {
             | KTerm::TyProperty { loc, .. } => *loc,
         }
     }
+
+    #[allow(unused)]
+    pub(crate) fn with_debug<'a, A>(
+        &'a self,
+        mod_outline: &'a KModOutline,
+        local_vars: Option<&'a KLocalVarArena>,
+        labels: Option<&'a KLabelSigArena>,
+        f: impl FnOnce(&dyn fmt::Debug) -> A,
+    ) -> A {
+        let pair = local_vars.and_then(|local_vars| labels.map(|labels| (local_vars, labels)));
+        f(&DebugWith::new(self, &(mod_outline, pair)))
+    }
 }
 
 impl<'a>
     DebugWithContext<(
         &'a KModOutline,
-        Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+        Option<(&'a KLocalVarArena, &'a KLabelSigArena)>,
     )> for KTerm
 {
     fn fmt(
         &self,
         context: &(
             &'a KModOutline,
-            Option<(&'a KLocalVarArena, &'a KLabelArena)>,
+            Option<(&'a KLocalVarArena, &'a KLabelSigArena)>,
         ),
         f: &mut Formatter<'_>,
     ) -> fmt::Result {
@@ -179,7 +192,7 @@ impl<'a>
             }
             KTerm::Fn { k_fn, .. } => write!(f, "{}", k_fn.name(&mod_outline.fns)),
             KTerm::Label { label, .. } => match local_var_opt {
-                Some((_, labels)) => write!(f, "{}", label.of(labels).name),
+                Some((_, labels)) => write!(f, "{}", label.of(labels).name()),
                 None => write!(f, "label#{}", label.to_index()),
             },
             KTerm::Return { k_fn, .. } => write!(f, "return({})", k_fn.name(&mod_outline.fns)),
