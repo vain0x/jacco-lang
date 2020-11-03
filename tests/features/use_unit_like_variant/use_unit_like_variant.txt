@@ -26,7 +26,6 @@ int signum_1(struct Signum value);
 int main();
 
 int signum_1(struct Signum value_1) {
-    struct Signum value_1;
     int match_result_1;
     struct Signum __1;
     int minus_1;

@@ -3,7 +3,6 @@
 int main();
 
 /* unknown */ void const* transmute_1(/* ty var */ void const* p_1) {
-    /* ty var */ void const* p_1;
     unsigned long long cast_1;
     /* ty var */ void const* cast_2;
     cast_1 = (unsigned long long)p_1;

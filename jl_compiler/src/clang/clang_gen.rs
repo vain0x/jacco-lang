@@ -883,7 +883,12 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
         cx.local_var_ident_ids.resize(cx.local_vars.len(), None);
 
         let stmts = cx.enter_block(|cx| {
+            // パラメータでないローカル変数を宣言する。
             for (local_var, local_var_data) in local_vars.enumerate() {
+                if params.iter().any(|param| param.local_var == local_var) {
+                    continue;
+                }
+
                 let cause = KVarTermCause::Loc(local_var_data.loc);
                 emit_var_decl(&KVarTerm { local_var, cause }, ty_env, cx);
             }

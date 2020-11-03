@@ -7,17 +7,12 @@ int sub3_1(int x, int y, int z);
 int main();
 
 int div_1(int x_1, int y_1) {
-    int x_1;
-    int y_1;
     int div_2;
     div_2 = x_1 / y_1;
     return div_2;
 }
 
 int sub3_1(int x_2, int y_2, int z_1) {
-    int x_2;
-    int y_2;
-    int z_1;
     int sub_1;
     int sub_2;
     sub_1 = x_2 - y_2;

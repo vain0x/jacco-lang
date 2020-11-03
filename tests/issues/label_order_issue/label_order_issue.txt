@@ -3,7 +3,6 @@ int height_1(int value);
 int main();
 
 int height_1(int value_1) {
-    int value_1;
     int lessthan_1;
     int x_1;
     int t_1;

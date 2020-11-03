@@ -7,7 +7,6 @@ struct Box {
 int main();
 
 /* unknown */ void const* as_ref_1(struct Box it_1) {
-    struct Box it_1;
     /* ty var */ void* ptr_1;
     /* ty var */ void* const* ptr_ptr_1;
     struct Box const* ref_1;

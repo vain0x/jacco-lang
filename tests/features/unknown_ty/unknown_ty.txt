@@ -3,7 +3,6 @@ void take_unknown_ptr_1(/* unknown */ void const* p);
 int main();
 
 void take_unknown_ptr_1(/* unknown */ void const* p_1) {
-    /* unknown */ void const* p_1;
     return;
 }
 

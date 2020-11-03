@@ -10,7 +10,6 @@ void do_call_1(/* unknown */ void const* env);
 int main();
 
 void do_call_1(/* unknown */ void const* env_1) {
-    /* unknown */ void const* env_1;
     return;
 }
 

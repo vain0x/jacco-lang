@@ -7,7 +7,6 @@ int get_1(struct A const* a);
 int main();
 
 int get_1(struct A const* a_1) {
-    struct A const* a_1;
     int value_1;
     int const* value_ptr_1;
     value_ptr_1 = &a_1->value;

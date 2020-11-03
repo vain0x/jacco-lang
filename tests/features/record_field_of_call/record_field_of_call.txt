@@ -7,7 +7,6 @@ struct ExitCode new_exit_code_1(char value);
 int main();
 
 struct ExitCode new_exit_code_1(char value_1) {
-    char value_1;
     struct ExitCode ExitCode_1;
     ExitCode_1.value = value_1;
     return ExitCode_1;

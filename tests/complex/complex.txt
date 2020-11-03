@@ -94,8 +94,6 @@ next_4:;
 }
 
 int fn_with_params_1(int x_1, int y_1) {
-    int x_1;
-    int y_1;
     int add_1;
     int s_1;
     int sub_1;

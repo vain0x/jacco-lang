@@ -6,7 +6,6 @@ void f_1(/* ty var */ void const* _);
 int main();
 
 void f_1(/* ty var */ void const* __1) {
-    /* ty var */ void const* __1;
     return;
 }
 

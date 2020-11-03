@@ -7,7 +7,6 @@ int exit_code_as_i32_1(unsigned long long code);
 int main();
 
 int exit_code_as_i32_1(unsigned long long code_1) {
-    unsigned long long code_1;
     int match_result_1;
     unsigned long long __1;
     switch (code_1) {
