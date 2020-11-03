@@ -3,44 +3,56 @@ void assert_ok(int cond_1);
 int main();
 
 int main() {
-    int n_1 = 1;
-    int cast_1 = (int)n_1;
-    int equal_1 = cast_1 == n_1;
-    // call_result_1 is killed.
+    int n_1;
+    int cast_1;
+    int equal_1;
+    unsigned char cast_2;
+    int equal_2;
+    int cast_3;
+    int equal_3;
+    unsigned char c_1;
+    int cast_4;
+    int equal_4;
+    unsigned char cast_5;
+    int equal_5;
+    int cast_6;
+    int equal_6;
+    int b_1;
+    int cast_7;
+    int equal_7;
+    unsigned char cast_8;
+    int equal_8;
+    int cast_9;
+    int equal_9;
+    n_1 = 1;
+    cast_1 = (int)n_1;
+    equal_1 = cast_1 == n_1;
     assert_ok(equal_1);
-    unsigned char cast_2 = (unsigned char)n_1;
-    int equal_2 = cast_2 == '\x01';
-    // call_result_2 is killed.
+    cast_2 = (unsigned char)n_1;
+    equal_2 = cast_2 == '\x01';
     assert_ok(equal_2);
-    int cast_3 = (int)n_1;
-    int equal_3 = cast_3 == 1;
-    // call_result_3 is killed.
+    cast_3 = (int)n_1;
+    equal_3 = cast_3 == 1;
     assert_ok(equal_3);
-    unsigned char c_1 = '\x01';
-    int cast_4 = (int)c_1;
-    int equal_4 = cast_4 == n_1;
-    // call_result_4 is killed.
+    c_1 = '\x01';
+    cast_4 = (int)c_1;
+    equal_4 = cast_4 == n_1;
     assert_ok(equal_4);
-    unsigned char cast_5 = (unsigned char)c_1;
-    int equal_5 = cast_5 == c_1;
-    // call_result_5 is killed.
+    cast_5 = (unsigned char)c_1;
+    equal_5 = cast_5 == c_1;
     assert_ok(equal_5);
-    int cast_6 = (int)c_1;
-    int equal_6 = cast_6 == 1;
-    // call_result_6 is killed.
+    cast_6 = (int)c_1;
+    equal_6 = cast_6 == 1;
     assert_ok(equal_6);
-    int b_1 = 1;
-    int cast_7 = (int)b_1;
-    int equal_7 = cast_7 == n_1;
-    // call_result_7 is killed.
+    b_1 = 1;
+    cast_7 = (int)b_1;
+    equal_7 = cast_7 == n_1;
     assert_ok(equal_7);
-    unsigned char cast_8 = (unsigned char)b_1;
-    int equal_8 = cast_8 == '\x01';
-    // call_result_8 is killed.
+    cast_8 = (unsigned char)b_1;
+    equal_8 = cast_8 == '\x01';
     assert_ok(equal_8);
-    int cast_9 = (int)b_1;
-    int equal_9 = cast_9 == b_1;
-    // call_result_9 is killed.
+    cast_9 = (int)b_1;
+    equal_9 = cast_9 == b_1;
     assert_ok(equal_9);
     return 0;
 }

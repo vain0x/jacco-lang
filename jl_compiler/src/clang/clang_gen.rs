@@ -151,27 +151,34 @@ fn unique_label_name(label: KLabel, cx: &mut Cx) -> String {
     )
 }
 
-fn emit_var_decl(term: &KVarTerm, init_opt: Option<CExpr>, ty_env: &KTyEnv, cx: &mut Cx) {
+fn emit_var_decl(term: &KVarTerm, ty_env: &KTyEnv, cx: &mut Cx) {
     let is_alive = term.local_var.of(&cx.local_vars).is_alive;
-    let (name, ty) = gen_param(term, ty_env, cx);
-
-    // 不要な変数なら束縛しない。
     if !is_alive {
-        cx.stmts
-            .push(CStmt::Comment(format!("{} is killed.", name)));
-
-        if let Some(expr) = init_opt {
-            cx.stmts.push(CStmt::Expr(expr));
-        }
         return;
     }
 
+    let (name, ty) = gen_param(term, ty_env, cx);
     cx.stmts.push(CStmt::VarDecl {
         storage_modifier_opt: None,
         name,
         ty,
-        init_opt,
+        init_opt: None,
     });
+}
+
+fn emit_var_assign(term: &KVarTerm, init: CExpr, cx: &mut Cx) {
+    let is_alive = term.local_var.of(&cx.local_vars).is_alive;
+    if !is_alive {
+        cx.stmts.push(init.into_stmt());
+        return;
+    }
+
+    let name = unique_local_var_name(term.local_var, cx);
+    cx.stmts.push(
+        CExpr::Name(name)
+            .into_binary_op(CBinaryOp::Assign, init)
+            .into_stmt(),
+    );
 }
 
 fn gen_basic_ty(basic_ty: KNumberTy) -> CTy {
@@ -428,7 +435,7 @@ fn gen_unary_op(
         ([arg], [result], [cont]) => {
             let arg = gen_term(arg, ty_env, cx);
             let expr = arg.into_unary_op(op);
-            emit_var_decl(result, Some(expr), ty_env, cx);
+            emit_var_assign(result, expr, cx);
             gen_node(cont, ty_env, cx);
         }
         _ => unimplemented!(),
@@ -448,7 +455,7 @@ fn gen_binary_op(
             let left = gen_term(left, ty_env, cx);
             let right = gen_term(right, ty_env, cx);
             let expr = left.into_binary_op(op, right);
-            emit_var_decl(result, Some(expr), ty_env, cx);
+            emit_var_assign(result, expr, cx);
             gen_node(cont, ty_env, cx);
         }
         _ => unimplemented!(),
@@ -538,7 +545,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                     let args = args.map(|arg| gen_term(arg, ty_env, cx));
                     left.into_call(args)
                 };
-                emit_var_decl(result, Some(call_expr), ty_env, cx);
+                emit_var_assign(result, call_expr, cx);
                 gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
@@ -546,7 +553,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
         KPrim::Let => match (args, results, conts) {
             ([init], [result], [cont]) => {
                 let init = gen_term(init, ty_env, cx);
-                emit_var_decl(result, Some(init), ty_env, cx);
+                emit_var_assign(result, init, cx);
                 gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
@@ -555,13 +562,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ([ty], [result], [cont]) => {
                 let k_struct = ty.as_struct(ty_env).unwrap();
 
-                let (name, ty) = gen_param(result, ty_env, cx);
-                cx.stmts.push(CStmt::VarDecl {
-                    storage_modifier_opt: None,
-                    name: name.clone(),
-                    ty,
-                    init_opt: None,
-                });
+                let name = unique_local_var_name(result.local_var, cx);
 
                 let self_name = match k_struct.ty(&cx.mod_outline.structs) {
                     KTy::Struct(_) | KTy::StructGeneric { .. } => CExpr::Name(name.clone()),
@@ -600,7 +601,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
             ) => {
                 let left = gen_term(left, ty_env, cx);
                 let expr = left.into_arrow(field_name).into_ref();
-                emit_var_decl(result, Some(expr), ty_env, cx);
+                emit_var_assign(result, expr, cx);
                 gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
@@ -701,7 +702,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                 let arg = gen_term(arg, ty_env, cx);
                 let result_ty = gen_ty2(&result.ty(&cx.local_vars), ty_env, cx);
                 let expr = arg.into_cast(result_ty);
-                emit_var_decl(result, Some(expr), ty_env, cx);
+                emit_var_assign(result, expr, cx);
                 gen_node(cont, ty_env, cx);
             }
             _ => unimplemented!(),
@@ -883,10 +884,9 @@ fn gen_root_for_defs(root: &KModData, cx: &mut Cx) {
         cx.local_var_ident_ids.resize(cx.local_vars.len(), None);
 
         let stmts = cx.enter_block(|cx| {
-            for label_data in labels.iter() {
-                for param in label_data.params.iter() {
-                    emit_var_decl(param, None, &ty_env, cx);
-                }
+            for (local_var, local_var_data) in local_vars.enumerate() {
+                let cause = KVarTermCause::Loc(local_var_data.loc);
+                emit_var_decl(&KVarTerm { local_var, cause }, ty_env, cx);
             }
 
             cx.label_raw_names =

@@ -1,7 +1,9 @@
 int main();
 
 int main() {
-    int mul_1 = 3 * 2;
-    int add_1 = 36 + mul_1;
+    int mul_1;
+    int add_1;
+    mul_1 = 3 * 2;
+    add_1 = 36 + mul_1;
     return add_1;
 }

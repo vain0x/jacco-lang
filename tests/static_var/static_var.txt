@@ -11,30 +11,34 @@ void perform_failible_operation_1(int err);
 int main();
 
 int fresh_id_1() {
-    int* refmut_1 = &LAST_ID_1;
+    int* refmut_1;
+    refmut_1 = &LAST_ID_1;
     *refmut_1 += 1;
     return LAST_ID_1;
 }
 
 void perform_failible_operation_1(int err_1) {
-    int* refmut_2 = &ERR_NO_1;
+    int err_1;
+    int* refmut_2;
+    refmut_2 = &ERR_NO_1;
     *refmut_2 = err_1;
     return;
 }
 
 int main() {
-    int call_result_1 = fresh_id_1();
-    int equal_1 = call_result_1 == 1;
-    // call_result_2 is killed.
+    int call_result_1;
+    int equal_1;
+    int call_result_2;
+    int equal_2;
+    int equal_3;
+    call_result_1 = fresh_id_1();
+    equal_1 = call_result_1 == 1;
     assert(equal_1);
-    int call_result_3 = fresh_id_1();
-    int equal_2 = call_result_3 == 2;
-    // call_result_4 is killed.
+    call_result_2 = fresh_id_1();
+    equal_2 = call_result_2 == 2;
     assert(equal_2);
-    // call_result_5 is killed.
     perform_failible_operation_1(127);
-    int equal_3 = ERR_NO_1 == 127;
-    // call_result_6 is killed.
+    equal_3 = ERR_NO_1 == 127;
     assert(equal_3);
     return 0;
 }

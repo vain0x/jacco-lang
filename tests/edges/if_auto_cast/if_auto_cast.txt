@@ -1,26 +1,36 @@
 int main();
 
 int main() {
+    int x_1;
     int const* if_result_1;
-    int x_1 = 0;
+    int* refmut_1;
+    int* q_1;
+    int const* ref_1;
+    int const* r_1;
+    int const* p_1;
+    int const* ref_2;
+    int const* r_2;
+    int const** refmut_2;
+    int const* ref_3;
+    x_1 = 0;
     if (1) {
-        int* refmut_1 = &x_1;
-        int* q_1 = refmut_1;
+        refmut_1 = &x_1;
+        q_1 = refmut_1;
         if_result_1 = q_1;
         goto next_1;
     } else {
-        int const* ref_1 = &x_1;
-        int const* r_1 = ref_1;
+        ref_1 = &x_1;
+        r_1 = ref_1;
         if_result_1 = r_1;
         goto next_1;
     }
 
 next_1:;
-    int const* p_1 = if_result_1;
-    int const* ref_2 = &x_1;
-    int const* r_2 = ref_2;
-    int const** refmut_2 = &p_1;
-    int const* ref_3 = &x_1;
+    p_1 = if_result_1;
+    ref_2 = &x_1;
+    r_2 = ref_2;
+    refmut_2 = &p_1;
+    ref_3 = &x_1;
     *refmut_2 = ref_3;
     return 0;
 }

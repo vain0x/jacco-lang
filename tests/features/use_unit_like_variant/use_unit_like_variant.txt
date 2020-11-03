@@ -26,7 +26,10 @@ int signum_1(struct Signum value);
 int main();
 
 int signum_1(struct Signum value_1) {
+    struct Signum value_1;
     int match_result_1;
+    struct Signum __1;
+    int minus_1;
     switch (value_1.tag_) {
         case 0: {
             match_result_1 = 1;
@@ -37,12 +40,11 @@ int signum_1(struct Signum value_1) {
             goto match_next_1;
         }
         case 2: {
-            int minus_1 = -1;
+            minus_1 = -1;
             match_result_1 = minus_1;
             goto match_next_1;
         }
         default: {
-            // call_result_1 is killed.
             abort();
             match_result_1 = (void)0;
             goto match_next_1;
@@ -54,11 +56,12 @@ match_next_1:;
 }
 
 int main() {
+    int call_result_1;
     struct Signum Zero_1;
+    int equal_1;
     Zero_1.tag_ = 1;
-    int call_result_2 = signum_1(Zero_1);
-    int equal_1 = call_result_2 == 0;
-    // call_result_3 is killed.
+    call_result_1 = signum_1(Zero_1);
+    equal_1 = call_result_1 == 0;
     assert(equal_1);
     return 0;
 }

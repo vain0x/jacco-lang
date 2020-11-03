@@ -3,17 +3,20 @@ void assert(int cond_1);
 int main();
 
 int main() {
-    int cast_1 = (int)0ULL;
-    int equal_1 = cast_1 == 0;
-    // call_result_1 is killed.
+    int cast_1;
+    int equal_1;
+    int cast_2;
+    int equal_2;
+    int cast_3;
+    int equal_3;
+    cast_1 = (int)0ULL;
+    equal_1 = cast_1 == 0;
     assert(equal_1);
-    int cast_2 = (int)8ULL;
-    int equal_2 = cast_2 == 8;
-    // call_result_2 is killed.
+    cast_2 = (int)8ULL;
+    equal_2 = cast_2 == 8;
     assert(equal_2);
-    int cast_3 = (int)9ULL;
-    int equal_3 = cast_3 == 9;
-    // call_result_3 is killed.
+    cast_3 = (int)9ULL;
+    equal_3 = cast_3 == 9;
     assert(equal_3);
     return 0;
 }

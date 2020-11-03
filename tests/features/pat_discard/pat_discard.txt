@@ -1,7 +1,9 @@
 int main();
 
 int main() {
-    int __1 = 0;
-    unsigned char __2 = 'c';
+    int __1;
+    unsigned char __2;
+    __1 = 0;
+    __2 = 'c';
     return 0;
 }

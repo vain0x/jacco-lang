@@ -1,7 +1,9 @@
 int main();
 
 int main() {
-    int add_1 = 3 + 5;
-    int sub_1 = 50 - add_1;
+    int add_1;
+    int sub_1;
+    add_1 = 3 + 5;
+    sub_1 = 50 - add_1;
     return sub_1;
 }

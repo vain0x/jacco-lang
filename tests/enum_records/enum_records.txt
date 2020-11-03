@@ -19,32 +19,39 @@ struct Response {
 int main();
 
 int main() {
-    int match_result_1;
     struct Response Text_1;
+    struct Response text_1;
+    struct Response Err_1;
+    struct Response err_1;
+    int match_result_1;
+    int status_code_1;
+    int const* status_code_ptr_1;
+    struct Err const* Err_ptr_1;
+    struct Response const* ref_1;
+    int status_code_2;
     Text_1.tag_ = 0;
     Text_1.Text.str = (unsigned char const*)"hello";
     Text_1.Text.len = 6ULL;
-    struct Response text_1 = Text_1;
-    struct Response Err_1;
+    text_1 = Text_1;
     Err_1.tag_ = 1;
     Err_1.Err.status_code = 403;
-    struct Response err_1 = Err_1;
+    err_1 = Err_1;
     switch (err_1.tag_) {
         case 0: {
             match_result_1 = 200;
             goto match_next_1;
         }
         case 1: {
-            struct Response const* ref_1 = &err_1;
-            struct Err const* Err_ptr_1 = &ref_1->Err;
-            int const* status_code_ptr_1 = &Err_ptr_1->status_code;
-            int status_code_1 = *status_code_ptr_1;
+            ref_1 = &err_1;
+            Err_ptr_1 = &ref_1->Err;
+            status_code_ptr_1 = &Err_ptr_1->status_code;
+            status_code_1 = *status_code_ptr_1;
             match_result_1 = status_code_1;
             goto match_next_1;
         }
     }
 
 match_next_1:;
-    int status_code_2 = match_result_1;
+    status_code_2 = match_result_1;
     return 0;
 }

@@ -1,11 +1,12 @@
 int main();
 
 int main() {
+    int a_1;
     goto continue__1;
 
 continue__1:;
     if (0) {
-        int a_1 = 1;
+        a_1 = 1;
         goto continue__1;
     } else {
         goto next_1;

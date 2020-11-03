@@ -23,6 +23,25 @@ void use_extern_fn_declared_later_1();
 int use_struct_defined_later_1();
 
 int main() {
+    int body3_1;
+    int alt31_1;
+    int alt32_1;
+    int paren_expr_1;
+    int a_1;
+    int const* ref_1;
+    int const* p_1;
+    int const* const* ref_2;
+    int const* const* pp1_1;
+    int const* const* ref_3;
+    int const* const* pp2_1;
+    int deref_1;
+    int p1d_1;
+    int const* deref_2;
+    int deref_3;
+    int pp1dd_1;
+    int const* deref_4;
+    int deref_5;
+    int pp2dd_1;
     if (1) {
         goto next_1;
     } else {
@@ -38,37 +57,36 @@ next_1:;
 
 next_2:;
     if (1) {
-        int body3_1 = 30;
+        body3_1 = 30;
         goto next_3;
     } else {
         if (1) {
-            int alt31_1 = 31;
+            alt31_1 = 31;
             goto next_4;
         } else {
-            int alt32_1 = 32;
+            alt32_1 = 32;
             goto next_4;
         }
     }
 
 next_3:;
-    // unit_expr_1 is killed.
     (void)0;
-    int paren_expr_1 = 1;
-    int a_1 = 1;
-    int const* ref_1 = &a_1;
-    int const* p_1 = ref_1;
-    int const* const* ref_2 = &p_1;
-    int const* const* pp1_1 = ref_2;
-    int const* const* ref_3 = &p_1;
-    int const* const* pp2_1 = ref_3;
-    int deref_1 = *p_1;
-    int p1d_1 = deref_1;
-    int const* deref_2 = *pp1_1;
-    int deref_3 = *deref_2;
-    int pp1dd_1 = deref_3;
-    int const* deref_4 = *pp2_1;
-    int deref_5 = *deref_4;
-    int pp2dd_1 = deref_5;
+    paren_expr_1 = 1;
+    a_1 = 1;
+    ref_1 = &a_1;
+    p_1 = ref_1;
+    ref_2 = &p_1;
+    pp1_1 = ref_2;
+    ref_3 = &p_1;
+    pp2_1 = ref_3;
+    deref_1 = *p_1;
+    p1d_1 = deref_1;
+    deref_2 = *pp1_1;
+    deref_3 = *deref_2;
+    pp1dd_1 = deref_3;
+    deref_4 = *pp2_1;
+    deref_5 = *deref_4;
+    pp2dd_1 = deref_5;
     return 0;
 
 next_4:;
@@ -76,23 +94,34 @@ next_4:;
 }
 
 int fn_with_params_1(int x_1, int y_1) {
-    int add_1 = x_1 + y_1;
-    int s_1 = add_1;
-    int sub_1 = x_1 - y_1;
-    int t_1 = sub_1;
-    int mul_1 = s_1 * t_1;
+    int x_1;
+    int y_1;
+    int add_1;
+    int s_1;
+    int sub_1;
+    int t_1;
+    int mul_1;
+    add_1 = x_1 + y_1;
+    s_1 = add_1;
+    sub_1 = x_1 - y_1;
+    t_1 = sub_1;
+    mul_1 = s_1 * t_1;
     return mul_1;
 }
 
 void fn_with_params_user_1() {
-    int call_result_1 = fn_with_params_1(1, 2);
+    int call_result_1;
+    call_result_1 = fn_with_params_1(1, 2);
     return;
 }
 
 int use_fn_declared_later_1() {
-    int call_result_2 = a_fn_declared_later_1();
-    int x_2 = call_result_2;
-    int add_2 = x_2 + 2;
+    int call_result_2;
+    int x_2;
+    int add_2;
+    call_result_2 = a_fn_declared_later_1();
+    x_2 = call_result_2;
+    add_2 = x_2 + 2;
     return add_2;
 }
 
@@ -101,17 +130,20 @@ int a_fn_declared_later_1() {
 }
 
 void use_extern_fn_declared_later_1() {
-    // call_result_3 is killed.
     an_extern_fn_declared_later();
     return;
 }
 
 int use_struct_defined_later_1() {
     struct StructDeclaredLater StructDeclaredLater_1;
+    struct StructDeclaredLater it_1;
+    int sdl_content_1;
+    int const* sdl_content_ptr_1;
+    struct StructDeclaredLater const* ref_4;
     StructDeclaredLater_1.sdl_content = 1;
-    struct StructDeclaredLater it_1 = StructDeclaredLater_1;
-    struct StructDeclaredLater const* ref_4 = &it_1;
-    int const* sdl_content_ptr_1 = &ref_4->sdl_content;
-    int sdl_content_1 = *sdl_content_ptr_1;
+    it_1 = StructDeclaredLater_1;
+    ref_4 = &it_1;
+    sdl_content_ptr_1 = &ref_4->sdl_content;
+    sdl_content_1 = *sdl_content_ptr_1;
     return sdl_content_1;
 }

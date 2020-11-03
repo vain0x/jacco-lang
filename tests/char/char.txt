@@ -3,37 +3,27 @@ void putc(unsigned char c_1);
 int main();
 
 int main() {
-    // call_result_1 is killed.
+    unsigned short cast_1;
+    unsigned short hiragana_a_1;
+    unsigned int cast_2;
+    unsigned int cat_emoji_1;
     putc('h');
-    // call_result_2 is killed.
     putc('e');
-    // call_result_3 is killed.
     putc('l');
-    // call_result_4 is killed.
     putc('l');
-    // call_result_5 is killed.
     putc('o');
-    // call_result_6 is killed.
     putc(',');
-    // call_result_7 is killed.
     putc(' ');
-    // call_result_8 is killed.
     putc('w');
-    // call_result_9 is killed.
     putc('o');
-    // call_result_a is killed.
     putc('r');
-    // call_result_b is killed.
     putc('l');
-    // call_result_c is killed.
     putc('d');
-    // call_result_d is killed.
     putc('!');
-    // call_result_e is killed.
     putc('\n');
-    unsigned short cast_1 = (unsigned short)'あ';
-    unsigned short hiragana_a_1 = cast_1;
-    unsigned int cast_2 = (unsigned int)'😺';
-    unsigned int cat_emoji_1 = cast_2;
+    cast_1 = (unsigned short)'あ';
+    hiragana_a_1 = cast_1;
+    cast_2 = (unsigned int)'😺';
+    cat_emoji_1 = cast_2;
     return 0;
 }

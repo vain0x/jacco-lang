@@ -3,8 +3,8 @@
 int main();
 
 int main() {
-    // call_result_1 is killed.
+    int _code_1;
     exit(42);
-    int _code_1 = (void)0;
+    _code_1 = (void)0;
     return 0;
 }

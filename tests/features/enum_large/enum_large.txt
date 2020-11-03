@@ -1036,10 +1036,14 @@ int main();
 
 int main() {
     struct MyByte V1_1;
+    struct MyByte b_2;
+    unsigned long long call_result_1;
+    unsigned long long sub_1;
+    int cast_1;
     V1_1.tag_ = 1;
-    struct MyByte b_2 = V1_1;
-    unsigned long long call_result_1 = size_of(b_2);
-    unsigned long long sub_1 = call_result_1 - 2ULL;
-    int cast_1 = (int)sub_1;
+    b_2 = V1_1;
+    call_result_1 = size_of(b_2);
+    sub_1 = call_result_1 - 2ULL;
+    cast_1 = (int)sub_1;
     return cast_1;
 }

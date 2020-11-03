@@ -1,7 +1,9 @@
 int main();
 
 int main() {
-    int a_1 = 0;
-    int b_1 = 4;
+    int a_1;
+    int b_1;
+    a_1 = 0;
+    b_1 = 4;
     return a_1;
 }

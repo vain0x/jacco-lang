@@ -7,7 +7,9 @@ int exit_code_as_i32_1(unsigned long long code);
 int main();
 
 int exit_code_as_i32_1(unsigned long long code_1) {
+    unsigned long long code_1;
     int match_result_1;
+    unsigned long long __1;
     switch (code_1) {
         case 0: {
             match_result_1 = 0;
@@ -18,7 +20,6 @@ int exit_code_as_i32_1(unsigned long long code_1) {
             goto match_next_1;
         }
         default: {
-            // call_result_1 is killed.
             abort();
             match_result_1 = (void)0;
             goto match_next_1;
@@ -30,13 +31,15 @@ match_next_1:;
 }
 
 int main() {
-    int call_result_2 = exit_code_as_i32_1(0);
-    int equal_1 = call_result_2 == 0;
-    // call_result_3 is killed.
+    int call_result_1;
+    int equal_1;
+    int call_result_2;
+    int equal_2;
+    call_result_1 = exit_code_as_i32_1(0);
+    equal_1 = call_result_1 == 0;
     assert(equal_1);
-    int call_result_4 = exit_code_as_i32_1(1);
-    int equal_2 = call_result_4 == 1;
-    // call_result_5 is killed.
+    call_result_2 = exit_code_as_i32_1(1);
+    equal_2 = call_result_2 == 1;
     assert(equal_2);
     return 0;
 }

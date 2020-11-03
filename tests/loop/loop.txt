@@ -1,11 +1,11 @@
 int main();
 
 int main() {
-    // loop_result_1 is killed.
+    int a_1;
     goto continue__1;
 
 continue__1:;
-    int a_1 = 1;
+    a_1 = 1;
     goto continue__1;
 
 next_1:;
