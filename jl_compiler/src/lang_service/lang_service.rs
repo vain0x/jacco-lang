@@ -298,10 +298,7 @@ fn collect_symbols(
                 on_symbol(symbol, KLocalVarParent::Fn(k_fn), sites);
                 return;
             }
-            KTerm::Const { k_const, loc } => {
-                // FIXME: 外部のモジュールの定数である可能性もある
-                (KModSymbol::Const(k_const), loc)
-            }
+            KTerm::Const { k_const, loc } => (KModSymbol::Const(k_const), loc),
             KTerm::StaticVar { static_var, loc } => (KModSymbol::StaticVar(static_var), loc),
             KTerm::Fn { k_fn, loc, .. } => (KModSymbol::Fn(k_fn), loc),
             KTerm::Label { .. } | KTerm::Return { .. } => return,
