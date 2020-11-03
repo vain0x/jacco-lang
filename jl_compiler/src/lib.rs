@@ -64,6 +64,7 @@ mod cps {
     mod k_ty;
     mod k_value;
     mod k_vis;
+    mod propagate;
     mod ty_expect;
     mod ty_unification;
     mod type_resolution;
@@ -95,6 +96,7 @@ mod cps {
     pub(crate) use k_ty::*;
     pub(crate) use k_value::*;
     pub(crate) use k_vis::KVis;
+    pub(crate) use propagate::propagate;
     pub(crate) use ty_expect::TyExpect;
     pub(crate) use type_resolution::resolve_types;
 

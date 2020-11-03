@@ -41,14 +41,16 @@ impl<'a> Xx<'a> {
                 return;
             }
         };
+        let name_str = name.of(self.ast.names()).text().to_string();
 
-        let local_var = self.local_vars.alloc(
-            KLocalVarData::new(
-                name.of(self.ast.names()).text().to_string(),
-                name.loc().to_loc(self.doc),
-            )
-            .with_ty(ty),
-        );
+        // 名前を逆向きに伝播する。
+        if let KTerm::Name(KVarTerm { local_var, .. }) = init_term {
+            local_var.of_mut(&mut self.local_vars).name = name_str.clone();
+        }
+
+        let local_var = self
+            .local_vars
+            .alloc(KLocalVarData::new(name_str, name.loc().to_loc(self.doc)).with_ty(ty));
         let var_term = KVarTerm {
             local_var,
             cause: KVarTermCause::NameDef(self.doc, name),

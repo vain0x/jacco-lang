@@ -216,6 +216,8 @@ impl Project {
             &self.mod_outline.const_enums,
         );
 
+        propagate(&self.mod_outline, &mut self.mod_data);
+
         eliminate_unit(&mut self.mod_outline, &mut self.mod_data);
 
         Ok(clang_dump(&self.mod_outline, &self.mod_data))
