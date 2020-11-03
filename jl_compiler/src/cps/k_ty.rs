@@ -689,8 +689,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
             TySchemeConversionMode::Preserve => KTy2::Var(ty_var.clone()),
             TySchemeConversionMode::Erasure => {
                 // FIXME: この段階では型変数のままにしておく方がよい (例えば `x as T` の式の型は型変数 T のままになるはず。型を消去するのはコード生成の工程でいい)
-                // DESIGN: unknown の方がいい？
-                KTy2::Unit
+                KTy2::Unknown
             }
         },
         KTy::Unknown => KTy2::Unknown,

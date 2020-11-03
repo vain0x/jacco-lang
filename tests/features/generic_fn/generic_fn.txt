@@ -1,8 +1,8 @@
-void const* transmute_1(/* ty var */ void const* p);
+/* unknown */ void const* transmute_1(/* ty var */ void const* p);
 
 int main();
 
-void const* transmute_1(/* ty var */ void const* p_1) {
+/* unknown */ void const* transmute_1(/* ty var */ void const* p_1) {
     /* ty var */ void const* p_1;
     unsigned long long cast_1;
     /* ty var */ void const* cast_2;
