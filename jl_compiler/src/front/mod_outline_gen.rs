@@ -234,14 +234,25 @@ impl<'a> OutlineGenerator<'a> {
             let fields = decl.fields.iter().enumerate().map(|(index, field_decl)| {
                 let name_opt = field_decl.name_opt;
                 let loc = new_field_loc(doc, key, index);
+
                 KFieldOutline {
                     name: resolve_name_opt(name_opt.map(|name| name.of(ast.names()))),
                     ty: KTy::init_later(loc),
                     loc,
                 }
             });
-            self.mod_outline.fields.alloc_slice(fields).iter().collect()
+            self.mod_outline
+                .fields
+                .alloc_slice(fields)
+                .iter()
+                .collect::<Vec<_>>()
         };
+
+        for (field_decl, &field) in decl.fields.iter().zip(fields.iter()) {
+            if let Some(name) = field_decl.name_opt {
+                self.bind_symbol(name, KModSymbol::Field(field));
+            }
+        }
 
         self.mod_outline.structs.alloc(KStructOutline {
             name: decl.name.of(self.ast.names()).text.to_string(),
