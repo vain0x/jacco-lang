@@ -7,6 +7,13 @@
     build               C言語にコンパイルします
         <FILE|->
 
+    dump-syntax         構文木を表示します
+        <FILE|->
+        -o, --output
+
 その他:
     -h, --help          ヘルプを表示します
     -V, --version       バージョン情報を表示します
+
+サブコマンドごとのヘルプを表示できます。
+    {command} build --help

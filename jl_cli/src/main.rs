@@ -1,5 +1,6 @@
 mod cmd_batch;
 mod cmd_build;
+mod cmd_dump_syntax;
 mod cmd_help;
 mod cmd_version;
 
@@ -10,6 +11,7 @@ mod util {
 
 use cmd_batch::exec_batch_cmd;
 use cmd_build::exec_build_cmd;
+use cmd_dump_syntax::exec_dump_syntax_cmd;
 use cmd_help::exec_help_cmd;
 use cmd_version::exec_version_cmd;
 use std::{env, process};
@@ -19,6 +21,7 @@ use util::dyn_error::DynError;
 enum Cmd {
     Batch,
     Build,
+    DumpSyntax,
     Help,
     Version,
 }
@@ -26,6 +29,7 @@ enum Cmd {
 const SUBCOMMANDS: &[(Cmd, &str)] = &[
     (Cmd::Batch, "batch"),
     (Cmd::Build, "build"),
+    (Cmd::DumpSyntax, "dump-syntax"),
     (Cmd::Help, "help"),
     (Cmd::Version, "version"),
 ];
@@ -69,6 +73,7 @@ fn dispatch() -> Result<(), DynError> {
         Ok(cmd) => match cmd {
             Cmd::Batch => exec_batch_cmd(args, help)?,
             Cmd::Build => exec_build_cmd(args, help)?,
+            Cmd::DumpSyntax => exec_dump_syntax_cmd(args, help)?,
             Cmd::Help => exec_help_cmd(),
             Cmd::Version => exec_version_cmd(),
         },

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+set -eu
+
+cargo run -p jacco "$@"

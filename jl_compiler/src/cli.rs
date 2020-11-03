@@ -222,9 +222,13 @@ impl Project {
     }
 }
 
+pub struct SyntaxDump {
+    pub tree: String,
+    pub errors: Vec<(TRange, String)>,
+}
+
 /// ファイルをパースして構文木とエラーを得る。(コード生成は行わない。)
-#[allow(unused)]
-pub(crate) fn parse_v2(source_path: &Path, source_code: &str) -> String {
+pub fn dump_syntax(source_path: &Path, source_code: &str) -> SyntaxDump {
     let mut project = Project::new();
 
     let name = source_path
@@ -238,33 +242,31 @@ pub(crate) fn parse_v2(source_path: &Path, source_code: &str) -> String {
 
     let mut unresolved_doc_names = vec![];
     project.parse(&mut unresolved_doc_names);
-    assert_eq!(
-        unresolved_doc_names.len(),
-        0,
-        "use を含むコードの構文木の取り出しは未実装",
-    );
+    // assert_eq!(
+    //     unresolved_doc_names.len(),
+    //     0,
+    //     "use を含むコードの構文木の取り出しは未実装",
+    // );
+    debug_assert_eq!(project.syntaxes.len(), 1);
 
-    let mut output = String::new();
+    let mut tree = String::new();
     let mut errors = vec![];
     let logs = Logs::new();
-    for (doc, syntax) in project.syntaxes.enumerate_mut() {
+    if let Some((doc, syntax)) = project.syntaxes.enumerate_mut().next() {
         let doc_logs = take(&mut syntax.logs);
         logs.logger()
             .extend_from_doc_logs(Doc::from(doc.to_index()), doc_logs);
 
-        output = format!("{:#?}", syntax.tree);
+        tree = format!("{:#?}", syntax.tree);
     }
+
     project.logs_into_errors(logs, &mut errors);
+    let errors = errors
+        .into_iter()
+        .map(|(_, _, range, message)| (range, message))
+        .collect();
 
-    if !errors.is_empty() {
-        let error = errors
-            .into_iter()
-            .map(|(_, _, range, message)| format!("ERROR {:?} {}\n", range, message))
-            .collect::<String>();
-        output.insert_str(0, &error);
-    }
-
-    output
+    SyntaxDump { tree, errors }
 }
 
 /// 一連のコンパイル処理を行う。

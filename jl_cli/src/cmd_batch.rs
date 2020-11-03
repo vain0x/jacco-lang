@@ -1,5 +1,6 @@
 use crate::{
     cmd_build::do_exec_build_cmd,
+    cmd_dump_syntax::do_exec_dump_syntax_cmd,
     cmd_help::string_is_help_flag,
     parse_cmd,
     util::{dyn_error::DynError, package_info::PackageInfo},
@@ -96,6 +97,7 @@ fn exec_action(action: Action<impl Iterator<Item = String> + UnwindSafe>) {
 
     let caught = panic::catch_unwind(|| match cmd {
         Cmd::Build => do_exec_build_cmd(args),
+        Cmd::DumpSyntax => do_exec_dump_syntax_cmd(args),
         Cmd::Batch | Cmd::Help | Cmd::Version => unreachable!(),
     });
 
