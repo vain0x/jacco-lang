@@ -1182,6 +1182,8 @@ pub(crate) fn alloc_field_decl(
     let name = px.alloc_name(name);
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
 
+    px.syntax_scopes.on_field_decl(name, &px.ast);
+
     (
         AFieldLikeDecl {
             modifiers: AStmtModifiers::default(),

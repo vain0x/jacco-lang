@@ -127,6 +127,11 @@ impl ScopeSystem {
         }
     }
 
+    /// 名前が追加される。ローカルスコープにはインポートされない。
+    pub(crate) fn on_name_def_nonlocal(&mut self, name: ANameId, text: &str) {
+        self.bind_name("nonlocal", name, Some(text), LexicalReferent::Def, None);
+    }
+
     /// 前方参照を許さない名前が追加される。
     pub(crate) fn on_name_def_stacked(&mut self, name: ANameId, kind: ImportKind, text: &str) {
         self.import_name(name, kind, text);

@@ -41,6 +41,11 @@ impl SyntaxScopes {
             .on_name_def_stacked(name, ImportKind::Value, text);
     }
 
+    pub(crate) fn on_field_decl(&mut self, name: ANameId, ast: &ATree) {
+        let text = name.of(ast.names()).text();
+        self.resolver.on_name_def_nonlocal(name, text);
+    }
+
     pub(crate) fn on_name_ty(&mut self, name: ANameId, ast: &ATree) {
         #[cfg(skip)]
         log::trace!(
