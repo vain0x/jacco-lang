@@ -372,6 +372,7 @@ impl<'a> Xx<'a> {
             error_invalid_ty_args(loc_ty_args, self.logger);
         }
 
+        // FIXME: 過不足があったとしても可能なかぎり項とフィールドの対応を解決する。
         let fields = &k_struct.of(&self.mod_outline.structs).fields;
         let perm = match calculate_field_ordering(
             &expr.fields,
@@ -390,6 +391,11 @@ impl<'a> Xx<'a> {
         for (i, field_expr) in expr.fields.iter().enumerate() {
             let (term, _ty) = self.convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc);
             args[perm[i]] = term;
+
+            self.name_symbols.insert(
+                field_expr.field_name,
+                NameSymbol::ModSymbol(KModSymbol::Field(fields[perm[i]])),
+            );
         }
 
         let result = self.fresh_var(&k_struct.of(&self.mod_outline.structs).name, loc);
