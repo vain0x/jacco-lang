@@ -123,7 +123,7 @@ pub(crate) fn resolve_aliases(
     mod_outline: &KModOutline,
     logger: Logger,
 ) {
-    // FIXME: モジュールの名前を持ち運べていないので、use の先頭は無視する。
+    // FIXME: use の先頭を処理する。
 
     for alias_data in aliases.iter_mut() {
         let entity_name = match alias_data.path() {
