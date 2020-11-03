@@ -1,13 +1,16 @@
 use super::{collect_def_sites, collect_use_sites, hit_test, Doc, LangService, TPos16, TRange};
 use crate::{
     cps::*,
+    front::name_resolution::NameSymbol,
     lang_service::{
-        doc_analysis::DocContentAnalysisMut,
+        doc_analysis::*,
         lang_service::{loc_to_range, to_range16},
     },
-    parse::{AExpr, AFieldExpr, PToken},
+    parse::*,
+    scope::lexical_referent::LexicalReferent,
     source::Loc,
 };
+use std::collections::HashMap;
 
 struct FieldOccurrenceInFnCollector<'a> {
     mod_outline: &'a KModOutline,
@@ -91,10 +94,10 @@ fn document_highlight_of_fields(
     let mut occurrences = vec![];
     collect_field_occurrences(Some(doc), ls, &mut occurrences);
 
-    let syntax = ls.request_syntax(doc)?;
+    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
     let range = token.range(&syntax.tree.tokens);
 
-    let fields = occurrences.iter().find_map(|&(k_field, loc)| {
+    let field = occurrences.iter().find_map(|&(k_field, loc)| {
         let (the_doc, loc) = loc.inner().ok()?;
         if the_doc != doc {
             return None;
@@ -108,15 +111,121 @@ fn document_highlight_of_fields(
         Some(k_field)
     })?;
 
-    let locations = occurrences
+    // element(kind=Name) -> ast-name
+    let mut map = syntax
+        .tree
+        .ast
+        .names()
+        .keys()
+        .map(|name| {
+            let element = name.element(&syntax.tree);
+            (element, name)
+            // syntax.tree.ast.
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (_, &name) in map.iter() {
+        let symbol_opt = symbols.name_symbols.get(&name).cloned();
+    }
+
+    // フィールド式を探す。
+    let mut use_sites = occurrences
         .iter()
-        .filter(|&&(the_field, _)| the_field == fields)
+        .filter(|&&(the_field, _)| the_field == field)
         .map(|&(_, loc)| loc)
         .filter_map(|loc| loc_to_range(loc, &syntax.tree))
-        .collect();
+        .collect::<Vec<_>>();
 
-    // FIXME: 定義箇所もハイライトする
-    Some((vec![], locations))
+    // TODO: field から struct を引く
+    let field_name = field.of(&ls.mod_outline.fields).name.clone();
+    let struct_opt = ls
+        .mod_outline
+        .structs
+        .enumerate()
+        .find_map(|(k_struct, struct_data)| {
+            if struct_data.fields.contains(&field) {
+                Some(k_struct)
+            } else {
+                None
+            }
+        });
+
+    if let Some(k_struct) = struct_opt {
+        let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+        let tr = &syntax.tree;
+
+        'z: for element in syntax.tree.elements.iter() {
+            if element.kind() == PElementKind::RecordExpr {
+                let (record_expr, element) = (element, ());
+
+                // いま注目しているフィールドを含むレコードのレコード式でなければスキップ
+                'a: loop {
+                    let record_name_opt =
+                        record_expr.nth_child_element_of(PElementKind::Name, 0, tr);
+
+                    let name = match record_name_opt {
+                        Some(it) => it,
+                        None => continue 'z,
+                    };
+
+                    let a_name_opt = map.get(&name).cloned();
+                    let mut a_name = match a_name_opt {
+                        Some(it) => it,
+                        None => continue 'z,
+                    };
+
+                    if let Some(LexicalReferent::Name(def_name)) =
+                        syntax.tree.name_referents.get(&a_name).cloned()
+                    {
+                        a_name = def_name;
+                    }
+
+                    let name_symbol_opt = symbols.name_symbols.get(&a_name).cloned();
+
+                    match name_symbol_opt {
+                        Some(NameSymbol::ModSymbol(KModSymbol::Struct(the_struct)))
+                            if the_struct == k_struct =>
+                        {
+                            break 'a
+                        }
+                        _ => continue 'z,
+                    }
+                }
+
+                // フィールドをみつける。
+                let arg_range = 'arg: loop {
+                    for e in record_expr.children() {
+                        let e = match e.as_element() {
+                            Some(it) => it,
+                            None => continue,
+                        };
+
+                        let e = e.of(&tr.elements);
+                        if e.kind() != PElementKind::Arg {
+                            continue;
+                        }
+                        let label = e.nth_child_element_of(PElementKind::Name, 0, tr)?;
+                        let name = label.of(&syntax.tree.elements).first_token(tr)?;
+                        if name.text(&tr.tokens) != field_name {
+                            continue;
+                        }
+
+                        let range = match PLoc::Element(label).range(&syntax.tree) {
+                            Ok(it) => it,
+                            Err(_) => continue 'z,
+                        };
+                        break 'arg range;
+                    }
+                    continue 'z;
+                };
+
+                use_sites.push(arg_range);
+            }
+        }
+    }
+
+    // FIXME: 定義箇所も列挙する
+    Some((vec![], use_sites))
 }
 
 pub(crate) fn document_highlight(

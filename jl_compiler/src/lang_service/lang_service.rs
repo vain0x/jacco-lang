@@ -610,7 +610,7 @@ mod tests {
 
                 fn new_test_state() -> TestState {
                     TestState {
-                        pass: 0_usize,
+                        <$use[pass]>: 0_usize,
                         fail: 0_usize,
                     }
                 }
