@@ -297,13 +297,12 @@ fn gen_ty2(ty: &KTy2, ty_env: &KTyEnv, cx: &mut Cx) -> CTy {
             cx,
         ),
         &KTy2::StructEnum(struct_enum) => gen_struct_enum_ty(struct_enum, cx),
-        KTy2::Struct(k_struct) => {
-            // FIXME: unique_struct_name を事前に計算しておく
-            let name = k_struct.of(&cx.mod_outline.structs).name.to_string();
+        &KTy2::Struct(k_struct) => {
+            let name = unique_struct_name(k_struct, cx);
             CTy::Struct(name)
         }
-        KTy2::App { k_struct, .. } => {
-            let name = &k_struct.of(&cx.mod_outline.structs).name;
+        &KTy2::App { k_struct, .. } => {
+            let name = unique_struct_name(k_struct, cx);
             CTy::Struct(name.to_string())
         }
     }
