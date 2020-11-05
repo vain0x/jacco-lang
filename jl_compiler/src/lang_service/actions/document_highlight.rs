@@ -12,36 +12,6 @@ use crate::{
 };
 use std::collections::HashMap;
 
-struct FieldOccurrenceInFnCollector<'a> {
-    mod_outline: &'a KModOutline,
-    fn_data: &'a KFnData,
-    occurrences: &'a mut Vec<(KField, Loc)>,
-}
-
-impl FieldOccurrenceInFnCollector<'_> {
-    fn do_on_field_tag(&mut self, field_tag: &KFieldTag) {
-        let field = match field_tag.field_opt {
-            Some(it) => it,
-            None => return,
-        };
-
-        self.occurrences.push((field, field_tag.loc));
-    }
-
-    fn on_node(&mut self, node: &KNode) {
-        for term in &node.args {
-            match term {
-                KTerm::FieldTag(field_tag) => self.do_on_field_tag(field_tag),
-                _ => {}
-            }
-        }
-
-        for cont in &node.conts {
-            self.on_node(cont);
-        }
-    }
-}
-
 fn collect_field_occurrences(
     only_doc: Option<Doc>,
     ls: &mut LangService,
@@ -49,15 +19,17 @@ fn collect_field_occurrences(
 ) {
     ls.request_types();
 
-    for fn_data in ls.mod_data.fns.iter() {
-        let mut collector = FieldOccurrenceInFnCollector {
-            mod_outline: &ls.mod_outline,
-            fn_data,
-            occurrences,
-        };
+    let docs = ls.docs.keys().cloned().collect::<Vec<_>>();
+    for doc in docs {
+        let analysis = ls.request_symbols(doc).unwrap();
 
-        for label_data in fn_data.labels.iter() {
-            collector.on_node(&label_data.body);
+        for (&name, symbol) in &analysis.symbols.name_symbols {
+            let field = match *symbol {
+                NameSymbol::ModSymbol(KModSymbol::Field(it)) => it,
+                _ => continue,
+            };
+
+            occurrences.push((field, name.loc().to_loc(doc)));
         }
     }
 }
@@ -72,13 +44,19 @@ fn hit_test_on_field(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<PTok
                 ..
             }) => {
                 let range = to_range16(field.range(&syntax.tree.tokens));
-                if !range.contains_inclusive(pos) {
-                    continue;
+                if range.contains_inclusive(pos) {
+                    return Some(*field);
                 }
-
-                return Some(*field);
             }
-            // AExpr::Record(..) => {}
+            AExpr::Record(ARecordExpr { fields, .. }) => {
+                for field in fields {
+                    let token = field.field_name.of(&syntax.tree.ast.names()).token;
+                    let range = to_range16(token.range(&syntax.tree.tokens));
+                    if range.contains_inclusive(pos) {
+                        return Some(token);
+                    }
+                }
+            }
             _ => continue,
         }
     }
@@ -86,6 +64,7 @@ fn hit_test_on_field(doc: Doc, pos: TPos16, ls: &mut LangService) -> Option<PTok
     None
 }
 
+/// token: ヒットテストでヒットしたトークン
 fn document_highlight_of_fields(
     doc: Doc,
     token: PToken,
@@ -93,6 +72,14 @@ fn document_highlight_of_fields(
 ) -> Option<(Vec<TRange>, Vec<TRange>)> {
     let mut occurrences = vec![];
     collect_field_occurrences(Some(doc), ls, &mut occurrences);
+    eprintln!(
+        "occ = [{}]",
+        occurrences
+            .iter()
+            .map(|(field, loc)| field.of(&ls.mod_outline.fields).name.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
     let range = token.range(&syntax.tree.tokens);
@@ -120,13 +107,8 @@ fn document_highlight_of_fields(
         .map(|name| {
             let element = name.element(&syntax.tree);
             (element, name)
-            // syntax.tree.ast.
         })
         .collect::<HashMap<_, _>>();
-
-    for (_, &name) in map.iter() {
-        let symbol_opt = symbols.name_symbols.get(&name).cloned();
-    }
 
     // フィールド式を探す。
     let mut use_sites = occurrences

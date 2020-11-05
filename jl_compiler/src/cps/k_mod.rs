@@ -61,7 +61,6 @@ pub(crate) enum KModSymbol {
     ConstEnum(KConstEnum),
     StructEnum(KStructEnum),
     Struct(KStruct),
-    #[allow(unused)]
     Field(KField),
 }
 

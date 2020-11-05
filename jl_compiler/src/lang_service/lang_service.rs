@@ -600,7 +600,7 @@ mod tests {
         do_test_highlight(
             r#"
                 struct TestState {
-                    pass: usize,
+                    <$use[pass]>: usize,
                     fail: usize
                 }
 
@@ -632,6 +632,33 @@ mod tests {
                 fn another() {
                     let a = Another { pass: 0_usize };
                     a.pass += 1_usize;
+                }
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_highlight_on_record_expr_field() {
+        do_test_highlight(
+            r#"
+                struct TestState {
+                    pass: usize,
+                    fail: usize,
+                }
+
+                struct Another {
+                    pass: usize,
+                }
+
+                fn new_test_state() -> TestState {
+                    TestState {
+                        <$cursor|><$use[pass]>: 0_usize,
+                        fail: 0_usize,
+                    }
+                }
+
+                fn pass(state: *mut TestState) {
+                    (*state).<$use[pass]> += 1_usize;
                 }
             "#,
         );

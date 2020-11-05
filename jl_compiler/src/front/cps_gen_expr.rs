@@ -387,6 +387,7 @@ impl<'a> Xx<'a> {
             }
         };
 
+        eprintln!("record label bind field");
         let mut args = vec![KTerm::Unit { loc }; fields.len()];
         for (i, field_expr) in expr.fields.iter().enumerate() {
             let (term, _ty) = self.convert_expr_opt(field_expr.value_opt, TyExpect::Todo, loc);
@@ -407,7 +408,10 @@ impl<'a> Xx<'a> {
     fn convert_record_expr(&mut self, expr: &ARecordExpr, loc: Loc) -> AfterRval {
         match self.do_convert_record_expr(expr, loc) {
             Some(result) => (KTerm::Name(result), KTy2::TODO),
-            None => new_error_term(loc),
+            None => {
+                eprintln!("record expr error {:?}", loc);
+                new_error_term(loc)
+            }
         }
     }
 
@@ -451,6 +455,10 @@ impl<'a> Xx<'a> {
             None => ("_".to_string(), loc),
         };
         let result = self.fresh_var(&format!("{}_ptr", name), loc);
+
+        if let Some(field) = expr.field_opt {
+            // TODO: AName にする？
+        }
 
         let (left, _ty) = self.convert_lval(expr.left, k_mut, TyExpect::Todo);
         self.nodes.push(new_field_node(
