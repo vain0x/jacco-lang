@@ -51,7 +51,6 @@ pub(super) struct AnalysisCache {
     pub(super) syntax_opt: Option<Syntax>,
     pub(super) symbols_opt: Option<Symbols>,
     pub(super) cps_opt: Option<Cps>,
-    pub(super) type_resolution_is_done: bool,
     pub(super) lost_symbol_count: usize,
 }
 
@@ -65,7 +64,6 @@ impl AnalysisCache {
             syntax_opt: Default::default(),
             symbols_opt: Default::default(),
             cps_opt: Default::default(),
-            type_resolution_is_done: Default::default(),
             lost_symbol_count: 0,
         }
     }
@@ -77,13 +75,12 @@ impl AnalysisCache {
     pub(super) fn purge_cache(&mut self) {
         self.syntax_opt = None;
         let symbols_opt = self.symbols_opt.take();
-        self.cps_opt = None;
-        self.type_resolution_is_done = false;
 
-        self.lost_symbol_count += match symbols_opt {
-            Some(symbols) => symbols.symbol_count,
-            None => 0,
-        };
+        if let Some(symbols) = symbols_opt {
+            self.lost_symbol_count += symbols.symbol_count;
+        }
+
+        self.cps_opt = None;
     }
 
     pub(super) fn set_text(&mut self, version: i64, text: Rc<String>) {
@@ -165,6 +162,7 @@ impl AnalysisCache {
                             .collect()
                     };
 
+                let name_symbols_orig = name_symbols.clone();
                 Symbols {
                     symbol_count,
                     name_symbols,
@@ -213,12 +211,6 @@ impl AnalysisCache {
         let doc_logs = DocLogs::new();
         let logs = Logs::new();
 
-        {
-            let mut aliases = take(&mut mod_outline.aliases);
-            crate::cps::resolve_aliases(&mut aliases, mod_outline, logs.logger());
-            mod_outline.aliases = aliases;
-        }
-
         front::convert_to_cps(
             doc,
             &syntax.tree,
@@ -239,26 +231,6 @@ impl AnalysisCache {
 
         self.doc_content_analysis_mut(mod_outline, mod_data)
             .unwrap()
-    }
-
-    pub(super) fn resolve_types(&mut self, mod_outline: &mut KModOutline, mod_data: &mut KModData) {
-        if self.type_resolution_is_done {
-            return;
-        }
-
-        let DocContentAnalysisMut {
-            syntax,
-            cps,
-            mod_outline,
-            mod_data,
-            ..
-        } = self.request_cps(mod_outline, mod_data);
-
-        let logs = Logs::new();
-
-        resolve_types(mod_outline, mod_data, logs.logger());
-        cps.errors.extend(logs_into_errors(logs, &syntax.tree));
-        self.type_resolution_is_done = true;
     }
 }
 

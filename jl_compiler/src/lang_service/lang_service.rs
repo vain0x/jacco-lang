@@ -1,6 +1,7 @@
 use super::{actions, doc_analysis::*};
 use crate::{
     cps::*,
+    logs::Logs,
     parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
     utils::VecArena,
@@ -106,26 +107,75 @@ impl LangService {
 
     /// 単一のドキュメントを型検査する。
     pub(super) fn request_types_for(&mut self, doc: Doc) -> Option<DocContentAnalysisMut<'_>> {
-        let everything_is_unchanged = self.dirty_sources.is_empty();
-        if everything_is_unchanged {
-            return self.request_cps(doc);
-        }
+        // FIXME: ドキュメント単位の型検査は未実装
+        self.request_types();
 
-        let analysis = self.docs.get_mut(&doc)?;
-        analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
-
-        let analysis = analysis.doc_content_analysis_mut(&self.mod_outline, &mut self.mod_data);
+        let analysis = self
+            .docs
+            .get_mut(&doc)?
+            .doc_content_analysis_mut(&self.mod_outline, &mut self.mod_data);
         assert!(analysis.is_some());
         analysis
     }
 
     /// すべてのドキュメントを型検査する。
     pub(super) fn request_types(&mut self) {
-        let docs = self.docs.keys().copied().collect::<Vec<_>>();
+        let everything_is_unchanged = self.dirty_sources.is_empty();
+        if everything_is_unchanged {
+            return;
+        }
 
-        for &doc in &docs {
-            let analysis = self.docs.get_mut(&doc).unwrap();
-            analysis.resolve_types(&mut self.mod_outline, &mut self.mod_data);
+        let logs = Logs::new();
+
+        // (型検査などの実装がインクリメンタルになっていないので) 解析をやり直す。
+        // キャッシュのクリア
+        {
+            for doc_data in self.docs.values_mut() {
+                doc_data.purge_cache();
+            }
+
+            self.mod_outline = Default::default();
+            self.mod_data = Default::default();
+            self.dirty_sources.clear();
+        }
+
+        // シンボル解決
+        for analysis in self.docs.values_mut() {
+            analysis.request_symbols(&mut self.mod_outline);
+        }
+
+        // エイリアスの解決
+        {
+            let mut aliases = take(&mut self.mod_outline.aliases);
+            crate::cps::resolve_aliases(&mut aliases, &self.mod_outline, logs.logger());
+            self.mod_outline.aliases = aliases;
+        }
+
+        // CPS 変換
+        for analysis in self.docs.values_mut() {
+            analysis.request_cps(&mut self.mod_outline, &mut self.mod_data);
+        }
+
+        // 型検査
+        {
+            resolve_types(&mut self.mod_outline, &mut self.mod_data, logs.logger());
+
+            // エラーをドキュメントに振り分ける。
+            for log in logs.finish() {
+                let (doc, loc) = match log.loc().inner() {
+                    Ok(it) => it,
+                    Err(_) => continue,
+                };
+
+                let analysis = self
+                    .docs
+                    .get_mut(&doc)
+                    .unwrap()
+                    .doc_content_analysis_mut(&mut self.mod_outline, &mut self.mod_data)
+                    .unwrap();
+                let range = loc.range(&analysis.syntax.tree).unwrap_or(TRange::ZERO);
+                analysis.cps.errors.push((range, log.message().to_string()));
+            }
         }
     }
 
@@ -613,6 +663,26 @@ mod tests {
         let mut lang_service = new_service_from_str("fn f() -> i32 { \"\" }");
         let (_, errors) = lang_service.validate(DOC);
         assert_ne!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_validate_type_errors_update_correctly() {
+        fn t(s: impl Into<String>) -> std::rc::Rc<String> {
+            s.into().into()
+        }
+
+        let mut lang_service = new_service_from_str("");
+        let mut v = 1_i64;
+
+        v += 1;
+        lang_service.change_doc(DOC, v, t("fn main() -> i32 { \"\" }"));
+        let (_, errors) = lang_service.validate(DOC);
+        assert_ne!(errors.len(), 0);
+
+        v += 1;
+        lang_service.change_doc(DOC, v, t("fn main() -> i32 { 0 }"));
+        let (_, errors) = lang_service.validate(DOC);
+        assert_eq!(errors.len(), 0, "{:?}", errors);
     }
 
     #[test]
