@@ -280,9 +280,13 @@ pub(super) fn to_range16(range: TRange) -> TRange16 {
     TRange16::at(TPos16::from(range.index), TPos16::from(range.len))
 }
 
-pub(super) fn loc_to_range(loc: Loc, tree: &PTree) -> Option<TRange> {
+pub(super) fn loc_to_range(loc: Loc, doc: Doc, tree: &PTree) -> Option<TRange> {
     let opt = (|| {
-        let (_, loc) = loc.inner().ok()?;
+        let (the_doc, loc) = loc.inner().ok()?;
+        if the_doc != doc {
+            return None;
+        }
+
         let range = loc.range(tree).ok()?;
         Some(range)
     })();
@@ -475,7 +479,7 @@ pub(super) fn hit_test(
     collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
     sites.iter().find_map(|&(symbol, _, loc)| {
-        let range = loc_to_range(loc, &syntax.tree)?;
+        let range = loc_to_range(loc, doc, &syntax.tree)?;
         if to_range16(range).contains_inclusive(pos) {
             Some((symbol, Location::new(doc, range)))
         } else {
@@ -499,7 +503,7 @@ pub(super) fn collect_def_sites(
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Def {
-            let range = loc_to_range(loc, &syntax.tree)?;
+            let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
             None
@@ -525,7 +529,7 @@ pub(super) fn collect_use_sites(
 
     locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
         if s == symbol && def_or_use == DefOrUse::Use {
-            let range = loc_to_range(loc, &syntax.tree)?;
+            let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
             None
