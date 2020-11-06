@@ -133,7 +133,7 @@ fn document_highlight_of_fields(
         .iter()
         .filter(|&&(the_field, _)| the_field == field)
         .map(|&(_, loc)| loc)
-        .filter_map(|loc| loc_to_range(loc, &syntax.tree))
+        .filter_map(|loc| loc_to_range(loc, doc, &syntax.tree))
         .collect::<Vec<_>>();
 
     // TODO: field から struct を引く
