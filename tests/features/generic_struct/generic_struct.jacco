@@ -1,0 +1,16 @@
+#![test("run", 0)]
+
+struct RawVec[T] {
+    ptr: *mut T,
+    cap: usize,
+}
+
+pub fn main() -> i32 {
+    let x = 0_i32;
+    let vec = RawVec {
+        ptr: &mut x,
+        cap: 0_usize,
+    };
+    vec.ptr += 1_usize;
+    0
+}

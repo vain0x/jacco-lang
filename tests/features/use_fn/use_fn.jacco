@@ -1,0 +1,9 @@
+#![test("run", 0)]
+
+// 他のモジュールの関数を use で参照して、呼び出せる。
+
+use answer::answer;
+
+pub fn main() -> i32 {
+    answer() - 42
+}

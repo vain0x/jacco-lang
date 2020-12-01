@@ -1,0 +1,19 @@
+pub fn main() -> i32 {
+     if true {
+        if true {
+            let a = 1;
+        } else {
+            let b = 2;
+        }
+        let ab = 3;
+    } else {
+        if true {
+            let c = 4;
+        } else {
+            let d = 8;
+        }
+        let cd = 12;
+    }
+    let abcd = 15;
+    0
+}

@@ -1,0 +1,12 @@
+#![test("compile_error")]
+
+// match 式のアームがスコープを形成する。
+
+pub fn main() -> i32 {
+    match 42 {
+        x => 0,
+        _ => x,
+        //   ^
+    }
+    0
+}

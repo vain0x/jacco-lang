@@ -1,0 +1,70 @@
+#![test("run", 0)]
+
+// 具体的な型に対する __align_of が動くこと。
+// (この仕様は今後、変更される可能性がある。)
+
+extern fn assert(cond: bool);
+
+pub fn main() -> i32 {
+    // 整数
+    assert(__align_of::[i8] == 1);
+    assert(__align_of::[i16] == 2);
+    assert(__align_of::[i32] == 4);
+    assert(__align_of::[i64] == 8);
+
+    // ポインタ
+    assert(__align_of::[*unknown] >= 2);
+    assert(__align_of::[*unknown] == __align_of::[usize]);
+    assert(__align_of::[*mut i32] == __align_of::[usize]);
+
+    // unit
+    assert(__align_of::[unit] == 1);
+
+    // const enum
+    {
+        enum Bit {
+            Zero = 0_i32,
+            One = 1_i32,
+        }
+
+        // FIXME: この値は不正。const enum の表現型はいま常に usize になってしまうため。
+        assert(__align_of::[Bit] == 8);
+    }
+
+    // struct enum
+    {
+        enum StructEnum {
+            I32 { value: i32 },
+            F64 { value: f64 },
+        }
+
+        assert(__align_of::[StructEnum] == 8);
+    }
+
+    // struct
+    {
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+
+        assert(__align_of::[Point] == 8);
+    }
+
+    {
+        struct Padded {
+            a: c8,
+            b: i32,
+        }
+
+        assert(__align_of::[Padded] == 4);
+    }
+
+    {
+        struct MyUnit {}
+
+        assert(__align_of::[MyUnit] == 1);
+    }
+
+    0
+}

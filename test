@@ -1,0 +1,161 @@
+#!/bin/bash
+# 全ケースを実行する:
+# USAGE: ./test
+
+# 1ケースだけ実行する:
+# USAGE: ./test empty
+
+# コンパイラの標準入出力は test_stdout.md/test_stderr.md に出力される。
+
+set -eu
+
+f() {
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        TXT="tests/$NAME/$NAME.txt"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        TXT="tests/$CATEGORY/$NAME/$NAME.txt"
+    fi
+
+    echo 'test: '$SRC
+    echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
+    RUST_BACKTRACE=1 RUST_LOG='trace' cargo run --bin jacco build "$SRC" \
+        1>"$TXT" \
+        2> >(tee -a test_stderr.md | grep -E 'Compiling|panicked|error|ERROR|\.rs\:' 1>&2)
+    echo '```' | tee -a test_stderr.md >>test_stdout.md
+}
+
+# V2
+expect_compile_ok() {
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        TXT="tests/$NAME/$NAME.txt"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        TXT="tests/$CATEGORY/$NAME/$NAME.txt"
+    fi
+
+    echo 'test: '$SRC
+    echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
+    RUST_BACKTRACE=1 RUST_LOG='trace' cargo run --bin jacco build --v2 "$SRC" \
+        1>"$TXT" \
+        2> >(tee -a test_stderr.md | grep -E 'Compiling|panicked|error|ERROR|\.rs\:' 1>&2)
+    echo '```' | tee -a test_stderr.md >>test_stdout.md
+}
+
+expect_compile_err() {
+    NAME="$1"
+    CATEGORY="${2:-}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        ERR="tests/$NAME/${NAME}_stderr.log"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        ERR="tests/$CATEGORY/$NAME/${NAME}_stderr.log"
+    fi
+
+    echo 'test: '$SRC
+    echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
+    RUST_BACKTRACE=1 RUST_LOG='info' RUST_LOG_TIMESTAMP='off' \
+        cargo --quiet run --bin jacco build "$SRC" \
+        1> >(tee -a test_stdout.md >&2) \
+        2> >(tee "$ERR" | grep -E 'Compiling|panicked' 1>&2) \
+        || :
+    # FIXME: コンパイルエラーが報告されなければテストは失敗とみなす。
+    echo '```' | tee -a test_stderr.md >>test_stdout.md
+}
+
+expect_run() {
+    NAME="$1"
+    CATEGORY="${2:-''}"
+
+    if test "$CATEGORY" = ""
+    then
+        SRC="tests/$NAME/$NAME.jacco"
+        CLANG="tests/$NAME/$NAME.g.c"
+        OUT="tests/$NAME/$NAME.out"
+    else
+        SRC="tests/$CATEGORY/$NAME/$NAME.jacco"
+        CLANG="tests/$CATEGORY/$NAME/$NAME.g.c"
+        OUT="tests/$CATEGORY/$NAME/$NAME.out"
+    fi
+
+    RUST_BACKTRACE=1 RUST_LOG=info cargo run --bin jacco build "$SRC">"$CLANG" \
+        && gcc -std=c11 -g -Wall -Wno-unused-variable "$PWD/libtest/test.c" "$CLANG" -o "$OUT" \
+        && "$OUT" \
+        || echo "$NAME failed"
+}
+
+f_all() {
+    expect_compile_ok empty
+    expect_compile_ok exit_with_42
+    expect_compile_ok extern_fn
+    expect_compile_ok add
+    expect_compile_ok arithmetic
+    expect_compile_ok if
+    expect_compile_ok let
+    expect_compile_ok operators
+    expect_compile_ok complex
+    expect_compile_ok while
+    expect_compile_ok loop
+    expect_compile_ok break
+    expect_compile_ok continue
+    expect_compile_ok call_direct
+    expect_compile_ok return
+    expect_compile_ok assign
+    expect_compile_ok unit_like_struct
+    expect_compile_ok record_struct
+    expect_compile_ok char
+    expect_compile_ok bool
+    expect_compile_ok cast
+    expect_compile_ok int_types
+    expect_compile_ok str
+    expect_compile_ok ptr
+    expect_compile_ok const
+    expect_compile_ok call_with_pipe
+    expect_compile_ok float
+    expect_compile_ok static_var
+    expect_compile_ok match
+    expect_compile_ok enum_consts
+    expect_compile_ok enum_records
+    expect_compile_ok label_containing_nested_fn_issue issues
+    expect_compile_ok label_order_issue issues
+    expect_compile_ok block
+    expect_compile_ok use
+}
+
+ONLY=${1:-''}
+
+: >test_stdout.md
+: >test_stderr.md
+
+if ! test -z $ONLY
+then
+    expect_compile_ok $ONLY
+else
+    f_all
+
+    # その他のテスト
+    expect_compile_err syntax_error
+    expect_compile_err undefined_local_var name_resolution
+
+    expect_run generic_hash_map integration
+    expect_run generic_swap_fn integration
+
+    cargo test
+fi
+
+# 差分の量を表示する。
+git --no-pager diff --stat --relative -- 'tests/*/*.log' 'tests/*/*.txt'
+echo 'FINISH'

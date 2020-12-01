@@ -1,0 +1,294 @@
+// ジャッコ言語の "ungrammar" 構文定義ファイル
+//
+// "ungrammar" は <https://github.com/rust-analyzer/ungrammar> を参照。
+// 同リポジトリにある Rust の構文定義を参考にしている。
+//
+// 凡例:
+//
+//   //          -- コメント
+//   Name =      -- 非終端記号の定義 (リーフでないノード)
+//   'ident'     -- 終端記号 (トークン)
+//   A B         -- 連接。A, B がこの順番に出現すること
+//   A | B       -- 選択。A, B のどちらか一方が出現すること
+//   A*          -- 繰り返し。A が0回以上連続して出現すること
+//   A?          -- 省略可能。A が0回または1回出現すること
+//   (A)         -- カッコ。A と同じ
+//   label:A     -- ラベル。A に 'label' という名前をつけたもの
+
+// -----------------------------------------------
+// リテラル
+// -----------------------------------------------
+
+Literal =
+  'unit'
+| 'true'
+| 'false'
+| 'number'
+| 'char'
+| 'string'
+
+// -----------------------------------------------
+// 名前
+// -----------------------------------------------
+
+// Qualifiable name.
+Name =
+  'ident' ('::' 'ident')*
+
+// Unqualifiable name.
+UnqualName =
+  'ident'
+
+// -----------------------------------------------
+// 属性
+// -----------------------------------------------
+
+AttrItem =
+  Name
+
+Attr =
+  '#' '[' AttrItem (',' AttrItem)* ','? ']'
+
+// -----------------------------------------------
+// 型
+// -----------------------------------------------
+
+Ty =
+  NameTy
+| InferTy
+| ParenTy
+| PtrTy
+| FnTy
+
+InferTy =
+  '_'
+
+NameTy =
+  Name
+
+ParenTy =
+  '(' Ty ')'
+
+PtrTy =
+  '*' ('const' | 'mut')? Ty
+
+FnTy =
+  'fn' '(' (Ty (',' Ty)*)? ','? ')' ('->' Ty)?
+
+// -----------------------------------------------
+// パターン
+// -----------------------------------------------
+
+Pat =
+  Literal
+| WildcardPat
+| NamePat
+| RecordPat
+| ParenPat
+
+WildcardPat =
+  '_'
+
+NamePat =
+  Name
+
+RecordPat =
+  Name '{'
+    fields:(RecordFieldPat (',' RecordFieldPat)* ','?)?
+  '}'
+
+RecordFieldPat =
+  UnqualName ':' Pat
+
+ParenPat =
+  '(' Pat ')'
+
+// -----------------------------------------------
+// 式
+// -----------------------------------------------
+
+Expr =
+  Literal
+| NameExpr
+| RecordExpr
+| ParenExpr
+| CallExpr
+| IndexExpr
+| FieldExpr
+| CastExpr
+| UnaryOpExpr
+| BinaryOpExpr
+| BlockExpr
+| BreakExpr
+| ContinueExpr
+| ReturnExpr
+| IfExpr
+| MatchExpr
+| LoopExpr
+| WhileExpr
+
+Cond =
+  Expr
+
+NameExpr =
+  Name
+
+RecordExpr =
+  Name '{'
+    fields:(RecordFieldExpr (',' RecordFieldExpr)* ','?)?
+  '}'
+
+RecordFieldExpr =
+  UnqualName (':' Expr)?
+
+ParenExpr =
+  '(' Expr ')'
+
+CallExpr =
+  Expr '(' args:(Expr (',' Expr)* ','?)? ')'
+
+IndexExpr =
+  Expr '[' Expr ']'
+
+FieldExpr =
+  Expr '.' UnqualName
+
+CastExpr =
+  Expr 'as' Ty
+
+UnaryOpExpr =
+  op:('!' | '-' | '*' | '&' ('const' |'mut')?) Expr
+
+BinaryOpExpr =
+  left:Expr
+  op:(
+    '+' | '-' | '*' | '/' | '%'
+    | '&' | '|' | '^' | '<<' | '>>'
+    | '==' | '!=' | '<' | '>' | '<=' | '>='
+    | '&&' | '||'
+    | '='
+    | '+=' | '-=' | '*=' | '/=' | '%='
+    | '&=' | '|=' | '^=' | '<<=' | '>>='
+  )
+  right:Expr
+
+BlockExpr =
+  '{'
+    decls:Stmt*
+  '}'
+
+BreakExpr =
+  'break' Expr?
+
+ContinueExpr =
+  'continue'
+
+ReturnExpr =
+  'return' Expr?
+
+IfExpr =
+  'if' Cond body:BlockExpr
+  ('else' alt:(IfExpr | BlockExpr))?
+
+MatchExpr =
+  'match' Cond '{' Arm* '}'
+
+Arm =
+  Pat '=>' Expr ','?
+
+LoopExpr =
+  'loop' BlockExpr
+
+WhileExpr =
+  'while' Cond BlockExpr
+
+// -----------------------------------------------
+// 文
+// -----------------------------------------------
+
+Stmt =
+  AttrStmt
+| LetStmt
+| ConstStmt
+| StaticStmt
+| FnStmt
+| EnumStmt
+| StructStmt
+| UseStmt
+
+Vis =
+  'priv'
+| 'pub'
+
+TyParam =
+  UnqualName
+
+TyParamList =
+  '[' (TyParam (',' TyParam)* ','?)? ']'
+
+AttrStmt =
+  '#' '!' '[' AttrItem (',' AttrItem)* ','? ']'
+
+LetStmt =
+  Attr* Vis?
+  'let' Pat (':' Ty)? ('=' init:Expr)? ';'
+
+ConstStmt =
+  Attr* Vis?
+  'const' (UnqualName | '_') ':' Ty ('=' init:Expr)? ';'
+
+StaticStmt =
+  Attr* Vis?
+  'static' (UnqualName | '_') ':' Ty ('=' init:Expr)? ';'
+
+Param =
+  (UnqualName | '_') ':' Ty
+
+FnStmt =
+  Attr* Vis?
+  'extern'?
+  'fn' UnqualName TyParamList?
+  '(' params:(Param (',' Param)*)? ','? ')'
+  ('->' Ty)?
+  (
+    body:BlockExpr
+  | ';'
+  )
+
+ConstVariantDecl =
+  UnqualName (':' Ty)? ('=' init:Expr)?
+
+FieldDecl =
+  UnqualName ':' Ty
+
+RecordVariantDecl =
+  UnqualName '{'
+    fields:(FieldDecl (',' FieldDecl)* ','?)?
+  '}'
+
+VariantDecl =
+  ConstVariantDecl
+| RecordVariantDecl
+
+EnumStmt =
+  Attr* Vis?
+  'enum' UnqualName TyParamList? '{'
+    (VariantDecl (',' VariantDecl)* ','?)?
+  '}'
+
+StructStmt =
+  Attr* Vis?
+  'struct' UnqualName TyParamList?
+  (
+    '{'
+      fields:(FieldDecl (',' FieldDecl)* ','?)?
+    '}'
+  | ';'
+  )
+
+UseStmt =
+  Attr* Vis?
+  'use' Name ';'
+
+Root =
+  Stmt*

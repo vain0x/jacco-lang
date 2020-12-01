@@ -1,0 +1,26 @@
+enum Response {
+    Text {
+        str: *c8,
+        len: usize,
+    },
+    Err {
+        status_code: i32,
+    },
+}
+
+pub fn main() -> i32 {
+    let text = Response::Text {
+        str: "hello",
+        len: 6_usize,
+    };
+    let err = Response::Err {
+        status_code: 403,
+    };
+
+    let status_code = match err {
+        Response::Text { .. } => 200,
+        Response::Err { .. } => err.Err.status_code,
+    };
+
+    0
+}

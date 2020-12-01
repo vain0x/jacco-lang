@@ -1,0 +1,2596 @@
+// ジャッコ言語の構文的操作を扱うライブラリ
+
+extern fn memcpy(dest: *mut unknown, src: *unknown, size: usize) -> *mut unknown;
+
+extern fn strncmp(s: *c8, t: *c8, len: usize) -> i32;
+
+// -----------------------------------------------
+// プロセス管理
+// -----------------------------------------------
+
+extern fn abort() -> never;
+
+fn panic(s: *c8) -> never {
+    eprint_s("[ERROR] ");
+    eprint_s(s);
+    eprint_s("\n");
+    abort()
+}
+
+/// 実行時に何らかの条件が満たされていることを表明する。
+///
+/// リリースモードでも動作する。
+fn dyn_assert(cond: bool, message: *c8) {
+    if !cond {
+        eprint_s("[ERROR] 表明違反！\n");
+        eprint_s(message);
+        eprint_s("\n");
+        abort();
+    }
+}
+
+/// 実行時に何らかの条件が満たされていることを表明する。
+///
+/// (のちのち、リリースモードでは除去する。)
+fn debug_assert(cond: bool, message: *c8) {
+    dyn_assert(cond, message);
+}
+
+// -----------------------------------------------
+// アラインメント
+// -----------------------------------------------
+
+struct Align {
+    value: usize,
+}
+
+fn align1() -> Align {
+    Align {
+        value: 1_usize,
+    }
+}
+
+fn align_from_i32(align: i32) -> Align {
+    dyn_assert(align >= 1, "alignment must be >= 1");
+    dyn_assert(align & (align - 1) == 0, "alignment must be 2^N");
+
+    Align {
+        value: align as usize,
+    }
+}
+
+// fn is_aligned(align: Align, value: usize) -> usize {
+//     let mask = align.value - 1;
+//     value & mask == 0
+// }
+
+/// アラインメントの倍数に切り上げる。
+fn align_ceil(align: Align, value: usize) -> usize {
+    let mask = align.value - 1_usize;
+    (value + mask) & !mask
+}
+
+/// サイズ 0 のメモリ領域を指す、アラインされたポインタを作る。
+fn aligned_ptr(align: Align) -> *mut unknown {
+    align.value as *mut unknown
+}
+
+/// アラインされたバイト単位のサイズ
+struct AlignedSize {
+    size: usize,
+    align: Align,
+}
+
+/// 1-byte アラインメントのサイズ
+fn aligned_size_of_align1(size: usize) -> AlignedSize {
+    AlignedSize {
+        size: size,
+        align: align1(),
+    }
+}
+
+fn aligned_size_from_align(align: Align) -> AlignedSize {
+    AlignedSize {
+        size: align.value,
+        align: align,
+    }
+}
+
+fn aligned_size_by_mul(count: usize, align: Align) -> AlignedSize {
+    if 1_000_000_000_usize / align.value < count {
+        panic("count too large");
+    }
+
+    AlignedSize {
+        size: count * align.value,
+        align: align,
+    }
+}
+
+fn aligned_size_by_ceiling(size: usize, align: Align) -> AlignedSize {
+    AlignedSize {
+        size: align_ceil(align, size),
+        align: align,
+    }
+}
+
+// -----------------------------------------------
+// メモリ管理
+// -----------------------------------------------
+
+extern fn malloc(size: usize) -> *mut unknown;
+extern fn realloc(ptr: *mut unknown, new_size: usize) -> *mut unknown;
+extern fn free(ptr: *mut unknown);
+
+// FIXME: 実装
+struct Heap {}
+
+fn heap_new() -> Heap {
+    Heap {}
+}
+
+fn heap_drop(_heap: Heap) {}
+
+/// メモリを動的確保する。
+///
+/// 返されるポインタは NULL ではなく、アラインメントされている。
+/// 書き込まれている値は未定義。
+fn heap_alloc(_heap: *mut Heap, aligned_size: AlignedSize) -> *mut unknown
+    // ensures(p) p != nullptr && p % aligned_size.align == 0
+{
+    let align = aligned_size.align;
+    let size = aligned_size.size;
+
+    // 0 バイトの確保は malloc に要求しない。
+    if size == 0_usize {
+        return aligned_ptr(align);
+    }
+
+    // 巨大なメモリの確保はエラーで落とす。
+    if size > 1_000_000_000_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    eprint_sds("[TRACE] malloc(", size as i32, ")\n");
+    let ptr = malloc(size);
+    if ptr as usize == 0_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    ptr
+}
+
+fn heap_realloc(_heap: *mut Heap, old_ptr: *mut unknown, aligned_size: AlignedSize) -> *mut unknown {
+    let align = aligned_size.align;
+    let size = aligned_size.size;
+
+    if size == 0_usize {
+        return aligned_ptr(align);
+    }
+
+    if size > 1_000_000_000_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    eprint_sds("[TRACE] realloc(", size as i32, ")\n");
+    let new_ptr = realloc(old_ptr, size);
+    if new_ptr as usize == 0_usize {
+        panic("OUT OF MEMORY");
+    }
+
+    new_ptr
+}
+
+fn heap_dealloc(_heap: *mut Heap, _ptr: *mut unknown) {}
+
+fn global_heap_init() {}
+
+fn global_heap_deinit() {}
+
+fn global_heap() -> *mut Heap {
+    1 as *mut Heap
+}
+
+// -----------------------------------------------
+// 入出力
+// -----------------------------------------------
+
+extern fn eprint_s(value: *c8);
+extern fn eprint_t(value: *c8, len: usize);
+extern fn eprint_d(value: i32);
+
+fn eprint_sds(s1: *c8, d2: i32, s3: *c8) {
+    eprint_s(s1);
+    eprint_d(d2);
+    eprint_s(s3);
+}
+
+// -----------------------------------------------
+// テストフレームワーク
+// -----------------------------------------------
+
+struct TestTools {
+    pass_count: usize,
+    fail_count: usize,
+}
+
+fn test_tools_new() -> TestTools {
+    TestTools {
+        pass_count: 0_usize,
+        fail_count: 0_usize,
+    }
+}
+
+fn test_tools_finish(tt: TestTools) -> i32 {
+    let total_count = tt.pass_count + tt.fail_count;
+
+    eprint_sds("[TRACE] 表明数 ", total_count as i32, " / ");
+    eprint_sds("成功 ", tt.pass_count as i32, " / ");
+    eprint_sds("失敗 ", tt.fail_count as i32, "\n");
+
+    if tt.fail_count > 0_usize {
+        // 文字色: イエロー
+        eprint_s("[\x1B[33mERROR\x1B[0m] 一部のテストが失敗しています。\n");
+        1
+    } else if tt.pass_count == 0_usize {
+        // 文字色: イエロー
+        eprint_s("[\x1B[33mERROR\x1B[0m] 表明がありません。\n");
+        1
+    } else {
+        // 文字色: シアン
+        eprint_s("[\x1B[36mINFO]\x1B[0m OK\n");
+        0
+    }
+}
+
+/// 表明が通ったときに呼ばれる。
+fn assert_pass(tt: *mut TestTools) {
+    (*tt).pass_count += 1_usize;
+}
+
+/// 表明が落ちたときに呼ばれる。
+fn assert_fail(tt: *mut TestTools) {
+    (*tt).fail_count += 1_usize;
+
+    let total_count = (*tt).pass_count + (*tt).fail_count;
+
+    // 文字色: イエロー
+    eprint_sds("[\x1B[33mERROR\x1B[0m] 表明エラー #", total_count as i32, "\n");
+}
+
+fn assert_that(tt: *mut TestTools, cond: bool, message: *c8) {
+    if cond {
+        assert_pass(tt);
+    } else {
+        assert_fail(tt);
+        eprint_s("    ");
+        eprint_s(message);
+        eprint_s("\n");
+    }
+}
+
+fn assert_eq_i32(tt: *mut TestTools, actual: i32, expected: i32) {
+    if actual == expected {
+        assert_pass(tt);
+    } else {
+        assert_fail(tt);
+        // 文字色: シアン
+        eprint_sds("    期待された結果 \x1B[36m", expected, "\x1B[0m\n");
+        // 文字色: イエロー
+        eprint_sds("    実際に得た結果 \x1B[33m", actual, "\x1B[0m\n");
+    }
+}
+
+fn assert_eq_usize(tt: *mut TestTools, actual: usize, expected: usize) {
+    assert_eq_i32(tt, actual as i32, expected as i32);
+}
+
+// -----------------------------------------------
+// i32
+// -----------------------------------------------
+
+fn i32_move(dest: *mut i32, src: *i32) {
+    *dest = *src;
+}
+
+// -----------------------------------------------
+// usize
+// -----------------------------------------------
+
+fn usize_compare(left: usize, right: usize) -> i32 {
+    if left == right {
+        0
+    } else if left < right {
+        -1
+    } else {
+        1
+    }
+}
+
+fn usize_min(left: usize, right: usize) -> usize {
+    if left < right {
+        left
+    } else {
+        right
+    }
+}
+
+fn usize_max(left: usize, right: usize) -> usize {
+    if left > right {
+        left
+    } else {
+        right
+    }
+}
+
+// -----------------------------------------------
+// ポインタ
+// -----------------------------------------------
+
+fn ptr_is_null(ptr: *unknown) -> bool {
+    ptr as usize == 0_usize
+}
+
+// -----------------------------------------------
+// StaticLayout
+// -----------------------------------------------
+
+/// 型 T の値のアラインメントとサイズ。サイズは固定でなければいけない。
+struct StaticLayout[T] {
+    /// オブジェクトのサイズ (固定)
+    size: usize,
+    /// アラインメント
+    align: Align,
+}
+
+fn static_layout_new[T](size: usize, align: Align) -> StaticLayout[T] {
+    StaticLayout {
+        size: size,
+        align: align,
+    }
+}
+
+// -----------------------------------------------
+// RawVec
+// -----------------------------------------------
+
+/// 動的配列用のメモリバッファ
+struct RawVec[T] {
+    ptr: *mut T,
+    cap: usize,
+    vtable: *VecVtable[T],
+}
+
+/// ベクタが要素の型について知っていること
+struct VecVtable[T] {
+    layout: StaticLayout[T],
+    move_fn: fn(*mut T, *T),
+}
+
+/// 空のベクタを作る。
+///
+/// 動的確保は発生しない。
+fn raw_vec_new[T](vtable: *VecVtable[T]) -> RawVec[T] {
+    if (*vtable).layout.size == 0 {
+        return RawVec {
+            ptr: 1 as *mut T,
+            // ゼロサイズの要素は 0 バイトでも無限個確保されているとみなせる。
+            cap: !0_usize,
+            vtable: vtable,
+        };
+    }
+
+    RawVec {
+        ptr: aligned_ptr((*vtable).layout.align) as *mut T,
+        cap: 0_usize,
+        vtable: vtable,
+    }
+}
+
+/// ベクタの index 番目の要素への読み取り専用のポインタ (unchecked)
+fn raw_vec_get[T](vec: *RawVec[T], index: usize) -> *T {
+    debug_assert(index < (*vec).cap, "RawVec out of bounds");
+
+    let elem_size = (*(*vec).vtable).layout.size;
+    ((*vec).ptr as usize + index * elem_size) as *T
+}
+
+/// ベクタの index 番目の要素への可変なポインタ (unchecked)
+fn raw_vec_get_mut[T](vec: *mut RawVec[T], index: usize) -> *mut T {
+    debug_assert(index < (*vec).cap, "RawVec out of bounds");
+
+    raw_vec_get(vec, index) as *mut T
+}
+
+/// ベクタのキャパシティを `required_cap` 以上に拡張する。
+/// すでに十分なキャパシティがあるなら、何もしない。
+fn raw_vec_do_grow[T](vec: *mut RawVec[T], required_cap: usize)
+    // requires (*vec).cap < required_cap
+{
+    let layout = (*(*vec).vtable).layout;
+    dyn_assert(layout.size != 0_usize, "error: ゼロサイズの要素を持つベクタは拡張できません。");
+
+    let new_cap = 0_usize;
+    let new_ptr = 8 as *mut T;
+    if (*vec).cap == 0_usize {
+        new_cap = required_cap;
+        let new_size = aligned_size_by_mul(new_cap, layout.align);
+        new_ptr = heap_alloc(global_heap(), new_size) as *mut T;
+    } else {
+        new_cap = usize_max(required_cap, (*vec).cap * 2_usize);
+        let new_size = aligned_size_by_mul(new_cap, layout.align);
+        new_ptr = heap_realloc(global_heap(), (*vec).ptr as *mut unknown, new_size) as *mut T;
+    }
+    dyn_assert(!ptr_is_null(new_ptr), "error: heap API は null を返さないはず");
+
+    (*vec).ptr = new_ptr;
+    (*vec).cap = new_cap;
+}
+
+/// ベクタのメモリ領域を解放する。(要素のデストラクタとかはない。)
+fn raw_vec_drop[T](vec: *mut RawVec[T]) {
+    let layout = (*(*vec).vtable).layout;
+    if (*vec).cap != 0_usize && layout.size != 0_usize {
+        let ptr = (*vec).ptr;
+        (*vec).ptr = aligned_ptr(layout.align) as *mut T;
+        (*vec).cap = 0_usize;
+
+        heap_dealloc(global_heap(), ptr as *mut unknown);
+    }
+}
+
+// -----------------------------------------------
+// Vec
+// -----------------------------------------------
+
+/// 動的配列
+struct Vec[T] {
+    buf: RawVec[T],
+    len: usize,
+}
+
+/// 空のベクタを作る。
+///
+/// 動的確保は発生しない。
+fn vec_new[T](vtable: *VecVtable[T]) -> Vec[T] {
+    Vec {
+        buf: raw_vec_new(vtable),
+        len: 0_usize,
+    }
+}
+
+/// ベクタの index 番目の要素への読み取り専用のポインタを得る。
+///
+/// 動的に境界検査が行われる。
+fn vec_index[T](vec: *Vec[T], index: usize) -> *T {
+    dyn_assert(index < (*vec).len, "Vec out of bounds");
+
+    raw_vec_get(&(*vec).buf, index)
+}
+
+/// ベクタの index 番目の要素への可変なポインタを得る。
+///
+/// 動的に境界検査が行われる。
+fn vec_index_mut[T](vec: *mut Vec[T], index: usize) -> *mut T {
+    dyn_assert(index < (*vec).len, "Vec out of bounds");
+
+    raw_vec_get_mut(&mut (*vec).buf, index)
+}
+
+/// ベクタの要素数
+fn vec_len[T](vec: *Vec[T]) -> usize {
+    (*vec).len
+}
+
+/// ベクタのキャパシティ
+fn vec_cap[T](vec: *Vec[T]) -> usize {
+    (*vec).buf.cap
+}
+
+/// ベクタを空にする。(要素は解放されない。デストラクタとかはない。)
+fn vec_clear[T](vec: *mut Vec[T]) {
+    (*vec).len = 0_usize;
+}
+
+/// ベクタの末尾に要素を追加する。
+fn vec_push[T](vec: *mut Vec[T], value: *T) {
+    if (*vec).len == (*vec).buf.cap {
+        raw_vec_do_grow(&mut (*vec).buf, (*vec).len + 1_usize);
+    }
+
+    let end = raw_vec_get_mut(&mut (*vec).buf, (*vec).len);
+    ((*(*vec).buf.vtable).move_fn)(end, value);
+    (*vec).len += 1_usize;
+}
+
+/// ベクタの末尾の要素を取り出す。
+///
+/// 空なら false が返る。
+/// 空でなければ true が返り、output に値がコピーされる。
+fn vec_pop[T](vec: *mut Vec[T], output: *mut T) -> bool {
+    if (*vec).len == 0_usize {
+        return false;
+    }
+
+    (*vec).len -= 1_usize;
+    let end = raw_vec_get_mut(&mut (*vec).buf, (*vec).len);
+    ((*(*vec).buf.vtable).move_fn)(output, end);
+    true
+}
+
+/// ベクタの領域を解放する。
+///
+/// (要素のデストラクタとかはない。)
+fn vec_drop[T](vec: *mut Vec[T]) {
+    let vtable = (*vec).buf.vtable;
+    raw_vec_drop(&mut (*vec).buf);
+    *vec = vec_new(vtable);
+}
+
+fn vec_tests(tt: *mut TestTools) {
+    let i32_vec_vtable = {
+        let layout = static_layout_new::[i32](4_usize, align_from_i32(4));
+        VecVtable {
+            layout: layout,
+            move_fn: i32_move,
+        }
+    };
+    let numbers = vec_new(&i32_vec_vtable);
+
+    // 3つの要素を push する。
+    let x = 3;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 1_usize);
+
+    x = 1;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 2_usize);
+
+    x = 4;
+    vec_push(&mut numbers, &x);
+    assert_eq_usize(tt, numbers.len, 3_usize);
+
+    // それぞれの要素の値を確認する。
+    let value = *vec_index(&numbers, 0);
+    assert_eq_i32(tt, value, 3);
+
+    let value = *vec_index(&numbers, 1);
+    assert_eq_i32(tt, value, 1);
+
+    let value = *vec_index(&numbers, 2);
+    assert_eq_i32(tt, value, 4);
+
+    // 3つの要素を pop する。
+    let value = -1;
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 4);
+
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 1);
+
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, ok, "pop できるはず");
+    assert_eq_i32(tt, value, 3);
+
+    // 空になったはず。
+    let ok = vec_pop(&mut numbers, &mut value);
+    assert_that(tt, !ok, "pop できないはず");
+    assert_eq_usize(tt, vec_len(&numbers), 0_usize);
+}
+
+// -----------------------------------------------
+// Str
+// -----------------------------------------------
+
+extern fn strlen(str: *c8) -> usize;
+
+/// 文字列の一部への読み取り専用の参照。
+///
+/// Rust の `&str`、C++ の `std::string_view` に相当。
+struct Str {
+    ptr: *c8,
+    len: usize,
+}
+
+fn str_empty() -> Str {
+    Str {
+        ptr: "",
+        len: 0_usize,
+    }
+}
+
+fn str_from_raw(c_str: *c8) -> Str {
+    Str {
+        ptr: c_str,
+        len: strlen(c_str),
+    }
+}
+
+fn str_is_empty(s: Str) -> bool {
+    s.len == 0_usize
+}
+
+fn str_slice_from(s: Str, start: usize) -> Str {
+    if start >= s.len {
+        return str_empty();
+    }
+
+    Str {
+        ptr: s.ptr + start,
+        len: s.len - start,
+    }
+}
+
+fn str_slice(s: Str, start: usize, end: usize) -> Str {
+    if end >= s.len {
+        end = s.len;
+    }
+
+    if start >= end {
+        return str_empty();
+    }
+
+    Str {
+        ptr: s.ptr + start,
+        len: end - start,
+    }
+}
+
+fn str_compare(s: Str, other: Str) -> i32 {
+    let n = usize_min(s.len, other.len);
+    let p = s.ptr;
+    let q = other.ptr;
+    while n >= 1_usize {
+        n -= 1_usize;
+
+        if *p != *q {
+            // FIXME: *p as i32 が *(p as i32) にパースされてしまう。
+            return usize_compare((*p) as usize, (*q) as usize);
+        }
+
+        p += 1_usize;
+        q += 1_usize;
+    }
+    usize_compare(s.len, other.len)
+}
+
+fn str_equals_raw(s: Str, other: *c8) -> bool {
+    str_compare(s, str_from_raw(other)) == 0
+}
+
+/// 文字列が `prefix` で始まるか調べる。
+/// もしそうなら true を返し、`prefix` の長さを `len` に設定する。
+fn str_prefix_raw(s: Str, prefix: *c8, len: *mut usize) -> bool {
+    let prefix_len = strlen(prefix);
+    if s.len >= prefix_len && strncmp(s.ptr, prefix, prefix_len) == 0 {
+        *len = prefix_len;
+        true
+    } else {
+        false
+    }
+}
+
+fn str_tests(tt: *mut TestTools) {
+    let empty = str_empty();
+    let hello = str_from_raw("hello");
+    assert_eq_usize(tt, hello.len, 5_usize);
+
+    assert_that(tt, str_is_empty(empty), "\"\" is empty");
+    assert_that(tt, !str_is_empty(hello), "\"hello\" is not empty");
+
+    let lo = str_slice_from(hello, 3_usize);
+    assert_eq_usize(tt, lo.len, 2_usize);
+
+    assert_eq_i32(tt, str_compare(str_from_raw("a"), str_from_raw("aa")), -1);
+    assert_eq_i32(tt, str_compare(str_from_raw("aa"), str_from_raw("ab")), -1);
+    assert_eq_i32(tt, str_compare(str_from_raw("ba"), str_from_raw("a")), 1);
+    assert_eq_i32(tt, str_compare(lo, str_from_raw("lo")), 0);
+
+    assert_eq_i32(tt, str_compare(str_slice(hello, 0_usize, 99_usize), hello), 0);
+    assert_eq_i32(tt, str_compare(str_slice(hello, 99_usize, 66_usize), empty), 0);
+    assert_eq_i32(tt, str_compare(str_slice(hello, 1_usize, 4_usize), str_from_raw("ell")), 0);
+}
+
+// -----------------------------------------------
+// StrBuf
+// -----------------------------------------------
+
+// 文字列はゼロ終端されなければいけないので、Vec[c8] のラッパーとして定義しない。
+
+/// メモリを所有する文字列バッファ。
+///
+/// Rust の `String`、C++ の `std::string` に相当。
+struct StrBuf {
+    ptr: *mut c8,
+    len: usize,
+    cap: usize,
+}
+
+/// 空の StrBuf を生成する。
+///
+/// 動的確保は発生しない。
+fn str_buf_new() -> StrBuf {
+    StrBuf {
+        // OK: len=0 なのでの書き込みは起きない。
+        ptr: "" as *mut c8,
+        len: 0_usize,
+        cap: 0_usize,
+    }
+}
+
+fn str_buf_as_str(buf: *StrBuf) -> Str {
+    Str {
+        ptr: (*buf).ptr,
+        len: (*buf).len,
+    }
+}
+
+fn str_buf_len(buf: *StrBuf) -> usize {
+    (*buf).len
+}
+
+fn str_buf_cap(buf: *StrBuf) -> usize {
+    (*buf).cap
+}
+
+fn str_buf_grow(buf: *mut StrBuf, required_cap: usize) {
+    if required_cap <= (*buf).cap {
+        return;
+    }
+
+    let new_cap = 0_usize;
+    let new_ptr = 1 as *mut c8;
+    if (*buf).cap == 0_usize {
+        new_cap = required_cap;
+        new_ptr = heap_alloc(global_heap(), aligned_size_of_align1(new_cap)) as *mut c8;
+    } else {
+        new_cap = usize_max(required_cap, (*buf).cap * 2_usize);
+        new_ptr = heap_realloc(global_heap(), (*buf).ptr as *mut unknown, aligned_size_of_align1(new_cap)) as *mut c8;
+    }
+    dyn_assert(!ptr_is_null(new_ptr), "error: heap API は null を返さないはず");
+
+    (*buf).ptr = new_ptr;
+    (*buf).cap = new_cap;
+}
+
+fn str_buf_push_c8(buf: *mut StrBuf, c: c8) {
+    str_buf_grow(buf, (*buf).len + 2_usize);
+
+    *((*buf).ptr + (*buf).len) = c;
+    (*buf).len += 1_usize;
+
+    // ゼロ終端
+    *((*buf).ptr + (*buf).len) = '\0';
+}
+
+fn str_buf_push_str(buf: *mut StrBuf, other: Str) {
+    str_buf_grow(buf, (*buf).len + other.len + 1_usize);
+
+    memcpy(((*buf).ptr + (*buf).len) as *mut unknown, other.ptr, other.len);
+    (*buf).len += other.len;
+
+    // ゼロ終端
+    *((*buf).ptr + (*buf).len) = '\0';
+}
+
+fn str_buf_push_raw(buf: *mut StrBuf, other: *c8) {
+    str_buf_push_str(buf, str_from_raw(other));
+}
+
+fn str_buf_tests(tt: *mut TestTools)  {
+    let s = str_buf_new();
+    // s == ""
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_empty()), 0);
+
+    str_buf_push_c8(&mut s, 'a');
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("a")), 0);
+
+    str_buf_push_c8(&mut s, 'b');
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("ab")), 0);
+
+    str_buf_push_str(&mut s, str_from_raw("cd"));
+    assert_eq_i32(tt, str_compare(str_buf_as_str(&s), str_from_raw("abcd")), 0);
+}
+
+fn eprint_sts(s1: *c8, t2: Str, s3: *c8) {
+    eprint_s(s1);
+    eprint_t(t2.ptr, t2.len);
+    eprint_s(s3);
+}
+
+fn assert_eq_str(tt: *mut TestTools, actual: Str, expected: Str) {
+    if str_compare(actual, expected) == 0 {
+        assert_pass(tt);
+    } else {
+        assert_fail(tt);
+        // 文字色: シアン
+        eprint_sts("    期待された結果 '\x1B[36m", expected, "\x1B[0m'\n");
+        // 文字色: イエロー
+        eprint_sts("    実際に得た結果 '\x1B[33m", actual, "\x1B[0m'\n");
+    }
+}
+
+// -----------------------------------------------
+// SyntaxKind
+// -----------------------------------------------
+
+/// 構文木のノードやトークンの種類
+enum SyntaxKind {
+    /// 不正なトークン。
+    /// UTF-8 として解釈できない部分や、コメントや文字列の外側に識別子として使えない Unicode 文字があるときなど。
+    BadToken,
+    /// End of file. 入力の末尾
+    Eof,
+    /// 1つ以上の改行
+    NewLines,
+    /// 1つ以上の、改行でない空白文字
+    Blank,
+    /// コメント
+    Comment,
+    /// 数値リテラル
+    Number,
+    /// 文字リテラル
+    Char,
+    /// 文字列リテラル
+    String,
+    /// 識別子
+    Ident,
+    /// `_`
+    Underscore,
+
+    // キーワード類
+    As,
+    Box,
+    Break,
+    Case,
+    Cl,
+    Crate,
+    Const,
+    Continue,
+    Default,
+    Defer,
+    Do,
+    Dyn,
+    Else,
+    Enum,
+    Ensures,
+    Export,
+    Extern,
+    False,
+    Fn,
+    For,
+    From,
+    If,
+    Impl,
+    Import,
+    In,
+    Inline,
+    Let,
+    Loop,
+    Macro,
+    Match,
+    Mod,
+    Move,
+    Mut,
+    Of,
+    Out,
+    Priv,
+    Pub,
+    Raw,
+    Ref,
+    Requires,
+    Return,
+    Safe,
+    SelfLower,
+    Static,
+    Struct,
+    Super,
+    Then,
+    Throw,
+    To,
+    Trait,
+    True,
+    Try,
+    Type,
+    Union,
+    Unless,
+    Unsafe,
+    Until,
+    Use,
+    Val,
+    Void,
+    When,
+    Where,
+    While,
+    With,
+    Yield,
+
+    // カッコ類
+    /// `(`
+    LeftParen,
+    /// `)`
+    RightParen,
+    /// `[`
+    LeftBracket,
+    /// `]`
+    RightBracket,
+    /// `{`
+    LeftBrace,
+    /// `}`
+    RightBrace,
+
+    // 約物
+    /// `&`
+    And,
+    /// `&&`
+    AndAnd,
+    /// `&&=`
+    AndAndEqual,
+    /// `&=`
+    AndEqual,
+    /// `!`
+    Bang,
+    /// `!=`
+    BangEqual,
+    /// `!==`
+    BangEqualEqual,
+    /// `:`
+    Colon,
+    /// `::`
+    ColonColon,
+    /// `,`
+    Comma,
+    /// `.`
+    Dot,
+    /// `..`
+    DotDot,
+    /// `..=`
+    DotDotEqual,
+    /// `..<`
+    DotDotLeft,
+    /// `=`
+    Equal,
+    /// `==`
+    EqualEqual,
+    /// `===`
+    EqualEqualEqual,
+    /// `=>`
+    EqualRight,
+    /// `#`
+    Hash,
+    /// `#!`
+    HashBang,
+    /// `^`
+    Hat,
+    /// `^=`
+    HatEqual,
+    /// `<`
+    LeftAngle,
+    /// `<=`
+    LeftEqual,
+    /// `<=>`
+    LeftEqualRight,
+    /// `<<`
+    LeftLeft,
+    /// `<<=`
+    LeftLeftEqual,
+    /// `<<<`
+    LeftLeftLeft,
+    /// `<-`
+    LeftMinus,
+    /// `<->`
+    LeftMinusRight,
+    /// `-`
+    Minus,
+    /// `-=`
+    MinusEqual,
+    /// `--`
+    MinusMinus,
+    /// `-->`
+    MinusMinusRight,
+    /// `->`
+    MinusRight,
+    /// `%`
+    Percent,
+    /// `%=`
+    PercentEqual,
+    /// `|`
+    Pipe,
+    /// `|=`
+    PipeEqual,
+    /// `||`
+    PipePipe,
+    /// `||=`
+    PipePipeEqual,
+    /// `|>`
+    PipeRight,
+    /// `+`
+    Plus,
+    /// `+=`
+    PlusEqual,
+    /// `++`
+    PlusPlus,
+    /// `?`
+    Question,
+    /// `>`
+    RightAngle,
+    /// `>=`
+    RightEqual,
+    /// `>>`
+    RightRight,
+    /// `>>=`
+    RightRightEqual,
+    /// `>>>`
+    RightRightRight,
+    /// `;`
+    Semi,
+    /// `/`
+    Slash,
+    /// `/=`
+    SlashEqual,
+    /// `*`
+    Star,
+    /// `*=`
+    StarEqual,
+}
+
+fn syntax_kind_is_leading_trivia(kind: SyntaxKind) -> bool {
+    match kind {
+        SyntaxKind::BadToken => true,
+        SyntaxKind::NewLines => true,
+        SyntaxKind::Blank => true,
+        SyntaxKind::Comment => true,
+        _ => false,
+    }
+}
+
+fn syntax_kind_is_trailing_trivia(kind: SyntaxKind) -> bool {
+    // 改行は含まない。
+    match kind {
+        SyntaxKind::BadToken => true,
+        SyntaxKind::Blank => true,
+        SyntaxKind::Comment => true,
+        _ => false,
+    }
+}
+
+fn syntax_kind_is_trivia(kind: SyntaxKind) -> bool {
+    syntax_kind_is_leading_trivia(kind)
+}
+
+fn syntax_kind_name(kind: SyntaxKind) -> Str {
+    let name = match kind {
+        SyntaxKind::BadToken => "BAD_TOKEN",
+        SyntaxKind::Eof => "EOF",
+        SyntaxKind::NewLines => "NEW_LINES",
+        SyntaxKind::Blank => "BLANK",
+        SyntaxKind::Comment => "COMMENT",
+        SyntaxKind::Number => "NUMBER",
+        SyntaxKind::Char => "CHAR",
+        SyntaxKind::String => "STRING",
+        SyntaxKind::Ident => "IDENT",
+        SyntaxKind::Underscore =>"UNDERSCORE",
+        SyntaxKind::As => "AS",
+        SyntaxKind::Box => "BOX",
+        SyntaxKind::Break => "BREAK",
+        SyntaxKind::Case => "CASE",
+        SyntaxKind::Cl => "CL",
+        SyntaxKind::Crate => "CRATE",
+        SyntaxKind::Const => "CONST",
+        SyntaxKind::Continue => "CONTINUE",
+        SyntaxKind::Default => "DEFAULT",
+        SyntaxKind::Defer => "DEFER",
+        SyntaxKind::Do => "DO",
+        SyntaxKind::Dyn => "DYN",
+        SyntaxKind::Else => "ELSE",
+        SyntaxKind::Enum => "ENUM",
+        SyntaxKind::Ensures => "ENSURES",
+        SyntaxKind::Export => "EXPORT",
+        SyntaxKind::Extern => "EXTERN",
+        SyntaxKind::False => "FALSE",
+        SyntaxKind::Fn => "FN",
+        SyntaxKind::For => "FOR",
+        SyntaxKind::From => "FROM",
+        SyntaxKind::If => "IF",
+        SyntaxKind::Impl => "IMPL",
+        SyntaxKind::Import => "IMPORT",
+        SyntaxKind::In => "IN",
+        SyntaxKind::Inline => "INLINE",
+        SyntaxKind::Let => "LET",
+        SyntaxKind::Loop => "LOOP",
+        SyntaxKind::Macro => "MACRO",
+        SyntaxKind::Match => "MATCH",
+        SyntaxKind::Mod => "MOD",
+        SyntaxKind::Move => "MOVE",
+        SyntaxKind::Mut => "MUT",
+        SyntaxKind::Of => "OF",
+        SyntaxKind::Out => "OUT",
+        SyntaxKind::Priv => "PRIV",
+        SyntaxKind::Pub => "PUB",
+        SyntaxKind::Raw => "RAW",
+        SyntaxKind::Ref => "REF",
+        SyntaxKind::Requires => "REQUIRES",
+        SyntaxKind::Return => "RETURN",
+        SyntaxKind::Safe => "SAFE",
+        SyntaxKind::SelfLower => "SELF",
+        SyntaxKind::Static => "STATIC",
+        SyntaxKind::Struct => "STRUCT",
+        SyntaxKind::Super => "SUPER",
+        SyntaxKind::Then => "THEN",
+        SyntaxKind::Throw => "THROW",
+        SyntaxKind::To => "TO",
+        SyntaxKind::Trait => "TRAIT",
+        SyntaxKind::True => "TRUE",
+        SyntaxKind::Try => "TRY",
+        SyntaxKind::Type => "TYPE",
+        SyntaxKind::Union => "UNION",
+        SyntaxKind::Unless => "UNLESS",
+        SyntaxKind::Unsafe => "UNSAFE",
+        SyntaxKind::Until => "UNTIL",
+        SyntaxKind::Use => "USE",
+        SyntaxKind::Val => "VAL",
+        SyntaxKind::Void => "VOID",
+        SyntaxKind::When => "WHEN",
+        SyntaxKind::Where => "WHERE",
+        SyntaxKind::While => "WHILE",
+        SyntaxKind::With => "WITH",
+        SyntaxKind::Yield => "YIELD",
+        SyntaxKind::LeftParen => "LEFT_PAREN",
+        SyntaxKind::RightParen => "RIGHT_PAREN",
+        SyntaxKind::LeftBracket => "LEFT_BRACKET",
+        SyntaxKind::RightBracket => "RIGHT_BRACKET",
+        SyntaxKind::LeftBrace => "LEFT_BRACE",
+        SyntaxKind::RightBrace => "RIGHT_BRACE",
+        SyntaxKind::And => "&",
+        SyntaxKind::AndAnd => "&&",
+        SyntaxKind::AndAndEqual => "&&=",
+        SyntaxKind::AndEqual => "&=",
+        SyntaxKind::Bang => "!",
+        SyntaxKind::BangEqual => "!=",
+        SyntaxKind::BangEqualEqual => "!==",
+        SyntaxKind::Colon => ":",
+        SyntaxKind::ColonColon => "::",
+        SyntaxKind::Comma => "COMMA",
+        SyntaxKind::Dot => ".",
+        SyntaxKind::DotDot => "..",
+        SyntaxKind::DotDotEqual => "..=",
+        SyntaxKind::DotDotLeft => "..<",
+        SyntaxKind::Equal => "=",
+        SyntaxKind::EqualEqual => "==",
+        SyntaxKind::EqualEqualEqual => "===",
+        SyntaxKind::EqualRight => "=>",
+        SyntaxKind::Hash => "#",
+        SyntaxKind::HashBang => "#!",
+        SyntaxKind::Hat => "^",
+        SyntaxKind::HatEqual => "^=",
+        SyntaxKind::LeftAngle => "<",
+        SyntaxKind::LeftEqual => "<=",
+        SyntaxKind::LeftEqualRight => "<=>",
+        SyntaxKind::LeftLeft => "<<",
+        SyntaxKind::LeftLeftEqual => "<<=",
+        SyntaxKind::LeftLeftLeft => "<<<",
+        SyntaxKind::LeftMinus => "<-",
+        SyntaxKind::LeftMinusRight => "<->",
+        SyntaxKind::Minus => "-",
+        SyntaxKind::MinusEqual => "-=",
+        SyntaxKind::MinusMinus => "--",
+        SyntaxKind::MinusMinusRight => "-->",
+        SyntaxKind::MinusRight => "->",
+        SyntaxKind::Percent => "%",
+        SyntaxKind::PercentEqual => "%=",
+        SyntaxKind::Pipe => "|",
+        SyntaxKind::PipeEqual => "|=",
+        SyntaxKind::PipePipe => "||",
+        SyntaxKind::PipePipeEqual => "||=",
+        SyntaxKind::PipeRight => "|>",
+        SyntaxKind::Plus => "+",
+        SyntaxKind::PlusEqual => "+=",
+        SyntaxKind::PlusPlus => "++",
+        SyntaxKind::Question => "?",
+        SyntaxKind::RightAngle => ">",
+        SyntaxKind::RightEqual => ">=",
+        SyntaxKind::RightRight => ">>",
+        SyntaxKind::RightRightEqual => ">>=",
+        SyntaxKind::RightRightRight => ">>>",
+        SyntaxKind::Semi => ";",
+        SyntaxKind::Slash => "/",
+        SyntaxKind::SlashEqual => "/=",
+        SyntaxKind::Star => "*",
+        SyntaxKind::StarEqual => "*=",
+    };
+    str_from_raw(name)
+}
+
+fn syntax_kind_from_ident(s: Str) -> SyntaxKind
+    // requires s.len >= 1
+{
+    match *s.ptr {
+        '_' => {
+            if str_equals_raw(s, "_") {
+                return SyntaxKind::Underscore;
+            }
+        },
+        'a' => {
+            if str_equals_raw(s, "as") {
+                return SyntaxKind::As;
+            }
+        },
+        'b' => {
+            if str_equals_raw(s, "box") {
+                return SyntaxKind::Box;
+            }
+
+            if str_equals_raw(s, "break") {
+                return SyntaxKind::Break;
+            }
+        },
+        'c' => {
+            if str_equals_raw(s, "case") {
+                return SyntaxKind::Case;
+            }
+
+            if str_equals_raw(s, "cl") {
+                return SyntaxKind::Cl;
+            }
+
+            if str_equals_raw(s, "crate") {
+                return SyntaxKind::Crate;
+            }
+
+            if str_equals_raw(s, "const") {
+                return SyntaxKind::Const;
+            }
+
+            if str_equals_raw(s, "continue") {
+                return SyntaxKind::Continue;
+            }
+        },
+        'd' => {
+            if str_equals_raw(s, "default") {
+                return SyntaxKind::Default;
+            }
+
+            if str_equals_raw(s, "defer") {
+                return SyntaxKind::Defer;
+            }
+
+            if str_equals_raw(s, "do") {
+                return SyntaxKind::Do;
+            }
+
+            if str_equals_raw(s, "dyn") {
+                return SyntaxKind::Dyn;
+            }
+        },
+        'e' => {
+            if str_equals_raw(s, "else") {
+                return SyntaxKind::Else;
+            }
+
+            if str_equals_raw(s, "enum") {
+                return SyntaxKind::Enum;
+            }
+
+            if str_equals_raw(s, "ensures") {
+                return SyntaxKind::Ensures;
+            }
+
+            if str_equals_raw(s, "export") {
+                return SyntaxKind::Export;
+            }
+
+            if str_equals_raw(s, "extern") {
+                return SyntaxKind::Extern;
+            }
+        },
+        'f' => {
+            if str_equals_raw(s, "false") {
+                return SyntaxKind::False;
+            }
+
+            if str_equals_raw(s, "fn") {
+                return SyntaxKind::Fn;
+            }
+
+            if str_equals_raw(s, "for") {
+                return SyntaxKind::For;
+            }
+
+            if str_equals_raw(s, "from") {
+                return SyntaxKind::From;
+            }
+        },
+        'i' => {
+            if str_equals_raw(s, "if") {
+                return SyntaxKind::If;
+            }
+
+            if str_equals_raw(s, "impl") {
+                return SyntaxKind::Impl;
+            }
+
+            if str_equals_raw(s, "import") {
+                return SyntaxKind::Import;
+            }
+
+            if str_equals_raw(s, "in") {
+                return SyntaxKind::In;
+            }
+
+            if str_equals_raw(s, "inline") {
+                return SyntaxKind::Inline;
+            }
+        },
+        'l' => {
+            if str_equals_raw(s, "let") {
+                return SyntaxKind::Let;
+            }
+
+            if str_equals_raw(s, "loop") {
+                return SyntaxKind::Loop;
+            }
+        },
+        'm' => {
+            if str_equals_raw(s, "macro") {
+                return SyntaxKind::Macro;
+            }
+
+            if str_equals_raw(s, "match") {
+                return SyntaxKind::Match;
+            }
+
+            if str_equals_raw(s, "mod") {
+                return SyntaxKind::Mod;
+            }
+
+            if str_equals_raw(s, "move") {
+                return SyntaxKind::Move;
+            }
+
+            if str_equals_raw(s, "mut") {
+                return SyntaxKind::Mut;
+            }
+        },
+        'o' => {
+            if str_equals_raw(s, "of") {
+                return SyntaxKind::Of;
+            }
+
+            if str_equals_raw(s, "out") {
+                return SyntaxKind::Out;
+            }
+        },
+        'p' => {
+            if str_equals_raw(s, "priv") {
+                return SyntaxKind::Priv;
+            }
+
+            if str_equals_raw(s, "pub") {
+                return SyntaxKind::Pub;
+            }
+        },
+        'r' => {
+            if str_equals_raw(s, "raw") {
+                return SyntaxKind::Raw;
+            }
+
+            if str_equals_raw(s, "ref") {
+                return SyntaxKind::Ref;
+            }
+
+            if str_equals_raw(s, "requires") {
+                return SyntaxKind::Requires;
+            }
+
+            if str_equals_raw(s, "return") {
+                return SyntaxKind::Return;
+            }
+        },
+        's' => {
+            if str_equals_raw(s, "safe") {
+                return SyntaxKind::Safe;
+            }
+
+            if str_equals_raw(s, "self") {
+                return SyntaxKind::SelfLower;
+            }
+
+            if str_equals_raw(s, "static") {
+                return SyntaxKind::Static;
+            }
+
+            if str_equals_raw(s, "struct") {
+                return SyntaxKind::Struct;
+            }
+
+            if str_equals_raw(s, "super") {
+                return SyntaxKind::Super;
+            }
+        },
+        't' => {
+            if str_equals_raw(s, "then") {
+                return SyntaxKind::Then;
+            }
+
+            if str_equals_raw(s, "throw") {
+                return SyntaxKind::Throw;
+            }
+
+            if str_equals_raw(s, "to") {
+                return SyntaxKind::To;
+            }
+
+            if str_equals_raw(s, "trait") {
+                return SyntaxKind::Trait;
+            }
+
+            if str_equals_raw(s, "true") {
+                return SyntaxKind::True;
+            }
+
+            if str_equals_raw(s, "try") {
+                return SyntaxKind::Try;
+            }
+
+            if str_equals_raw(s, "type") {
+                return SyntaxKind::Type;
+            }
+        },
+        'u' => {
+            if str_equals_raw(s, "union") {
+                return SyntaxKind::Union;
+            }
+
+            if str_equals_raw(s, "unless") {
+                return SyntaxKind::Unless;
+            }
+
+            if str_equals_raw(s, "unsafe") {
+                return SyntaxKind::Unsafe;
+            }
+
+            if str_equals_raw(s, "until") {
+                return SyntaxKind::Until;
+            }
+
+            if str_equals_raw(s, "use") {
+                return SyntaxKind::Use;
+            }
+        },
+        'v' => {
+            if str_equals_raw(s, "val") {
+                return SyntaxKind::Val;
+            }
+
+            if str_equals_raw(s, "void") {
+                return SyntaxKind::Void;
+            }
+        },
+        'w' => {
+            if str_equals_raw(s, "when") {
+                return SyntaxKind::When;
+            }
+
+            if str_equals_raw(s, "where") {
+                return SyntaxKind::Where;
+            }
+
+            if str_equals_raw(s, "while") {
+                return SyntaxKind::While;
+            }
+
+            if str_equals_raw(s, "with") {
+                return SyntaxKind::With;
+            }
+        },
+        'y' => {
+            if str_equals_raw(s, "yield") {
+                return SyntaxKind::Yield;
+            }
+        },
+        _ => {},
+    }
+
+    SyntaxKind::Ident
+}
+
+fn syntax_kind_parse_and_pun(s: Str, len: *mut usize) -> SyntaxKind
+    // requires *s.ptr == '&'
+{
+    if str_prefix_raw(s, "&=", len) {
+        return SyntaxKind::AndEqual;
+    }
+
+    if str_prefix_raw(s, "&&=", len) {
+        return SyntaxKind::AndAndEqual;
+    }
+
+    if str_prefix_raw(s, "&&", len) {
+        return SyntaxKind::AndAnd;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::And
+}
+
+fn syntax_kind_parse_bang_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "!==", len) {
+        return SyntaxKind::BangEqualEqual;
+    }
+
+    if str_prefix_raw(s, "!=", len) {
+        return SyntaxKind::BangEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Bang
+}
+
+fn syntax_kind_parse_colon_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "::", len) {
+        return SyntaxKind::ColonColon;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Colon
+}
+
+fn syntax_kind_parse_dot_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "..=", len) {
+        return SyntaxKind::DotDotEqual;
+    }
+
+    if str_prefix_raw(s, "..<", len) {
+        return SyntaxKind::DotDotLeft;
+    }
+
+    if str_prefix_raw(s, "..", len) {
+        return SyntaxKind::DotDot;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Dot
+}
+
+fn syntax_kind_parse_equal_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "=>", len) {
+        return SyntaxKind::EqualRight;
+    }
+
+    if str_prefix_raw(s, "===", len) {
+        return SyntaxKind::EqualEqualEqual;
+    }
+
+    if str_prefix_raw(s, "==", len) {
+        return SyntaxKind::EqualEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Equal
+}
+
+fn syntax_kind_parse_hash_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "#!", len) {
+        return SyntaxKind::HashBang;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Hash
+}
+
+fn syntax_kind_parse_hat_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "^=", len) {
+        return SyntaxKind::HatEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Hat
+}
+
+fn syntax_kind_parse_left_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "<=>", len) {
+        return SyntaxKind::LeftEqualRight;
+    }
+
+    if str_prefix_raw(s, "<=", len) {
+        return SyntaxKind::LeftEqual;
+    }
+
+    if str_prefix_raw(s, "<<=", len) {
+        return SyntaxKind::LeftLeftEqual;
+    }
+
+    if str_prefix_raw(s, "<<<", len) {
+        return SyntaxKind::LeftLeftLeft;
+    }
+
+    if str_prefix_raw(s, "<<", len) {
+        return SyntaxKind::LeftLeft;
+    }
+
+    if str_prefix_raw(s, "<->", len) {
+        return SyntaxKind::LeftMinusRight;
+    }
+
+    if str_prefix_raw(s, "<-", len) {
+        return SyntaxKind::LeftMinus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::LeftAngle
+}
+
+fn syntax_kind_parse_minus_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "->", len) {
+        return SyntaxKind::MinusRight;
+    }
+
+    if str_prefix_raw(s, "-=", len) {
+        return SyntaxKind::MinusEqual;
+    }
+
+    if str_prefix_raw(s, "-->", len) {
+        return SyntaxKind::MinusMinusRight;
+    }
+
+    if str_prefix_raw(s, "--", len) {
+        return SyntaxKind::MinusMinus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Minus
+}
+
+fn syntax_kind_parse_percent_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "%=", len) {
+        return SyntaxKind::PercentEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Percent
+}
+
+fn syntax_kind_parse_pipe_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "||=", len) {
+        return SyntaxKind::PipePipeEqual;
+    }
+
+    if str_prefix_raw(s, "||", len) {
+        return SyntaxKind::PipePipe;
+    }
+
+    if str_prefix_raw(s, "|>", len) {
+        return SyntaxKind::PipeRight;
+    }
+
+    if str_prefix_raw(s, "|=", len) {
+        return SyntaxKind::PipeEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Pipe
+}
+
+fn syntax_kind_parse_plus_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "+=", len) {
+        return SyntaxKind::PlusEqual;
+    }
+
+    if str_prefix_raw(s, "++", len) {
+        return SyntaxKind::PlusPlus;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Plus
+}
+
+fn syntax_kind_parse_right_angle_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, ">>>", len) {
+        return SyntaxKind::RightRightRight;
+    }
+
+    if str_prefix_raw(s, ">>=", len) {
+        return SyntaxKind::RightRightEqual;
+    }
+
+    if str_prefix_raw(s, ">>", len) {
+        return SyntaxKind::RightRight;
+    }
+
+    if str_prefix_raw(s, ">=", len) {
+        return SyntaxKind::RightEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::RightAngle
+}
+
+fn syntax_kind_parse_star_pun(s: Str, len: *mut usize) -> SyntaxKind {
+    if str_prefix_raw(s, "*=", len) {
+        return SyntaxKind::StarEqual;
+    }
+
+    *len = 1_usize;
+    SyntaxKind::Star
+}
+
+// -----------------------------------------------
+// GreenToken
+// -----------------------------------------------
+
+/// トークンの種類と長さ
+///
+/// トークンストリームから出力される。
+struct GreenToken {
+    kind: u16,
+    len: u16,
+}
+
+// const GREEN_TOKEN_SIZE: usize = 4_usize;
+
+// fn green_token_align() -> Align {
+//     align_from_i32(2)
+// }
+
+fn green_token_new(kind: SyntaxKind, len: usize) -> GreenToken {
+    GreenToken {
+        kind: kind as u16,
+        len: len as u16,
+    }
+}
+
+// fn green_token_eof() -> GreenToken {
+//     green_token_new(SyntaxKind::Eof, 0_usize)
+// }
+
+fn green_token_kind(token: GreenToken) -> SyntaxKind {
+    token.kind as SyntaxKind
+}
+
+fn green_token_len(token: GreenToken) -> usize {
+    token.len as usize
+}
+
+fn green_token_is_leading_trivia(token: GreenToken) -> bool {
+    syntax_kind_is_leading_trivia(green_token_kind(token))
+}
+
+fn green_token_is_trailing_trivia(token: GreenToken) -> bool {
+    syntax_kind_is_trailing_trivia(green_token_kind(token))
+}
+
+// -----------------------------------------------
+// TokenStream
+// -----------------------------------------------
+
+struct TokenStream {
+    text: Str,
+    last: usize,
+    current: usize,
+}
+
+fn token_stream_new(text: Str) -> TokenStream {
+    TokenStream {
+        text: text,
+        last: 0_usize,
+        current: 0_usize,
+    }
+}
+
+fn token_stream_from_raw(text: *c8) -> TokenStream {
+    token_stream_new(str_from_raw(text))
+}
+
+/// 前回 commit した位置から現在の位置までの文字列へのスライスを取る。
+fn ts_current_str(ts: *TokenStream) -> Str {
+    str_slice((*ts).text, (*ts).last, (*ts).current)
+}
+
+/// 現在の位置より後にある文字列へのスライスを取る。
+fn ts_rest_str(ts: *mut TokenStream) -> Str {
+    str_slice((*ts).text, (*ts).current, (*ts).text.len)
+}
+
+/// 次の文字を見る。
+fn ts_peek(ts: *TokenStream) -> c8 {
+    if (*ts).current >= (*ts).text.len {
+        return '\0';
+    }
+
+    (*ts).text.ptr[(*ts).current]
+}
+
+fn ts_bump_many(ts: *mut TokenStream, len: usize)
+    // requires ts.current + len <= ts.text.len && ts.current + len is char boundary of ts.text
+{
+    (*ts).current += len;
+}
+
+/// 次の1文字を読み進める。
+fn ts_bump(ts: *mut TokenStream)
+    // requires ts.current < ts.text.len && ts.current + 1 is char boundary of ts.text
+{
+    // FIXME: Unicode 文字を途中で切らない
+    (*ts).current += 1_usize;
+}
+
+/// 次の文字が c なら読み進める。読み進めたら true
+fn ts_eat1(ts: *mut TokenStream, c: c8) -> bool {
+    if ts_peek(ts) == c {
+        ts_bump(ts);
+        true
+    } else {
+        false
+    }
+}
+
+fn ts_commit(ts: *mut TokenStream, kind: SyntaxKind) -> GreenToken {
+    let len = (*ts).current - (*ts).last;
+
+    (*ts).last = (*ts).current;
+
+    green_token_new(kind, len)
+}
+
+fn c8_is_new_line(c: c8) -> bool {
+    match c {
+        '\r' => true,
+        '\n' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_blank(c: c8) -> bool {
+    match c {
+        ' ' => true,
+        '\t' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_digit(c: c8) -> bool {
+    '0' <= c && c <= '9'
+}
+
+fn c8_is_bit(c: c8) -> bool {
+    match c {
+        '0' => true,
+        '1' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_hexdigit(c: c8) -> bool {
+    ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f')
+}
+
+fn c8_is_alphabetic(c: c8) -> bool {
+    ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')
+}
+
+fn c8_is_exponential(c: c8) -> bool {
+    match c {
+        'e' => true,
+        'E' => true,
+        'p' => true,
+        'P' => true,
+        _ => false,
+    }
+}
+
+fn c8_is_ident(c: c8) -> bool {
+    // FIXME: Unicode 文字も識別子として受け付ける
+    c8_is_alphabetic(c) || c8_is_digit(c) || c == '_'
+}
+
+fn scan_new_lines(ts: *mut TokenStream) {
+    while c8_is_new_line(ts_peek(ts)) {
+        ts_bump(ts);
+    }
+}
+
+fn scan_blank(ts: *mut TokenStream) {
+    while c8_is_blank(ts_peek(ts)) {
+        ts_bump(ts);
+    }
+}
+
+fn scan_digits(ts: *mut TokenStream) {
+    while c8_is_digit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
+    }
+}
+
+fn scan_bits(ts: *mut TokenStream) {
+    while c8_is_bit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
+    }
+}
+
+fn scan_hexdigits(ts: *mut TokenStream) {
+    while c8_is_hexdigit(ts_peek(ts)) {
+        ts_bump(ts);
+        ts_eat1(ts, '_');
+    }
+}
+
+enum Radix {
+    Decimal,
+    Binary,
+    Hex,
+}
+
+fn scan_digits_with_radix(ts: *mut TokenStream, radix: Radix) {
+    match radix {
+        Radix::Decimal => scan_digits(ts),
+        Radix::Binary => scan_bits(ts),
+        Radix::Hex => scan_hexdigits(ts),
+    }
+}
+
+fn scan_number_with_radix(ts: *mut TokenStream, radix: Radix) {
+    scan_digits_with_radix(ts, radix);
+
+    // 小数部
+    if ts_eat1(ts, '.') {
+        scan_digits_with_radix(ts, radix);
+    }
+
+    // 指数部
+    if c8_is_exponential(ts_peek(ts)) {
+        ts_bump(ts);
+
+        match ts_peek(ts) {
+            '+' => ts_bump(ts),
+            '-' => ts_bump(ts),
+            _ => {}
+        }
+
+        scan_digits_with_radix(ts, radix);
+    }
+
+    // 接尾辞
+    scan_ident(ts);
+}
+
+fn scan_string_contents(ts: *mut TokenStream, quote: c8) {
+    loop {
+        match ts_peek(ts) {
+            '\0' => break,
+            '\r' => break,
+            '\n' => break,
+            '\\' => {
+                ts_bump(ts);
+                ts_bump(ts);
+                continue;
+            }
+            '\'' => {
+                if quote == '\'' {
+                    break;
+                }
+            }
+            '"' => {
+                if quote == '\"' {
+                    break;
+                }
+            }
+            _ => {}
+        }
+
+        ts_bump(ts);
+    }
+}
+
+fn scan_ident(ts: *mut TokenStream) {
+    while c8_is_ident(ts_peek(ts)) {
+        ts_bump(ts);
+    }
+}
+
+fn tokenize_new_lines(ts: *mut TokenStream) -> GreenToken {
+    scan_new_lines(ts);
+    ts_commit(ts, SyntaxKind::NewLines)
+}
+
+fn tokenize_blank(ts: *mut TokenStream) -> GreenToken {
+    scan_blank(ts);
+    ts_commit(ts, SyntaxKind::Blank)
+}
+
+fn tokenize_comment_after_slash_slash(ts: *mut TokenStream) -> GreenToken {
+    loop {
+        match ts_peek(ts) {
+            '\0' => break,
+            '\r' => break,
+            '\n' => break,
+            _ => ts_bump(ts),
+        }
+    }
+
+    ts_commit(ts, SyntaxKind::Comment)
+}
+
+fn tokenize_number_starting_with_zero(ts: *mut TokenStream) -> GreenToken {
+    let radix = match ts_peek(ts) {
+        'b' => Radix::Binary,
+        'B' => Radix::Binary,
+        'x' => Radix::Hex,
+        'X' => Radix::Hex,
+        _ => Radix::Decimal,
+    };
+
+    if radix != Radix::Decimal {
+        ts_bump(ts); // [bBxX]
+    }
+
+    scan_number_with_radix(ts, radix);
+    ts_commit(ts, SyntaxKind::Number)
+}
+
+fn tokenize_decimal(ts: *mut TokenStream) -> GreenToken {
+    scan_number_with_radix(ts, Radix::Decimal);
+    ts_commit(ts, SyntaxKind::Number)
+}
+
+fn tokenize_char_after_quote(ts: *mut TokenStream) -> GreenToken {
+    scan_string_contents(ts, '\'');
+    ts_eat1(ts, '\'');
+    ts_commit(ts, SyntaxKind::Char)
+}
+
+fn tokenize_string_after_quote(ts: *mut TokenStream) -> GreenToken {
+    scan_string_contents(ts, '"');
+    ts_eat1(ts, '"');
+    ts_commit(ts, SyntaxKind::String)
+}
+
+fn tokenize_ident_starting_with_underscore(ts: *mut TokenStream) -> GreenToken {
+    if !c8_is_ident(ts_peek(ts)) {
+        return ts_commit(ts, SyntaxKind::Underscore);
+    }
+
+    scan_ident(ts);
+    ts_commit(ts, SyntaxKind::Ident)
+}
+
+fn tokenize_ident(ts: *mut TokenStream) -> GreenToken {
+    scan_ident(ts);
+    let kind = syntax_kind_from_ident(ts_current_str(ts));
+    ts_commit(ts, kind)
+}
+
+fn tokenize_pun(ts: *mut TokenStream, kind: SyntaxKind, len: usize) -> GreenToken {
+    ts_bump_many(ts, len);
+    ts_commit(ts, kind)
+}
+
+fn token_stream_next(ts: *mut TokenStream) -> GreenToken {
+    match ts_peek(ts) {
+        '\0' => ts_commit(ts, SyntaxKind::Eof),
+        // FIXME: OR パターン
+        '\r' => {
+            ts_bump(ts);
+            tokenize_new_lines(ts)
+        },
+        '\n' => {
+            ts_bump(ts);
+            tokenize_new_lines(ts)
+        },
+        ' ' => {
+            ts_bump(ts);
+            tokenize_blank(ts)
+        },
+        '\t' => {
+            ts_bump(ts);
+            tokenize_blank(ts)
+        },
+        '0' => {
+            ts_bump(ts);
+            tokenize_number_starting_with_zero(ts)
+        },
+        '\'' => {
+            ts_bump(ts);
+            tokenize_char_after_quote(ts)
+        },
+        '"' => {
+            ts_bump(ts);
+            tokenize_string_after_quote(ts)
+        },
+        '_' => {
+            ts_bump(ts);
+            tokenize_ident_starting_with_underscore(ts)
+        },
+        '(' => tokenize_pun(ts, SyntaxKind::LeftParen, 1_usize),
+        ')' => tokenize_pun(ts, SyntaxKind::RightParen, 1_usize),
+        '[' => tokenize_pun(ts, SyntaxKind::LeftBracket, 1_usize),
+        ']' => tokenize_pun(ts, SyntaxKind::RightBracket, 1_usize),
+        '{' => tokenize_pun(ts, SyntaxKind::LeftBrace, 1_usize),
+        '}' => tokenize_pun(ts, SyntaxKind::RightBrace, 1_usize),
+        ',' => tokenize_pun(ts, SyntaxKind::Comma, 1_usize),
+        '?' => tokenize_pun(ts, SyntaxKind::Question, 1_usize),
+        ';' => tokenize_pun(ts, SyntaxKind::Semi, 1_usize),
+        '/' => {
+            ts_bump(ts);
+            match ts_peek(ts) {
+                '/' => {
+                    ts_bump(ts);
+                    tokenize_comment_after_slash_slash(ts)
+                },
+                '=' => {
+                    ts_bump(ts);
+                    ts_commit(ts, SyntaxKind::SlashEqual)
+                },
+                _ => ts_commit(ts, SyntaxKind::Slash),
+            }
+        },
+        '&' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_and_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '!' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_bang_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        ':' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_colon_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '.' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_dot_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '=' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_equal_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '#' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_hash_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '^' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_hat_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '<' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_left_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '-' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_minus_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '%' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_percent_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '|' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_pipe_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '+' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_plus_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '>' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_right_angle_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        '*' => {
+            let len = 0_usize;
+            let kind = syntax_kind_parse_star_pun(ts_rest_str(ts), &mut len);
+            tokenize_pun(ts, kind, len)
+        },
+        c => {
+            // FIXME: early return にすると不正なコードが生成されるバグがある
+            if c8_is_digit(c) {
+                ts_bump(ts);
+                tokenize_decimal(ts)
+            } else if c8_is_ident(c) {
+                tokenize_ident(ts)
+            } else {
+                eprint_sds("[WARN] 解釈できない文字 ", c as i32, "\n");
+
+                // FIXME: 不正な文字だけスキップする
+                // Unicode 文字境界にハマらないように、とりあえず空白まで飛ばす。
+                loop {
+                    match ts_peek(ts) {
+                        '\0' => break,
+                        '\r' => break,
+                        '\n' => break,
+                        ' ' => break,
+                        '\t' => break,
+                        _ => ts_bump(ts),
+                    }
+                }
+                ts_commit(ts, SyntaxKind::BadToken)
+            }
+        }
+    }
+}
+
+fn do_tokenize_dump(s: *c8, include_trivia: bool) -> StrBuf {
+    let ts = token_stream_from_raw(s);
+    let i = 0;
+    let buf = str_buf_new();
+
+    loop {
+        let token = token_stream_next(&mut ts);
+        let kind = green_token_kind(token);
+        if kind == SyntaxKind::Eof {
+            break;
+        }
+
+        if !include_trivia && syntax_kind_is_trivia(kind) {
+            i += 1;
+            continue;
+        }
+
+        if i != 0 {
+            str_buf_push_str(&mut buf, str_from_raw(", "));
+        }
+
+        str_buf_push_str(&mut buf, syntax_kind_name(kind));
+        i += 1;
+
+        if i >= 10_000_000 {
+            panic("字句解析が EOF に到達しないようです");
+        }
+    }
+
+    buf
+}
+
+fn tokenize_dump(s: *c8) -> StrBuf {
+    do_tokenize_dump(s, true)
+}
+
+fn tokenize_dump_without_trivia(s: *c8) -> StrBuf {
+    do_tokenize_dump(s, false)
+}
+
+fn tokenize_tests(tt: *mut TestTools) {
+    let ts = token_stream_from_raw(" \t");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Blank, "expect blank");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Eof, "expect eof");
+    assert_that(tt, green_token_kind(token_stream_next(&mut ts)) == SyntaxKind::Eof, "expect eof");
+
+    let buf = tokenize_dump("  \r\n\r\n  \n");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("BLANK, NEW_LINES, BLANK, NEW_LINES"));
+
+    // コメント
+    let buf = tokenize_dump("// 🐧LF:\n// 田CRLF:\r\n// EOF:");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("COMMENT, NEW_LINES, COMMENT, NEW_LINES, COMMENT"));
+
+    let buf = tokenize_dump_without_trivia("1_000_000_009_i64    6.02e-23_f64    1.8p19_usize");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("NUMBER, NUMBER, NUMBER"));
+
+    // 文字リテラル
+    let buf = tokenize_dump_without_trivia("''  'a'  '\\''");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("CHAR, CHAR, CHAR"));
+
+    // 文字列リテラル
+    let buf = tokenize_dump_without_trivia("\"\"  \"I'm a string!\"  \"\\\"\"");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, STRING, STRING"));
+
+    // 文字列リテラルは 改行や EOF で停止する。
+    let buf = tokenize_dump("\"\n\n\"");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("STRING, NEW_LINES, STRING"));
+
+    let buf = tokenize_dump("_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("IDENT"));
+
+    let buf = tokenize_dump_without_trivia("_ __");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("UNDERSCORE, IDENT"));
+
+    // キーワード
+    let buf = tokenize_dump_without_trivia("as assign in inline self Self SELF");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("AS, IDENT, IN, INLINE, SELF, IDENT, IDENT"));
+
+    // 記号類
+    let buf = tokenize_dump_without_trivia("||= || |> |= | >>> >>= >> >= > => === == = <=> <= <<= <<< << <-> <- < += ++ + ^= ^ %= % #! # &= &&= && & /= / *= * } { ] [ ) ( ..= ..< .. . ? !== != ! :: : ; , -> -= --> -- -");
+    let expected = "||=, ||, |>, |=, |, >>>, >>=, >>, >=, >, =>, ===, ==, =, <=>, <=, <<=, <<<, <<, <->, <-, <, +=, ++, +, ^=, ^, %=, %, #!, #, &=, &&=, &&, &, /=, /, *=, *, RIGHT_BRACE, LEFT_BRACE, RIGHT_BRACKET, LEFT_BRACKET, RIGHT_PAREN, LEFT_PAREN, ..=, ..<, .., ., ?, !==, !=, !, ::, :, ;, COMMA, ->, -=, -->, --, -";
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw(expected));
+
+    // 不正な文字
+    // 「解釈できない文字 240」という警告が出る。
+    let buf = tokenize_dump("let 🐧;");
+    assert_eq_str(tt, str_buf_as_str(&buf), str_from_raw("LET, BLANK, BAD_TOKEN"));
+}
+
+// -----------------------------------------------
+// PToken
+// -----------------------------------------------
+
+/// 構文木の一要素としてのトークン
+struct PToken {
+    /// `SyntaxKind`
+    ///
+    /// トリビアではないトークンの種類のみ入る。
+    kind: u16,
+
+    /// 先行トリビアの長さ
+    leading_len: u16,
+
+    /// 本体の長さ
+    body_len: u16,
+
+    /// 後続トリビアの長さ
+    trailing_len: u16,
+}
+
+// const P_TOKEN_SIZE: usize = 8_usize;
+
+// fn p_token_align() -> Align {
+//     align_from_i32(2)
+// }
+
+fn p_token_new(kind: SyntaxKind, leading_len: usize, body_len: usize, trailing_len: usize) -> PToken {
+    PToken {
+        kind: kind as u16,
+        leading_len: leading_len as u16,
+        body_len: body_len as u16,
+        trailing_len: trailing_len as u16,
+    }
+}
+
+fn p_token_default() -> PToken {
+    p_token_new(SyntaxKind::Eof, 0_usize, 0_usize, 0_usize)
+}
+
+fn p_token_kind(token: PToken) -> SyntaxKind {
+    token.kind as SyntaxKind
+}
+
+fn p_token_leading_len(token: PToken) -> usize {
+    token.leading_len as usize
+}
+
+fn p_token_body_len(token: PToken) -> usize {
+    token.body_len as usize
+}
+
+fn p_token_trailing_len(token: PToken) -> usize {
+    token.trailing_len as usize
+}
+
+// -----------------------------------------------
+// Px
+// -----------------------------------------------
+
+/// Parsing context. 構文解析の状態
+struct Px {
+    ts: *mut TokenStream,
+
+    /// `ts` から最後に取り出したトークン。(初期状態では最初のトークンが入っている。)
+    lookahead: GreenToken,
+
+    /// 先読み (1個目)
+    next1: PToken,
+
+    /// 先読み (2個目)
+    next2: PToken,
+}
+
+/// 次の1トークンを先読みする。読み進めたら true で、token に字句が代入される。
+fn do_lookahead(ts: *mut TokenStream, lookahead: *mut GreenToken, token: *mut PToken) -> bool {
+    if green_token_kind(*lookahead) == SyntaxKind::Eof {
+        *token = p_token_default();
+        return false;
+    }
+
+    let leading_len = 0_usize;
+    while green_token_is_leading_trivia(*lookahead)  {
+        leading_len += green_token_len(*lookahead);
+        *lookahead = token_stream_next(ts);
+    }
+
+    let kind = green_token_kind(*lookahead);
+    let body_len = green_token_len(*lookahead);
+    *lookahead = token_stream_next(ts);
+
+    let trailing_len = 0_usize;
+    while green_token_is_trailing_trivia(*lookahead)  {
+        trailing_len += green_token_len(*lookahead);
+        *lookahead = token_stream_next(ts);
+    }
+
+    *token = p_token_new(kind, leading_len, body_len, trailing_len);
+    true
+}
+
+fn px_new(ts: *mut TokenStream) -> Px {
+    // 常に2トークン先読みした状態にする。
+    let lookahead = token_stream_next(ts);
+    let next1 = p_token_default();
+    let next2 = p_token_default();
+    do_lookahead(ts, &mut lookahead, &mut next1);
+    do_lookahead(ts, &mut lookahead, &mut next2);
+
+    Px {
+        ts: ts,
+        lookahead: lookahead,
+        next1: next1,
+        next2: next2,
+    }
+}
+
+/// 次のトークンを取り出す。
+fn px_bump(px: *mut Px) -> PToken {
+    let token = (*px).next1;
+
+    (*px).next1 = (*px).next2;
+    do_lookahead((*px).ts, &mut (*px).lookahead, &mut (*px).next2);
+
+    token
+}
+
+/// 次のトークンを飛ばす。
+fn px_skip(px: *mut Px) {
+    let token = px_bump(px);
+    eprint_sts("[ERROR] SKip ", syntax_kind_name(p_token_kind(token)), "\n");
+}
+
+fn px_peek1(px: *Px) -> SyntaxKind {
+    p_token_kind((*px).next1)
+}
+
+fn px_peek2(px: *Px) -> SyntaxKind {
+    p_token_kind((*px).next2)
+}
+
+fn px_eat(px: *mut Px, kind: SyntaxKind, token: *mut PToken) -> bool {
+    if px_peek1(px) == kind {
+        *token = px_bump(px);
+        true
+    } else {
+        false
+    }
+}
+
+fn parse_dump_tokens(s: *c8, output: *mut StrBuf) -> Str {
+    let ts = token_stream_from_raw(s);
+    let px = px_new(&mut ts);
+    let i = 0_i32;
+
+    // FIXME: この let を while の中に置くと不正なコードが生成されてしまうバグがある
+    let token = p_token_default();
+
+    while px_peek1(&px) != SyntaxKind::Eof {
+        token = px_bump(&mut px);
+
+        if i != 0 {
+            str_buf_push_raw(output, ", ");
+        }
+
+        let name = syntax_kind_name(p_token_kind(token));
+        str_buf_push_str(output, name);
+        i += 1;
+    }
+
+    str_buf_as_str(output)
+}
+
+// -----------------------------------------------
+// 文のパース
+// -----------------------------------------------
+
+fn parse_fn_stmt(px: *mut Px) -> bool {
+    eprint_s("[TRACE] parse_fn_stmt\n");
+
+    debug_assert(px_peek1(px) == SyntaxKind::Fn, "Expected fn keyword");
+    let keyword = px_bump(px);
+
+    let ident = p_token_default();
+    px_eat(px, SyntaxKind::Ident, &mut ident);
+
+    let token = p_token_default();
+    px_eat(px, SyntaxKind::LeftParen, &mut token);
+    px_eat(px, SyntaxKind::RightParen, &mut token);
+
+    px_eat(px, SyntaxKind::MinusRight, &mut token);
+    px_eat(px, SyntaxKind::Ident, &mut token);
+
+    px_eat(px, SyntaxKind::LeftBrace, &mut token);
+
+    let value = p_token_default();
+    px_eat(px, SyntaxKind::Number, &mut value);
+
+    px_eat(px, SyntaxKind::RightBrace, &mut token);
+    true
+}
+
+fn parse_stmt(px: *mut Px) -> bool {
+    let token = p_token_default();
+    px_eat(px, SyntaxKind::Pub, &mut token);
+
+    match px_peek1(px) {
+        SyntaxKind::Semi => {
+            px_bump(px);
+            eprint_s("[TRACE] empty statement parsed");
+            true
+        }
+        SyntaxKind::Fn => parse_fn_stmt(px),
+        _ => false,
+    }
+}
+
+fn parse_root(px: *mut Px) -> usize {
+    eprint_s("[TRACE] parse_root BEGIN\n");
+    let stmt_count = 0_usize;
+
+    while px_peek1(px) != SyntaxKind::Eof {
+        if !parse_stmt(px) {
+            px_skip(px);
+            continue;
+        }
+
+        stmt_count += 1_usize;
+    }
+
+    eprint_s("[TRACE] parse_root END\n");
+    stmt_count
+}
+
+fn parse_tests(tt: *mut TestTools) {
+    let output = str_buf_new();
+    let actual = parse_dump_tokens("pub fn main() -> i32 {\n    0\n}\n", &mut output);
+    assert_eq_str(tt, actual, str_from_raw("PUB, FN, IDENT, LEFT_PAREN, RIGHT_PAREN, ->, IDENT, LEFT_BRACE, NUMBER, RIGHT_BRACE"));
+
+    let ts = token_stream_from_raw("pub fn main() -> i32 { 0 }");
+    let px = px_new(&mut ts);
+    let stmt_count = parse_root(&mut px);
+    assert_eq_usize(tt, stmt_count, 1_usize);
+
+    let ts = token_stream_from_raw("pub fn main() -> i32 { 0 } fn f() -> i64 {}");
+    let px = px_new(&mut ts);
+    let stmt_count = parse_root(&mut px);
+    assert_eq_usize(tt, stmt_count, 2_usize);
+}
+
+// -----------------------------------------------
+// エントリポイント
+// -----------------------------------------------
+
+/// テストを実行して、結果コードを返す。
+pub fn libjacco_syntax_tests() -> i32 {
+    global_heap_init();
+
+    let tt = test_tools_new();
+    eprint_s("[TRACE] テストの実行を開始します。\n")
+
+    // FIXME: ブロック文が使えないので if true で代用。
+    if true {
+        let tt = &mut tt;
+        assert_eq_i32(tt, 40 + 2, 42);
+        // assert_eq_i32(tt, 40 - 2, 42);
+
+        vec_tests(tt);
+        str_tests(tt);
+        str_buf_tests(tt);
+        tokenize_tests(tt);
+        parse_tests(tt);
+    }
+
+    eprint_s("[TRACE] テストの実行が終了しました。\n");
+    let exit_code = test_tools_finish(tt);
+
+    global_heap_deinit();
+    exit_code
+}

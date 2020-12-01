@@ -1,0 +1,14 @@
+#!/bin/bash
+# USAGE: ./run-example calc
+
+set -eu
+
+JACCO_BIN="$PWD/target/debug/jacco"
+
+NAME=$1
+shift
+
+cargo build && (
+    cd ./examples/$NAME
+    RUST_LOG=debug JACCO_BIN=$JACCO_BIN ./run "$@"
+)

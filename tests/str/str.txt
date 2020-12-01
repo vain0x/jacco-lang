@@ -1,0 +1,8 @@
+void puts(unsigned char const* s_1);
+
+int main();
+
+int main() {
+    puts((unsigned char const*)"Hello, world!");
+    return 0;
+}

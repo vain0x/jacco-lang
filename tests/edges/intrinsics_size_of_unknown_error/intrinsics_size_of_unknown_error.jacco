@@ -1,0 +1,7 @@
+#![test("compile_error")]
+
+// unknown のサイズを取ることはできない。
+
+pub fn main() -> i32 {
+    __size_of::[unknown] as i32
+}

@@ -1,0 +1,21 @@
+extern fn abort() -> !;
+extern fn print_str(msg: *c8);
+extern fn print_i32(value: i32);
+
+const ANSWER: i32 = 42;
+
+pub fn main() -> i32 {
+    match 42 {
+        // FIXME: 定数パターンはいまのところ未実装 (名前解決の時点で変数パターンと区別できないため)
+        // ANSWER => print_str("ok"),
+        x => print_i32(x),
+    }
+
+    match 'A' {
+        'a' => abort(),
+        'A' => print_str("OK"),
+        _ => {}
+    }
+
+    0
+}

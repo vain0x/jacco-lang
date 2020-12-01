@@ -1,0 +1,24 @@
+struct RawVec {
+    /* unknown */ void* ptr;
+    unsigned long long cap;
+};
+
+int main();
+
+int main() {
+    int x_1;
+    int* refmut_1;
+    struct RawVec RawVec_1;
+    struct RawVec vec_1;
+    int** ptr_ptr_1;
+    struct RawVec* refmut_2;
+    x_1 = 0;
+    refmut_1 = &x_1;
+    RawVec_1.ptr = refmut_1;
+    RawVec_1.cap = 0ULL;
+    vec_1 = RawVec_1;
+    refmut_2 = &vec_1;
+    ptr_ptr_1 = &refmut_2->ptr;
+    *ptr_ptr_1 += 1ULL;
+    return 0;
+}

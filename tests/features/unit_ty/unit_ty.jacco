@@ -1,0 +1,14 @@
+#![test("run", 0)]
+
+// unit キーワードは unit 型および unit 定数を表す。
+
+fn set_unit(_unit: unit) {}
+
+fn get_unit() -> unit {
+    unit
+}
+
+pub fn main() -> i32 {
+    set_unit(get_unit());
+    0
+}

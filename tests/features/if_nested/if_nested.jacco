@@ -1,0 +1,15 @@
+#![test("run", 42)]
+
+// if 式を入れ子にできる。
+
+pub fn main() -> i32 {
+    if true {
+        if false {
+            41
+        } else {
+            42
+        }
+    } else {
+        43
+    }
+}

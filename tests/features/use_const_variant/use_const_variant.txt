@@ -1,0 +1,44 @@
+/* never */ void abort();
+
+void assert(int cond_1);
+
+int exit_code_as_i32_1(unsigned long long code);
+
+int main();
+
+int exit_code_as_i32_1(unsigned long long code_1) {
+    int match_result_1;
+    unsigned long long __1;
+    switch (code_1) {
+        case 0: {
+            match_result_1 = 0;
+            goto match_next_1;
+        }
+        case 1: {
+            match_result_1 = 1;
+            goto match_next_1;
+        }
+        default: {
+            abort();
+            match_result_1 = (void)0;
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    return match_result_1;
+}
+
+int main() {
+    int call_result_1;
+    int equal_1;
+    int call_result_2;
+    int equal_2;
+    call_result_1 = exit_code_as_i32_1(0);
+    equal_1 = call_result_1 == 0;
+    assert(equal_1);
+    call_result_2 = exit_code_as_i32_1(1);
+    equal_2 = call_result_2 == 1;
+    assert(equal_2);
+    return 0;
+}

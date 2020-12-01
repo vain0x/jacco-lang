@@ -1,0 +1,17 @@
+pub fn main() -> i32 {
+    let n32 = 1_000_000_007_i32;
+    let n64 = 1_000_000_007_i64;
+    let n_usize = 1_000_000_007_usize;
+
+    let cast_64 = 1000 as i64;
+    let mul_64 = n64 * cast_64;
+
+    let signed_8bit = -100 as i8;
+    let signed_16bit = -3000 as i16;
+    let signed_ptr_size = -1 as isize;
+    let unsigned_8bit = 255 as u8;
+    let unsigned_16bit = 65535 as u16;
+    let unsigned_32bit = 4200000000_usize as u32;
+    let unsigned_64bit = 18000000000000000000_usize as u64;
+    0
+}

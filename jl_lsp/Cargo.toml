@@ -1,5 +1,5 @@
 [package]
-name = "jl_lsp"
+name = "jacco_lsp"
 version = "0.1.0"
 authors = ["vain0x <vainzerox@gmail.com>"]
 edition = "2018"
@@ -7,3 +7,24 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jl_compiler = { path = "../jl_compiler" }
+
+# ログ API
+log = "0.4"
+
+# LSP の型定義
+lsp-types = { version = "0.74" }
+
+# ファイルシステムの監視
+notify = "4"
+
+# データ構造のシリアライズ・デシリアライズを自動実装してくれるライブラリ。
+serde = { version = "1", features = ["derive"] }
+# データ構造を JSON 形式にシリアライズ・デシリアライズしてくれるライブラリ。
+serde_json = "1"
+
+# ファイルにログを出力するためのもの。
+simplelog = "0.7"
+
+# URL (URI) の定義や操作など
+url = "2"

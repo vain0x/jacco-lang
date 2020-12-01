@@ -1,0 +1,10 @@
+/* never */ void exit(int code_1);
+
+int main();
+
+int main() {
+    int _code_1;
+    exit(42);
+    _code_1 = (void)0;
+    return 0;
+}

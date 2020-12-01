@@ -1,0 +1,19 @@
+#![test("run", 42)]
+
+// 入れ子の if 式から return で脱出できる。
+
+pub fn main() -> i32 {
+    if false {
+        41;
+        ()
+    } else {
+        if true {
+            return 42;
+        } else {
+            43;
+            ()
+        }
+    }
+
+    44
+}

@@ -1,0 +1,8 @@
+void assert(int cond_1);
+
+int main();
+
+int main() {
+    assert(1);
+    return 0;
+}

@@ -1,0 +1,10 @@
+#![test("compile_error")]
+
+// レコード式の型引数が型パラメータの個数に一致していないとエラーになる。
+
+struct Id[T] {}
+
+pub fn main() -> i32 {
+    let _ = Id::[i32, u32] {};
+    0
+}

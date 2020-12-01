@@ -1,0 +1,40 @@
+int main();
+
+int main() {
+    int a_1;
+    int b_1;
+    int ab_1;
+    int c_1;
+    int d_1;
+    int cd_1;
+    int abcd_1;
+    if (1) {
+        if (1) {
+            a_1 = 1;
+            goto next_1;
+        } else {
+            b_1 = 2;
+            goto next_1;
+        }
+    } else {
+        if (1) {
+            c_1 = 4;
+            goto next_2;
+        } else {
+            d_1 = 8;
+            goto next_2;
+        }
+    }
+
+next_3:;
+    abcd_1 = 15;
+    return 0;
+
+next_1:;
+    ab_1 = 3;
+    goto next_3;
+
+next_2:;
+    cd_1 = 12;
+    goto next_3;
+}

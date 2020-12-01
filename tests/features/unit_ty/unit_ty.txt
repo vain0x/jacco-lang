@@ -1,0 +1,19 @@
+void set_unit_1();
+
+void get_unit_1();
+
+int main();
+
+void set_unit_1() {
+    return;
+}
+
+void get_unit_1() {
+    return;
+}
+
+int main() {
+    get_unit_1();
+    set_unit_1();
+    return 0;
+}

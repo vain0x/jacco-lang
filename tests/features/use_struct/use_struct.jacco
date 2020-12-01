@@ -1,0 +1,19 @@
+#![test("run", 0)]
+
+// 他のモジュールの構造体を use で参照し、構築やフィールド参照できる。
+
+use err::Err;
+
+extern fn assert(cond: bool);
+extern fn strcmp(first: *c8, second: *c8) -> i32;
+
+pub fn main() -> i32 {
+    let err = Err {
+        code: 1234,
+        message: "Something wrong.",
+    };
+
+    assert(err.code == 1234);
+    assert(strcmp(err.message, "Something wrong.") == 0);
+    0
+}

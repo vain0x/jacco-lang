@@ -1,0 +1,15 @@
+[package]
+name = "calc"
+version = "0.1.0"
+authors = ["vain0x <vainzerox@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# 標準入力を読み込むもの。(カーソルキーなどに対応している。)
+# <https://github.com/kkawakam/rustyline>
+rustyline = "6"
+
+[workspace]

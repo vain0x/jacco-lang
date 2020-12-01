@@ -1,0 +1,8 @@
+struct A;
+
+pub fn main() -> i32 {
+    let a = A;
+    let p = &mut a;
+    *p = A {};
+    0
+}

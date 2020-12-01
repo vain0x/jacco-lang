@@ -1,0 +1,21 @@
+fn break_from_while() {
+    while true {
+        break;
+    }
+}
+
+fn break_from_loop() {
+    loop {
+        break;
+    }
+}
+
+fn break_with_arg() -> i32 {
+    loop {
+        break 2;
+    }
+}
+
+pub fn main() -> i32 {
+    0
+}

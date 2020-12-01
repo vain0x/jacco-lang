@@ -1,0 +1,18 @@
+// 未実装
+
+extern fn assert(cond: bool);
+
+fn div(x: i32, y: i32) -> i32 {
+    x / y
+}
+
+fn sub3(x: i32, y: i32, z: i32) -> i32 {
+    x - y - z
+}
+
+pub fn main() -> i32 {
+    // let a = ((42 + 2 + 3) * 2) |> div(2) |> sub3(2, 3);
+    // a == 42 |> assert();
+
+    0
+}

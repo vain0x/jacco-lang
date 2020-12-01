@@ -1,0 +1,5 @@
+pub enum Signum {
+    Positive {}
+    Zero {}
+    Negative {}
+}

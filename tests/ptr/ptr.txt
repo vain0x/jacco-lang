@@ -1,0 +1,50 @@
+void assert_ok(int cond_1);
+
+int main();
+
+int main() {
+    unsigned char const* s_1;
+    unsigned char const* add_1;
+    unsigned char deref_1;
+    unsigned char e_1;
+    int equal_1;
+    unsigned char const* indexed_ptr_1;
+    unsigned char index_result_1;
+    unsigned char o_1;
+    int equal_2;
+    unsigned char const* const* ref_1;
+    unsigned char const* const* pp_1;
+    unsigned char const* deref_2;
+    unsigned char deref_3;
+    int equal_3;
+    int a_1;
+    int* refmut_1;
+    int* p_1;
+    int* indexed_ptr_2;
+    int equal_4;
+    s_1 = (unsigned char const*)"hello";
+    add_1 = s_1 + 1ULL;
+    deref_1 = *add_1;
+    e_1 = deref_1;
+    equal_1 = e_1 == 'e';
+    assert_ok(equal_1);
+    indexed_ptr_1 = s_1 + 4ULL;
+    index_result_1 = *indexed_ptr_1;
+    o_1 = index_result_1;
+    equal_2 = o_1 == 'o';
+    assert_ok(equal_2);
+    ref_1 = &s_1;
+    pp_1 = ref_1;
+    deref_2 = *pp_1;
+    deref_3 = *deref_2;
+    equal_3 = deref_3 == 'h';
+    assert_ok(equal_3);
+    a_1 = 0;
+    refmut_1 = &a_1;
+    p_1 = refmut_1;
+    indexed_ptr_2 = p_1 + 0ULL;
+    *indexed_ptr_2 = 1;
+    equal_4 = a_1 == 1;
+    assert_ok(equal_4);
+    return 0;
+}

@@ -1,0 +1,11 @@
+void use_hand_1();
+
+void use_hand_1() {
+    unsigned long long goo_1;
+    unsigned long long paa_1;
+    unsigned long long choki_1;
+    goo_1 = 0ULL;
+    paa_1 = 8ULL;
+    choki_1 = 9ULL;
+    return;
+}

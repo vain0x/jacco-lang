@@ -1,0 +1,6 @@
+extern fn f(x: i32, y: i32, z: i32) -> i32;
+extern fn g() -> i32;
+
+pub fn main() -> i32 {
+    f(1 * 2, 3 + 4, g())
+}

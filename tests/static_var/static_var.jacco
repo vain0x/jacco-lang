@@ -1,0 +1,28 @@
+extern fn assert(cond: bool);
+
+// FIXME: 外部グローバル変数は参照できない。
+// extern static global_var: i32;
+
+fn fresh_id() -> i32 {
+    // local static var
+    static LAST_ID: i32 = 0;
+
+    LAST_ID += 1;
+    LAST_ID
+}
+
+// global static var
+static ERR_NO: i32 = 0;
+
+fn perform_failible_operation(err: i32) {
+    ERR_NO = err;
+}
+
+pub fn main() -> i32 {
+    assert(fresh_id() == 1);
+    assert(fresh_id() == 2);
+
+    perform_failible_operation(127);
+    assert(ERR_NO == 127);
+    0
+}

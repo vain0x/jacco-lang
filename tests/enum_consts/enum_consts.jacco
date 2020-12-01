@@ -1,0 +1,11 @@
+enum Hand {
+    Rock,
+    Paper = 8,
+    Scissors,
+}
+
+fn use_hand() {
+    let goo = Hand::Rock;
+    let paa = Hand::Paper;
+    let choki = Hand::Scissors;
+}

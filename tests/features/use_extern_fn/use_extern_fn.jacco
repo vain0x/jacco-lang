@@ -1,0 +1,10 @@
+#![test("run", 0)]
+
+// 他のモジュールの extern fn を use で参照して、呼び出せる。
+
+use assert_lib::assert;
+
+pub fn main() -> i32 {
+    assert(true);
+    0
+}

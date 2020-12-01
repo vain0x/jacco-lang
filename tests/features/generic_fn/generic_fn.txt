@@ -1,0 +1,27 @@
+/* unknown */ void const* transmute_1(/* ty var */ void const* p);
+
+int main();
+
+/* unknown */ void const* transmute_1(/* ty var */ void const* p_1) {
+    unsigned long long cast_1;
+    /* ty var */ void const* cast_2;
+    cast_1 = (unsigned long long)p_1;
+    cast_2 = (/* ty var */ void const*)cast_1;
+    return cast_2;
+}
+
+int main() {
+    unsigned int b32_1;
+    unsigned char const* call_result_1;
+    unsigned int const* ref_1;
+    unsigned char const* b8x4_1;
+    long long const* call_result_2;
+    long long const* b64_1;
+    b32_1 = 3735928559;
+    ref_1 = &b32_1;
+    call_result_1 = transmute_1(ref_1);
+    b8x4_1 = call_result_1;
+    call_result_2 = transmute_1((unsigned char const*)"01234567");
+    b64_1 = call_result_2;
+    return 0;
+}

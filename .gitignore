@@ -1,2 +1,18 @@
+test_stderr.md
+test_stdout.md
+
+
+
 target
 Cargo.lock
+
+
+
+# 自動生成されるCファイル
+*.g.c
+
+# バイナリ
+*.out
+
+# jacco-lsp のログファイル
+jacco_lsp.log

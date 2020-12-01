@@ -1,0 +1,29 @@
+void putc(unsigned char c_1);
+
+int main();
+
+int main() {
+    unsigned short cast_1;
+    unsigned short hiragana_a_1;
+    unsigned int cast_2;
+    unsigned int cat_emoji_1;
+    putc('h');
+    putc('e');
+    putc('l');
+    putc('l');
+    putc('o');
+    putc(',');
+    putc(' ');
+    putc('w');
+    putc('o');
+    putc('r');
+    putc('l');
+    putc('d');
+    putc('!');
+    putc('\n');
+    cast_1 = (unsigned short)'あ';
+    hiragana_a_1 = cast_1;
+    cast_2 = (unsigned int)'😺';
+    cat_emoji_1 = cast_2;
+    return 0;
+}

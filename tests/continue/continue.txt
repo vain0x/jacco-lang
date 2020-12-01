@@ -1,0 +1,59 @@
+void continue_in_while_1();
+
+void continue_in_loop_1();
+
+void nested_continue_1();
+
+int main();
+
+void continue_in_while_1() {
+    goto continue__1;
+
+continue__1:;
+    if (0) {
+        goto continue__1;
+    } else {
+        goto next_1;
+    }
+
+next_1:;
+    return;
+}
+
+void continue_in_loop_1() {
+    goto continue__2;
+
+continue__2:;
+    goto continue__2;
+
+next_2:;
+    return;
+}
+
+void nested_continue_1() {
+    goto continue__3;
+
+continue__3:;
+    if (0) {
+        goto continue__4;
+    } else {
+        goto next_3;
+    }
+
+next_3:;
+    return;
+
+continue__4:;
+    if (0) {
+        goto continue__4;
+    } else {
+        goto next_4;
+    }
+
+next_4:;
+    goto continue__3;
+}
+
+int main() {
+    return 0;
+}

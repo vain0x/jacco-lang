@@ -1,0 +1,49 @@
+void assert(int cond_1);
+
+int add_1(int x, int y);
+
+int sub_1(int x, int y);
+
+typedef int (*fp_1)(int, int);
+
+int binary_op_1(int x, int y, fp_1 f);
+
+int main();
+
+int add_1(int x_1, int y_1) {
+    int add_2;
+    add_2 = x_1 + y_1;
+    return add_2;
+}
+
+int sub_1(int x_2, int y_2) {
+    int sub_2;
+    sub_2 = x_2 - y_2;
+    return sub_2;
+}
+
+typedef int (*fp_2)(int, int);
+
+int binary_op_1(int x_3, int y_3, fp_2 f_1) {
+    int call_result_1;
+    call_result_1 = f_1(x_3, y_3);
+    return call_result_1;
+}
+
+int main() {
+    int call_result_2;
+    int add_3;
+    int equal_1;
+    int call_result_3;
+    int sub_3;
+    int equal_2;
+    call_result_2 = binary_op_1(2, 3, add_1);
+    add_3 = 2 + 3;
+    equal_1 = call_result_2 == add_3;
+    assert(equal_1);
+    call_result_3 = binary_op_1(9, 5, sub_1);
+    sub_3 = 9 - 5;
+    equal_2 = call_result_3 == sub_3;
+    assert(equal_2);
+    return 0;
+}

@@ -1,0 +1,7 @@
+pub fn main() -> i32 {
+    1;
+    2;
+    let a = 0;
+    let b: i32 = 4;
+    a
+}

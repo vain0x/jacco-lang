@@ -1,0 +1,12 @@
+#![test("run", 0)]
+
+fn transmute[T, U](p: *T) -> *U {
+    p as usize as *U
+}
+
+pub fn main() -> i32 {
+    let b32: u32 = 0xdeadbeef;
+    let b8x4: *u8 = transmute(&b32);
+    let b64: *i64 = transmute("01234567");
+    0
+}

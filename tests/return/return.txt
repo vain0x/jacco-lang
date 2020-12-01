@@ -1,0 +1,12 @@
+int main();
+
+int main() {
+    if (1) {
+        return 1;
+    } else {
+        goto next_1;
+    }
+
+next_1:;
+    return 0;
+}

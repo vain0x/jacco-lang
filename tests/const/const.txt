@@ -1,0 +1,38 @@
+void assert(int cond_1);
+
+int main();
+
+int main() {
+    int equal_1;
+    int equal_2;
+    int equal_3;
+    int notequal_1;
+    int notequal_2;
+    int if_result_1;
+    int not_1;
+    int equal_4;
+    equal_1 = 42ULL == 42;
+    assert(equal_1);
+    equal_2 = 84ULL == 84;
+    assert(equal_2);
+    equal_3 = 126ULL == 126;
+    assert(equal_3);
+    notequal_1 = 9223372036854775807LL != 0LL;
+    assert(notequal_1);
+    notequal_2 = 18446744073709551615ULL != 0ULL;
+    assert(notequal_2);
+    if (1) {
+        not_1 = !0;
+        if_result_1 = not_1;
+        goto next_1;
+    } else {
+        if_result_1 = 0;
+        goto next_1;
+    }
+
+next_1:;
+    assert(if_result_1);
+    equal_4 = 9223372036854775807LL == 9223372036854775807LL;
+    assert(equal_4);
+    return 0;
+}

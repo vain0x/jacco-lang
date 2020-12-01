@@ -1,0 +1,19 @@
+extern fn assert_ok(cond: bool);
+
+pub fn main() -> i32 {
+    let s = "hello";
+    let e = *(s + 1_usize);
+    assert_ok(e == 'e');
+
+    let o = s[4_usize];
+    assert_ok(o == 'o');
+
+    let pp: **c8 = &s;
+    assert_ok(**pp == 'h');
+
+    let a = 0;
+    let p = &mut a;
+    p[0_usize] = 1;
+    assert_ok(a == 1);
+    0
+}

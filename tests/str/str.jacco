@@ -1,0 +1,6 @@
+extern fn puts(s: *c8);
+
+pub fn main() -> i32 {
+    puts("Hello, world!");
+    0
+}

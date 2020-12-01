@@ -1,0 +1,14 @@
+#![test("compile_error")]
+
+enum ExitCode {
+    Success,
+    Failure,
+}
+
+pub fn main() -> i32 {
+    match ExitCode::Success {
+        // Ok は存在しない
+        ExitCode::Ok => 0,
+        _ => 1,
+    }
+}

@@ -1,0 +1,24 @@
+pub fn main() -> i32 {
+    let add = 1 + 2;
+    let sub = 1 - 2;
+    let mul = 1 * 2;
+    let div = 1 / 2;
+    let modulo = 1 % 2;
+    let eq = 1 == 2;
+    let ne = 1 != 2;
+    let lt = 1 < 2;
+    let le = 1 <= 2;
+    let gt = 1 > 2;
+    let ge = 1 >= 2;
+    let bit_and = 1 & 2;
+    let bit_or = 1 | 2;
+    let bit_xor = 1 ^ 2;
+    let left_shift = 1 << 2;
+    let right_shift = 1 >> 2;
+    let log_and = true && false;
+    let log_or = false || true;
+    let minus = -2;
+    let not_bool = !true;
+    let not_int = !2;
+    0
+}

@@ -1,0 +1,37 @@
+/* never */ void abort();
+
+void print_str(unsigned char const* msg_1);
+
+void print_i32(int value_1);
+
+int main();
+
+int main() {
+    int x_1;
+    unsigned char __1;
+    switch (42) {
+        default: {
+            x_1 = 42;
+            print_i32(x_1);
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    switch ('A') {
+        case 'a': {
+            abort();
+            goto match_next_2;
+        }
+        case 'A': {
+            print_str((unsigned char const*)"OK");
+            goto match_next_2;
+        }
+        default: {
+            goto match_next_2;
+        }
+    }
+
+match_next_2:;
+    return 0;
+}

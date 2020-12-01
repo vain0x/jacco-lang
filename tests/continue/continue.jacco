@@ -1,0 +1,25 @@
+fn continue_in_while() {
+    while false {
+        continue;
+    }
+}
+
+fn continue_in_loop() {
+    loop {
+        continue;
+    }
+}
+
+fn nested_continue() {
+    while false {
+        while false {
+            continue;
+        }
+
+        continue;
+    }
+}
+
+pub fn main() -> i32 {
+    0
+}

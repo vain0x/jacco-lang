@@ -1,0 +1,10 @@
+#![test("compile_error")]
+
+// レコード式においてジェネリックでないレコードに型引数をつけるとエラーになる。
+
+struct NonGeneric {}
+
+pub fn main() -> i32 {
+    let _ = NonGeneric::[] {};
+    0
+}

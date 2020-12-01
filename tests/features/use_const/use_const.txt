@@ -1,0 +1,10 @@
+void assert(int cond_1);
+
+int main();
+
+int main() {
+    int equal_1;
+    equal_1 = 1ULL == 1;
+    assert(equal_1);
+    return 0;
+}

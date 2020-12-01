@@ -1,0 +1,61 @@
+void assert(int cond_1);
+
+void let_with_block_init_1();
+
+void match_arm_with_block_body_1();
+
+void shadowing_1();
+
+int main();
+
+void let_with_block_init_1() {
+    int i_1;
+    int* refmut_1;
+    int x_1;
+    int equal_1;
+    int equal_2;
+    i_1 = 0;
+    refmut_1 = &i_1;
+    *refmut_1 += 1;
+    x_1 = i_1;
+    equal_1 = i_1 == 1;
+    assert(equal_1);
+    equal_2 = x_1 == 1;
+    assert(equal_2);
+    return;
+}
+
+void match_arm_with_block_body_1() {
+    switch (0ULL) {
+        case 0ULL: {
+            goto match_next_1;
+        }
+    }
+
+match_next_1:;
+    return;
+}
+
+void shadowing_1() {
+    int x_2;
+    int x_3;
+    int* refmut_2;
+    int equal_3;
+    int equal_4;
+    x_2 = 1;
+    x_3 = 2;
+    refmut_2 = &x_3;
+    *refmut_2 *= 3;
+    equal_3 = x_3 == 6;
+    assert(equal_3);
+    equal_4 = x_2 == 1;
+    assert(equal_4);
+    return;
+}
+
+int main() {
+    let_with_block_init_1();
+    match_arm_with_block_body_1();
+    shadowing_1();
+    return 0;
+}

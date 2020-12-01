@@ -1,0 +1,23 @@
+#![test("run", 0)]
+
+// 関数ポインタ型
+
+extern fn assert(cond: bool);
+
+fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
+
+fn sub(x: i32, y: i32) -> i32 {
+    x - y
+}
+
+fn binary_op(x: i32, y: i32, f: fn(i32, i32) -> i32) -> i32 {
+    f(x, y)
+}
+
+pub fn main() -> i32 {
+    assert(binary_op(2, 3, add) == 2 + 3);
+    assert(binary_op(9, 5, sub) == 9 - 5);
+    0
+}

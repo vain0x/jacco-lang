@@ -1,0 +1,8 @@
+pub fn main() -> i32 {
+    let f = false;
+    let t = true;
+    let anno: bool = t;
+    let eq = true != false;
+    let ord = false < true;
+    0
+}

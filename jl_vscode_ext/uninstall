@@ -1,0 +1,5 @@
+#!/bin/bash
+# VSCode から拡張機能をアンインストールする。
+# インストールされているのが開発版かリリース版かは問わない。
+
+code --uninstall-extension vain0x.jacco-lang

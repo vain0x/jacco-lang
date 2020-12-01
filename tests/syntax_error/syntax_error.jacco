@@ -1,0 +1,17 @@
+// パラメーターのカッコがない。
+fn missed_param_list_fn -> i32 {
+    0
+}
+
+// 結果型の矢印がない。(Go っぽい)
+fn missed_result_arrow_fn() i32 {
+    0
+}
+
+// 結果型の矢印が : になってる。(ML っぽい)
+fn confused_result_arrow_with_colon_fn(): i32 {
+    0
+}
+
+// パラメータリストの途中のカンマが抜けている
+fn param_list_with_comma_missing(a: i32 b: i64) {}

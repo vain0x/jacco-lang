@@ -1,0 +1,15 @@
+int run_1();
+
+int main();
+
+int run_1() {
+    int add_1;
+    add_1 = 40 + 2;
+    return add_1;
+}
+
+int main() {
+    int call_result_1;
+    call_result_1 = run_1();
+    return call_result_1;
+}

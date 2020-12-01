@@ -1,0 +1,18 @@
+#![test("run", 0)]
+
+struct Box[T] {
+    ptr: *mut T,
+}
+
+fn as_ref[T](it: Box[T]) -> *T {
+    it.ptr
+}
+
+pub fn main() -> i32 {
+    let b = Box {
+        ptr: 1 as *mut i32,
+    };
+    let p = as_ref(b);
+
+    0
+}

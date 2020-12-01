@@ -1,0 +1,34 @@
+extern fn assert(cond: bool);
+
+const GLOBAL_CONST: i32 = 42;
+
+// FIXME: 計算式は未実装
+// const CONST_ADD: i32 = GLOBAL_CONST * 2;
+
+pub fn main() -> i32 {
+    assert(GLOBAL_CONST == 42);
+
+    const LOCAL_CONST: i32 = 84;
+    assert(LOCAL_CONST == 84);
+
+    // Shadowing.
+    const LOCAL_CONST: i32 = 126;
+    assert(LOCAL_CONST == 126);
+
+    // Types.
+    const I64_MAX: i64 = 9223372036854775807_i64;
+    assert(I64_MAX != 0_i64);
+
+    const USIZE_MAX: usize = 18446744073709551615_usize;
+    assert(USIZE_MAX != 0_usize);
+
+    const OK: bool = true;
+    const NG: bool = false;
+    assert(OK && !NG);
+
+    // Alias.
+    const A: i64 = I64_MAX;
+    assert(A == I64_MAX);
+
+    0
+}

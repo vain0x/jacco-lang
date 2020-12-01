@@ -1,0 +1,27 @@
+#!/bin/sh
+# EXAMPLE: ./run-test "features/generic_fn
+
+set -eu
+
+VERB=${1:-''}
+if test -z "$VERB" || test "$VERB" = '-h' || test "$VERB" = '--help'
+then
+    cat <<END
+run-test
+
+USAGE
+    ./run-test <subdir>/<name>
+
+EXAMPLE
+    ./run-test features/arith_add
+END
+    exit
+fi
+
+TEST_NAME=$(basename "$1")
+TEST_CATEGORY=$(dirname "$1")
+
+SRC="tests/$TEST_CATEGORY/$TEST_NAME/$TEST_NAME.jacco"
+echo "> jacco build \"$SRC\"" >&2
+
+RUST_BACKTRACE=1 RUST_LOG=trace cargo run -p jacco -- build "$SRC"

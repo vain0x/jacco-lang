@@ -1,0 +1,15 @@
+#!/bin/bash
+# VSCode 拡張機能をビルドして、インストールする。
+
+set -eu
+
+# 過去のビルド結果を削除する。
+test -f jacco-lang.vsix && rm jacco-lang.vsix
+
+# 拡張機能をビルドする。
+npm run vsce-package
+npm run webpack-prod
+
+# ローカルにインストールする。
+./uninstall || :
+code --install-extension jacco-lang.vsix

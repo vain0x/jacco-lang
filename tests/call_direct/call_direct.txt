@@ -1,0 +1,17 @@
+int f(int x_1, int y_1, int z_1);
+
+int g();
+
+int main();
+
+int main() {
+    int call_result_1;
+    int mul_1;
+    int add_1;
+    int call_result_2;
+    mul_1 = 1 * 2;
+    add_1 = 3 + 4;
+    call_result_2 = g();
+    call_result_1 = f(mul_1, add_1, call_result_2);
+    return call_result_1;
+}

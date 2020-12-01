@@ -1,0 +1,5 @@
+use another_lib::another_fn;
+
+pub fn main() {
+    another_fn();
+}

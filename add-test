@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -eu
+
+SUB=${1:-''}
+
+if test -z "$SUB" || test "$SUB" = '-h' || test "$SUB" = '--help'
+then
+    cat <<END
+add-test: Create a test case.
+
+USAGE
+    ./add-test <subdir>/name
+
+EXAMPLE
+    ./add-test features/arith_add
+END
+    exit
+fi
+
+NAME=$(basename $SUB)
+
+if test -d "tests/$SUB" && test -f "tests/$SUB/$NAME.jacco"
+then
+    echo "You already have such test: '$SUB'."
+    exit 1
+fi
+
+mkdir -p "tests/$SUB"
+touch    "tests/$SUB/$NAME.jacco"
+code     "tests/$SUB/$NAME.jacco"

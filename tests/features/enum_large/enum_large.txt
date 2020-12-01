@@ -1,0 +1,1049 @@
+struct V0 {
+    unsigned short value;
+};
+
+struct V1 {
+};
+
+struct V2 {
+};
+
+struct V3 {
+};
+
+struct V4 {
+};
+
+struct V5 {
+};
+
+struct V6 {
+};
+
+struct V7 {
+};
+
+struct V8 {
+};
+
+struct V9 {
+};
+
+struct V10 {
+};
+
+struct V11 {
+};
+
+struct V12 {
+};
+
+struct V13 {
+};
+
+struct V14 {
+};
+
+struct V15 {
+};
+
+struct V16 {
+};
+
+struct V17 {
+};
+
+struct V18 {
+};
+
+struct V19 {
+};
+
+struct V20 {
+};
+
+struct V21 {
+};
+
+struct V22 {
+};
+
+struct V23 {
+};
+
+struct V24 {
+};
+
+struct V25 {
+};
+
+struct V26 {
+};
+
+struct V27 {
+};
+
+struct V28 {
+};
+
+struct V29 {
+};
+
+struct V30 {
+};
+
+struct V31 {
+};
+
+struct V32 {
+};
+
+struct V33 {
+};
+
+struct V34 {
+};
+
+struct V35 {
+};
+
+struct V36 {
+};
+
+struct V37 {
+};
+
+struct V38 {
+};
+
+struct V39 {
+};
+
+struct V40 {
+};
+
+struct V41 {
+};
+
+struct V42 {
+};
+
+struct V43 {
+};
+
+struct V44 {
+};
+
+struct V45 {
+};
+
+struct V46 {
+};
+
+struct V47 {
+};
+
+struct V48 {
+};
+
+struct V49 {
+};
+
+struct V50 {
+};
+
+struct V51 {
+};
+
+struct V52 {
+};
+
+struct V53 {
+};
+
+struct V54 {
+};
+
+struct V55 {
+};
+
+struct V56 {
+};
+
+struct V57 {
+};
+
+struct V58 {
+};
+
+struct V59 {
+};
+
+struct V60 {
+};
+
+struct V61 {
+};
+
+struct V62 {
+};
+
+struct V63 {
+};
+
+struct V64 {
+};
+
+struct V65 {
+};
+
+struct V66 {
+};
+
+struct V67 {
+};
+
+struct V68 {
+};
+
+struct V69 {
+};
+
+struct V70 {
+};
+
+struct V71 {
+};
+
+struct V72 {
+};
+
+struct V73 {
+};
+
+struct V74 {
+};
+
+struct V75 {
+};
+
+struct V76 {
+};
+
+struct V77 {
+};
+
+struct V78 {
+};
+
+struct V79 {
+};
+
+struct V80 {
+};
+
+struct V81 {
+};
+
+struct V82 {
+};
+
+struct V83 {
+};
+
+struct V84 {
+};
+
+struct V85 {
+};
+
+struct V86 {
+};
+
+struct V87 {
+};
+
+struct V88 {
+};
+
+struct V89 {
+};
+
+struct V90 {
+};
+
+struct V91 {
+};
+
+struct V92 {
+};
+
+struct V93 {
+};
+
+struct V94 {
+};
+
+struct V95 {
+};
+
+struct V96 {
+};
+
+struct V97 {
+};
+
+struct V98 {
+};
+
+struct V99 {
+};
+
+struct V100 {
+};
+
+struct V101 {
+};
+
+struct V102 {
+};
+
+struct V103 {
+};
+
+struct V104 {
+};
+
+struct V105 {
+};
+
+struct V106 {
+};
+
+struct V107 {
+};
+
+struct V108 {
+};
+
+struct V109 {
+};
+
+struct V110 {
+};
+
+struct V111 {
+};
+
+struct V112 {
+};
+
+struct V113 {
+};
+
+struct V114 {
+};
+
+struct V115 {
+};
+
+struct V116 {
+};
+
+struct V117 {
+};
+
+struct V118 {
+};
+
+struct V119 {
+};
+
+struct V120 {
+};
+
+struct V121 {
+};
+
+struct V122 {
+};
+
+struct V123 {
+};
+
+struct V124 {
+};
+
+struct V125 {
+};
+
+struct V126 {
+};
+
+struct V127 {
+};
+
+struct V128 {
+};
+
+struct V129 {
+};
+
+struct V130 {
+};
+
+struct V131 {
+};
+
+struct V132 {
+};
+
+struct V133 {
+};
+
+struct V134 {
+};
+
+struct V135 {
+};
+
+struct V136 {
+};
+
+struct V137 {
+};
+
+struct V138 {
+};
+
+struct V139 {
+};
+
+struct V140 {
+};
+
+struct V141 {
+};
+
+struct V142 {
+};
+
+struct V143 {
+};
+
+struct V144 {
+};
+
+struct V145 {
+};
+
+struct V146 {
+};
+
+struct V147 {
+};
+
+struct V148 {
+};
+
+struct V149 {
+};
+
+struct V150 {
+};
+
+struct V151 {
+};
+
+struct V152 {
+};
+
+struct V153 {
+};
+
+struct V154 {
+};
+
+struct V155 {
+};
+
+struct V156 {
+};
+
+struct V157 {
+};
+
+struct V158 {
+};
+
+struct V159 {
+};
+
+struct V160 {
+};
+
+struct V161 {
+};
+
+struct V162 {
+};
+
+struct V163 {
+};
+
+struct V164 {
+};
+
+struct V165 {
+};
+
+struct V166 {
+};
+
+struct V167 {
+};
+
+struct V168 {
+};
+
+struct V169 {
+};
+
+struct V170 {
+};
+
+struct V171 {
+};
+
+struct V172 {
+};
+
+struct V173 {
+};
+
+struct V174 {
+};
+
+struct V175 {
+};
+
+struct V176 {
+};
+
+struct V177 {
+};
+
+struct V178 {
+};
+
+struct V179 {
+};
+
+struct V180 {
+};
+
+struct V181 {
+};
+
+struct V182 {
+};
+
+struct V183 {
+};
+
+struct V184 {
+};
+
+struct V185 {
+};
+
+struct V186 {
+};
+
+struct V187 {
+};
+
+struct V188 {
+};
+
+struct V189 {
+};
+
+struct V190 {
+};
+
+struct V191 {
+};
+
+struct V192 {
+};
+
+struct V193 {
+};
+
+struct V194 {
+};
+
+struct V195 {
+};
+
+struct V196 {
+};
+
+struct V197 {
+};
+
+struct V198 {
+};
+
+struct V199 {
+};
+
+struct V200 {
+};
+
+struct V201 {
+};
+
+struct V202 {
+};
+
+struct V203 {
+};
+
+struct V204 {
+};
+
+struct V205 {
+};
+
+struct V206 {
+};
+
+struct V207 {
+};
+
+struct V208 {
+};
+
+struct V209 {
+};
+
+struct V210 {
+};
+
+struct V211 {
+};
+
+struct V212 {
+};
+
+struct V213 {
+};
+
+struct V214 {
+};
+
+struct V215 {
+};
+
+struct V216 {
+};
+
+struct V217 {
+};
+
+struct V218 {
+};
+
+struct V219 {
+};
+
+struct V220 {
+};
+
+struct V221 {
+};
+
+struct V222 {
+};
+
+struct V223 {
+};
+
+struct V224 {
+};
+
+struct V225 {
+};
+
+struct V226 {
+};
+
+struct V227 {
+};
+
+struct V228 {
+};
+
+struct V229 {
+};
+
+struct V230 {
+};
+
+struct V231 {
+};
+
+struct V232 {
+};
+
+struct V233 {
+};
+
+struct V234 {
+};
+
+struct V235 {
+};
+
+struct V236 {
+};
+
+struct V237 {
+};
+
+struct V238 {
+};
+
+struct V239 {
+};
+
+struct V240 {
+};
+
+struct V241 {
+};
+
+struct V242 {
+};
+
+struct V243 {
+};
+
+struct V244 {
+};
+
+struct V245 {
+};
+
+struct V246 {
+};
+
+struct V247 {
+};
+
+struct V248 {
+};
+
+struct V249 {
+};
+
+struct V250 {
+};
+
+struct V251 {
+};
+
+struct V252 {
+};
+
+struct V253 {
+};
+
+struct V254 {
+};
+
+struct V255 {
+};
+
+struct MyByte {
+    unsigned short tag_;
+
+    union {
+        struct V0 V0;
+        struct V1 V1;
+        struct V2 V2;
+        struct V3 V3;
+        struct V4 V4;
+        struct V5 V5;
+        struct V6 V6;
+        struct V7 V7;
+        struct V8 V8;
+        struct V9 V9;
+        struct V10 V10;
+        struct V11 V11;
+        struct V12 V12;
+        struct V13 V13;
+        struct V14 V14;
+        struct V15 V15;
+        struct V16 V16;
+        struct V17 V17;
+        struct V18 V18;
+        struct V19 V19;
+        struct V20 V20;
+        struct V21 V21;
+        struct V22 V22;
+        struct V23 V23;
+        struct V24 V24;
+        struct V25 V25;
+        struct V26 V26;
+        struct V27 V27;
+        struct V28 V28;
+        struct V29 V29;
+        struct V30 V30;
+        struct V31 V31;
+        struct V32 V32;
+        struct V33 V33;
+        struct V34 V34;
+        struct V35 V35;
+        struct V36 V36;
+        struct V37 V37;
+        struct V38 V38;
+        struct V39 V39;
+        struct V40 V40;
+        struct V41 V41;
+        struct V42 V42;
+        struct V43 V43;
+        struct V44 V44;
+        struct V45 V45;
+        struct V46 V46;
+        struct V47 V47;
+        struct V48 V48;
+        struct V49 V49;
+        struct V50 V50;
+        struct V51 V51;
+        struct V52 V52;
+        struct V53 V53;
+        struct V54 V54;
+        struct V55 V55;
+        struct V56 V56;
+        struct V57 V57;
+        struct V58 V58;
+        struct V59 V59;
+        struct V60 V60;
+        struct V61 V61;
+        struct V62 V62;
+        struct V63 V63;
+        struct V64 V64;
+        struct V65 V65;
+        struct V66 V66;
+        struct V67 V67;
+        struct V68 V68;
+        struct V69 V69;
+        struct V70 V70;
+        struct V71 V71;
+        struct V72 V72;
+        struct V73 V73;
+        struct V74 V74;
+        struct V75 V75;
+        struct V76 V76;
+        struct V77 V77;
+        struct V78 V78;
+        struct V79 V79;
+        struct V80 V80;
+        struct V81 V81;
+        struct V82 V82;
+        struct V83 V83;
+        struct V84 V84;
+        struct V85 V85;
+        struct V86 V86;
+        struct V87 V87;
+        struct V88 V88;
+        struct V89 V89;
+        struct V90 V90;
+        struct V91 V91;
+        struct V92 V92;
+        struct V93 V93;
+        struct V94 V94;
+        struct V95 V95;
+        struct V96 V96;
+        struct V97 V97;
+        struct V98 V98;
+        struct V99 V99;
+        struct V100 V100;
+        struct V101 V101;
+        struct V102 V102;
+        struct V103 V103;
+        struct V104 V104;
+        struct V105 V105;
+        struct V106 V106;
+        struct V107 V107;
+        struct V108 V108;
+        struct V109 V109;
+        struct V110 V110;
+        struct V111 V111;
+        struct V112 V112;
+        struct V113 V113;
+        struct V114 V114;
+        struct V115 V115;
+        struct V116 V116;
+        struct V117 V117;
+        struct V118 V118;
+        struct V119 V119;
+        struct V120 V120;
+        struct V121 V121;
+        struct V122 V122;
+        struct V123 V123;
+        struct V124 V124;
+        struct V125 V125;
+        struct V126 V126;
+        struct V127 V127;
+        struct V128 V128;
+        struct V129 V129;
+        struct V130 V130;
+        struct V131 V131;
+        struct V132 V132;
+        struct V133 V133;
+        struct V134 V134;
+        struct V135 V135;
+        struct V136 V136;
+        struct V137 V137;
+        struct V138 V138;
+        struct V139 V139;
+        struct V140 V140;
+        struct V141 V141;
+        struct V142 V142;
+        struct V143 V143;
+        struct V144 V144;
+        struct V145 V145;
+        struct V146 V146;
+        struct V147 V147;
+        struct V148 V148;
+        struct V149 V149;
+        struct V150 V150;
+        struct V151 V151;
+        struct V152 V152;
+        struct V153 V153;
+        struct V154 V154;
+        struct V155 V155;
+        struct V156 V156;
+        struct V157 V157;
+        struct V158 V158;
+        struct V159 V159;
+        struct V160 V160;
+        struct V161 V161;
+        struct V162 V162;
+        struct V163 V163;
+        struct V164 V164;
+        struct V165 V165;
+        struct V166 V166;
+        struct V167 V167;
+        struct V168 V168;
+        struct V169 V169;
+        struct V170 V170;
+        struct V171 V171;
+        struct V172 V172;
+        struct V173 V173;
+        struct V174 V174;
+        struct V175 V175;
+        struct V176 V176;
+        struct V177 V177;
+        struct V178 V178;
+        struct V179 V179;
+        struct V180 V180;
+        struct V181 V181;
+        struct V182 V182;
+        struct V183 V183;
+        struct V184 V184;
+        struct V185 V185;
+        struct V186 V186;
+        struct V187 V187;
+        struct V188 V188;
+        struct V189 V189;
+        struct V190 V190;
+        struct V191 V191;
+        struct V192 V192;
+        struct V193 V193;
+        struct V194 V194;
+        struct V195 V195;
+        struct V196 V196;
+        struct V197 V197;
+        struct V198 V198;
+        struct V199 V199;
+        struct V200 V200;
+        struct V201 V201;
+        struct V202 V202;
+        struct V203 V203;
+        struct V204 V204;
+        struct V205 V205;
+        struct V206 V206;
+        struct V207 V207;
+        struct V208 V208;
+        struct V209 V209;
+        struct V210 V210;
+        struct V211 V211;
+        struct V212 V212;
+        struct V213 V213;
+        struct V214 V214;
+        struct V215 V215;
+        struct V216 V216;
+        struct V217 V217;
+        struct V218 V218;
+        struct V219 V219;
+        struct V220 V220;
+        struct V221 V221;
+        struct V222 V222;
+        struct V223 V223;
+        struct V224 V224;
+        struct V225 V225;
+        struct V226 V226;
+        struct V227 V227;
+        struct V228 V228;
+        struct V229 V229;
+        struct V230 V230;
+        struct V231 V231;
+        struct V232 V232;
+        struct V233 V233;
+        struct V234 V234;
+        struct V235 V235;
+        struct V236 V236;
+        struct V237 V237;
+        struct V238 V238;
+        struct V239 V239;
+        struct V240 V240;
+        struct V241 V241;
+        struct V242 V242;
+        struct V243 V243;
+        struct V244 V244;
+        struct V245 V245;
+        struct V246 V246;
+        struct V247 V247;
+        struct V248 V248;
+        struct V249 V249;
+        struct V250 V250;
+        struct V251 V251;
+        struct V252 V252;
+        struct V253 V253;
+        struct V254 V254;
+        struct V255 V255;
+    };
+};
+
+unsigned long long size_of(struct MyByte b_1);
+
+int main();
+
+int main() {
+    struct MyByte V1_1;
+    struct MyByte b_2;
+    unsigned long long call_result_1;
+    unsigned long long sub_1;
+    int cast_1;
+    V1_1.tag_ = 1;
+    b_2 = V1_1;
+    call_result_1 = size_of(b_2);
+    sub_1 = call_result_1 - 2ULL;
+    cast_1 = (int)sub_1;
+    return cast_1;
+}

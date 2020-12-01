@@ -1,0 +1,105 @@
+int main();
+
+int main() {
+    unsigned long long add_1;
+    unsigned long long add_2;
+    int sub_1;
+    int sub_2;
+    int mul_1;
+    int mul_2;
+    int div_1;
+    int div_2;
+    int modulo_1;
+    int modulo_2;
+    int equal_1;
+    int eq_1;
+    int notequal_1;
+    int ne_1;
+    int lessthan_1;
+    int lt_1;
+    int lessequal_1;
+    int le_1;
+    int greaterthan_1;
+    int gt_1;
+    int greaterequal_1;
+    int ge_1;
+    int bitand_1;
+    int bit_and_1;
+    int bitor_1;
+    int bit_or_1;
+    int bitxor_1;
+    int bit_xor_1;
+    int leftshift_1;
+    int left_shift_1;
+    int rightshift_1;
+    int right_shift_1;
+    int if_result_1;
+    int log_and_1;
+    int if_result_2;
+    int log_or_1;
+    int minus_1;
+    int minus_2;
+    int not_1;
+    int not_bool_1;
+    int not_2;
+    int not_int_1;
+    add_1 = 1 + 2;
+    add_2 = add_1;
+    sub_1 = 1 - 2;
+    sub_2 = sub_1;
+    mul_1 = 1 * 2;
+    mul_2 = mul_1;
+    div_1 = 1 / 2;
+    div_2 = div_1;
+    modulo_1 = 1 % 2;
+    modulo_2 = modulo_1;
+    equal_1 = 1 == 2;
+    eq_1 = equal_1;
+    notequal_1 = 1 != 2;
+    ne_1 = notequal_1;
+    lessthan_1 = 1 < 2;
+    lt_1 = lessthan_1;
+    lessequal_1 = 1 <= 2;
+    le_1 = lessequal_1;
+    greaterthan_1 = 1 > 2;
+    gt_1 = greaterthan_1;
+    greaterequal_1 = 1 >= 2;
+    ge_1 = greaterequal_1;
+    bitand_1 = 1 & 2;
+    bit_and_1 = bitand_1;
+    bitor_1 = 1 | 2;
+    bit_or_1 = bitor_1;
+    bitxor_1 = 1 ^ 2;
+    bit_xor_1 = bitxor_1;
+    leftshift_1 = 1 << 2;
+    left_shift_1 = leftshift_1;
+    rightshift_1 = 1 >> 2;
+    right_shift_1 = rightshift_1;
+    if (1) {
+        if_result_1 = 0;
+        goto next_1;
+    } else {
+        if_result_1 = 0;
+        goto next_1;
+    }
+
+next_1:;
+    log_and_1 = if_result_1;
+    if (0) {
+        if_result_2 = 1;
+        goto next_2;
+    } else {
+        if_result_2 = 1;
+        goto next_2;
+    }
+
+next_2:;
+    log_or_1 = if_result_2;
+    minus_1 = -2;
+    minus_2 = minus_1;
+    not_1 = !1;
+    not_bool_1 = not_1;
+    not_2 = ~2;
+    not_int_1 = not_2;
+    return 0;
+}

@@ -1,0 +1,113 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "version": "0.1.2",
+    "name": "Jacco",
+    "scopeName": "source.jacco",
+    "patterns": [
+        {
+            "comment": "ドキュメンテーションコメント (一行)",
+            "name": "comment.line.documentation.jacco",
+            "begin": "//[!/]",
+            "end": "$"
+        },
+        {
+            "comment": "コメント (一行)",
+            "name": "comment.line.double-slash.jacco",
+            "begin": "//",
+            "end": "$"
+        },
+        {
+            "comment": "16進数リテラル",
+            "name": "constant.numeric.hexadecimal.jacco",
+            "match": "\\b0x[0-9A-Fa-f](_?[0-9A-Fa-f])*(_?([iu](8|16|32|64|128|size)|f(16|32|64|128)|c(8|16|32)))?\\b"
+        },
+        {
+            "comment": "2進数リテラル",
+            "name": "constant.numeric.binary.jacco",
+            "match": "\\b0b[01](_?[01])*(_?([iu](8|16|32|64|128|size)|f(16|32|64|128)|c(8|16|32)))?\\b"
+        },
+        {
+            "comment": "10進数リテラル",
+            "name": "constant.numeric.float.jacco",
+            "match": "\\b-?[0-9](_?[0-9])*(\\.[0-9](_?[0-9])*)?([eE][-+]?[0-9](_?[0-9])*)?(_?([iu](8|16|32|64|128|size)|f(16|32|64|128)|c(8|16|32)))?\\b"
+        },
+        {
+            "comment": "文字リテラル",
+            "name": "string.quoted.single.jacco",
+            "match": "'([^'\\\\]|\\\\(x[0-9A-Fa-f]{2,8}|.))'"
+        },
+        {
+            "comment": "文字列リテラル",
+            "name": "string.quoted.double.jacco",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "include": "#escape_sequence"
+                }
+            ]
+        },
+        {
+            "comment": "bool リテラル",
+            "name": "constant.language.boolean.jacco",
+            "match": "\\b(false|true)\\b"
+        },
+        {
+            "comment": "キーワード (予約語)",
+            "name": "invalid.deprecated.jacco",
+            "match": "\\b(async|await|box|case|cl|crate|default|defer|do|dyn|ensures|export|from|impl|import|inline|into|macro|mod|move|not|out|raw|requires|ref|of|safe|self|super|then|throw|trait|try|to|type|union|unless|unsafe|until|val|with|when|where|yield)\\b"
+        },
+        {
+            "comment": "キーワード (制御構文)",
+            "name": "keyword.control.jacco",
+            "match": "\\b(break|continue|else|if|in|for|loop|match|return|while)\\b"
+        },
+        {
+            "comment": "キーワード (可視性)",
+            "name": "storage.modifier.visibility.jacco",
+            "match": "\\b(pub|priv)\\b"
+        },
+        {
+            "comment": "キーワード (その他)",
+            "name": "keyword.other.jacco",
+            "match": "\\b(as|const|enum|extern|fn|let|mut|static|struct|use)\\b"
+        },
+        {
+            "comment": "組み込み型",
+            "name": "storage.type.core.jacco",
+            "match": "\\b(bool|c(8|16|32)|f(16|32|64|128)|[iu](8|16|32|64|128|size)|unknown|never|unit)\\b"
+        },
+        {
+            "comment": "比較演算子 (同値)",
+            "name": "keyword.operator.comparison.jacco",
+            "match": "==|!="
+        },
+        {
+            "comment": "代入演算子",
+            "name": "keyword.operator.assignment.jacco",
+            "match": "\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^=|<<=|>>=|="
+        },
+        {
+            "comment": "論理演算子",
+            "name": "keyword.operator.logical.jacco",
+            "match": "&&|\\|\\|"
+        },
+        {
+            "comment": "算術演算子",
+            "name": "keyword.operator.arithmetic.jacco",
+            "match": "!|\\+|-|/|\\*|%|&|\\||\\^|<<|>>"
+        },
+        {
+            "comment": "比較演算子 (順序) (ルールの順番に注意)",
+            "name": "keyword.operator.comparison.jacco",
+            "match": "<=|>=|<|>"
+        }
+    ],
+    "repository": {
+        "escape_sequence": {
+            "comment": "エスケープシーケンス",
+            "name": "constant.character.escape.jacco",
+            "match": "\\\\(x[0-9A-Fa-f]{1,8}|.)"
+        }
+    }
+}

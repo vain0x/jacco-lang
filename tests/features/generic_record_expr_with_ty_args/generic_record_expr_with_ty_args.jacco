@@ -1,0 +1,18 @@
+#![test("run", 0)]
+
+// ジェネリックなレコードのレコード式に型引数をつけられる。
+
+struct UserTag;
+
+struct Id[T] {
+    value: i32,
+}
+
+pub fn main() -> i32 {
+    let user_id = Id::[UserTag] {
+        value: 1,
+    };
+
+    let _: Id[UserTag] = user_id;
+    0
+}

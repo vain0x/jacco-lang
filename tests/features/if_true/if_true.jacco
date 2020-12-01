@@ -1,0 +1,11 @@
+#![test("run", 42)]
+
+// if true は then 節だけ評価される。(「だけ」の部分をテストできていない。)
+
+pub fn main() -> i32 {
+    if true {
+        42
+    } else {
+        1
+    }
+}
