@@ -151,6 +151,7 @@ fn swap[T](left: *mut T, right: *mut T, size: usize) {
     memcpy(left, right, size);
     memcpy(right, t, size);
 }
+```
 
 ```rust
 // 使用例
