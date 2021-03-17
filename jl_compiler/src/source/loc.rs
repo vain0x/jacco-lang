@@ -22,12 +22,6 @@ impl Loc {
     }
 }
 
-impl Default for Loc {
-    fn default() -> Loc {
-        Loc::new_unknown("<Loc::default>")
-    }
-}
-
 pub(crate) trait HaveLoc {
     fn loc(&self) -> Loc;
 }
