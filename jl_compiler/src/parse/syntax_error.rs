@@ -4,15 +4,19 @@ use super::*;
 
 fn validate_paren_matching(left_paren: PToken, right_paren_opt: Option<PToken>, px: &Px) {
     if right_paren_opt.is_none() {
-        px.logger()
-            .error(PLoc::Token(left_paren), "丸カッコ () が閉じられていません".into());
+        px.logger().error(
+            PLoc::Token(left_paren),
+            "丸カッコ () が閉じられていません".into(),
+        );
     }
 }
 
 fn validate_brace_matching(left_brace: PToken, right_brace_opt: Option<PToken>, px: &Px) {
     if right_brace_opt.is_none() {
-        px.logger()
-            .error(PLoc::Token(left_brace), "波カッコ {} が閉じられていません".into());
+        px.logger().error(
+            PLoc::Token(left_brace),
+            "波カッコ {} が閉じられていません".into(),
+        );
     }
 }
 
@@ -80,8 +84,10 @@ pub(crate) fn validate_cast_expr(
     px: &Px,
 ) {
     if ty_opt.is_none() {
-        px.logger()
-            .error(PLoc::TokenBehind(keyword), "as の後ろに型が必要です。".into());
+        px.logger().error(
+            PLoc::TokenBehind(keyword),
+            "as の後ろに型が必要です。".into(),
+        );
     }
 }
 
@@ -97,15 +103,19 @@ pub(crate) fn validate_prefix_expr(
             None => token,
         };
 
-        px.logger()
-            .error(PLoc::TokenBehind(last), "前置演算子の後ろに式が必要です。".into());
+        px.logger().error(
+            PLoc::TokenBehind(last),
+            "前置演算子の後ろに式が必要です。".into(),
+        );
     }
 }
 
 pub(crate) fn validate_binary_op_expr(token: PToken, right_opt: Option<&AfterExpr>, px: &Px) {
     if right_opt.is_none() {
-        px.logger()
-            .error(PLoc::TokenBehind(token), "二項演算子の後ろに式が必要です。".into());
+        px.logger().error(
+            PLoc::TokenBehind(token),
+            "二項演算子の後ろに式が必要です。".into(),
+        );
     }
 }
 
@@ -132,7 +142,8 @@ pub(crate) fn validate_if_expr(
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後ろに本体が必要です。(if 式の本体は波カッコ {} で囲む必要があります。)".into(),
+                "条件式の後ろに本体が必要です。(if 式の本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
         (Some(_), Some(_), Some(else_keyword), None) => {
@@ -187,7 +198,8 @@ pub(crate) fn validate_match_expr(
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後にアームの本体が必要です。(本体は波カッコ {} で囲む必要があります。)".into(),
+                "条件式の後にアームの本体が必要です。(本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
         (Some(_), Some(left_brace), right_brace_opt) => {
@@ -211,7 +223,8 @@ pub(crate) fn validate_while_expr(
         (Some(cond), None) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)".into(),
+                "条件式の後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
     }
@@ -332,7 +345,11 @@ pub(crate) fn validate_let_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "let キーワードの後にパターンが必要です。".into(), px);
+        error_behind_token(
+            keyword,
+            "let キーワードの後にパターンが必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -354,7 +371,11 @@ pub(crate) fn validate_const_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "const キーワードの後に定数名が必要です。".into(), px);
+        error_behind_token(
+            keyword,
+            "const キーワードの後に定数名が必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -376,7 +397,11 @@ pub(crate) fn validate_static_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "static キーワードの後に定数名が必要です。".into(), px);
+        error_behind_token(
+            keyword,
+            "static キーワードの後に定数名が必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -508,7 +533,9 @@ pub(crate) fn validate_enum_stmt(
     // FIXME: カンマの抜けを報告する
 
     match (name_opt, left_brace_opt, right_brace_opt) {
-        (None, ..) => error_behind_token(keyword, "enum キーワードの後に型名が必要です。".into(), px),
+        (None, ..) => {
+            error_behind_token(keyword, "enum キーワードの後に型名が必要です。".into(), px)
+        }
         (Some(name), None, ..) => {
             error_behind_element(name.1.id(), "enum 文の本体が必要です。".into(), px);
         }
@@ -524,7 +551,11 @@ pub(crate) fn validate_struct_stmt(
     px: &mut Px,
 ) {
     if variant_opt.is_none() {
-        error_behind_token(keyword, "struct キーワードの後に型名が必要です。".into(), px);
+        error_behind_token(
+            keyword,
+            "struct キーワードの後に型名が必要です。".into(),
+            px,
+        );
     }
 
     // FIXME: セミコロンの抜けを報告する

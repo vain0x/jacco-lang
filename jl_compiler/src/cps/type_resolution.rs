@@ -447,7 +447,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
-                    tx.logger.error(&result.loc(), "expected a reference".into());
+                    tx.logger
+                        .error(&result.loc(), "expected a reference".into());
                 }
                 resolve_var_def(result, result_ty_opt.as_ref(), tx);
             }
@@ -570,7 +571,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = match left_ty.as_ptr(&tx.ty_env) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
-                        tx.logger.error(&left.loc(), "expected mutable reference".into());
+                        tx.logger
+                            .error(&left.loc(), "expected mutable reference".into());
                         left_ty
                     }
                     None => KTy2::Never,
@@ -603,7 +605,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference".into());
+                        tx.logger
+                            .error(&left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: add/sub と同じ
@@ -647,7 +650,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference".into());
+                        tx.logger
+                            .error(&left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: mul/div/etc. と同じ

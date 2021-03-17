@@ -193,11 +193,17 @@ pub(super) fn fresh_var(hint: &str, cause: impl Into<KVarTermCause>, xx: &mut Xx
 // ===============================================
 
 pub(crate) fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これは型の名前だと思いますが、定義が見つかりません。".into())
+    logger.error(
+        loc,
+        "これは型の名前だと思いますが、定義が見つかりません。".into(),
+    )
 }
 
 pub(crate) fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。".into());
+    logger.error(
+        loc,
+        "これは値の名前だと思いますが、定義が見つかりません。".into(),
+    );
 }
 
 pub(crate) fn error_unsupported_path_ty(loc: PLoc, logger: &DocLogger) {
