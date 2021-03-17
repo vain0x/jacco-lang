@@ -16,10 +16,3 @@ env_logger = { version = "0.7", default-features = false, features = ["termcolor
 # ログ出力 API の基本になるもの。
 # <https://github.com/rust-lang/log>
 log = "0.4"
-
-# 並列処理のためのライブラリ。
-# <https://github.com/rayon-rs/rayon>
-rayon = "1"
-
-# <https://github.com/rhysd/tinyjson>
-tinyjson = "2"
