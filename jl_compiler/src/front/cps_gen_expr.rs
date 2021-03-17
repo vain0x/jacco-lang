@@ -927,14 +927,14 @@ impl<'a> Xx<'a> {
                 let (body, body_ty1) = body_fn(xx, ty_rule.body_ty_expect());
                 body_ty = body_ty1;
                 ty_rule.verify_body_ty(&body_ty);
-                xx.nodes.push(new_jump_tail(break_label, once(body), loc));
+                xx.nodes.push(new_jump_tail(break_label, vec![body], loc));
             });
 
             xx.do_in_branch(|xx| {
                 let (alt, alt_ty1) = alt_fn(xx, ty_rule.alt_ty_expect());
                 alt_ty = alt_ty1;
                 ty_rule.verify_alt_ty(&alt_ty);
-                xx.nodes.push(new_jump_tail(break_label, once(alt), loc));
+                xx.nodes.push(new_jump_tail(break_label, vec![alt], loc));
                 ty_rule.verify_cond_ty(&cond_ty, &xx.ty_env);
             });
 

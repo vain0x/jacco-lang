@@ -106,9 +106,9 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn new_fn(param_tys: impl IntoIterator<Item = KTy2>, result_ty: KTy2) -> KTy2 {
+    pub(crate) fn new_fn(param_tys: Vec<KTy2>, result_ty: KTy2) -> KTy2 {
         KTy2::Fn {
-            param_tys: param_tys.into_iter().collect(),
+            param_tys,
             result_ty: Box::new(result_ty),
         }
     }
@@ -713,7 +713,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 param_tys
                     .into_iter()
                     .map(|ty| do_instantiate(&ty, context))
-                    .collect::<Vec<_>>(),
+                    .collect(),
                 do_instantiate(&result_ty, context),
             )
         }

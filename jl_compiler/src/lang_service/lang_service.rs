@@ -671,8 +671,8 @@ mod tests {
 
     #[test]
     fn test_validate_type_errors_update_correctly() {
-        fn t(s: impl Into<String>) -> std::rc::Rc<String> {
-            s.into().into()
+        fn t(s: &str) -> std::rc::Rc<String> {
+            s.to_owned().into()
         }
 
         let mut lang_service = new_service_from_str("");
