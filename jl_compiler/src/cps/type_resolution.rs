@@ -84,7 +84,7 @@ fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
 }
 
 fn error_invalid_size_of(loc: Loc, logger: &Logger) {
-    logger.error(loc, "この型のサイズは取得できません。");
+    logger.error(loc, "この型のサイズは取得できません。".into());
 }
 
 fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 {
@@ -94,7 +94,7 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
             .ty(&tx.mod_outline.fields)
             .substitute(tx.mod_outline, ty_args),
         _ => {
-            tx.logger.error(loc, "レコード型が必要です");
+            tx.logger.error(loc, "レコード型が必要です".into());
             KTy2::Unresolved {
                 cause: KTyCause::Loc(loc),
             }
@@ -156,7 +156,7 @@ fn get_field_or_variant(
             hint,
             left_ty.display(&tx.ty_env, tx.mod_outline)
         );
-        tx.logger.error(loc, "bad type");
+        tx.logger.error(loc, "bad type".into());
         (None, KTy2::Never)
     })
 }
@@ -313,7 +313,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     Some(it) => it,
                     None => {
                         tx.logger
-                            .error(node.loc(), "関数ではないものは呼び出せません");
+                            .error(node.loc(), "関数ではないものは呼び出せません".into());
                         break;
                     }
                 };
@@ -333,7 +333,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let k_struct = match ty.as_struct(&tx.ty_env) {
                     Some(it) => it,
                     None => {
-                        tx.logger.error(node.loc(), "レコード型が必要です。");
+                        tx.logger.error(node.loc(), "レコード型が必要です。".into());
                         return;
                     }
                 };
@@ -447,7 +447,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
-                    tx.logger.error(&result.loc(), "expected a reference");
+                    tx.logger.error(&result.loc(), "expected a reference".into());
                 }
                 resolve_var_def(result, result_ty_opt.as_ref(), tx);
             }
@@ -570,7 +570,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = match left_ty.as_ptr(&tx.ty_env) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
-                        tx.logger.error(&left.loc(), "expected mutable reference");
+                        tx.logger.error(&left.loc(), "expected mutable reference".into());
                         left_ty
                     }
                     None => KTy2::Never,
@@ -603,7 +603,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference");
+                        tx.logger.error(&left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: add/sub と同じ
@@ -647,7 +647,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference");
+                        tx.logger.error(&left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: mul/div/etc. と同じ

@@ -47,17 +47,17 @@ impl CExpr {
         }
     }
 
-    pub(crate) fn into_dot(self, field: impl Into<String>) -> CExpr {
+    pub(crate) fn into_dot(self, field: &str) -> CExpr {
         CExpr::Dot {
             left: Box::new(self),
-            field: field.into(),
+            field: field.to_owned(),
         }
     }
 
-    pub(crate) fn into_arrow(self, field: impl Into<String>) -> CExpr {
+    pub(crate) fn into_arrow(self, field: &str) -> CExpr {
         CExpr::Arrow {
             left: Box::new(self),
-            field: field.into(),
+            field: field.to_owned(),
         }
     }
 

@@ -193,39 +193,39 @@ pub(super) fn fresh_var(hint: &str, cause: impl Into<KVarTermCause>, xx: &mut Xx
 // ===============================================
 
 pub(crate) fn error_unresolved_ty(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これは型の名前だと思いますが、定義が見つかりません。")
+    logger.error(loc, "これは型の名前だと思いますが、定義が見つかりません。".into())
 }
 
 pub(crate) fn error_unresolved_value(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。");
+    logger.error(loc, "これは値の名前だと思いますが、定義が見つかりません。".into());
 }
 
 pub(crate) fn error_unsupported_path_ty(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "パスによる型の指定は未実装");
+    logger.error(loc, "パスによる型の指定は未実装".into());
 }
 
 pub(crate) fn error_ty_arg_arity(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "型引数の個数が一致しません。");
+    logger.error(loc, "型引数の個数が一致しません。".into());
 }
 
 pub(crate) fn error_invalid_ty_args(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "型引数は指定できません。");
+    logger.error(loc, "型引数は指定できません。".into());
 }
 
 pub(crate) fn error_expected_record_ty(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "これはレコードでなければいけません。");
+    logger.error(loc, "これはレコードでなければいけません。".into());
 }
 
 pub(crate) fn error_rval_used_as_lval(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。");
+    logger.error(loc, "この式は左辺値ではありません。参照元や代入先は、変数や配列の要素など、左辺値でなければいけません。".into());
 }
 
 pub(crate) fn error_no_such_field(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "この名前のフィールドはありません。");
+    logger.error(loc, "この名前のフィールドはありません。".into());
 }
 
 pub(crate) fn error_redundant_field(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "このフィールドはすでに指定されています。");
+    logger.error(loc, "このフィールドはすでに指定されています。".into());
 }
 
 pub(crate) fn error_missed_fields<'a>(
@@ -243,19 +243,19 @@ pub(crate) fn error_missed_fields<'a>(
 }
 
 pub(crate) fn error_break_out_of_loop(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "ループの外では break を使えません。");
+    logger.error(loc, "ループの外では break を使えません。".into());
 }
 
 pub(crate) fn error_continue_out_of_loop(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "ループの外では continue を使えません。");
+    logger.error(loc, "ループの外では continue を使えません。".into());
 }
 
 pub(crate) fn error_return_out_of_fn(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "関数の外では return を使えません。");
+    logger.error(loc, "関数の外では return を使えません。".into());
 }
 
 pub(crate) fn error_empty_match(loc: PLoc, logger: &DocLogger) {
-    logger.error(loc, "空の match は未実装です。");
+    logger.error(loc, "空の match は未実装です。".into());
 }
 
 // ===============================================

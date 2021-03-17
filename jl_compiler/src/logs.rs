@@ -55,8 +55,7 @@ pub(crate) struct DocLogger {
 }
 
 impl DocLogger {
-    pub(crate) fn error(&self, loc: PLoc, message: impl Into<String>) {
-        let message = message.into();
+    pub(crate) fn error(&self, loc: PLoc, message: String) {
         self.parent
             .items
             .borrow_mut()
@@ -130,8 +129,7 @@ impl Logger {
         }
     }
 
-    pub(crate) fn error(&self, node: impl HaveLoc, message: impl Into<String>) {
-        let message = message.into();
+    pub(crate) fn error(&self, node: impl HaveLoc, message: String) {
         let loc = node.loc();
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLoc { message, loc });

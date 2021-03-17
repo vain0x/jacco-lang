@@ -72,9 +72,9 @@ impl ScopeWalker {
     }
 
     /// 子スコープに入る。
-    pub(crate) fn enter(&mut self, hint: impl Into<String>) {
+    pub(crate) fn enter(&mut self, hint: String) {
         let child = self.scopes.alloc(ScopeData {
-            hint: hint.into(),
+            hint,
             parent_opt: Some(self.current),
         });
         self.current = child;

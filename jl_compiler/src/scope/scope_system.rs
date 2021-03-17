@@ -50,7 +50,7 @@ impl ScopeSystem {
 
     pub(crate) fn enter_scope(&mut self) {
         // FIXME: hint をつける
-        self.scope_walker.enter("");
+        self.scope_walker.enter("".into());
         self.ty_env.push();
         self.value_env.push();
 

@@ -207,9 +207,9 @@ impl<'a> OutlineGenerator<'a> {
         key: AVariantDeclKey,
     ) -> KStruct {
         if let Some(ty) = decl.ty_opt {
-            self.logger.error(PLoc::Ty(ty), "この enum 文には定数でないバリアントが含まれるので、バリアントに型注釈を書くことはできません。");
+            self.logger.error(PLoc::Ty(ty), "この enum 文には定数でないバリアントが含まれるので、バリアントに型注釈を書くことはできません。".into());
         } else if let Some(init) = decl.value_opt {
-            self.logger.error(PLoc::Expr(init), "この enum 文には定数でないバリアントが含まれるので、バリアントに初期化式を書くことはできません。");
+            self.logger.error(PLoc::Expr(init), "この enum 文には定数でないバリアントが含まれるので、バリアントに初期化式を書くことはできません。".into());
         }
 
         self.mod_outline.structs.alloc(KStructOutline {
@@ -311,7 +311,7 @@ impl<'a> OutlineGenerator<'a> {
     fn add_enum(&mut self, stmt_id: AStmtId, stmt: &AEnumStmt, loc: PLoc) {
         if stmt.variants.is_empty() {
             self.logger
-                .error(loc, "enum には少なくとも1つのバリアントが必要です。");
+                .error(loc, "enum には少なくとも1つのバリアントが必要です。".into());
             return;
         }
 

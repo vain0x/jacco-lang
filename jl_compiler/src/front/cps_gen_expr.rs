@@ -310,7 +310,7 @@ impl<'a> Xx<'a> {
             }
             _ => {
                 self.logger
-                    .error(name.loc(), "ジェネリックな関数以外の型適用式は未実装です");
+                    .error(name.loc(), "ジェネリックな関数以外の型適用式は未実装です".into());
                 new_error_term(loc)
             }
         }

@@ -228,7 +228,7 @@ impl PTreeBuilder {
         self.stack.push(PNodeBuilder::Token(token));
     }
 
-    pub(crate) fn error_behind(&mut self, event_id: EventId, message: impl Into<String>) {
+    pub(crate) fn error_behind(&mut self, event_id: EventId, message: String) {
         self.errors.push((event_id, message.into()));
     }
 
