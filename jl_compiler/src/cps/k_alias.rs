@@ -10,9 +10,10 @@ pub(crate) type KAlias = VecArenaId<KAliasTag>;
 
 pub(crate) type KAliasArena = VecArena<KAliasTag, KAliasOutline>;
 
-#[derive(Clone)]
 pub(crate) struct KAliasOutline {
+    #[allow(unused)]
     name: String,
+
     path: Vec<String>,
     loc: Loc,
     referent_opt: Option<KModSymbol>,

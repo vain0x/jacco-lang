@@ -63,7 +63,7 @@ impl KFnOutline {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KVarTerm>,
     pub(crate) labels: KLabelArena,

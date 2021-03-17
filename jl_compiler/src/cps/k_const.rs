@@ -22,7 +22,6 @@ impl KConst {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KConstOutline {
     pub(crate) name: String,
     pub(crate) value_ty: KTy,

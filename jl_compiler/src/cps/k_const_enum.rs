@@ -18,7 +18,6 @@ impl KConstEnum {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KConstEnumOutline {
     pub(crate) name: String,
     pub(crate) repr_ty: KTy,

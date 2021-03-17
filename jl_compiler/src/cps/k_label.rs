@@ -15,7 +15,6 @@ impl KLabel {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KLabelSig {
     name: String,
     param_tys: Vec<KTy2>,

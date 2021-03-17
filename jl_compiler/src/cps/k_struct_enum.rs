@@ -24,7 +24,6 @@ impl KStructEnum {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KStructEnumOutline {
     pub(crate) name: String,
     pub(crate) variants: Vec<KStruct>,

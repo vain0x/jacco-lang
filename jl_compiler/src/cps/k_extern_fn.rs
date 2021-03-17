@@ -30,7 +30,6 @@ impl KExternFn {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KExternFnOutline {
     pub(crate) name: String,
     pub(crate) param_tys: Vec<KTy>,
