@@ -215,7 +215,7 @@ mod source {
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::{HaveLoc, Loc};
+    pub(crate) use loc::Loc;
 
     #[allow(unused)]
     #[cfg(test)]

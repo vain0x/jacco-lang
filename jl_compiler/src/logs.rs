@@ -5,7 +5,7 @@
 
 use crate::{
     parse::{PLoc, PTree},
-    source::{Doc, HaveLoc, Loc, TRange},
+    source::{Doc, Loc, TRange},
 };
 use std::{cell::RefCell, mem::take, rc::Rc};
 
@@ -129,8 +129,7 @@ impl Logger {
         }
     }
 
-    pub(crate) fn error(&self, node: impl HaveLoc, message: String) {
-        let loc = node.loc();
+    pub(crate) fn error(&self, loc: Loc, message: String) {
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLoc { message, loc });
     }

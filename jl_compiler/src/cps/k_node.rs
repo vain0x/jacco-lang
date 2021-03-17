@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    source::{HaveLoc, Loc},
+    source::Loc,
     utils::{DebugWith, DebugWithContext},
 };
 use std::fmt::{self, Formatter};
@@ -112,11 +112,5 @@ impl Default for KNode {
             conts: Default::default(),
             loc: Loc::new_unknown("<KNode::default>"),
         }
-    }
-}
-
-impl HaveLoc for KNode {
-    fn loc(&self) -> Loc {
-        self.loc
     }
 }

@@ -1,4 +1,4 @@
-use super::{Doc, TRange};
+use super::Doc;
 use crate::parse::PLoc;
 use std::fmt::Debug;
 
@@ -19,34 +19,5 @@ impl Loc {
 
     pub(crate) fn inner(self) -> Result<(Doc, PLoc), &'static str> {
         self.0
-    }
-}
-
-pub(crate) trait HaveLoc {
-    fn loc(&self) -> Loc;
-}
-
-impl HaveLoc for (Doc, TRange) {
-    fn loc(&self) -> Loc {
-        let (doc, range) = *self;
-        Loc::new(doc, PLoc::Range(range))
-    }
-}
-
-impl<'a, T: HaveLoc> HaveLoc for &'a T {
-    fn loc(&self) -> Loc {
-        T::loc(*self)
-    }
-}
-
-impl<'a, T: HaveLoc> HaveLoc for &'a mut T {
-    fn loc(&self) -> Loc {
-        T::loc(*self)
-    }
-}
-
-impl HaveLoc for Loc {
-    fn loc(&self) -> Loc {
-        *self
     }
 }

@@ -1,8 +1,8 @@
 use super::{k_local_var::KLocalVarArena, k_ty::KTy2, KLocalVar};
 use crate::{
     parse::{ANameId, PLoc, PToken},
+    source::Doc,
     source::Loc,
-    source::{Doc, HaveLoc},
     utils::DebugWithContext,
 };
 use std::fmt::{self, Formatter};
@@ -51,12 +51,6 @@ impl KVarTerm {
 
     pub(crate) fn loc(&self) -> Loc {
         self.cause.loc()
-    }
-}
-
-impl HaveLoc for KVarTerm {
-    fn loc(&self) -> Loc {
-        KVarTerm::loc(self)
     }
 }
 
