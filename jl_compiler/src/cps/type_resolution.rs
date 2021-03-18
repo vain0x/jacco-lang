@@ -78,8 +78,8 @@ fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
     UnificationContext::new(loc, &tx.ty_env, tx.mod_outline, &tx.logger).unify(&left, &right);
 }
 
-fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
-    let meta_ty = tx.ty_env.alloc(KMetaTyData::new(RefCell::default(), loc));
+fn fresh_meta_ty(tx: &mut Tx) -> KTy2 {
+    let meta_ty = tx.ty_env.alloc(KMetaTyData::new(RefCell::default()));
     KTy2::Meta(meta_ty)
 }
 
@@ -103,7 +103,7 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
 }
 
 fn get_field_or_variant(
-    #[allow(unused)] hint: &str,
+    hint: &str,
     field_name: &str,
     left_ty: &KTy2,
     k_mut: KMut,
@@ -164,7 +164,7 @@ fn get_field_or_variant(
 fn resolve_var_def(term: &mut KVarTerm, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
     if term.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(term.loc(), tx),
+            None => fresh_meta_ty(tx),
             Some(ty) => ty.clone(),
         };
 

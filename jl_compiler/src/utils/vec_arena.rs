@@ -13,7 +13,7 @@ use std::{
 // ID (NonZeroU32)
 // -----------------------------------------------
 
-#[allow(unused)]
+#[cfg(test)]
 const ID_MIN: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(1) };
 
 const ID_MAX: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(u32::MAX) };
@@ -27,7 +27,6 @@ const fn id_to_index(id: NonZeroU32) -> usize {
     (id.get() - 1) as usize
 }
 
-#[allow(unused)]
 const fn id_add_offset(id: NonZeroU32, offset: usize) -> NonZeroU32 {
     let value: u32 = id.get() + offset as u32;
     unsafe { NonZeroU32::new_unchecked(value) }
@@ -57,13 +56,12 @@ pub(crate) struct VecArenaId<Tag> {
 }
 
 impl<Tag> VecArenaId<Tag> {
-    #[allow(unused)]
+    #[cfg(test)]
     const MIN: Self = Self::from_inner(ID_MIN);
 
-    #[allow(unused)]
     pub(crate) const MAX: Self = Self::from_inner(ID_MAX);
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) const TODO: Self = Self::from_inner(ID_MAX);
 
     const fn from_inner(inner: NonZeroU32) -> Self {
@@ -85,7 +83,6 @@ impl<Tag> VecArenaId<Tag> {
         id_to_index(self.inner)
     }
 
-    #[allow(unused)]
     pub(crate) const fn add_offset(self, offset: usize) -> VecArenaId<Tag> {
         Self::from_inner(id_add_offset(self.inner, offset))
     }
@@ -205,13 +202,13 @@ impl<Tag, T> VecArena<Tag, T> {
         self.inner.reserve(additional);
     }
 
-    #[allow(unused)]
     pub(crate) fn resize_with(&mut self, new_len: usize, default_fn: impl Fn() -> T) {
         let additional = new_len.saturating_sub(self.inner.len());
         self.inner.reserve_exact(additional);
         self.inner.resize_with(new_len, default_fn);
     }
 
+    #[cfg(test)]
     #[allow(unused)]
     pub(crate) fn slice(&self) -> VecArenaSlice<Tag> {
         let start = VecArenaId::MIN;
@@ -229,13 +226,13 @@ impl<Tag, T> VecArena<Tag, T> {
 }
 
 impl<Tag, T> VecArena<Tag, T> {
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn has(&self, id: VecArenaId<Tag>) -> bool {
         id.to_index() < self.inner.len()
     }
 
     /// 要素への参照から ID を逆算する。
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn id_from_ref<'a>(&'a self, value: &'a T) -> Option<VecArenaId<Tag>> {
         assert_ne!(std::mem::size_of::<T>(), 0);
 
@@ -270,12 +267,12 @@ impl<Tag, T> VecArena<Tag, T> {
         self.resize_with(len.max(self.len()), default_fn);
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn get(&self, id: VecArenaId<Tag>) -> Option<&T> {
         self.inner.get(id.to_index())
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn get_mut(&mut self, id: VecArenaId<Tag>) -> Option<&mut T> {
         self.inner.get_mut(id.to_index())
     }
@@ -394,14 +391,14 @@ impl<Tag> VecArenaSlice<Tag> {
         self.iter().zip(self.of(arena))
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn map_with<T>(&self, f: impl Fn() -> T) -> VecArena<Tag, T> {
         let mut inner = Vec::with_capacity(self.len());
         inner.resize_with(self.len(), f);
         VecArena::from_vec(inner)
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn map_with_value<T: Clone>(&self, value: T) -> VecArena<Tag, T> {
         let mut inner = Vec::with_capacity(self.len());
         inner.resize(self.len(), value);

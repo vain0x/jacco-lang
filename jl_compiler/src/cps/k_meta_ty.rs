@@ -1,8 +1,5 @@
 use super::k_ty::KTy2;
-use crate::{
-    source::Loc,
-    utils::{VecArena, VecArenaId},
-};
+use crate::utils::{VecArena, VecArenaId};
 use std::{cell::RefCell, mem::replace};
 
 pub(crate) struct KMetaTyTag;
@@ -37,20 +34,16 @@ pub(crate) struct KMetaTyData {
     // NOTE: 型推論の単一化において、メタ型変数への参照を持ちながら他のメタ型変数への束縛を行う必要があるので、
     //       おそらく RefCell を避けるのは難しい。
     ty: RefCell<KTy2>,
-
-    #[allow(unused)]
-    loc: Loc,
 }
 
 impl KMetaTyData {
-    pub(crate) fn new(ty: RefCell<KTy2>, loc: Loc) -> Self {
-        Self { ty, loc }
+    pub(crate) fn new(ty: RefCell<KTy2>) -> Self {
+        Self { ty }
     }
 
-    pub(crate) fn new_fresh(loc: Loc) -> Self {
+    pub(crate) fn new_fresh() -> Self {
         Self {
             ty: RefCell::default(),
-            loc,
         }
     }
 

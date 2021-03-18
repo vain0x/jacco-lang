@@ -1,7 +1,7 @@
 use crate::{
     source::TRange,
     token::TokenData,
-    utils::{VecArena, VecArenaId, VecArenaSlice},
+    utils::{VecArena, VecArenaId},
 };
 
 pub(crate) struct PTokenTag;
@@ -9,7 +9,7 @@ pub(crate) struct PTokenTag;
 /// 構文解析フェイズから見たトークン
 pub(crate) type PToken = VecArenaId<PTokenTag>;
 
-#[allow(unused)]
+#[cfg(unused)]
 pub(crate) type PTokenSlice = VecArenaSlice<PTokenTag>;
 
 impl PToken {

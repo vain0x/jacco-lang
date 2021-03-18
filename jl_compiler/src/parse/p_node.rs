@@ -1,5 +1,4 @@
 use super::*;
-use crate::source::TRange;
 use std::fmt::{self, Debug, Formatter};
 
 // -----------------------------------------------
@@ -70,7 +69,7 @@ impl PNode {
         }
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn range(self, tree: &PTree) -> Result<TRange, &'static str> {
         match self {
             PNode::Token(token) => Ok(token.range(&tree.tokens)),

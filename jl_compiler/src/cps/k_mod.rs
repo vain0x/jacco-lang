@@ -200,9 +200,8 @@ pub(crate) fn resolve_aliases(
     }
 }
 
+#[allow(unused)]
 mod debug_info {
-    #![allow(unused)]
-
     use super::*;
     use std::{cell::RefCell, ptr::null};
 

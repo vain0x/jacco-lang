@@ -38,7 +38,7 @@ impl ScopeWalker {
     }
 
     /// デバッグ用: いまのスコープまでの祖先を列挙する。
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn breadcrumbs(&self) -> String {
         let mut ancestors = vec![];
         let mut scope_id = self.current;

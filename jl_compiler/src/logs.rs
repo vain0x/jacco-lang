@@ -4,10 +4,13 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    parse::{PLoc, PTree},
-    source::{Doc, Loc, TRange},
+    parse::PLoc,
+    source::{Doc, Loc},
 };
 use std::{cell::RefCell, mem::take, rc::Rc};
+
+#[cfg(test)]
+use crate::{parse::PTree, source::TRange};
 
 /// 位置情報と関連付けられたエラーメッセージ
 pub(crate) struct DocLogItem {
@@ -16,12 +19,12 @@ pub(crate) struct DocLogItem {
 }
 
 impl DocLogItem {
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn into_message(self) -> String {
         self.message
     }
 
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn range(&self, tree: &PTree) -> Result<TRange, &'static str> {
         self.loc.range(tree)
     }

@@ -101,7 +101,6 @@ fn write_ty(ty: &CTy, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write_ty(&ty, dx)?;
             write!(dx, "*")
         }
-        CTy::Enum(name) => write!(dx, "enum {}", name),
         CTy::Struct(name) => write!(dx, "struct {}", name),
     }
 }
@@ -286,26 +285,6 @@ fn write_stmt(stmt: &CStmt, dx: &mut Dx<impl Write>) -> io::Result<()> {
             write!(dx, " {}", name)?;
             write_param_list(&params, dx)?;
             write!(dx, ";")
-        }
-        CStmt::EnumDecl { name, variants } => {
-            write!(dx, "enum {} {{", name)?;
-
-            dx.do_with_indent(|dx| {
-                for (i, (name, value_opt)) in variants.into_iter().enumerate() {
-                    write!(dx, "{}", if i == 0 { "\n" } else { ",\n" })?;
-                    write_indent(dx)?;
-                    if let Some(value) = value_opt {
-                        write!(dx, "{} = ", name)?;
-                        write_expr(value, dx)?;
-                    }
-                    write!(dx, "{}", name)?;
-                }
-                Ok(())
-            })?;
-
-            write!(dx, "\n")?;
-            write_indent(dx)?;
-            write!(dx, "}};")
         }
         CStmt::StructDecl {
             name,

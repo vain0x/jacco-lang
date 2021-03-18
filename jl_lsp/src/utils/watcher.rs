@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![cfg(unused)]
 
 // 未使用・未実装
 

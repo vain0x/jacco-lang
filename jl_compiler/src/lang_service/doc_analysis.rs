@@ -9,7 +9,7 @@ use crate::{
     source::{Doc, TRange},
     token,
 };
-use std::{mem::take, path::PathBuf, rc::Rc, sync::Arc};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) type TyUseSites = Vec<(KTy, PLoc)>;
 

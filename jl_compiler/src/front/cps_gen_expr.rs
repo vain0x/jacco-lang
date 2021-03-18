@@ -359,7 +359,7 @@ impl<'a> Xx<'a> {
                     ty_params
                         .iter()
                         .map(|ty_param| {
-                            let meta_ty = self.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                            let meta_ty = self.ty_env.alloc(KMetaTyData::new_fresh());
                             (ty_param.name.to_string(), KTy2::Meta(meta_ty))
                         })
                         .collect::<HashMap<_, _>>()

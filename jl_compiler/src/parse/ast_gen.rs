@@ -1,9 +1,8 @@
-#![allow(unused)]
-
 use super::*;
-use crate::{front::name_resolution, parse::syntax_error::*};
+use crate::{ parse::syntax_error::*};
 
 pub(crate) type AfterQualifiableName = (AName, NameEnd);
+#[cfg(unused)]
 pub(crate) type AfterUnderscore = (AName, NameEnd);
 pub(crate) type AfterUnqualifiableName = (AName, NameEnd);
 pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
@@ -141,6 +140,7 @@ pub(crate) fn alloc_ty_param(
     )
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_ty_param_list(
     left_bracket: PToken,
     ty_params: Vec<AfterTyParam>,
@@ -164,6 +164,7 @@ pub(crate) fn alloc_ty_arg(
     (ty, comma_opt, event.end(PElementKind::TyArg, px))
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_ty_arg_list(
     left_bracket: PToken,
     ty_args: Vec<AfterTyArg>,
@@ -184,6 +185,7 @@ pub(crate) fn alloc_param_ty(
     (ty, comma_opt, event.end(PElementKind::ParamTy, px))
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_param_ty_list(
     left_paren: PToken,
     param_tys: Vec<AfterParamTy>,
@@ -257,7 +259,7 @@ pub(crate) fn alloc_app_ty(
     (ATy::App(name, ty_args), event.end(PElementKind::AppTy, px))
 }
 
-pub(crate) fn alloc_infer_ty(event: TyStart, token: PToken, px: &mut Px) -> AfterTy {
+pub(crate) fn alloc_infer_ty(event: TyStart, _token: PToken, px: &mut Px) -> AfterTy {
     (ATy::InferTy, event.end(PElementKind::InferTy, px))
 }
 
@@ -267,14 +269,14 @@ pub(crate) fn alloc_unit_ty(event: TyStart, _token: PToken, px: &mut Px) -> Afte
 
 pub(crate) fn alloc_unit_ty_from_parens(
     event: TyStart,
-    left_paren: PToken,
-    right_paren_opt: Option<PToken>,
+    _left_paren: PToken,
+    _right_paren_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterTy {
     (ATy::Unit, event.end(PElementKind::UnitTy, px))
 }
 
-pub(crate) fn alloc_never_ty(event: TyStart, bang: PToken, px: &mut Px) -> AfterTy {
+pub(crate) fn alloc_never_ty(event: TyStart, _bang: PToken, px: &mut Px) -> AfterTy {
     (ATy::Never, event.end(PElementKind::NeverTy, px))
 }
 
@@ -298,6 +300,7 @@ pub(crate) fn alloc_ptr_ty(
     )
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_fn_ty(
     event: TyStart,
     keyword: PToken,
@@ -363,6 +366,7 @@ pub(crate) fn alloc_record_pat(
     (
         APat::Record(ARecordPat {
             left: name,
+            #[cfg(unused)]
             fields: vec![],
         }),
         event.end(PElementKind::RecordPat, px),
@@ -419,11 +423,11 @@ pub(crate) fn alloc_unit_expr_from_parens(
     (AExpr::Unit, event.end(PElementKind::UnitExpr, px))
 }
 
-pub(crate) fn alloc_true(event: ExprStart, token: PToken, px: &mut Px) -> AfterExpr {
+pub(crate) fn alloc_true(event: ExprStart, _token: PToken, px: &mut Px) -> AfterExpr {
     (AExpr::True, event.end(PElementKind::TrueExpr, px))
 }
 
-pub(crate) fn alloc_false(event: ExprStart, token: PToken, px: &mut Px) -> AfterExpr {
+pub(crate) fn alloc_false(event: ExprStart, _token: PToken, px: &mut Px) -> AfterExpr {
     (AExpr::False, event.end(PElementKind::FalseExpr, px))
 }
 
@@ -619,6 +623,7 @@ pub(crate) fn before_block(px: &mut Px) {
     px.syntax_scopes.enter_block();
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_block(
     event: ExprStart,
     left_brace: PToken,
@@ -631,6 +636,7 @@ pub(crate) fn alloc_block(
     (semi, event.end(PElementKind::BlockExpr, px))
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_block_expr(
     event: ExprStart,
     left_brace: PToken,
@@ -650,6 +656,7 @@ pub(crate) fn alloc_block_expr(
     )
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_break_expr(
     event: ExprStart,
     keyword: PToken,
@@ -664,13 +671,13 @@ pub(crate) fn alloc_break_expr(
     )
 }
 
-pub(crate) fn alloc_continue_expr(event: ExprStart, keyword: PToken, px: &mut Px) -> AfterExpr {
+pub(crate) fn alloc_continue_expr(event: ExprStart, _keyword: PToken, px: &mut Px) -> AfterExpr {
     (AExpr::Continue, event.end(PElementKind::ContinueExpr, px))
 }
 
 pub(crate) fn alloc_return_expr(
     event: ExprStart,
-    keyword: PToken,
+    _keyword: PToken,
     arg_opt: Option<AfterExpr>,
     px: &mut Px,
 ) -> AfterExpr {
@@ -764,7 +771,7 @@ pub(crate) fn alloc_arm(
 /// アームをパースしようとしたが、1トークンもパースできなかったとき。
 /// (アームの始まりはキーワードではなくパターンなので、ここだけこういうことが起こりうる。
 ///  パターンの FIRST 集合をみてから alloc_arm を呼ぶ実装にすれば回避できる。)
-pub(crate) fn abandon_arm(event: ParseStart, px: &mut Px) {
+pub(crate) fn abandon_arm(_event: ParseStart, px: &mut Px) {
     px.syntax_scopes.leave_arm();
 }
 
@@ -840,13 +847,14 @@ pub(crate) fn alloc_loop_expr(
 pub(crate) fn alloc_arg(
     event: ParseStart,
     expr: AfterExpr,
-    comma_opt: Option<PToken>,
+    _comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterArg {
     event.end(PElementKind::Arg, px);
     expr
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_labeled_arg(
     event: ParseStart,
     name: AfterUnqualifiableName,
@@ -895,10 +903,11 @@ fn alloc_modifiers(modifiers: AfterStmtModifiers) -> (StmtStart, AStmtModifiers)
     )
 }
 
-pub(crate) fn alloc_attr_stmt(event: StmtStart, hash_bang: PToken, px: &mut Px) -> AfterStmt {
+pub(crate) fn alloc_attr_stmt(event: StmtStart, _hash_bang: PToken, px: &mut Px) -> AfterStmt {
     (AStmt::Attr, event.end(PElementKind::AttrStmt, px))
 }
 
+#[allow(unused)]
 pub(crate) fn alloc_expr_stmt(
     event: StmtStart,
     expr: AfterExpr,
@@ -936,7 +945,7 @@ pub(crate) fn alloc_let_stmt(
         px,
     );
 
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
@@ -945,6 +954,7 @@ pub(crate) fn alloc_let_stmt(
 
     (
         AStmt::Let(AFieldLikeDecl {
+            #[cfg(unused)]
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
@@ -978,7 +988,7 @@ pub(crate) fn alloc_const_stmt(
         px,
     );
 
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
@@ -987,6 +997,7 @@ pub(crate) fn alloc_const_stmt(
 
     (
         AStmt::Const(AFieldLikeDecl {
+            #[cfg(unused)]
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
@@ -1020,7 +1031,7 @@ pub(crate) fn alloc_static_stmt(
         px,
     );
 
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let a_ty_opt = ty_opt.map(|ty| px.alloc_ty(ty));
     let a_init_opt = init_opt.map(|expr| px.alloc_expr(expr));
@@ -1029,6 +1040,7 @@ pub(crate) fn alloc_static_stmt(
 
     (
         AStmt::Static(AFieldLikeDecl {
+            #[cfg(unused)]
             modifiers,
             name_opt,
             ty_opt: a_ty_opt,
@@ -1065,7 +1077,6 @@ pub(crate) fn alloc_fn_stmt(
         px,
     );
 
-    let (_, vis_opt) = modifiers;
     let (event, modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
     let ty_params = ty_param_list_opt.unwrap_or_default();
@@ -1150,7 +1161,7 @@ pub(crate) fn alloc_const_variant_decl(
     name: AfterUnqualifiableName,
     equal_opt: Option<PToken>,
     init_opt: Option<AfterExpr>,
-    comma_opt: Option<PToken>,
+    _comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterVariantDecl {
     validate_const_variant_decl(&name, equal_opt, init_opt.as_ref(), px);
@@ -1160,6 +1171,7 @@ pub(crate) fn alloc_const_variant_decl(
 
     (
         AVariantDecl::Const(AFieldLikeDecl {
+            #[cfg(unused)]
             modifiers: AStmtModifiers::default(),
             name_opt: Some(name),
             ty_opt: None,
@@ -1174,7 +1186,7 @@ pub(crate) fn alloc_field_decl(
     name: AfterUnqualifiableName,
     colon_opt: Option<PToken>,
     ty_opt: Option<AfterTy>,
-    comma_opt: Option<PToken>,
+    _comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterFieldDecl {
     validate_field_decl(&name, colon_opt, ty_opt.as_ref(), px);
@@ -1186,6 +1198,7 @@ pub(crate) fn alloc_field_decl(
 
     (
         AFieldLikeDecl {
+            #[cfg(unused)]
             modifiers: AStmtModifiers::default(),
             name_opt: Some(name),
             ty_opt: a_ty_opt,
@@ -1206,7 +1219,7 @@ pub(crate) fn alloc_record_variant_decl(
     left_brace: PToken,
     fields: AfterFieldDecls,
     right_brace_opt: Option<PToken>,
-    comma_opt: Option<PToken>,
+    _comma_opt: Option<PToken>,
     px: &mut Px,
 ) -> AfterVariantDecl {
     validate_record_variant_decl(&name, left_brace, &fields, right_brace_opt, px);
@@ -1254,14 +1267,14 @@ pub(crate) fn alloc_enum_stmt(
         px,
     );
 
-    let (_, vis_opt) = modifiers;
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
     px.syntax_scopes.leave_enum_stmt(name_opt, &px.ast);
 
     (
         AStmt::Enum(AEnumStmt {
+            #[cfg(unused)]
             modifiers,
             name_opt,
             variants,
@@ -1284,7 +1297,7 @@ pub(crate) fn alloc_struct_stmt(
     validate_struct_stmt(&modifiers, keyword, variant_opt.as_ref(), semi_opt, px);
 
     let name_opt = variant_opt.as_ref().and_then(|(v, _)| v.name_opt());
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let a_variant_opt = variant_opt.map(|(variant_decl, _)| variant_decl);
 
     let is_unit_like = a_variant_opt
@@ -1296,6 +1309,7 @@ pub(crate) fn alloc_struct_stmt(
 
     (
         AStmt::Struct(AStructStmt {
+            #[cfg(unused)]
             modifiers,
             variant_opt: a_variant_opt,
         }),
@@ -1319,13 +1333,14 @@ pub(crate) fn alloc_use_stmt(
         px,
     );
 
-    let (event, modifiers) = alloc_modifiers(modifiers);
+    let (event, _modifiers) = alloc_modifiers(modifiers);
     let name_opt = name_opt.map(|name| px.alloc_name(name));
 
     px.syntax_scopes.on_use_stmt(name_opt, &px.ast);
 
     (
         AStmt::Use(AUseStmt {
+            #[cfg(unused)]
             modifiers,
             name_opt,
         }),

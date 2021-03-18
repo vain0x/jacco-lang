@@ -1,5 +1,4 @@
 use super::{Doc, LangService, TRange};
-use crate::lang_service::doc_analysis::DocSymbolAnalysisMut;
 
 pub(crate) fn validate(doc: Doc, ls: &mut LangService) -> (Option<i64>, Vec<(TRange, String)>) {
     let version_opt = ls.docs.get(&doc).map(|analysis| analysis.version());

@@ -1,5 +1,7 @@
-use std::{env::current_dir, path::Path};
 use url::Url;
+
+#[cfg(unused)]
+use std::{env::current_dir, path::Path};
 
 /// 正規化された URI
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -8,7 +10,7 @@ pub struct Uri {
 }
 
 impl Uri {
-    #[allow(unused)]
+    #[cfg(unused)]
     pub fn from_file_path(path: &Path) -> Option<Self> {
         let to_uri = |path: &Path| Url::from_file_path(path).ok().map(|url| Uri { inner: url });
 

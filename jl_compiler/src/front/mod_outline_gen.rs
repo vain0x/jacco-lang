@@ -72,7 +72,7 @@ impl<'a> OutlineGenerator<'a> {
         let k_alias = self
             .mod_outline
             .aliases
-            .alloc(KAliasOutline::new(text, path, loc));
+            .alloc(KAliasOutline::new(path, loc));
 
         self.bind_symbol(name, KModSymbol::Alias(k_alias));
     }
