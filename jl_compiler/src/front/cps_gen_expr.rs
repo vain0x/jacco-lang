@@ -988,7 +988,7 @@ impl<'a> Xx<'a> {
                     .chain(arms.iter().map(|(_, term)| term.clone()))
                     .collect();
                 let cont_count = expr.arms.len();
-                new_switch_tail(args, vec![new_cont(); cont_count], loc)
+                new_switch_tail(args, (0..cont_count).map(|_| new_cont()).collect(), loc)
             };
             xx.nodes.push(switch_node);
 
@@ -1355,7 +1355,6 @@ impl<'a> CallExprRule<'a> {
     }
 }
 
-#[derive(Debug)]
 enum AddExprRuleKind {
     Number,
     PtrAdd,

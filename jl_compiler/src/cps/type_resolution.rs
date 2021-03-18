@@ -216,7 +216,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx
             .return_ty_opt
-            .clone()
+            .as_ref()
             .unwrap()
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::ExternFn { extern_fn, .. } => extern_fn

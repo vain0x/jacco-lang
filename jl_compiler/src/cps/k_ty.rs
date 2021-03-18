@@ -7,7 +7,6 @@ use crate::{
 use std::{
     collections::HashMap,
     fmt::{self, Debug, Formatter},
-    hash::{Hash, Hasher},
     mem::align_of,
     mem::size_of,
     mem::take,
@@ -451,10 +450,6 @@ impl PartialEq for KTyCause {
 
 impl Eq for KTyCause {}
 
-impl Hash for KTyCause {
-    fn hash<H: Hasher>(&self, _: &mut H) {}
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct KTyParam {
     pub(crate) name: String,
@@ -811,7 +806,6 @@ impl Variance {
 
 /// 極性
 #[allow(unused)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Polarity {
     /// 陰極。入力となる型を表している。ダウンキャストできる。
     Negative,

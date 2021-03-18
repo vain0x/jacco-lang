@@ -51,7 +51,7 @@ pub(crate) struct KModData {
 }
 
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum KModSymbol {
     Alias(KAlias),
     Const(KConst),

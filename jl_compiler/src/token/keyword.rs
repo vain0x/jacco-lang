@@ -1,6 +1,5 @@
 use super::*;
 
-#[derive(Clone, Copy)]
 pub(crate) struct Keyword(TokenKind);
 
 impl Keyword {

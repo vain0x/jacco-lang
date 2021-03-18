@@ -255,7 +255,7 @@ pub(crate) struct AFieldLikeDecl {
     pub(crate) value_opt: Option<AExprId>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct AFieldDeclKey {
     parent: AVariantDeclKey,
     index: usize,
@@ -285,7 +285,7 @@ pub(crate) struct AParamDecl {
     pub(crate) ty_opt: Option<ATyId>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct AParamDeclKey {
     parent: AStmtId,
     index: usize,
@@ -349,7 +349,7 @@ impl AVariantDecl {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum AVariantDeclKey {
     Enum(AStmtId, usize),
     Struct(AStmtId),
@@ -564,7 +564,7 @@ pub(crate) struct ARoot {
     pub(crate) stmts: AStmtIds,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum ALoc {
     Ty(ATyId),
     Pat(APatId),

@@ -298,7 +298,7 @@ pub(super) fn loc_to_range(loc: Loc, doc: Doc, tree: &PTree) -> Option<TRange> {
     opt
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 enum DefOrUse {
     Def,
     Use,
@@ -501,8 +501,8 @@ pub(super) fn collect_def_sites(
     let mut sites = vec![];
     collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
-        if s == symbol && def_or_use == DefOrUse::Def {
+    locations.extend(sites.iter().filter_map(|&(s, ref def_or_use, loc)| {
+        if s == symbol && *def_or_use == DefOrUse::Def {
             let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
@@ -527,8 +527,8 @@ pub(super) fn collect_use_sites(
     let mut sites = vec![];
     collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
-        if s == symbol && def_or_use == DefOrUse::Use {
+    locations.extend(sites.iter().filter_map(|&(s, ref def_or_use, loc)| {
+        if s == symbol && *def_or_use == DefOrUse::Use {
             let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {

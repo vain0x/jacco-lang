@@ -33,12 +33,12 @@ impl KMetaTy {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KMetaTyData {
     // NOTE: 型推論の単一化において、メタ型変数への参照を持ちながら他のメタ型変数への束縛を行う必要があるので、
     //       おそらく RefCell を避けるのは難しい。
     ty: RefCell<KTy2>,
 
+    #[allow(unused)]
     loc: Loc,
 }
 

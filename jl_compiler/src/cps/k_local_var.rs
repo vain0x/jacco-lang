@@ -23,7 +23,7 @@ impl KLocalVar {
 }
 
 /// ローカル変数の親
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum KLocalVarParent {
     Fn(KFn),
     ExternFn(KExternFn),

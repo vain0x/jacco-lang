@@ -9,7 +9,6 @@ pub(crate) struct EventTag;
 pub(crate) type EventId = VecArenaId<EventTag>;
 pub(crate) type EventArena = VecArena<EventTag, Option<PElement>>;
 
-#[derive(Copy, Clone)]
 pub(crate) struct ParseEvent<Tag> {
     id: EventId,
     /// このイベントのスタックにおける深さ

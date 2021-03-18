@@ -455,7 +455,7 @@ fn resolve_outline(
     for stmt in ast.stmts().iter() {
         let symbol = match stmt
             .name_opt()
-            .and_then(|name| name_symbols.get(&name).cloned())
+            .and_then(|name| name_symbols.get(&name))
         {
             Some(it) => it,
             None => continue,
@@ -464,21 +464,21 @@ fn resolve_outline(
         match stmt {
             AStmt::Attr | AStmt::Expr(_) | AStmt::Let(_) => continue,
             AStmt::Const(stmt) => {
-                let k_const = match symbol {
+                let k_const = match *symbol {
                     NameSymbol::ModSymbol(KModSymbol::Const(it)) => it,
                     _ => unreachable!(),
                 };
                 resolve_const_stmt(stmt, k_const, ty_resolver, mod_outline);
             }
             AStmt::Static(stmt) => {
-                let static_var = match symbol {
+                let static_var = match *symbol {
                     NameSymbol::ModSymbol(KModSymbol::StaticVar(it)) => it,
                     _ => unreachable!(),
                 };
                 resolve_static_stmt(stmt, static_var, ty_resolver, mod_outline);
             }
             AStmt::Fn(stmt) => {
-                let k_fn = match symbol {
+                let k_fn = match *symbol {
                     NameSymbol::ModSymbol(KModSymbol::Fn(it)) => it,
                     _ => unreachable!(),
                 };
@@ -491,7 +491,7 @@ fn resolve_outline(
                 fn_data.result_ty = result_ty;
             }
             AStmt::ExternFn(stmt) => {
-                let extern_fn = match symbol {
+                let extern_fn = match *symbol {
                     NameSymbol::ModSymbol(KModSymbol::ExternFn(it)) => it,
                     _ => unreachable!(),
                 };
@@ -503,7 +503,7 @@ fn resolve_outline(
                 extern_fn_data.param_tys = param_tys;
                 extern_fn_data.result_ty = result_ty;
             }
-            AStmt::Enum(stmt) => match symbol {
+            AStmt::Enum(stmt) => match *symbol {
                 NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum)) => {
                     resolve_const_enum_stmt(stmt, const_enum, ty_resolver, mod_outline)
                 }
@@ -517,7 +517,7 @@ fn resolve_outline(
                     Some(it) => it,
                     None => continue,
                 };
-                let k_struct = match symbol {
+                let k_struct = match *symbol {
                     NameSymbol::ModSymbol(KModSymbol::Struct(it)) => it,
                     _ => continue,
                 };

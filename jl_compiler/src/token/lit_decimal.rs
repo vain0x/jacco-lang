@@ -1,7 +1,7 @@
 use crate::cps::{KNumber, KNumberTy};
 use std::fmt::Debug;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum LitErr {
     /// Overflow or underflow
     Flow,

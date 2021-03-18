@@ -43,7 +43,6 @@ impl KFn {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
     pub(crate) vis_opt: Option<KVis>,

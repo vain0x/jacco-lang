@@ -5,7 +5,6 @@ use crate::{
 };
 use std::fmt::{self, Formatter};
 
-#[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy2>,

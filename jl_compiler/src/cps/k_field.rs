@@ -6,7 +6,7 @@ use crate::{
 
 /// `foo.field` の `.field` のような形で出現している、
 /// 式の型に依存するいずれかの構造体のフィールドを表す。
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct KFieldTag {
     pub(crate) name: String,
     pub(crate) ty: KTy2,

@@ -124,10 +124,6 @@ fn document_highlight_of_fields(
         })
         .collect::<HashMap<_, _>>();
 
-    for (_, &name) in map.iter() {
-        let symbol_opt = symbols.name_symbols.get(&name).cloned();
-    }
-
     // フィールド式を探す。
     let mut use_sites = occurrences
         .iter()
@@ -180,11 +176,11 @@ fn document_highlight_of_fields(
                         a_name = def_name;
                     }
 
-                    let name_symbol_opt = symbols.name_symbols.get(&a_name).cloned();
+                    let name_symbol_opt = symbols.name_symbols.get(&a_name);
 
                     match name_symbol_opt {
                         Some(NameSymbol::ModSymbol(KModSymbol::Struct(the_struct)))
-                            if the_struct == k_struct =>
+                            if *the_struct == k_struct =>
                         {
                             break 'a
                         }

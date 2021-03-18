@@ -26,7 +26,7 @@ impl Debug for PNodeKind {
 // -----------------------------------------------
 
 /// 構文木のノード (構文要素またはトークン) のID
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum PNode {
     Token(PToken),
     Element(PElement),

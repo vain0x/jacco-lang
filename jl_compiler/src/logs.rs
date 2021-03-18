@@ -10,7 +10,6 @@ use crate::{
 use std::{cell::RefCell, mem::take, rc::Rc};
 
 /// 位置情報と関連付けられたエラーメッセージ
-#[derive(Clone)]
 pub(crate) struct DocLogItem {
     loc: PLoc,
     message: String,
@@ -112,7 +111,6 @@ impl Logs {
 
 /// ログを出力するもの。
 /// 記述を煩雑にしないために、所有権や可変性をごまかしている。(自由にクローンできる。`&self` に書き込める。)
-#[derive(Clone, Default)]
 pub(crate) struct Logger {
     parent: Logs,
 }

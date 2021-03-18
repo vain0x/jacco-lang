@@ -38,10 +38,12 @@ impl KLabelSig {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KLabelData {
     pub(crate) name: String,
+
+    #[allow(unused)]
     pub(crate) parent_opt: Option<KLabel>,
+
     pub(crate) params: Vec<KVarTerm>,
     pub(crate) body: KNode,
 }

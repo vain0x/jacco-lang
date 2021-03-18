@@ -162,7 +162,7 @@ impl AnalysisCache {
                             .collect()
                     };
 
-                let name_symbols_orig = name_symbols.clone();
+                // let name_symbols_orig = name_symbols.clone();
                 Symbols {
                     symbol_count,
                     name_symbols,

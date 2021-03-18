@@ -32,7 +32,6 @@ pub(crate) struct KConstOutline {
 
 pub(crate) type KConstInits = VecArena<KConstTag, KConstInit>;
 
-#[derive(Clone)]
 pub(crate) struct KConstInit {
     pub(crate) init_opt: Option<(KNode, KTerm)>,
 }
@@ -43,7 +42,7 @@ impl KConstInit {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) enum KConstValue {
     Bool(bool),
     I8(i8),

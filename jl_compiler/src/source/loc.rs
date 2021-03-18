@@ -5,7 +5,7 @@ use std::fmt::Debug;
 /// 位置情報
 ///
 /// QUESTION: 中間表現が構文に依存することの是非?
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Loc(Result<(Doc, PLoc), &'static str>);
 
 impl Loc {

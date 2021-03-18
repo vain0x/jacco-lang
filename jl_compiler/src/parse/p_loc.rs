@@ -5,7 +5,7 @@ use crate::{
 use std::fmt::{self, Debug, Formatter};
 
 /// 構文木上の位置
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum PLoc {
     Unknown(&'static str),
     Range(TRange),

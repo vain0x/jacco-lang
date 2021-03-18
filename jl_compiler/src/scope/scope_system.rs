@@ -17,7 +17,6 @@ pub(crate) enum FindKind {
 }
 
 /// スコープの種類 (名前を導入するとき)
-#[derive(Copy, Clone)]
 pub(crate) enum ImportKind {
     Ty,
     Value,
