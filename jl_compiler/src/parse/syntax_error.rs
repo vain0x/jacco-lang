@@ -4,15 +4,19 @@ use super::*;
 
 fn validate_paren_matching(left_paren: PToken, right_paren_opt: Option<PToken>, px: &Px) {
     if right_paren_opt.is_none() {
-        px.logger()
-            .error(PLoc::Token(left_paren), "丸カッコ () が閉じられていません");
+        px.logger().error(
+            PLoc::Token(left_paren),
+            "丸カッコ () が閉じられていません".into(),
+        );
     }
 }
 
 fn validate_brace_matching(left_brace: PToken, right_brace_opt: Option<PToken>, px: &Px) {
     if right_brace_opt.is_none() {
-        px.logger()
-            .error(PLoc::Token(left_brace), "波カッコ {} が閉じられていません");
+        px.logger().error(
+            PLoc::Token(left_brace),
+            "波カッコ {} が閉じられていません".into(),
+        );
     }
 }
 
@@ -29,7 +33,7 @@ pub(crate) fn validate_ptr_ty(
     if ty_opt.is_none() {
         px.logger().error(
             PLoc::TokenBehind(star),
-            "ポインタ型の * の後ろに型が必要です。",
+            "ポインタ型の * の後ろに型が必要です。".into(),
         );
     }
 }
@@ -68,7 +72,7 @@ pub(crate) fn validate_field_expr(
     if name_opt.is_none() {
         px.logger().error(
             PLoc::TokenBehind(dot),
-            "ドット . の後ろにフィールド名が必要です。",
+            "ドット . の後ろにフィールド名が必要です。".into(),
         );
     }
 }
@@ -80,8 +84,10 @@ pub(crate) fn validate_cast_expr(
     px: &Px,
 ) {
     if ty_opt.is_none() {
-        px.logger()
-            .error(PLoc::TokenBehind(keyword), "as の後ろに型が必要です。");
+        px.logger().error(
+            PLoc::TokenBehind(keyword),
+            "as の後ろに型が必要です。".into(),
+        );
     }
 }
 
@@ -97,15 +103,19 @@ pub(crate) fn validate_prefix_expr(
             None => token,
         };
 
-        px.logger()
-            .error(PLoc::TokenBehind(last), "前置演算子の後ろに式が必要です。");
+        px.logger().error(
+            PLoc::TokenBehind(last),
+            "前置演算子の後ろに式が必要です。".into(),
+        );
     }
 }
 
 pub(crate) fn validate_binary_op_expr(token: PToken, right_opt: Option<&AfterExpr>, px: &Px) {
     if right_opt.is_none() {
-        px.logger()
-            .error(PLoc::TokenBehind(token), "二項演算子の後ろに式が必要です。");
+        px.logger().error(
+            PLoc::TokenBehind(token),
+            "二項演算子の後ろに式が必要です。".into(),
+        );
     }
 }
 
@@ -126,17 +136,18 @@ pub(crate) fn validate_if_expr(
         (None, ..) => {
             px.logger().error(
                 PLoc::TokenBehind(keyword),
-                "if キーワードの後ろに条件式が必要です。",
+                "if キーワードの後ろに条件式が必要です。".into(),
             );
         }
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後ろに本体が必要です。(if 式の本体は波カッコ {} で囲む必要があります。)",
+                "条件式の後ろに本体が必要です。(if 式の本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
         (Some(_), Some(_), Some(else_keyword), None) => {
-            px.logger().error(PLoc::TokenBehind(else_keyword), "else 節の本体が見つかりません。(else 節の本体は if 式であるか、波カッコ {} で囲む必要があります。)");
+            px.logger().error(PLoc::TokenBehind(else_keyword), "else 節の本体が見つかりません。(else 節の本体は if 式であるか、波カッコ {} で囲む必要があります。)".into());
         }
     }
 }
@@ -155,17 +166,17 @@ pub(crate) fn validate_arm(
         (Some(_), Some(_), Some(_), _) => {}
         (None, Some(arrow), ..) => px
             .logger()
-            .error(PLoc::Token(arrow), "=> の前にパターンが必要です。"),
+            .error(PLoc::Token(arrow), "=> の前にパターンが必要です。".into()),
         (Some(pat), None, ..) => px
             .builder
-            .error_behind(pat.1.id(), "パターンの後に => が必要です。"),
+            .error_behind(pat.1.id(), "パターンの後に => が必要です。".into()),
         (_, Some(arrow), None, _) => px.logger().error(
             PLoc::TokenBehind(arrow),
-            "=> の後にアームの本体となる式が必要です。",
+            "=> の後にアームの本体となる式が必要です。".into(),
         ),
         (None, None, None, Some(comma)) => px
             .logger()
-            .error(PLoc::Token(comma), "このカンマは不要です。"),
+            .error(PLoc::Token(comma), "このカンマは不要です。".into()),
     }
 }
 
@@ -181,13 +192,14 @@ pub(crate) fn validate_match_expr(
         (None, ..) => {
             px.logger().error(
                 PLoc::TokenBehind(keyword),
-                "match キーワードの後ろに条件式が必要です。",
+                "match キーワードの後ろに条件式が必要です。".into(),
             );
         }
         (Some(cond), None, ..) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後にアームの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
+                "条件式の後にアームの本体が必要です。(本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
         (Some(_), Some(left_brace), right_brace_opt) => {
@@ -206,12 +218,13 @@ pub(crate) fn validate_while_expr(
         (Some(_), Some(_)) => {}
         (None, ..) => px.logger().error(
             PLoc::TokenBehind(keyword),
-            "while キーワードの後ろに条件式が必要です。",
+            "while キーワードの後ろに条件式が必要です。".into(),
         ),
         (Some(cond), None) => {
             px.builder.error_behind(
                 cond.1.id(),
-                "条件式の後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
+                "条件式の後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)"
+                    .into(),
             );
         }
     }
@@ -221,7 +234,7 @@ pub(crate) fn validate_loop_expr(keyword: PToken, body_opt: Option<&AfterBlock>,
     if body_opt.is_none() {
         px.logger().error(
             PLoc::TokenBehind(keyword),
-            "loop キーワードの後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)",
+            "loop キーワードの後にループの本体が必要です。(本体は波カッコ {} で囲む必要があります。)".into(),
         );
     }
 }
@@ -241,11 +254,11 @@ pub(crate) fn validate_arg_list(
 // 文
 // -----------------------------------------------
 
-fn error_behind_token(token: PToken, message: impl Into<String>, px: &Px) {
+fn error_behind_token(token: PToken, message: String, px: &Px) {
     px.logger().error(PLoc::TokenBehind(token), message);
 }
 
-fn error_behind_element(event_id: EventId, message: impl Into<String>, px: &mut Px) {
+fn error_behind_element(event_id: EventId, message: String, px: &mut Px) {
     px.builder.error_behind(event_id, message);
 }
 
@@ -268,11 +281,11 @@ fn validate_ty_ascription(
         }
         (Some(name), None, _, IsRequired::True) => error_behind_element(
             name.1.id(),
-            "型注釈が必須です。(型注釈は `名前 : 型` と書きます。)",
+            "型注釈が必須です。(型注釈は `名前 : 型` と書きます。)".into(),
             px,
         ),
         (Some(_), Some(colon), None, _) => {
-            error_behind_token(colon, "コロン : の後に型が必要です。", px)
+            error_behind_token(colon, "コロン : の後に型が必要です。".into(), px)
         }
     }
 }
@@ -281,7 +294,7 @@ fn validate_ty_ascription(
 fn validate_initializer(equal_opt: Option<PToken>, init_opt: Option<&AfterExpr>, px: &Px) {
     if let Some(equal) = equal_opt {
         if init_opt.is_none() {
-            error_behind_token(equal, "等号 = の後に式が必要です。", px);
+            error_behind_token(equal, "等号 = の後に式が必要です。".into(), px);
         }
     }
 }
@@ -290,7 +303,7 @@ fn validate_stmt_semi(event: &StmtStart, semi_opt: Option<PToken>, px: &mut Px) 
     if semi_opt.is_none() {
         // FIXME: 末尾がブロックなら省略可能。
         px.builder
-            .error_behind(event.id(), "セミコロンが必要です。");
+            .error_behind(event.id(), "セミコロンが必要です。".into());
     }
 }
 
@@ -312,7 +325,7 @@ pub(crate) fn validate_param_list(
     for (index, (_, comma_opt, param_event)) in params.iter().enumerate() {
         if index + 1 < params.len() && comma_opt.is_none() {
             px.builder
-                .error_behind(param_event.id(), "ここにカンマ , が必要です");
+                .error_behind(param_event.id(), "ここにカンマ , が必要です".into());
         }
     }
 
@@ -332,7 +345,11 @@ pub(crate) fn validate_let_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "let キーワードの後にパターンが必要です。", px);
+        error_behind_token(
+            keyword,
+            "let キーワードの後にパターンが必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -354,7 +371,11 @@ pub(crate) fn validate_const_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "const キーワードの後に定数名が必要です。", px);
+        error_behind_token(
+            keyword,
+            "const キーワードの後に定数名が必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -376,7 +397,11 @@ pub(crate) fn validate_static_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "static キーワードの後に定数名が必要です。", px);
+        error_behind_token(
+            keyword,
+            "static キーワードの後に定数名が必要です。".into(),
+            px,
+        );
         return;
     }
 
@@ -395,14 +420,14 @@ fn do_validate_fn_stmt_sig(
 ) -> bool {
     match (name_opt, param_list_opt, arrow_opt, result_ty_opt) {
         (Some(_), Some(_), None, _) | (Some(_), Some(_), Some(_), Some(_)) => return true,
-        (None, ..) => error_behind_token(keyword, "関数名が必要です。", px),
+        (None, ..) => error_behind_token(keyword, "関数名が必要です。".into(), px),
         (Some(name), None, ..) => error_behind_element(
             name.1.id(),
-            "パラメータリストの丸カッコ () が必要です。",
+            "パラメータリストの丸カッコ () が必要です。".into(),
             px,
         ),
         (Some(_), Some(_), Some(arrow), None) => {
-            error_behind_token(arrow, "矢印 -> の後に型が必要です。", px)
+            error_behind_token(arrow, "矢印 -> の後に型が必要です。".into(), px)
         }
     }
 
@@ -434,7 +459,7 @@ pub(crate) fn validate_fn_stmt(
     if block_opt.is_none() {
         error_behind_element(
             event.id(),
-            "関数の本体が必要です。(本体は波カッコ { } で囲む必要があります。)",
+            "関数の本体が必要です。(本体は波カッコ { } で囲む必要があります。)".into(),
             px,
         );
     }
@@ -508,9 +533,11 @@ pub(crate) fn validate_enum_stmt(
     // FIXME: カンマの抜けを報告する
 
     match (name_opt, left_brace_opt, right_brace_opt) {
-        (None, ..) => error_behind_token(keyword, "enum キーワードの後に型名が必要です。", px),
+        (None, ..) => {
+            error_behind_token(keyword, "enum キーワードの後に型名が必要です。".into(), px)
+        }
         (Some(name), None, ..) => {
-            error_behind_element(name.1.id(), "enum 文の本体が必要です。", px);
+            error_behind_element(name.1.id(), "enum 文の本体が必要です。".into(), px);
         }
         (Some(_), Some(left_brace), _) => validate_brace_matching(left_brace, right_brace_opt, px),
     }
@@ -524,7 +551,11 @@ pub(crate) fn validate_struct_stmt(
     px: &mut Px,
 ) {
     if variant_opt.is_none() {
-        error_behind_token(keyword, "struct キーワードの後に型名が必要です。", px);
+        error_behind_token(
+            keyword,
+            "struct キーワードの後に型名が必要です。".into(),
+            px,
+        );
     }
 
     // FIXME: セミコロンの抜けを報告する
@@ -539,7 +570,7 @@ pub(crate) fn validate_use_stmt(
     px: &mut Px,
 ) {
     if name_opt.is_none() {
-        error_behind_token(keyword, "use キーワードの後にパスが必要です。", px);
+        error_behind_token(keyword, "use キーワードの後にパスが必要です。".into(), px);
     }
 
     validate_stmt_semi(event, semi_opt, px);

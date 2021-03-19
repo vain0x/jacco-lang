@@ -219,7 +219,7 @@ impl<'a> Xx<'a> {
     ) {
         let symbol_opt = stmt
             .name_opt()
-            .and_then(|name| self.name_symbols.get(&name).cloned());
+            .and_then(|name| self.name_symbols.get(&name));
         let loc = Loc::new(self.doc, PLoc::Stmt(stmt_id));
 
         match stmt {
@@ -233,37 +233,37 @@ impl<'a> Xx<'a> {
             }
             AStmt::Const(stmt) => {
                 let k_const = match symbol_opt {
-                    Some(NameSymbol::ModSymbol(KModSymbol::Const(it))) => it,
+                    Some(&NameSymbol::ModSymbol(KModSymbol::Const(it))) => it,
                     _ => return,
                 };
                 self.convert_const_stmt(k_const, stmt, loc)
             }
             AStmt::Static(stmt) => {
                 let static_var = match symbol_opt {
-                    Some(NameSymbol::ModSymbol(KModSymbol::StaticVar(it))) => it,
+                    Some(&NameSymbol::ModSymbol(KModSymbol::StaticVar(it))) => it,
                     _ => return,
                 };
                 self.convert_static_stmt(static_var, stmt, loc)
             }
             AStmt::Fn(stmt) => {
                 let k_fn = match symbol_opt {
-                    Some(NameSymbol::ModSymbol(KModSymbol::Fn(it))) => it,
+                    Some(&NameSymbol::ModSymbol(KModSymbol::Fn(it))) => it,
                     _ => return,
                 };
                 self.convert_fn_stmt(k_fn, stmt, loc);
             }
             AStmt::ExternFn(stmt) => {
                 let extern_fn = match symbol_opt {
-                    Some(NameSymbol::ModSymbol(KModSymbol::ExternFn(it))) => it,
+                    Some(&NameSymbol::ModSymbol(KModSymbol::ExternFn(it))) => it,
                     _ => return,
                 };
                 self.convert_extern_fn_stmt(extern_fn, stmt);
             }
             AStmt::Enum(stmt) => match symbol_opt {
-                Some(NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum))) => {
+                Some(&NameSymbol::ModSymbol(KModSymbol::ConstEnum(const_enum))) => {
                     self.convert_const_enum_stmt(const_enum, stmt, loc)
                 }
-                Some(NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum))) => {
+                Some(&NameSymbol::ModSymbol(KModSymbol::StructEnum(struct_enum))) => {
                     self.convert_struct_enum_stmt(struct_enum, stmt, loc)
                 }
                 _ => return,

@@ -4,7 +4,6 @@ use crate::{
     logs::Logs,
     parse::PTree,
     source::{Doc, Loc, TPos16, TRange, TRange16},
-    utils::VecArena,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -41,7 +40,7 @@ pub enum Content {
 }
 
 impl Content {
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn to_string(&self) -> String {
         use std::io::{self, Write};
 
@@ -90,7 +89,6 @@ impl LangService {
         self.docs.get(&doc).map(|cache| cache.version())
     }
 
-    #[allow(unused)]
     pub(super) fn request_syntax(&mut self, doc: Doc) -> Option<&mut Syntax> {
         self.docs.get_mut(&doc).map(|cache| cache.request_syntax())
     }
@@ -191,7 +189,7 @@ impl LangService {
         // シンボルが少なければ GC しない。
         let threshold = {
             let mut lost = 0;
-            let mut total = self.mod_outline.symbol_count();
+            let total = self.mod_outline.symbol_count();
 
             for doc_data in self.docs.values() {
                 lost += doc_data.lost_symbol_count;
@@ -298,7 +296,7 @@ pub(super) fn loc_to_range(loc: Loc, doc: Doc, tree: &PTree) -> Option<TRange> {
     opt
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 enum DefOrUse {
     Def,
     Use,
@@ -501,8 +499,8 @@ pub(super) fn collect_def_sites(
     let mut sites = vec![];
     collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
-        if s == symbol && def_or_use == DefOrUse::Def {
+    locations.extend(sites.iter().filter_map(|&(s, ref def_or_use, loc)| {
+        if s == symbol && *def_or_use == DefOrUse::Def {
             let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
@@ -527,8 +525,8 @@ pub(super) fn collect_use_sites(
     let mut sites = vec![];
     collect_symbols(doc, symbols, cps, mod_outline, mod_data, &mut sites);
 
-    locations.extend(sites.iter().filter_map(|&(s, def_or_use, loc)| {
-        if s == symbol && def_or_use == DefOrUse::Use {
+    locations.extend(sites.iter().filter_map(|&(s, ref def_or_use, loc)| {
+        if s == symbol && *def_or_use == DefOrUse::Use {
             let range = loc_to_range(loc, doc, &syntax.tree)?;
             Some(Location::new(doc, range))
         } else {
@@ -671,8 +669,8 @@ mod tests {
 
     #[test]
     fn test_validate_type_errors_update_correctly() {
-        fn t(s: impl Into<String>) -> std::rc::Rc<String> {
-            s.into().into()
+        fn t(s: &str) -> std::rc::Rc<String> {
+            s.to_owned().into()
         }
 
         let mut lang_service = new_service_from_str("");

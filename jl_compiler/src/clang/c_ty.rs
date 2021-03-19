@@ -21,8 +21,6 @@ pub(crate) enum CTy {
     Const {
         ty: Box<CTy>,
     },
-    #[allow(unused)]
-    Enum(String),
     Struct(String),
 }
 

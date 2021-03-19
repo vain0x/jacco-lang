@@ -108,7 +108,7 @@ impl PElement {
 }
 
 /// 構文要素のデータ
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct PElementData {
     kind: PElementKind,
     children: Vec<PNode>,

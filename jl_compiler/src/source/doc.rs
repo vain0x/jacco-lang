@@ -10,7 +10,7 @@ pub struct Doc {
 }
 
 impl Doc {
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) const MAX: Doc = Doc { raw_id: RawId::MAX };
 
     pub(crate) const fn new(id: usize) -> Self {
@@ -62,7 +62,7 @@ mod debug_info {
     static DOC_PATHS: Lazy<Mutex<HashMap<Doc, Arc<PathBuf>>>> = Lazy::new(Mutex::default);
 
     impl Doc {
-        #[allow(unused)]
+        #[cfg_attr(not(debug_assertions), allow(unused))]
         pub(crate) fn set_path(doc: Doc, source_path: &Path) {
             #[cfg(debug_assertions)]
             {
@@ -78,7 +78,7 @@ mod debug_info {
             }
         }
 
-        #[allow(unused)]
+        #[cfg_attr(not(debug_assertions), allow(unused))]
         pub(crate) fn get_path(doc: Doc) -> Option<Arc<PathBuf>> {
             #[cfg(debug_assertions)]
             {

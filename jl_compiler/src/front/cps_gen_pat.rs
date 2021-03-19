@@ -78,13 +78,18 @@ impl<'a> Xx<'a> {
     fn do_convert_pat_as_cond(&mut self, pat_id: APatId, pat: &APat) -> Branch {
         let loc = pat_id.loc().to_loc(self.doc);
         let (term, ty) = match pat {
+            #[cfg(unused)]
             APat::Unit => new_unit_term(loc),
+            #[cfg(unused)]
             APat::True(_) => new_true_term(loc),
+            #[cfg(unused)]
             APat::False(_) => new_false_term(loc),
+            #[cfg(unused)]
             APat::Number(token) => {
                 convert_number_lit(*token, TyExpect::Todo, self.tokens, self.doc, self.logger)
             }
             APat::Char(token) => convert_char_expr(*token, self.doc, self.tokens),
+            #[cfg(unused)]
             APat::Str(token) => convert_str_expr(*token, self.doc, self.tokens),
             APat::Wildcard(token) => return self.convert_wildcard_pat_as_cond(*token),
             APat::Name(name) => return self.convert_name_pat_as_cond(*name),

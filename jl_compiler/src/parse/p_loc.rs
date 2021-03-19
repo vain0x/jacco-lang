@@ -5,18 +5,12 @@ use crate::{
 use std::fmt::{self, Debug, Formatter};
 
 /// 構文木上の位置
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum PLoc {
     Unknown(&'static str),
     Range(TRange),
     Token(PToken),
     TokenBehind(PToken),
-    #[allow(unused)]
-    TokenRange {
-        first: PToken,
-        last: PToken,
-    },
-    #[allow(unused)]
     Element(PElement),
     ElementBehind(PElement),
     // KTy に位置情報が含まれないので未使用
@@ -25,7 +19,7 @@ pub(crate) enum PLoc {
     Expr(AExprId),
     Stmt(AStmtId),
     Name(ANameId),
-    #[allow(unused)]
+    #[cfg(unused)]
     ParamDecl(AParamDeclKey),
     FieldDecl(AFieldDeclKey),
     VariantDecl(AVariantDeclKey),
@@ -36,7 +30,7 @@ impl PLoc {
         PLoc::Token(token)
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn behind(self) -> Self {
         match self {
             PLoc::Token(token) => PLoc::TokenBehind(token),
@@ -50,9 +44,6 @@ impl PLoc {
             PLoc::Range(range) => range,
             PLoc::Token(token) => token.range(&tree.tokens),
             PLoc::TokenBehind(token) => token.range(&tree.tokens).to_end(),
-            PLoc::TokenRange { first, last } => {
-                first.range(&tree.tokens).join(last.range(&tree.tokens))
-            }
             PLoc::Element(element) => element.range(tree)?,
             PLoc::ElementBehind(element) => element.range(tree)?.to_end(),
             PLoc::Ty(ty_id) => ty_id.element(tree).range(tree)?,
@@ -60,6 +51,7 @@ impl PLoc {
             PLoc::Expr(expr_id) => expr_id.element(tree).range(tree)?,
             PLoc::Stmt(stmt_id) => stmt_id.element(tree).range(tree)?,
             PLoc::Name(key) => key.element(tree).range(tree)?,
+            #[cfg(unused)]
             PLoc::ParamDecl(key) => key.element(tree).range(tree)?,
             PLoc::FieldDecl(key) => key.element(tree).range(tree)?,
             PLoc::VariantDecl(key) => key.element(tree).range(tree)?,
@@ -74,7 +66,6 @@ impl PLoc {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn to_loc(self, doc: Doc) -> Loc {
         Loc::new(doc, self)
     }
@@ -87,9 +78,6 @@ impl Debug for PLoc {
             PLoc::Range(range) => return write!(f, "{}", range),
             PLoc::Token(token) => (token, ""),
             PLoc::TokenBehind(token) => (token, ":behind"),
-            PLoc::TokenRange { first, last } => {
-                return write!(f, "token#({}..{})", first.to_index(), last.to_index());
-            }
             PLoc::Element(element) => return write!(f, "element#{}", element.to_index()),
             PLoc::ElementBehind(element) => {
                 return write!(f, "element#{}:behind", element.to_index())
@@ -99,6 +87,7 @@ impl Debug for PLoc {
             PLoc::Expr(expr_id) => return write!(f, "expr#{}", expr_id.to_index()),
             PLoc::Stmt(stmt_id) => return write!(f, "stmt#{}", stmt_id.to_index()),
             PLoc::Name(_) => return write!(f, "Name"),
+            #[cfg(unused)]
             PLoc::ParamDecl(_) => return write!(f, "ParamDecl"),
             PLoc::FieldDecl(_) => return write!(f, "FieldDecl"),
             PLoc::VariantDecl(_) => return write!(f, "VariantDecl"),

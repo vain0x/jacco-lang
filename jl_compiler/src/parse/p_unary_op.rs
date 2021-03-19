@@ -1,5 +1,5 @@
 /// 単項演算子
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy)]
 pub(crate) enum PUnaryOp {
     /// `*`
     Deref,

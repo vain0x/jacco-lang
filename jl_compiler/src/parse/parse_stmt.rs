@@ -495,7 +495,7 @@ pub(crate) fn parse_tokens(mut tokens: Vec<TokenData>, logger: DocLogger) -> PTr
     for token in &skipped {
         logger.error(
             PLoc::Token(*token),
-            "このトークンを有効な構文として解釈できません。",
+            "このトークンを有効な構文として解釈できません。".into(),
         );
     }
 

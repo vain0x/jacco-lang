@@ -1,5 +1,4 @@
 use super::*;
-use crate::source::TRange;
 use std::fmt::{self, Debug, Formatter};
 
 // -----------------------------------------------
@@ -26,7 +25,7 @@ impl Debug for PNodeKind {
 // -----------------------------------------------
 
 /// 構文木のノード (構文要素またはトークン) のID
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum PNode {
     Token(PToken),
     Element(PElement),
@@ -70,7 +69,7 @@ impl PNode {
         }
     }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn range(self, tree: &PTree) -> Result<TRange, &'static str> {
         match self {
             PNode::Token(token) => Ok(token.range(&tree.tokens)),

@@ -9,7 +9,7 @@ use crate::{
     source::{Doc, TRange},
     token,
 };
-use std::{mem::take, path::PathBuf, rc::Rc, sync::Arc};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 pub(super) type TyUseSites = Vec<(KTy, PLoc)>;
 
@@ -162,7 +162,7 @@ impl AnalysisCache {
                             .collect()
                     };
 
-                let name_symbols_orig = name_symbols.clone();
+                // let name_symbols_orig = name_symbols.clone();
                 Symbols {
                     symbol_count,
                     name_symbols,

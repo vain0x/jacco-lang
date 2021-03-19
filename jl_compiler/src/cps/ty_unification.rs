@@ -47,7 +47,7 @@ impl<'a> UnificationContext<'a> {
 
     fn error_ptr_mut(&self) {
         self.logger
-            .error(self.loc, "ポインタの可変性に互換性がありません");
+            .error(self.loc, "ポインタの可変性に互換性がありません".into());
     }
 
     fn error_arity(&self, left: &KTy2, right: &KTy2) {

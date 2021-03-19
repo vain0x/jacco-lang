@@ -3,7 +3,7 @@ use crate::source::Loc;
 use std::iter::once;
 
 /// CPS 中間表現のプリミティブの種類
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum KPrim {
     /// 行き詰まり
     Stuck,
@@ -52,18 +52,13 @@ pub(crate) enum KPrim {
 }
 
 impl KPrim {
-    pub(crate) fn hint_str(self) -> String {
+    pub(crate) fn hint_str(&self) -> String {
         format!("{:?}", self).to_lowercase()
     }
 }
 
 // 末尾でない `jump`
-pub(crate) fn new_jump_node(
-    label: KLabel,
-    args: impl IntoIterator<Item = KTerm>,
-    cont: KNode,
-    loc: Loc,
-) -> KNode {
+pub(crate) fn new_jump_node(label: KLabel, args: Vec<KTerm>, cont: KNode, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Jump,
         tys: vec![],
@@ -75,11 +70,7 @@ pub(crate) fn new_jump_node(
 }
 
 // 末尾の `jump`
-pub(crate) fn new_jump_tail(
-    label: KLabel,
-    args: impl IntoIterator<Item = KTerm>,
-    loc: Loc,
-) -> KNode {
+pub(crate) fn new_jump_tail(label: KLabel, args: Vec<KTerm>, loc: Loc) -> KNode {
     KNode {
         prim: KPrim::Jump,
         tys: vec![],

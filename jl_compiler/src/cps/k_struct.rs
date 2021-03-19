@@ -4,7 +4,6 @@ use crate::{
     utils::{VecArena, VecArenaId},
 };
 
-#[derive(Clone, Debug)]
 pub(crate) enum KStructParent {
     Enum {
         struct_enum: KStructEnum,
@@ -60,7 +59,6 @@ impl KStruct {
     }
 }
 
-#[derive(Clone, Debug)]
 pub(crate) struct KStructOutline {
     pub(crate) name: String,
     pub(crate) fields: Vec<KField>,

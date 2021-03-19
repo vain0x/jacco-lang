@@ -3,7 +3,6 @@ use crate::source::TRange;
 use std::fmt::{self, Debug, Formatter};
 
 /// 字句データ
-#[derive(Clone)]
 pub(crate) struct TokenData {
     kind: TokenKind,
     text: String,

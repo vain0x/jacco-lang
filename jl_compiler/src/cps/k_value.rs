@@ -24,7 +24,6 @@ impl KModValue {
 }
 
 /// モジュール内で定義・使用される、値を表すシンボル
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum KLocalValue {
     LocalVar(KLocalVar),
     Const(KConst),

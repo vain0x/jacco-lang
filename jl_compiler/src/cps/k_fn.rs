@@ -43,7 +43,6 @@ impl KFn {
     }
 }
 
-#[derive(Clone)]
 pub(crate) struct KFnOutline {
     pub(crate) name: String,
     pub(crate) vis_opt: Option<KVis>,
@@ -63,7 +62,7 @@ impl KFnOutline {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(crate) struct KFnData {
     pub(crate) params: Vec<KVarTerm>,
     pub(crate) labels: KLabelArena,

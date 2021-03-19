@@ -1,14 +1,10 @@
 //! 抽象構文木 (abstract syntax tree; AST)
 
-#![allow(unused)]
-
 use super::*;
 use crate::{
     cps::{KMut, KVis},
-    token::TokenKind,
     utils::{VecArena, VecArenaId, VecArenaSlice},
 };
-use std::fmt::{self, Debug, Formatter};
 
 // -----------------------------------------------
 // 名前
@@ -55,6 +51,7 @@ pub(crate) struct ATyParamDecl {
 }
 
 // パラメータ型
+#[cfg(unused)]
 pub(crate) struct AParamTyDecl {
     pub(crate) ty: ATy,
 }
@@ -96,6 +93,7 @@ pub(crate) struct APatTag;
 pub(crate) type APatId = VecArenaId<APatTag>;
 pub(crate) type APatArena = VecArena<APatTag, APat>;
 
+#[cfg(unused)]
 pub(crate) struct AFieldPat {
     pub(crate) name: ANameId,
     pub(crate) pat_opt: Option<APatId>,
@@ -103,15 +101,21 @@ pub(crate) struct AFieldPat {
 
 pub(crate) struct ARecordPat {
     pub(crate) left: ANameId,
+    #[cfg(unused)]
     pub(crate) fields: Vec<AFieldPat>,
 }
 
 pub(crate) enum APat {
+    #[cfg(unused)]
     Unit,
+    #[cfg(unused)]
     True(PToken),
+    #[cfg(unused)]
     False(PToken),
+    #[cfg(unused)]
     Number(PToken),
     Char(PToken),
+    #[cfg(unused)]
     Str(PToken),
     Wildcard(PToken),
     Name(ANameId),
@@ -249,13 +253,14 @@ pub(crate) struct AStmtModifiers {
 
 /// let, const, static, const variant, field of record variant
 pub(crate) struct AFieldLikeDecl {
+    #[cfg(unused)]
     pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
     pub(crate) ty_opt: Option<ATyId>,
     pub(crate) value_opt: Option<AExprId>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct AFieldDeclKey {
     parent: AVariantDeclKey,
     index: usize,
@@ -276,6 +281,7 @@ impl AFieldDeclKey {
     }
 }
 
+#[cfg(unused)]
 pub(crate) struct AExprStmt {
     pub(crate) expr: AExprId,
 }
@@ -285,17 +291,19 @@ pub(crate) struct AParamDecl {
     pub(crate) ty_opt: Option<ATyId>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) struct AParamDeclKey {
     parent: AStmtId,
     index: usize,
 }
 
 impl AParamDeclKey {
+    #[cfg(unused)]
     pub(crate) fn new(parent: AStmtId, index: usize) -> Self {
         Self { parent, index }
     }
 
+    #[cfg(unused)]
     pub(crate) fn element(self, tree: &PTree) -> PElement {
         // OK: インデックスが与えられているので、要素は存在するはず
         self.parent
@@ -349,7 +357,7 @@ impl AVariantDecl {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum AVariantDeclKey {
     Enum(AStmtId, usize),
     Struct(AStmtId),
@@ -375,6 +383,7 @@ impl AVariantDeclKey {
 }
 
 pub(crate) struct AEnumStmt {
+    #[cfg(unused)]
     pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
     pub(crate) variants: Vec<AVariantDecl>,
@@ -387,6 +396,7 @@ impl AEnumStmt {
 }
 
 pub(crate) struct AStructStmt {
+    #[cfg(unused)]
     pub(crate) modifiers: AStmtModifiers,
     pub(crate) variant_opt: Option<AVariantDecl>,
 }
@@ -398,6 +408,7 @@ impl AStructStmt {
 }
 
 pub(crate) struct AUseStmt {
+    #[cfg(unused)]
     pub(crate) modifiers: AStmtModifiers,
     pub(crate) name_opt: Option<ANameId>,
 }
@@ -441,6 +452,7 @@ impl ANameId {
         event_id.of(&tree.ast.events).unwrap()
     }
 
+    #[cfg(unused)]
     pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
         self.element(tree).of(&tree.elements)
     }
@@ -456,6 +468,7 @@ impl ATyId {
         event_id.of(&tree.ast.events).unwrap()
     }
 
+    #[cfg(unused)]
     pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
         self.element(tree).of(&tree.elements)
     }
@@ -471,6 +484,7 @@ impl APatId {
         event_id.of(&tree.ast.events).unwrap()
     }
 
+    #[cfg(unused)]
     pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
         self.element(tree).of(&tree.elements)
     }
@@ -486,10 +500,12 @@ impl AExprId {
         event_id.of(&tree.ast.events).unwrap()
     }
 
+    #[cfg(unused)]
     pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
         self.element(tree).of(&tree.elements)
     }
 
+    #[cfg(unused)]
     pub(crate) fn loc(self) -> PLoc {
         PLoc::Expr(self)
     }
@@ -501,15 +517,18 @@ impl AStmtId {
         event_id.of(&tree.ast.events).unwrap()
     }
 
+    #[cfg(unused)]
     pub(crate) fn element_data(self, tree: &PTree) -> &PElementData {
         self.element(tree).of(&tree.elements)
     }
 
+    #[cfg(unused)]
     pub(crate) fn loc(self, tree: &PTree) -> PLoc {
         PLoc::Stmt(self)
     }
 }
 
+#[cfg(unused)]
 #[derive(Copy, Clone)]
 pub(crate) enum AElementId {
     Ty(ATyId),
@@ -518,6 +537,7 @@ pub(crate) enum AElementId {
     Stmt(AStmtId),
 }
 
+#[cfg(unused)]
 #[derive(Copy, Clone)]
 pub(crate) enum AElementRef<'a> {
     Ty(&'a ATy),
@@ -526,6 +546,7 @@ pub(crate) enum AElementRef<'a> {
     Stmt(&'a AStmt),
 }
 
+#[cfg(unused)]
 impl AElementId {
     fn of<'a>(self, ast: &'a ATree) -> AElementRef<'a> {
         match self {
@@ -564,7 +585,8 @@ pub(crate) struct ARoot {
     pub(crate) stmts: AStmtIds,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[cfg(unused)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum ALoc {
     Ty(ATyId),
     Pat(APatId),

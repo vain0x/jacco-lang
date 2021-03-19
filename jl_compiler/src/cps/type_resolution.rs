@@ -7,7 +7,7 @@ use crate::{
         k_ty::{KEnumOrStruct, KTy2, KTyCause},
         ty_unification::UnificationContext,
     },
-    source::{HaveLoc, Loc},
+    source::Loc,
 };
 use std::{
     cell::RefCell,
@@ -78,13 +78,13 @@ fn unify2(left: &KTy2, right: &KTy2, loc: Loc, tx: &mut Tx) {
     UnificationContext::new(loc, &tx.ty_env, tx.mod_outline, &tx.logger).unify(&left, &right);
 }
 
-fn fresh_meta_ty(loc: Loc, tx: &mut Tx) -> KTy2 {
-    let meta_ty = tx.ty_env.alloc(KMetaTyData::new(RefCell::default(), loc));
+fn fresh_meta_ty(tx: &mut Tx) -> KTy2 {
+    let meta_ty = tx.ty_env.alloc(KMetaTyData::new(RefCell::default()));
     KTy2::Meta(meta_ty)
 }
 
 fn error_invalid_size_of(loc: Loc, logger: &Logger) {
-    logger.error(loc, "この型のサイズは取得できません。");
+    logger.error(loc, "この型のサイズは取得できません。".into());
 }
 
 fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 {
@@ -94,7 +94,7 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
             .ty(&tx.mod_outline.fields)
             .substitute(tx.mod_outline, ty_args),
         _ => {
-            tx.logger.error(loc, "レコード型が必要です");
+            tx.logger.error(loc, "レコード型が必要です".into());
             KTy2::Unresolved {
                 cause: KTyCause::Loc(loc),
             }
@@ -103,7 +103,7 @@ fn get_field_ty(struct_ty: &KTy2, field: KField, loc: Loc, tx: &mut Tx) -> KTy2 
 }
 
 fn get_field_or_variant(
-    #[allow(unused)] hint: &str,
+    hint: &str,
     field_name: &str,
     left_ty: &KTy2,
     k_mut: KMut,
@@ -156,7 +156,7 @@ fn get_field_or_variant(
             hint,
             left_ty.display(&tx.ty_env, tx.mod_outline)
         );
-        tx.logger.error(loc, "bad type");
+        tx.logger.error(loc, "bad type".into());
         (None, KTy2::Never)
     })
 }
@@ -164,7 +164,7 @@ fn get_field_or_variant(
 fn resolve_var_def(term: &mut KVarTerm, expected_ty_opt: Option<&KTy2>, tx: &mut Tx) {
     if term.ty(&tx.local_vars).is_unresolved() {
         let expected_ty = match expected_ty_opt {
-            None => fresh_meta_ty(term.loc(), tx),
+            None => fresh_meta_ty(tx),
             Some(ty) => ty.clone(),
         };
 
@@ -216,7 +216,7 @@ fn resolve_term(term: &mut KTerm, tx: &mut Tx) -> KTy2 {
         KTerm::Label { label, .. } => label.ty(&tx.label_sigs),
         KTerm::Return { .. } => tx
             .return_ty_opt
-            .clone()
+            .as_ref()
             .unwrap()
             .to_ty2(tx.mod_outline, &mut tx.ty_env),
         KTerm::ExternFn { extern_fn, .. } => extern_fn
@@ -313,7 +313,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                     Some(it) => it,
                     None => {
                         tx.logger
-                            .error(node.loc(), "関数ではないものは呼び出せません");
+                            .error(node.loc, "関数ではないものは呼び出せません".into());
                         break;
                     }
                 };
@@ -333,7 +333,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let k_struct = match ty.as_struct(&tx.ty_env) {
                     Some(it) => it,
                     None => {
-                        tx.logger.error(node.loc(), "レコード型が必要です。");
+                        tx.logger.error(node.loc, "レコード型が必要です。".into());
                         return;
                     }
                 };
@@ -360,7 +360,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 if !ty.is_struct_or_enum(&tx.ty_env) {
                     // FIXME: DebugWithContext を使う
                     tx.logger
-                        .error(result, format!("struct or enum type required"));
+                        .error(result.loc(), format!("struct or enum type required"));
                 }
             }
             _ => unimplemented!(),
@@ -447,7 +447,7 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
 
                 let result_ty_opt = arg_ty.as_ptr(&tx.ty_env).map(|(_, ty)| ty);
                 if result_ty_opt.is_none() {
-                    tx.logger.error(&result.loc(), "expected a reference");
+                    tx.logger.error(result.loc(), "expected a reference".into());
                 }
                 resolve_var_def(result, result_ty_opt.as_ref(), tx);
             }
@@ -484,11 +484,11 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 } else if !arg_ty.is_primitive(&tx.ty_env) {
                     // FIXME: DebugWithContext を使う
                     tx.logger
-                        .error(&node, format!("can't cast from non-primitive type"));
+                        .error(node.loc, format!("can't cast from non-primitive type"));
                 } else if !target_ty.is_primitive(&tx.ty_env) {
                     // FIXME: DebugWithContext を使う
                     let msg = format!("can't cast to non-primitive type");
-                    tx.logger.error(&node, msg);
+                    tx.logger.error(node.loc, msg);
                 }
             }
             _ => unimplemented!(),
@@ -570,7 +570,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                 let left_ty = match left_ty.as_ptr(&tx.ty_env) {
                     Some((KMut::Mut, left_ty)) => left_ty,
                     Some((KMut::Const, left_ty)) => {
-                        tx.logger.error(&left.loc(), "expected mutable reference");
+                        tx.logger
+                            .error(left.loc(), "expected mutable reference".into());
                         left_ty
                     }
                     None => KTy2::Never,
@@ -603,7 +604,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference");
+                        tx.logger
+                            .error(left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: add/sub と同じ
@@ -647,7 +649,8 @@ fn resolve_node(node: &mut KNode, tx: &mut Tx) {
                         }
                     };
                     if let KMut::Const = k_mut {
-                        tx.logger.error(&left.loc(), "unexpected const reference");
+                        tx.logger
+                            .error(left.loc(), "unexpected const reference".into());
                     }
 
                     // FIXME: mul/div/etc. と同じ

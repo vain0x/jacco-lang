@@ -9,7 +9,6 @@ pub(crate) struct EventTag;
 pub(crate) type EventId = VecArenaId<EventTag>;
 pub(crate) type EventArena = VecArena<EventTag, Option<PElement>>;
 
-#[derive(Copy, Clone)]
 pub(crate) struct ParseEvent<Tag> {
     id: EventId,
     /// このイベントのスタックにおける深さ
@@ -228,7 +227,7 @@ impl PTreeBuilder {
         self.stack.push(PNodeBuilder::Token(token));
     }
 
-    pub(crate) fn error_behind(&mut self, event_id: EventId, message: impl Into<String>) {
+    pub(crate) fn error_behind(&mut self, event_id: EventId, message: String) {
         self.errors.push((event_id, message.into()));
     }
 

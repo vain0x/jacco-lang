@@ -7,7 +7,6 @@ use crate::{
 use std::{
     collections::HashMap,
     fmt::{self, Debug, Formatter},
-    hash::{Hash, Hasher},
     mem::align_of,
     mem::size_of,
     mem::take,
@@ -62,40 +61,27 @@ impl KTy2 {
         cause: KTyCause::Default,
     };
 
-    #[allow(unused)]
     pub(crate) const DEFAULT: KTy2 = KTy2::Unresolved {
         cause: KTyCause::Default,
     };
-    #[allow(unused)]
     pub(crate) const I8: KTy2 = KTy2::Number(KNumberTy::I8);
-    #[allow(unused)]
     pub(crate) const I16: KTy2 = KTy2::Number(KNumberTy::I16);
     pub(crate) const I32: KTy2 = KTy2::Number(KNumberTy::I32);
     pub(crate) const I64: KTy2 = KTy2::Number(KNumberTy::I64);
     pub(crate) const ISIZE: KTy2 = KTy2::Number(KNumberTy::Isize);
-    #[allow(unused)]
     pub(crate) const INN: KTy2 = KTy2::Number(KNumberTy::INN);
-    #[allow(unused)]
     pub(crate) const U8: KTy2 = KTy2::Number(KNumberTy::U8);
-    #[allow(unused)]
     pub(crate) const U16: KTy2 = KTy2::Number(KNumberTy::U16);
-    #[allow(unused)]
     pub(crate) const U32: KTy2 = KTy2::Number(KNumberTy::U32);
     pub(crate) const U64: KTy2 = KTy2::Number(KNumberTy::U64);
     pub(crate) const USIZE: KTy2 = KTy2::Number(KNumberTy::Usize);
-    #[allow(unused)]
     pub(crate) const UNN: KTy2 = KTy2::Number(KNumberTy::UNN);
-    #[allow(unused)]
     pub(crate) const F32: KTy2 = KTy2::Number(KNumberTy::F32);
     pub(crate) const F64: KTy2 = KTy2::Number(KNumberTy::F64);
-    #[allow(unused)]
     pub(crate) const FNN: KTy2 = KTy2::Number(KNumberTy::FNN);
     pub(crate) const C8: KTy2 = KTy2::Number(KNumberTy::C8);
-    #[allow(unused)]
     pub(crate) const C16: KTy2 = KTy2::Number(KNumberTy::C16);
-    #[allow(unused)]
     pub(crate) const C32: KTy2 = KTy2::Number(KNumberTy::C32);
-    #[allow(unused)]
     pub(crate) const CNN: KTy2 = KTy2::Number(KNumberTy::CNN);
     pub(crate) const BOOL: KTy2 = KTy2::Number(KNumberTy::Bool);
 
@@ -106,9 +92,9 @@ impl KTy2 {
         }
     }
 
-    pub(crate) fn new_fn(param_tys: impl IntoIterator<Item = KTy2>, result_ty: KTy2) -> KTy2 {
+    pub(crate) fn new_fn(param_tys: Vec<KTy2>, result_ty: KTy2) -> KTy2 {
         KTy2::Fn {
-            param_tys: param_tys.into_iter().collect(),
+            param_tys,
             result_ty: Box::new(result_ty),
         }
     }
@@ -451,10 +437,6 @@ impl PartialEq for KTyCause {
 
 impl Eq for KTyCause {}
 
-impl Hash for KTyCause {
-    fn hash<H: Hasher>(&self, _: &mut H) {}
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct KTyParam {
     pub(crate) name: String,
@@ -502,33 +484,25 @@ pub(crate) enum KTy {
 }
 
 impl KTy {
-    #[allow(unused)]
-    pub(crate) const DEFAULT: KTy = KTy::Unresolved {
-        cause: KTyCause::Default,
-    };
     pub(crate) const BOOL: KTy = KTy::Number(KNumberTy::Bool);
     pub(crate) const I8: KTy = KTy::Number(KNumberTy::I8);
     pub(crate) const I16: KTy = KTy::Number(KNumberTy::I16);
     pub(crate) const I32: KTy = KTy::Number(KNumberTy::I32);
     pub(crate) const I64: KTy = KTy::Number(KNumberTy::I64);
     pub(crate) const ISIZE: KTy = KTy::Number(KNumberTy::Isize);
-    #[allow(unused)]
     pub(crate) const INN: KTy = KTy::Number(KNumberTy::INN);
     pub(crate) const U8: KTy = KTy::Number(KNumberTy::U8);
     pub(crate) const U16: KTy = KTy::Number(KNumberTy::U16);
     pub(crate) const U32: KTy = KTy::Number(KNumberTy::U32);
     pub(crate) const U64: KTy = KTy::Number(KNumberTy::U64);
     pub(crate) const USIZE: KTy = KTy::Number(KNumberTy::Usize);
-    #[allow(unused)]
     pub(crate) const UNN: KTy = KTy::Number(KNumberTy::UNN);
     pub(crate) const F32: KTy = KTy::Number(KNumberTy::F32);
     pub(crate) const F64: KTy = KTy::Number(KNumberTy::F64);
-    #[allow(unused)]
     pub(crate) const FNN: KTy = KTy::Number(KNumberTy::FNN);
     pub(crate) const C8: KTy = KTy::Number(KNumberTy::C8);
     pub(crate) const C16: KTy = KTy::Number(KNumberTy::C16);
     pub(crate) const C32: KTy = KTy::Number(KNumberTy::C32);
-    #[allow(unused)]
     pub(crate) const CNN: KTy = KTy::Number(KNumberTy::CNN);
 
     pub(crate) fn init_later(loc: Loc) -> Self {
@@ -704,7 +678,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
         } => {
             if let TySchemeConversionMode::Instantiate(ty_env) = &mut context.mode {
                 for ty_param in ty_params {
-                    let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                    let meta_ty = ty_env.alloc(KMetaTyData::new_fresh());
                     context.env.insert(ty_param.name.to_string(), meta_ty);
                 }
             }
@@ -713,7 +687,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 param_tys
                     .into_iter()
                     .map(|ty| do_instantiate(&ty, context))
-                    .collect::<Vec<_>>(),
+                    .collect(),
                 do_instantiate(&result_ty, context),
             )
         }
@@ -741,7 +715,7 @@ fn do_instantiate(ty: &KTy, context: &mut TySchemeInstantiationFn) -> KTy2 {
                 TySchemeConversionMode::Instantiate(ty_env) => ty_params
                     .iter()
                     .map(|ty_param| {
-                        let meta_ty = ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                        let meta_ty = ty_env.alloc(KMetaTyData::new_fresh());
                         env.insert(ty_param.name.to_string(), meta_ty);
                         (ty_param.name.to_string(), KTy2::Meta(meta_ty))
                     })
@@ -810,8 +784,7 @@ impl Variance {
 }
 
 /// 極性
-#[allow(unused)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg(unused)]
 pub(crate) enum Polarity {
     /// 陰極。入力となる型を表している。ダウンキャストできる。
     Negative,
@@ -821,7 +794,7 @@ pub(crate) enum Polarity {
     Positive,
 }
 
-#[allow(unused)]
+#[cfg(unused)]
 impl Polarity {
     pub(crate) fn negate(self) -> Self {
         match self {

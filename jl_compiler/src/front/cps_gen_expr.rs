@@ -309,8 +309,10 @@ impl<'a> Xx<'a> {
                 )
             }
             _ => {
-                self.logger
-                    .error(name.loc(), "ジェネリックな関数以外の型適用式は未実装です");
+                self.logger.error(
+                    name.loc(),
+                    "ジェネリックな関数以外の型適用式は未実装です".into(),
+                );
                 new_error_term(loc)
             }
         }
@@ -357,7 +359,7 @@ impl<'a> Xx<'a> {
                     ty_params
                         .iter()
                         .map(|ty_param| {
-                            let meta_ty = self.ty_env.alloc(KMetaTyData::new_fresh(ty_param.loc));
+                            let meta_ty = self.ty_env.alloc(KMetaTyData::new_fresh());
                             (ty_param.name.to_string(), KTy2::Meta(meta_ty))
                         })
                         .collect::<HashMap<_, _>>()
@@ -927,14 +929,14 @@ impl<'a> Xx<'a> {
                 let (body, body_ty1) = body_fn(xx, ty_rule.body_ty_expect());
                 body_ty = body_ty1;
                 ty_rule.verify_body_ty(&body_ty);
-                xx.nodes.push(new_jump_tail(break_label, once(body), loc));
+                xx.nodes.push(new_jump_tail(break_label, vec![body], loc));
             });
 
             xx.do_in_branch(|xx| {
                 let (alt, alt_ty1) = alt_fn(xx, ty_rule.alt_ty_expect());
                 alt_ty = alt_ty1;
                 ty_rule.verify_alt_ty(&alt_ty);
-                xx.nodes.push(new_jump_tail(break_label, once(alt), loc));
+                xx.nodes.push(new_jump_tail(break_label, vec![alt], loc));
                 ty_rule.verify_cond_ty(&cond_ty, &xx.ty_env);
             });
 
@@ -986,7 +988,7 @@ impl<'a> Xx<'a> {
                     .chain(arms.iter().map(|(_, term)| term.clone()))
                     .collect();
                 let cont_count = expr.arms.len();
-                new_switch_tail(args, vec![new_cont(); cont_count], loc)
+                new_switch_tail(args, (0..cont_count).map(|_| new_cont()).collect(), loc)
             };
             xx.nodes.push(switch_node);
 
@@ -1353,7 +1355,6 @@ impl<'a> CallExprRule<'a> {
     }
 }
 
-#[derive(Debug)]
 enum AddExprRuleKind {
     Number,
     PtrAdd,

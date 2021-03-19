@@ -123,8 +123,6 @@ mod front {
 mod lang_service {
     //! 入力支援機能 (LSP サーバーの内部実装)
 
-    #![allow(unused)]
-
     mod doc_analysis;
     mod actions {
         mod completion;
@@ -215,7 +213,7 @@ mod source {
     pub(crate) mod cursor_text;
 
     pub(crate) use doc::Doc;
-    pub(crate) use loc::{HaveLoc, Loc};
+    pub(crate) use loc::Loc;
 
     #[allow(unused)]
     #[cfg(test)]

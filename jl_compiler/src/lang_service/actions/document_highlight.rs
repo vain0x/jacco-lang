@@ -13,8 +13,6 @@ use crate::{
 use std::collections::HashMap;
 
 struct FieldOccurrenceInFnCollector<'a> {
-    mod_outline: &'a KModOutline,
-    fn_data: &'a KFnData,
     occurrences: &'a mut Vec<(KField, Loc)>,
 }
 
@@ -43,7 +41,6 @@ impl FieldOccurrenceInFnCollector<'_> {
 }
 
 fn collect_field_occurrences(
-    only_doc: Option<Doc>,
     ls: &mut LangService,
     occurrences: &mut Vec<(KField, Loc)>,
 ) {
@@ -51,8 +48,6 @@ fn collect_field_occurrences(
 
     for fn_data in ls.mod_data.fns.iter() {
         let mut collector = FieldOccurrenceInFnCollector {
-            mod_outline: &ls.mod_outline,
-            fn_data,
             occurrences,
         };
 
@@ -92,9 +87,9 @@ fn document_highlight_of_fields(
     ls: &mut LangService,
 ) -> Option<(Vec<TRange>, Vec<TRange>)> {
     let mut occurrences = vec![];
-    collect_field_occurrences(Some(doc), ls, &mut occurrences);
+    collect_field_occurrences(ls, &mut occurrences);
 
-    let DocSymbolAnalysisMut { syntax, symbols } = ls.request_symbols(doc)?;
+    let DocSymbolAnalysisMut { syntax, .. } = ls.request_symbols(doc)?;
     let range = token.range(&syntax.tree.tokens);
 
     let field = occurrences.iter().find_map(|&(k_field, loc)| {
@@ -112,7 +107,7 @@ fn document_highlight_of_fields(
     })?;
 
     // element(kind=Name) -> ast-name
-    let mut map = syntax
+    let map = syntax
         .tree
         .ast
         .names()
@@ -123,10 +118,6 @@ fn document_highlight_of_fields(
             // syntax.tree.ast.
         })
         .collect::<HashMap<_, _>>();
-
-    for (_, &name) in map.iter() {
-        let symbol_opt = symbols.name_symbols.get(&name).cloned();
-    }
 
     // フィールド式を探す。
     let mut use_sites = occurrences
@@ -156,7 +147,7 @@ fn document_highlight_of_fields(
 
         'z: for element in syntax.tree.elements.iter() {
             if element.kind() == PElementKind::RecordExpr {
-                let (record_expr, element) = (element, ());
+                let record_expr = element;
 
                 // いま注目しているフィールドを含むレコードのレコード式でなければスキップ
                 'a: loop {
@@ -180,11 +171,11 @@ fn document_highlight_of_fields(
                         a_name = def_name;
                     }
 
-                    let name_symbol_opt = symbols.name_symbols.get(&a_name).cloned();
+                    let name_symbol_opt = symbols.name_symbols.get(&a_name);
 
                     match name_symbol_opt {
                         Some(NameSymbol::ModSymbol(KModSymbol::Struct(the_struct)))
-                            if the_struct == k_struct =>
+                            if *the_struct == k_struct =>
                         {
                             break 'a
                         }

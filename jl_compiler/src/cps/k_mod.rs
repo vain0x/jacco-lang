@@ -51,7 +51,7 @@ pub(crate) struct KModData {
 }
 
 /// モジュールの中で定義されるシンボルの識別子。それが属するモジュールを基準としている。
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum KModSymbol {
     Alias(KAlias),
     Const(KConst),
@@ -131,7 +131,7 @@ pub(crate) fn resolve_aliases(
             _ => {
                 logger.error(
                     alias_data.loc(),
-                    "use mod_name::entity_name; 以外の形式の use は未実装です",
+                    "use mod_name::entity_name; 以外の形式の use は未実装です".into(),
                 );
                 continue;
             }
@@ -190,7 +190,7 @@ pub(crate) fn resolve_aliases(
         let referent = match lookup(entity_name.as_str()) {
             Some(it) => it,
             None => {
-                logger.error(alias_data.loc(), "名前が見つかりません");
+                logger.error(alias_data.loc(), "名前が見つかりません".into());
                 continue;
             }
         };
@@ -200,9 +200,8 @@ pub(crate) fn resolve_aliases(
     }
 }
 
+#[allow(unused)]
 mod debug_info {
-    #![allow(unused)]
-
     use super::*;
     use std::{cell::RefCell, ptr::null};
 

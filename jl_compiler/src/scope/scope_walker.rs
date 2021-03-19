@@ -38,7 +38,7 @@ impl ScopeWalker {
     }
 
     /// デバッグ用: いまのスコープまでの祖先を列挙する。
-    #[allow(unused)]
+    #[cfg(unused)]
     pub(crate) fn breadcrumbs(&self) -> String {
         let mut ancestors = vec![];
         let mut scope_id = self.current;
@@ -72,9 +72,9 @@ impl ScopeWalker {
     }
 
     /// 子スコープに入る。
-    pub(crate) fn enter(&mut self, hint: impl Into<String>) {
+    pub(crate) fn enter(&mut self, hint: String) {
         let child = self.scopes.alloc(ScopeData {
-            hint: hint.into(),
+            hint,
             parent_opt: Some(self.current),
         });
         self.current = child;

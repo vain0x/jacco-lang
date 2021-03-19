@@ -4,25 +4,27 @@
 //! 処理系のバグなどは log クレートの error! マクロで報告する。
 
 use crate::{
-    parse::{PLoc, PTree},
-    source::{Doc, HaveLoc, Loc, TRange},
+    parse::PLoc,
+    source::{Doc, Loc},
 };
 use std::{cell::RefCell, mem::take, rc::Rc};
 
+#[cfg(test)]
+use crate::{parse::PTree, source::TRange};
+
 /// 位置情報と関連付けられたエラーメッセージ
-#[derive(Clone)]
 pub(crate) struct DocLogItem {
     loc: PLoc,
     message: String,
 }
 
 impl DocLogItem {
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn into_message(self) -> String {
         self.message
     }
 
-    #[allow(unused)]
+    #[cfg(test)]
     pub(crate) fn range(&self, tree: &PTree) -> Result<TRange, &'static str> {
         self.loc.range(tree)
     }
@@ -55,8 +57,7 @@ pub(crate) struct DocLogger {
 }
 
 impl DocLogger {
-    pub(crate) fn error(&self, loc: PLoc, message: impl Into<String>) {
-        let message = message.into();
+    pub(crate) fn error(&self, loc: PLoc, message: String) {
         self.parent
             .items
             .borrow_mut()
@@ -113,7 +114,6 @@ impl Logs {
 
 /// ログを出力するもの。
 /// 記述を煩雑にしないために、所有権や可変性をごまかしている。(自由にクローンできる。`&self` に書き込める。)
-#[derive(Clone, Default)]
 pub(crate) struct Logger {
     parent: Logs,
 }
@@ -130,9 +130,7 @@ impl Logger {
         }
     }
 
-    pub(crate) fn error(&self, node: impl HaveLoc, message: impl Into<String>) {
-        let message = message.into();
-        let loc = node.loc();
+    pub(crate) fn error(&self, loc: Loc, message: String) {
         let mut inner = self.parent.inner.borrow_mut();
         inner.push(LogItem::OnLoc { message, loc });
     }

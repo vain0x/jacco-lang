@@ -1,11 +1,10 @@
 use super::*;
 use crate::{
-    source::{HaveLoc, Loc},
+    source::Loc,
     utils::{DebugWith, DebugWithContext},
 };
 use std::fmt::{self, Formatter};
 
-#[derive(Clone)]
 pub(crate) struct KNode {
     pub(crate) prim: KPrim,
     pub(crate) tys: Vec<KTy2>,
@@ -112,11 +111,5 @@ impl Default for KNode {
             conts: Default::default(),
             loc: Loc::new_unknown("<KNode::default>"),
         }
-    }
-}
-
-impl HaveLoc for KNode {
-    fn loc(&self) -> Loc {
-        self.loc
     }
 }

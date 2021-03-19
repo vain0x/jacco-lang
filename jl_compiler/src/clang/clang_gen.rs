@@ -572,7 +572,7 @@ fn gen_node(node: &KNode, ty_env: &KTyEnv, cx: &mut Cx) {
                         cx.stmts
                             .push(left.into_binary_op(CBinaryOp::Assign, right).into_stmt());
 
-                        CExpr::Name(name.clone()).into_dot(unique_struct_name(k_struct, cx))
+                        CExpr::Name(name.clone()).into_dot(&unique_struct_name(k_struct, cx))
                     }
                     _ => unreachable!(),
                 };

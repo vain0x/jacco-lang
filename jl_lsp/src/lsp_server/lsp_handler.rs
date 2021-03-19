@@ -214,7 +214,7 @@ impl<W: Write> LspHandler<W> {
     //     )
     // }
 
-    #[allow(unused)]
+    #[cfg(unused)]
     fn completion_item_resolve(&mut self, completion_item: CompletionItem) -> CompletionItem {
         completion_item
     }

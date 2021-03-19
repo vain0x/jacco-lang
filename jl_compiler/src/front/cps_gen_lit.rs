@@ -69,7 +69,7 @@ pub(crate) fn convert_number_lit(
                 LitErr::Flow => "不正な値です",
                 LitErr::UnknownSuffix => "不正なサフィックスです",
             };
-            logger.error(PLoc::new(token), message);
+            logger.error(PLoc::new(token), message.into());
             new_never_term(cause.loc())
         }
     }
