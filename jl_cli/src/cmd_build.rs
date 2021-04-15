@@ -30,7 +30,6 @@ pub(crate) fn do_exec_build_cmd(mut args: impl Iterator<Item = String>) -> Resul
         };
 
         match arg.as_str() {
-            "--v2" => {}
             "-o" | "--out" => {
                 let output_path = args
                     .next()

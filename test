@@ -46,7 +46,7 @@ expect_compile_ok() {
 
     echo 'test: '$SRC
     echo -e '\n## test: '$SRC'\n\n```' | tee -a test_stderr.md >>test_stdout.md
-    RUST_BACKTRACE=1 RUST_LOG='trace' cargo run --bin jacco build --v2 "$SRC" \
+    RUST_BACKTRACE=1 RUST_LOG='trace' cargo run --bin jacco build "$SRC" \
         1>"$TXT" \
         2> >(tee -a test_stderr.md | grep -E 'Compiling|panicked|error|ERROR|\.rs\:' 1>&2)
     echo '```' | tee -a test_stderr.md >>test_stdout.md
