@@ -24,7 +24,7 @@ fn parse_ty_param_list(px: &mut Px) -> Option<AfterTyParamList> {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBracket | TokenKind::RightBrace => break,
-            TokenKind::Ident | TokenKind::Underscore => {
+            TokenKind::Ident => {
                 let param_event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let comma_opt = px.eat(TokenKind::Comma);
@@ -51,7 +51,7 @@ fn parse_param_list(px: &mut Px) -> Option<AfterParamList> {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightParen | TokenKind::RightBrace => break,
-            TokenKind::Ident | TokenKind::Underscore => {
+            TokenKind::Ident => {
                 let param_event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let (colon_opt, ty_opt) = parse_ty_ascription(px);
@@ -224,7 +224,7 @@ fn parse_field_decls(px: &mut Px) -> AfterFieldDecls {
     loop {
         match px.next() {
             TokenKind::Eof | TokenKind::RightBrace => break,
-            TokenKind::Ident | TokenKind::Underscore => {
+            TokenKind::Ident => {
                 let event = px.start_element();
                 let name = parse_unqualifiable_name(px).unwrap();
                 let field = parse_field_decl(event, name, px);

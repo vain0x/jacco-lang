@@ -37,7 +37,6 @@ impl Debug for TokenData {
             | TokenKind::Char
             | TokenKind::Str
             | TokenKind::Ident => Debug::fmt(self.text(), f),
-            TokenKind::Underscore => write!(f, "_"),
             _ => Debug::fmt(&self.kind(), f),
         }
     }

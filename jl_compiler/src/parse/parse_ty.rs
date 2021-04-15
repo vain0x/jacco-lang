@@ -14,6 +14,10 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
     let ty = match px.next() {
         TokenKind::Ident => {
             let name = parse_qualifiable_name(px).unwrap();
+            if let Some(token) = name.0.as_wildcard() {
+                return Some(alloc_infer_ty(event, token, px));
+            }
+
             match px.next() {
                 TokenKind::LeftBracket => {
                     let ty_arg_list = parse_ty_arg_list(px).unwrap();
@@ -21,10 +25,6 @@ pub(crate) fn parse_ty(px: &mut Px) -> Option<AfterTy> {
                 }
                 _ => alloc_name_ty(event, name, px),
             }
-        }
-        TokenKind::Underscore => {
-            let token = px.bump();
-            alloc_infer_ty(event, token, px)
         }
         TokenKind::Unit => {
             let token = px.bump();

@@ -9,7 +9,6 @@ impl Keyword {
 
     pub(crate) fn parse(text: &str) -> Option<Keyword> {
         let kind = match text {
-            "_" => TokenKind::Underscore,
             "as" => TokenKind::As,
             "box" => TokenKind::Box,
             "break" => TokenKind::Break,

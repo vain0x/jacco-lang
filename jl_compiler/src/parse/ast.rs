@@ -43,6 +43,14 @@ impl AName {
     pub(crate) fn is_qualified(&self) -> bool {
         !self.quals.is_empty()
     }
+
+    pub(crate) fn as_wildcard(&self) -> Option<PToken> {
+        if self.quals.is_empty() && self.head == "_" {
+            Some(self.token)
+        } else {
+            None
+        }
+    }
 }
 
 /// 型パラメータ

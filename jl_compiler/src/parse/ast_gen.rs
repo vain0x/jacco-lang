@@ -1,9 +1,7 @@
 use super::*;
-use crate::{ parse::syntax_error::*};
+use crate::parse::syntax_error::*;
 
 pub(crate) type AfterQualifiableName = (AName, NameEnd);
-#[cfg(unused)]
-pub(crate) type AfterUnderscore = (AName, NameEnd);
 pub(crate) type AfterUnqualifiableName = (AName, NameEnd);
 pub(crate) type AfterTyParam = (ATyParamDecl, Option<PToken>, ParseEnd);
 pub(crate) type AfterTyParamList = Vec<ATyParamDecl>;

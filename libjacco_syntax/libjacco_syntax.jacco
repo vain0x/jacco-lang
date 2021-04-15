@@ -838,6 +838,7 @@ enum SyntaxKind {
     /// 識別子
     Ident,
     /// `_`
+    // FIXME: _ is no longer token
     Underscore,
 
     // キーワード類

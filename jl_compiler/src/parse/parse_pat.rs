@@ -31,6 +31,9 @@ pub(crate) fn parse_pat(px: &mut Px) -> Option<AfterPat> {
         }
         TokenKind::Ident => {
             let name = parse_qualifiable_name(px).unwrap();
+            if let Some(token) = name.0.as_wildcard() {
+                return Some(alloc_wildcard_pat(event, token, px));
+            }
 
             match px.next() {
                 TokenKind::LeftBrace => {
@@ -39,10 +42,6 @@ pub(crate) fn parse_pat(px: &mut Px) -> Option<AfterPat> {
                 }
                 _ => alloc_name_pat(event, name, px),
             }
-        }
-        TokenKind::Underscore => {
-            let token = px.bump();
-            alloc_wildcard_pat(event, token, px)
         }
         _ => return None,
     };
