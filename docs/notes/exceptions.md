@@ -4,7 +4,7 @@ WIP
 
 目的:
 
-- 統一的なエラーハンドリングの方法を規定する
+- 統一的なエラー処理の方法を規定する
 
 当面、予定する機能:
 
@@ -16,34 +16,69 @@ WIP
 
 ## エラー処理の基本戦略
 
-例外は、関数の事前条件を満たしていても発生する可能性があるエラーの処理に使用する。ネットワークエラーなど。
+エラーを以下の4種類に大きく分類する。
 
-関数の事前条件を満たしているときには発生しないエラーの処理には、例外を使用しない。代わりに次を行う:
+- 論理エラー: プログラムの不具合によるエラー。コードを変更して修正すべきもの。配列の範囲外参照など。
+- 偏在エラー: プログラムのあらゆる箇所で発生する可能性があるエラー。スタックオーバーフローなど。
+- 計算エラー: 計算結果が定義されない(エラー状態になる)ことによるエラー。文字列のパースの失敗など。
+- 環境エラー: プログラムの実行環境に起因するエラー。実装時点で防ぐことはできないので、実行時に処理する必要がある。ファイルがないとか。
 
-- abort で落とす。
-    - 例: 配列の不正なインデックスへのアクセス
-- undefined behavior とみなす。
-    - 例: 不正なポインタへのアクセス
+計算エラーは単なる「結果がOption/Resultであるような計算」ともいえるが、「環境エラー」と合成できると嬉しいので、エラーとして扱う。
 
-## 例外を投げる関数の宣言
+エラーからの復帰に関しては以下の通り。
 
-throws キーワードのついた関数文は例外を投げる関数を宣言する。
+- 論理エラー: 復帰できないので、クラッシュさせる。デバッグのためスタックトレースを出したい。
+- 偏在エラー: 復帰は難しいのでクラッシュさせる。
+- 計算エラー: 頻繁に発生して、容易に復帰できる。エラーの発生・復帰は高速であるべき。
+- 環境エラー: あまり発生しない。復帰することもあるが、しないこともよくある。高速でなくてもいい。
+
+### エラー処理の典型
+
+- エラーを発生させる。(throw)
+- エラーをそのまま伝播する。(rethrow)
+    - エラーの型は拡大することがある。
+    - エラーに追加の情報 (コンテキスト) を付与したいことがある。(expect)
+- エラーを他のオブジェクトで包んで、伝播する。(wrap)
+- エラーを無視して、既定値を計算する。(coalesce)
+- エラーを値として取り出す:
+    - 値として取り出したエラーを伝播する。(catch)
+    - 値として取り出したエラーやスタックトレースを出力する。(debug)
+    - 値として取り出したエラーを、スタックトレースを維持しながら伝播する。(rethrow)
+- エラーが起こったとき、リソースを解放する。(err-defer)
+- エラーが起こったときも起こらなかったときも、リソースを解放する。(finally)
+
+## エラー処理の言語機能
+
+式は、評価して結果を返すのではなく、例外を投げることができる。
+例外はエラーを表現する何らかのオブジェクト。
+
+### 例外の型指定
+
+関数が例外を投げるかどうかは関数の型の一部である。
+関数を定義する際に、throws キーワードを使って、その関数が投げる可能性のある例外の型を指定する。
 
 ```rust
-/// ファイルの中身を読み込む。読み込めなかったら例外を投げる
-fn read_file(path: *c8, buf: *mut u8) throws {
+/// ファイルの中身を読み込む。読み込めなかったら ReadFileError 型の例外を投げる。
+fn read_file(path: *c8, buf: *mut u8) throws ReadFileError {
     // ...
 }
 ```
 
-## 例外の送出
+### 例外の送出
 
-`throw e` は例外 e を投げて、外側の try ブロックまたは関数から例外を伴って抜ける。どの関数やブロックから抜けるかは、break/return と同様に構文から確定する。
+throw 式は例外を投げる。
+
+```rust
+    throw expr;
+```
+
+throw 式を含む handle 式がある場合、その handle 式が例外を処理する。
+そうでなければ、関数が呼び出し元に例外を投げる。
 
 ```rust
 struct ReadFileError;
 
-fn read_file(path: *c8, buf: *mut u8) throws {
+fn read_file(path: *c8, buf: *mut u8) throws ReadFileError {
     let file = fopen(...);
     if is_null(file) {
         // 関数から例外で抜ける。
@@ -54,70 +89,134 @@ fn read_file(path: *c8, buf: *mut u8) throws {
 }
 ```
 
-## 例外の再送
+## 例外の処理
 
-例外を投げる関数の呼び出しには `.try` をつける。また、try ブロックか例外を投げる関数の中にしか書けない。
+例外を処理するには handle 式を使う。
+`expr.handle` 式は `expr` が投げた例外を処理する。
+つまり、その例外に関してパターンマッチを行い、マッチした節の結果を返す。
+`expr` が例外を投げなかった場合は、その結果を返す。
 
 ```rust
-fn cat(path1: *c8, path2: *c8, buf: *mut u8) throws {
-    read_file(path1).try;
-    read_file(path2).try;
-}
+    operation().handle {
+        err => {
+            // err を使う処理
+        }
+    }
 ```
 
-## 例外のキャッチ
-
-`try { ... }` は内側で投げられた例外をキャッチする。正常に抜けたときは Ok バリアント、例外で抜けたときは Err バリアントになる。
+節の内部では recover 式を使って handle 式から脱出できる。
+`recover expr` は `expr` を評価し、その結果を handle 式の結果とする。
+評価が節の末尾に達したときは err を再送する。
 
 ```rust
-fn main() -> i32 {
-    let buf = ...;
-    let ok = try { read_file("available.txt", &mut buf) }; //=> Ok(...)
-    let bad = try { read_file("not_found.txt", &mut buf) }; //=> Err(...)
-
-    if ok.is_ok() && bad.is_ok() { 0 } else { 1 }
-}
+    Ok(operation()).handle {
+        err if err.is_canceled() => recover Canceled,
+        err if err.is_timeout() => recover Timeout,
+    }
 ```
 
-## std::err::Try 型
+### 典型的な例外処理
+
+典型的なユースケースのため、handle 式は以下の糖衣構文を持つ。
+
+try 式はエラーを伝播する。
 
 ```rust
-// try { ... } の結果
+    expr.try
+// =>
+    expr.handle { _ => {} }
+```
+
+再送に際して、追加の情報を与えることもできる。
+
+```rust
+    expr.try(context)
+// =>
+    expr.handle { err => err.set_context(context) }
+```
+
+catch 式はエラーを値として取り出す。
+
+```rust
+    expr.catch
+// =>
+    Ok(expr).handle { err => recover Err(err) }
+```
+
+or 式はエラーを既定値に変換する。
+
+```rust
+// '(' が後続するとき。例外にはアクセスできない。
+    expr.or(alt)
+// =>
+    expr.handle { _ => recover alt }
+```
+
+```rust
+// '{' が後続するとき。
+    expr.or { err => alt(err) }
+// =>
+    expr.handle { err => recover alt(err) }
+```
+
+### defer 文
+
+defer 文の後にある、同じブロックの文や式より後に処理を挟む。
+この処理はそのブロックの評価が完了したとき、外にジャンプしたとき、例外が投げられたときのいずれも行われる。
+
+defer は handle 式ではないので、例外を処理したとはみなさない。
+
+## 例外の表現
+
+### std::err::Try 型
+
+```rust
+// 例外処理の結果
 enum Try[T, E] {
     Ok {
         value: T,
     },
     Err {
-        trace: ErrorTrace,
-        data: E,
+        trace: ErrTrace,
+        data: *E,
     },
 }
 
-// Try::Err と同じメモリレイアウトを持つ。
+// Try[_, E]::Err と同じメモリレイアウトを持つ。(コンパイラが保証する。)
 struct TryErr[E] {
     tag: u8,
-    trace: ErrorTrace,
-    data: E,
+    trace: ErrTrace,
+    data: *E,
 }
 
-// 例外が送出・再送された位置のリスト
-type ErrorTrace = Vec[SourceLocation];
+// 例外が送出・再送された位置、付与された情報のリスト
+type ErrTrace = Vec[ErrPoint];
+
+struct ErrPoint {
+    // 例外処理の位置情報
+    location: SourceLocation,
+
+    // 付与された情報
+    context: *unknown,
+}
 ```
 
-## 例外の送出の挙動
+### 例外の送出の挙動
 
-main 関数は例外を再送しないので、例外は必ずどこかで try ブロックにキャッチされる。そのため例外を投げる関数の一連の呼び出しは1個の Try オブジェクトを生成する。
+main 関数は例外を投げないので、例外は必ずどこかで「常に recover する handle 式」に処理される。そのため例外を投げる関数の一連の呼び出しは1個の Try オブジェクトを生成する。
 
-関数が例外が投げずに return したときは、その値で Ok(x) を構築すればいい。例外が投げられる場合、投げられた値を Err バリアントに持たせる必要がある。当面は、例外を投げる関数に暗黙の出力引数として Try オブジェクトへのポインタを渡すことにして、throw に際して Err オブジェクトを初期化することにする。
+関数が例外を投げずに return したときは、その値で Ok(x) を構築する。例外が投げられる場合、投げられた値を Err バリアントに持たせる。当面は、例外を投げる関数に暗黙の出力引数として Try オブジェクトへのポインタを渡すことにして、throw に際して Err オブジェクトを初期化することにする。
 
-throw とその後の再送の際にエラートレースに位置情報を書き込んでいく。その書き込み先のメモリ領域は、try ブロック側が事前に確保しておくことにする。throw の際に確保すると、それを解放する責任をコンパイル時に決定できないため、動的確保を行うしかなくなる。try ブロックならスタック上にメモリを確保できて効率がいいはず。
+throw とその後の再送の際にエラートレースに位置情報を書き込んでいく。その書き込み先のメモリ領域は、recover を含む handle 式が事前に確保しておくことにする。throw の際に確保すると、それを解放する責任をコンパイル時に決定できないため、動的確保を行うしかなくなる。recover 側ならスタック上にメモリを確保できて効率がいいはず。
+
+handle 側で例外のエラートレースが捨てられることが分かっている場合はエラートレースを長さ 0 で確保することにより、エラートレースの生成を抑制する。(エラーを起こす単純な式を効率的に処理するため。)
 
 例:
 
 ```rust
 struct ReadFileError;
 
-fn read_file(path: *c8, buf: *mut u8) throws {
+fn read_file(path: *c8, buf: *mut u8) throws ReadFileError {
     let file = fopen(...);
     if is_null(file) {
         // 関数から例外で抜ける。
@@ -127,13 +226,13 @@ fn read_file(path: *c8, buf: *mut u8) throws {
     fread(...);
 }
 
-let result = try { read_file("foo.txt", &mut buf) };
+let result = read_file("foo.txt", &mut buf).catch;
 ```
 
 これはおおよそ次のような挙動になる (あまり厳密には決まっていない):
 
 ```rust
-fn read_file(path: *c8, buf: *mut u8, err: *mut TryErr[/* TBD */]) throws {
+fn read_file(path: *c8, buf: *mut u8, err: *mut TryErr[/* TBD */]) throws ReadFileError {
     let file = fopen(...);
     if is_null(file) {
         // throw ...;
@@ -146,7 +245,7 @@ fn read_file(path: *c8, buf: *mut u8, err: *mut TryErr[/* TBD */]) throws {
     fread(...);
 }
 
-// let result = try { ... };
+// let result = (...).catch;
 let result = Try::[u32, /* TBD */]::Err {
     trace: ErrorTrace::stack_alloc(MAX_TRACE_LEN), // エラートレースの領域は事前に確保する。
     data: uninit,
@@ -157,12 +256,12 @@ if result.tag != Try::Err::tag {
 }
 ```
 
-## 例外の再送の挙動
+### 例外の再送の挙動
 
-関数が例外を投げたかチェックして、投げられていたらエラートレースに追記して return。投げられていなければ続行。
+関数が例外を投げたか検査して、投げられていたらエラートレースに追記して return。投げられていなければ続行。
 
 ```rust
-fn cat(path1: *c8, path2: *c8, buf: *mut u8) throws {
+fn cat(path1: *c8, path2: *c8, buf: *mut u8) throws ReadFileError {
     read_file(path1, buf).try;
     read_file(path2, buf).try
 }
@@ -171,7 +270,7 @@ fn cat(path1: *c8, path2: *c8, buf: *mut u8) throws {
 おおよそ次のような挙動:
 
 ```rust
-fn cat(path1: *c8, path2: *c8, buf: *mut u8, err: *mut TryErr[ /* TBD */ ]) throws {
+fn cat(path1: *c8, path2: *c8, buf: *mut u8, err: *mut TryErr[ /* TBD */ ]) throws ReadFileError {
     // read_file(path1, buf).try;
     read_file(path1, buf, err);
     if (*err).tag == Try::Err::tag {
@@ -183,7 +282,7 @@ fn cat(path1: *c8, path2: *c8, buf: *mut u8, err: *mut TryErr[ /* TBD */ ]) thro
 }
 ```
 
-## 例外のキャッチとハンドル
+### 例外のキャッチとハンドル
 
 TBD
 
@@ -194,7 +293,7 @@ enum IoError {
     // ...
 }
 
-let result = try { read_file("not_found.txt", &mut buf).try };
+let result = read_file("not_found.txt", &mut buf).catch;
 match result {
     Try::Ok { .. } => {}
     Try::Err {
@@ -210,24 +309,39 @@ match result {
 }
 ```
 
+## その他
+
+handle の中でジャンプ:
+
+```rust
+    loop {
+        let item = queue.pop().or(break);
+    }
+```
+
+エラーの握りつぶし:
+
+```rust
+    f().or(unit);
+```
+
+handle 箇所はエラートレースを確保するので、アロケータを持つ必要がある。
+
 ## 課題
 
-- TODO: throws にエラーの型を厳密に指定できるか? (検査例外)
 - TODO: キャッチしたエラーに基づく処理 (ダウンキャストなど)
-- TODO: ジャンプ命令のフック (return/throw の片方または両方で抜ける直前に実行するコードを書く構文)
-- TODO: エラーをラップして再送したいケース
-- TODO: エラーにコンテクスト (デバッグのヒントになる文字列や追加のデータなど) を付与して再送したいケース
-- TODO: try ブロックでつかんだエラーを改めて throw するとエラートレースが消える問題
-- TODO: 関数が例外を投げた際に return ではなく continue してループが終わってから throw したいケース (?)
-- TODO: エラーが発生した後に実行を継続したいケース (?)
+- TODO: ループの中の defer の扱い
+- TODO: catch したエラーを throw するときエラートレースをコピーする必要がある
 - TODO: リソース管理との相互作用 (例外安全性など)
 - TODO: 非同期処理との相互作用
+- TODO: パターンマッチに失敗したときにエラーを起こす
 
 ## 調査メモ
 
 Swift のエラーハンドリングのガイド:
 
 - [Error Handling — The Swift Programming Language (Swift 5.3)](https://docs.swift.org/swift-book/LanguageGuide/ErrorHandling.html)
+- [Error Handling Rationale and Proposal](https://github.com/apple/swift/blob/7123d2614b5f222d03b3762cb110d27a9dd98e24/docs/ErrorHandlingRationale.rst)
 
 C++ に静的例外を導入する提案:
 
